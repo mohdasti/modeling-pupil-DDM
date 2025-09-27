@@ -1,0 +1,184 @@
+# =========================================================================
+# MODELING PUPIL-DDM - PATHS CONFIGURATION
+# =========================================================================
+# This file contains all file paths and directory configurations for the
+# Modeling Pupil-DDM analysis pipeline. Copy this file to paths_config.R 
+# and modify the paths according to your system setup.
+# =========================================================================
+
+# =========================================================================
+# BASE DIRECTORIES
+# =========================================================================
+
+# Project root directory
+PROJECT_ROOT <- "/Users/mohdasti/Documents/GitHub/modeling-pupil-DDM"
+
+# Data directories
+DATA_ROOT <- file.path(PROJECT_ROOT, "data")
+RAW_DATA_DIR <- file.path(DATA_ROOT, "raw")
+PROCESSED_DATA_DIR <- file.path(DATA_ROOT, "processed")
+ANALYSIS_READY_DIR <- file.path(DATA_ROOT, "analysis_ready")
+
+# Output directories
+OUTPUT_ROOT <- file.path(PROJECT_ROOT, "output")
+MODELS_DIR <- file.path(OUTPUT_ROOT, "models")
+RESULTS_DIR <- file.path(OUTPUT_ROOT, "results")
+FIGURES_DIR <- file.path(OUTPUT_ROOT, "figures")
+LOGS_DIR <- file.path(OUTPUT_ROOT, "logs")
+
+# Script directories
+SCRIPTS_ROOT <- file.path(PROJECT_ROOT, "scripts")
+PREPROCESSING_DIR <- file.path(PROJECT_ROOT, "01_data_preprocessing")
+PUPILLOMETRY_DIR <- file.path(PROJECT_ROOT, "02_pupillometry_analysis")
+BEHAVIORAL_DIR <- file.path(PROJECT_ROOT, "03_behavioral_analysis")
+MODELING_DIR <- file.path(PROJECT_ROOT, "04_computational_modeling")
+STATISTICAL_DIR <- file.path(PROJECT_ROOT, "05_statistical_analysis")
+VISUALIZATION_DIR <- file.path(PROJECT_ROOT, "06_visualization")
+
+# =========================================================================
+# SPECIFIC DATA FILES
+# =========================================================================
+
+# Behavioral data
+BEHAVIORAL_DATA_FILE <- file.path(ANALYSIS_READY_DIR, "behavioral_data.csv")
+BEHAVIORAL_DATA_FULL_FILE <- file.path(ANALYSIS_READY_DIR, "behavioral_data_full.csv")
+
+# Pupillometry data
+PUPIL_DATA_FILE <- file.path(ANALYSIS_READY_DIR, "pupil_data.csv")
+PUPIL_DATA_FULL_FILE <- file.path(ANALYSIS_READY_DIR, "pupil_data_full.csv")
+CLEAN_PUPIL_DATA_FILE <- file.path(ANALYSIS_READY_DIR, "clean_pupil_data.csv")
+
+# Trial-wise features
+TRIALWISE_FEATURES_FILE <- file.path(ANALYSIS_READY_DIR, "trialwise_pupil_features.csv")
+TRIALWISE_FEATURES_ALT_FILE <- file.path(ANALYSIS_READY_DIR, "trialwise_pupil_features_alternative_windows.csv")
+
+# Demographics and subject data
+DEMOGRAPHICS_FILE <- file.path(ANALYSIS_READY_DIR, "demographics.csv")
+SUBJECT_DATA_FILE <- file.path(ANALYSIS_READY_DIR, "subject_data.csv")
+
+# =========================================================================
+# MODEL FILES
+# =========================================================================
+
+# DDM models
+DDM_BASE_MODEL_FILE <- file.path(MODELS_DIR, "ddm_base_model.rds")
+DDM_PUPIL_MODEL_FILE <- file.path(MODELS_DIR, "ddm_pupil_model.rds")
+DDM_HIERARCHICAL_MODEL_FILE <- file.path(MODELS_DIR, "ddm_hierarchical_model.rds")
+
+# Behavioral models
+RT_MODEL_FILE <- file.path(MODELS_DIR, "rt_model.rds")
+ACCURACY_MODEL_FILE <- file.path(MODELS_DIR, "accuracy_model.rds")
+MIXED_EFFECTS_MODEL_FILE <- file.path(MODELS_DIR, "mixed_effects_model.rds")
+
+# Statistical models
+MEDIATION_MODEL_FILE <- file.path(MODELS_DIR, "mediation_model.rds")
+INDIVIDUAL_DIFF_MODEL_FILE <- file.path(MODELS_DIR, "individual_differences_model.rds")
+
+# =========================================================================
+# OUTPUT FILES
+# =========================================================================
+
+# Results files
+DDM_RESULTS_FILE <- file.path(RESULTS_DIR, "ddm_results.csv")
+BEHAVIORAL_RESULTS_FILE <- file.path(RESULTS_DIR, "behavioral_results.csv")
+STATISTICAL_RESULTS_FILE <- file.path(RESULTS_DIR, "statistical_results.csv")
+
+# Figure files
+MAIN_FIGURES_DIR <- file.path(FIGURES_DIR, "publication_figures")
+SUPPLEMENTARY_FIGURES_DIR <- file.path(FIGURES_DIR, "supplementary")
+SUMMARY_FIGURES_DIR <- file.path(FIGURES_DIR, "summary_plots")
+
+# Log files
+ANALYSIS_LOG_FILE <- file.path(LOGS_DIR, "analysis_log.md")
+ERROR_LOG_FILE <- file.path(LOGS_DIR, "error_log.txt")
+PERFORMANCE_LOG_FILE <- file.path(LOGS_DIR, "performance_log.csv")
+
+# =========================================================================
+# EXTERNAL DEPENDENCIES
+# =========================================================================
+
+# MATLAB paths (if using MATLAB integration)
+MATLAB_ROOT <- "/Applications/MATLAB_R2023a.app"
+MATLAB_SCRIPTS_DIR <- file.path(PROJECT_ROOT, "01_data_preprocessing", "matlab")
+
+# Python paths (if using Python integration)
+PYTHON_ROOT <- "/usr/local/bin/python3"
+PYTHON_SCRIPTS_DIR <- file.path(PROJECT_ROOT, "01_data_preprocessing", "python")
+
+# =========================================================================
+# CLOUD STORAGE (if using cloud deployment)
+# =========================================================================
+
+# Google Cloud Platform
+GCP_PROJECT_ID <- "your-gcp-project-id"
+GCP_BUCKET_NAME <- "modeling-pupil-ddm-data"
+GCP_REGION <- "us-central1"
+
+# AWS (if using AWS)
+AWS_BUCKET_NAME <- "modeling-pupil-ddm-data"
+AWS_REGION <- "us-east-1"
+
+# =========================================================================
+# ANALYSIS PARAMETERS
+# =========================================================================
+
+# Data processing parameters
+SAMPLING_RATE <- 250  # Hz
+TRIAL_DURATION <- 8   # seconds
+BASELINE_DURATION <- 1 # seconds
+
+# Model parameters
+DDM_CHAINS <- 4
+DDM_ITERATIONS <- 2000
+DDM_WARMUP <- 1000
+DDM_THIN <- 1
+
+# Statistical parameters
+SIGNIFICANCE_THRESHOLD <- 0.05
+CONFIDENCE_LEVEL <- 0.95
+BOOTSTRAP_ITERATIONS <- 1000
+
+# =========================================================================
+# QUALITY CONTROL PARAMETERS
+# =========================================================================
+
+# Data quality thresholds
+MIN_TRIALS_PER_SUBJECT <- 50
+MAX_MISSING_PUPIL_PCT <- 40
+MIN_RT <- 0.1  # seconds
+MAX_RT <- 5.0  # seconds
+
+# Outlier detection
+RT_OUTLIER_SD <- 3.0
+PUPIL_OUTLIER_SD <- 3.0
+
+# =========================================================================
+# VISUALIZATION PARAMETERS
+# =========================================================================
+
+# Figure settings
+FIGURE_DPI <- 300
+FIGURE_WIDTH <- 12
+FIGURE_HEIGHT <- 8
+FIGURE_UNITS <- "in"
+
+# Color schemes
+COLOR_SCHEME <- "viridis"
+CONDITION_COLORS <- c("#2E86AB", "#A23B72", "#F18F01", "#C73E1D")
+
+# =========================================================================
+# LOGGING CONFIGURATION
+# =========================================================================
+
+# Log levels
+LOG_LEVEL <- "INFO"  # DEBUG, INFO, WARN, ERROR
+LOG_TO_FILE <- TRUE
+LOG_TO_CONSOLE <- TRUE
+
+# Performance monitoring
+MONITOR_PERFORMANCE <- TRUE
+SAVE_PERFORMANCE_METRICS <- TRUE
+
+# =========================================================================
+# END OF CONFIGURATION
+# =========================================================================

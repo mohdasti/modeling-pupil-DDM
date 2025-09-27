@@ -1,0 +1,84 @@
+name: modeling-pupil-ddm
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python
+  - python=3.9
+  
+  # Core scientific computing
+  - numpy>=1.21.0
+  - pandas>=1.3.0
+  - scipy>=1.7.0
+  - scikit-learn>=1.0.0
+  
+  # Data visualization
+  - matplotlib>=3.5.0
+  - seaborn>=0.11.0
+  - plotly>=5.0.0
+  
+  # Statistical analysis
+  - statsmodels>=0.13.0
+  
+  # Data processing
+  - h5py>=3.1.0
+  - openpyxl>=3.0.0
+  
+  # Utilities
+  - tqdm>=4.62.0
+  - joblib>=1.1.0
+  - psutil>=5.8.0
+  
+  # Development and testing
+  - pytest>=6.2.0
+  - pytest-cov>=3.0.0
+  - black>=21.0.0
+  - flake8>=4.0.0
+  
+  # Jupyter and interactive analysis
+  - jupyter>=1.0.0
+  - ipywidgets>=7.6.0
+  - notebook>=6.4.0
+  
+  # File handling
+  - pyyaml>=6.0
+  
+  # Logging
+  - loguru>=0.6.0
+  
+  # R integration
+  - r-base>=4.0.0
+  - r-essentials
+  - r-ggplot2
+  - r-dplyr
+  - r-brms
+  - r-lme4
+  - r-bayesplot
+  - r-tidyr
+  - r-purrr
+  - r-stringr
+  - r-viridis
+  - r-corrplot
+  - r-gghalves
+  - r-patchwork
+  - r-car
+  - r-jsonlite
+  
+  # R packages via conda-forge
+  - r-lmerTest
+  - r-gridExtra
+  - r-cowplot
+  
+  # pip dependencies
+  - pip
+  - pip:
+    - tensorflow>=2.8.0
+    - torch>=1.11.0
+    - bokeh>=2.4.0
+    - pingouin>=0.5.0
+    - tables>=3.7.0
+    - memory-profiler>=0.60.0
+    - google-cloud-storage>=2.0.0
+    - google-cloud-compute>=1.0.0
+    - sphinx>=4.0.0
+    - sphinx-rtd-theme>=1.0.0

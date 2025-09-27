@@ -1,0 +1,121 @@
+# Modeling Pupil-DDM - Git Ignore Rules
+
+# Data files (too large for git)
+data/raw/
+data/processed/
+data/analysis_ready/
+*.mat
+*.csv
+*.h5
+*.hdf5
+
+# Output files
+output/
+results/
+figures/
+logs/
+models/
+*.rds
+*.png
+*.pdf
+*.svg
+
+# R specific
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+.Rproj.user/
+*.Rproj
+
+# Python specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.out
+
+# Cache
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+docs/_build/
+site/
+
+# Configuration (keep examples)
+config/paths_config.R
+config/model_config.yaml
+!config/*.example
+
+# Large files
+*.zip
+*.tar.gz
+*.rar
+
+# MATLAB
+*.asv
+*.m~
+
+# Backup files
+*.bak
+*.backup
+*_backup.*
+*_old.*
+
+# Analysis specific
+*_analysis_log_*.md
+*_summary_*.csv
+*_temp_*
+*_cache_*
