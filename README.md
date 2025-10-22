@@ -37,6 +37,15 @@ This repository showcases advanced computational modeling techniques for analyzi
 - **Cloud Deployment**: Google Cloud Platform integration for scalable computing
 - **Reproducibility**: Version control, comprehensive logging, and documentation
 
+## ℹ️ About
+
+This repository mirrors a working 7-step pipeline (01–07) from the BAP_DDM project into a clean, public-friendly structure. It provides:
+- A standardized seven-stage directory layout
+- Wrapper scripts inside stage folders that call core logic under `scripts/`
+- Selected, non-sensitive outputs (figures, tables, summaries) for demonstration
+
+Raw data are not included. Use the wrapper scripts (under `02_` and `03_`) or call the core runners in `scripts/` directly.
+
 ## 📁 Repository Structure
 
 ```
@@ -87,10 +96,12 @@ modeling-pupil-DDM/
 │   ├── pipeline_config.R               # Pipeline settings
 │   └── model_config.yaml               # Model parameters
 │
-├── scripts/                            # Utility scripts
-│   ├── setup/                          # Environment setup
-│   ├── utilities/                      # Helper functions
-│   └── deployment/                     # Cloud deployment scripts
+├── scripts/                            # Mirrored core analysis scripts
+│   ├── core/                           # Main model/analysis runners
+│   ├── 01_data_processing/             # Data processing & QC
+│   ├── 02_statistical_analysis/        # Statistical modeling
+│   ├── advanced/                       # Advanced analyses
+│   └── utilities/                      # Helpers (integration, extraction)
 │
 ├── tests/                              # Unit tests
 │   ├── test_data_processing.py         # Data processing tests
@@ -158,19 +169,19 @@ Rscript 04_computational_modeling/run_pipeline.R --skip-heavy
 python 01_data_preprocessing/python/analyze_behavioral_data.py
 
 # Pupillometry analysis
-Rscript 02_pupillometry_analysis/feature_extraction/extract_pupil_features.R
+Rscript 02_pupillometry_analysis/feature_extraction/run_feature_extraction.R
 
 # Behavioral analysis
-Rscript 03_behavioral_analysis/reaction_time/rt_analysis.R
+Rscript 03_behavioral_analysis/reaction_time/run_rt_analysis.R
 
 # DDM modeling
-Rscript 04_computational_modeling/drift_diffusion/fit_hierarchical_ddm.R
+Rscript scripts/core/run_analysis.R
 
 # Statistical analysis
-Rscript 05_statistical_analysis/mediation/mediation_analysis.R
+Rscript scripts/02_statistical_analysis/02_ddm_analysis.R
 
 # Generate figures
-Rscript 06_visualization/publication_figures/create_manuscript_figures.R
+Rscript scripts/create_condition_effects_forest_plot.R
 ```
 
 ## 🔬 Key Methodological Contributions
@@ -221,6 +232,16 @@ Rscript 06_visualization/publication_figures/create_manuscript_figures.R
 - Publication-ready figures
 - Interactive plots
 - Analysis summaries
+
+## 🧭 Seven-Step Pipeline (Directory → Primary Entry)
+
+1. 01_data_preprocessing → `python 01_data_preprocessing/python/analyze_behavioral_data.py`
+2. 02_pupillometry_analysis → `Rscript 02_pupillometry_analysis/feature_extraction/run_feature_extraction.R`
+3. 03_behavioral_analysis → `Rscript 03_behavioral_analysis/reaction_time/run_rt_analysis.R`
+4. 04_computational_modeling → `Rscript scripts/core/run_analysis.R`
+5. 05_statistical_analysis → `Rscript scripts/02_statistical_analysis/02_ddm_analysis.R`
+6. 06_visualization → `Rscript scripts/create_condition_effects_forest_plot.R`
+7. 07_manuscript → curated outputs in `07_manuscript/`
 
 ## 🧪 Testing
 
