@@ -149,17 +149,26 @@ modeling-pupil-DDM/
 
 ## 🚀 Quick Start
 
+### Repository Structure and Entry Points
+
+**Canonical Scripts Location**: All core analysis scripts are located in the `scripts/` directory. The numbered stage directories (`01_data_preprocessing/`, `02_pupillometry_analysis/`, etc.) contain thin wrappers that delegate to the canonical scripts.
+
+**Main Entry Points**:
+- **Core Analysis**: `scripts/core/run_analysis.R` - Main computational modeling pipeline
+- **Complete Workflow**: `scripts/comprehensive_bap_ddm_workflow.R` - Full analysis workflow
+- **Individual Components**: Access specific analyses via scripts in `scripts/` subdirectories
+
 ### Run Complete Pipeline
 
 ```bash
-# Basic pipeline
+# Via stage wrapper (recommended for stage-based workflow)
 Rscript 04_computational_modeling/run_pipeline.R
 
-# Advanced pipeline with logging
-Rscript 04_computational_modeling/run_pipeline.R --advanced --logging
+# Direct access to core analysis (recommended for advanced users)
+Rscript scripts/core/run_analysis.R
 
-# Skip computationally intensive models
-Rscript 04_computational_modeling/run_pipeline.R --skip-heavy
+# Complete comprehensive workflow
+Rscript scripts/comprehensive_bap_ddm_workflow.R
 ```
 
 ### Run Individual Analyses
@@ -174,14 +183,15 @@ Rscript 02_pupillometry_analysis/feature_extraction/run_feature_extraction.R
 # Behavioral analysis
 Rscript 03_behavioral_analysis/reaction_time/run_rt_analysis.R
 
-# DDM modeling
+# DDM modeling (canonical location)
 Rscript scripts/core/run_analysis.R
 
 # Statistical analysis
 Rscript scripts/02_statistical_analysis/02_ddm_analysis.R
 
-# Generate figures
+# Generate figures (canonical location)
 Rscript scripts/create_condition_effects_forest_plot.R
+Rscript scripts/create_rt_sanity_check_plot.R
 ```
 
 ## 🔬 Key Methodological Contributions
