@@ -1,6 +1,6 @@
 # Modeling Pupil-DDM: Computational Modeling of Pupillometry and Decision-Making
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![R](https://img.shields.io/badge/R-4.0+-blue.svg)](https://www.r-project.org/)
 [![Python](https://img.shields.io/badge/Python-3.8+-green.svg)](https://www.python.org/)
 [![MATLAB](https://img.shields.io/badge/MATLAB-R2020a+-orange.svg)](https://www.mathworks.com/products/matlab.html)
@@ -54,7 +54,7 @@ modeling-pupil-DDM/
 ├── requirements.txt                    # Python dependencies
 ├── environment.yml                     # Conda environment
 ├── .gitignore                          # Git ignore rules
-├── LICENSE                             # MIT License
+├── LICENSE                             # GPL-3.0 License
 │
 ├── 01_data_preprocessing/              # Data cleaning and preparation
 │   ├── matlab/                         # MATLAB preprocessing scripts
@@ -288,7 +288,7 @@ git push origin feature/your-feature-name
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0) – see the [LICENSE](LICENSE) file for details. By contributing, you agree that your contributions will be licensed under GPL-3.0.
 
 ## 🙏 Acknowledgments
 
