@@ -298,8 +298,8 @@ This project is licensed under the GNU General Public License v3.0 (GPL-3.0) –
 
 ## 📞 Contact
 
-- **Lead Researcher**: [Your Name](mailto:your.email@institution.edu)
-- **Institution**: [Your Institution]
+- **Lead Researcher**: [Mohammad Dastgheib](mailto:mdast003@ucr.edu)
+- **Institution**: UC Riverside
 - **Project Page**: [Project Website]
 
 ## 📊 Citation
