@@ -303,8 +303,6 @@ This project is licensed under the GNU General Public License v3.0 (GPL-3.0) –
 ## 🙏 Acknowledgments
 
 - **Research Team**: Collaborators and research assistants
-- **Open Source**: R, Python, and MATLAB communities
-- **Funding**: Research grants and institutional support
 
 ## 📞 Contact
 
