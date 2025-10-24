@@ -201,6 +201,15 @@ Rscript scripts/create_rt_sanity_check_plot.R
 - **Pupillometry Integration**: Linking arousal measures to decision parameters
 - **Robustness Checks**: Comprehensive sensitivity analysis and model validation
 
+### DDM–Pupil Mapping (Tested via LOO & PPC)
+**Drift rate (v)**: increases with phasic/evoked pupil (trial-wise arousal) → faster, higher-SNR accumulation. [Murphy+2014; de Gee+2020]
+
+**Boundary (a/bs)**: decreases with higher baseline pupil (tonic arousal), reflecting lower caution. [Mækelæ+2024]
+
+**Starting point (bias)**: pulled toward neutral on trials with larger evoked pupil (bias suppression). [de Gee+2017/2020]
+
+**History controls**: previous choice/outcome included so pupil effects are not confounded by sequential biases. [Urai+2019]
+
 ### Statistical Approaches
 - **Mixed-Effects Models**: Accounting for individual differences with lme4 and brms
 - **Mediation Analysis**: Understanding causal pathways between arousal and behavior
