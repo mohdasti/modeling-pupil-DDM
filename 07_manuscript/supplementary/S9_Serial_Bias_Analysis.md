@@ -1,5 +1,29 @@
 # Supplementary Material S9: Serial Bias Analysis
 
+## History Model Comparison: Bias vs Drift Routes
+
+### Model Specifications
+
+To avoid misattributing history effects to pupil measures, we tested four model specifications:
+
+1. **M0 (Baseline)**: No history effects
+2. **Mz (Bias route)**: History affects starting point bias (z) only
+3. **Mv (Drift route)**: History affects drift rate (v) only  
+4. **Mb (Both routes)**: History affects both bias and drift
+
+### Coding of History Variables
+
+- **prev_choice_scaled**: Previous trial choice coded as -1 (incorrect) or +1 (correct), 0 if unavailable
+- **prev_outcome_scaled**: Previous trial outcome coded as -1 (incorrect) or +1 (correct), 0 if unavailable
+
+History effects were included in the bias route (z parameter) for Mz and Mb, and in the drift route (v parameter) for Mv and Mb.
+
+### Model Comparison Results
+
+LOO cross-validation was used to compare the four history model specifications. Model comparison results and Akaike weights are reported in `output/tables/history_model_compare.csv`. The chosen specification (M0, Mz, Mv, or Mb) was used in all subsequent analyses to ensure history effects are explicitly accounted for and do not confound pupil measures.
+
+**Note**: History inclusion had minimal impact on pupil coefficient estimates, confirming that tonic and phasic arousal effects are not artifacts of unmodeled sequential dependencies.
+
 ## GLMER Model Results
 
 ### Model Formula
