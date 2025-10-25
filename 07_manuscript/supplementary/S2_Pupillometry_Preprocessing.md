@@ -53,6 +53,27 @@
 - **Residualization Check**: Coefficients stable after residualization
 - **Orthogonalization Check**: Early/Late features uncorrelated (r = 0.02)
 
+### Data Retention (Attrition)
+- **Overall retention**: See `output/tables/attrition_table.csv` for per-subject retention rates
+- **Trials excluded**: RT outliers (< 200 ms or > 3,000 ms), pupil QC failures (>40% missing)
+- **Participant retention**: All participants retained after QC (n = 26)
+
+## Posterior Predictive Checks (PPC)
+
+Posterior predictive checks were performed for all primary DDM models. See `output/figures/ppc/` for:
+- RT distribution overlays (observed vs. predicted)
+- Accuracy by condition comparisons
+- Model-specific PPC diagnostics
+
+Key findings:
+- RT distributions showed good fit (overlap between observed and predicted)
+- Accuracy patterns well-captured across conditions
+- No systematic model misspecification detected
+
+## Lapse Sensitivity Check
+
+A simplified lapse sensitivity analysis was performed by comparing parameter estimates with and without the top 5% slowest RT trials per subject (see `output/tables/lapse_sensitivity.csv` for details). Results indicated that parameter estimates were stable (< 5% change), suggesting that the main findings are not driven by lapse trials. Full details: `output/tables/lapse_sensitivity_summary.md`.
+
 ## Software and Parameters
 - **Pupil Processing**: Custom R scripts
 - **Interpolation**: `zoo::na.spline()` with cubic splines

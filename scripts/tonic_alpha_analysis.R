@@ -254,4 +254,72 @@ if (max_vif > 5) {
   cat("✅ VIF < 5 - No multicollinearity issues\n")
 }
 
+# =========================================================================
+# POSTERIOR PREDICTIVE CHECKS
+# =========================================================================
+
+cat("\nCreating posterior predictive checks...\n")
+
+dir.create("output/figures/ppc", recursive = TRUE, showWarnings = FALSE)
+
+# 1. RT distribution overlay
+cat("Creating RT distribution overlay...\n")
+png("output/figures/ppc/tonic_alpha_rt_dist.png", width = 1200, height = 800, res = 150)
+pp_check(fit_tonic, type = "dens_overlay", ndraws = 50) +
+  labs(title = "Posterior Predictive Check: RT Distribution",
+       subtitle = "Tonic → α Model")
+dev.off()
+
+# 2. Accuracy by condition (if available)
+if ("difficulty_level" %in% colnames(d)) {
+  cat("Creating accuracy by condition...\n")
+  d$correct <- ifelse(d$choice == 1, 1, 0)
+  
+  # Observe accuracy by condition
+  obs_acc <- d %>%
+    group_by(difficulty_level) %>%
+    summarise(
+      mean_acc = mean(correct, na.rm = TRUE),
+      se_acc = sd(correct, na.rm = TRUE) / sqrt(n()),
+      .groups = "drop"
+    )
+  
+  # Simulate from posterior
+  post_pred <- posterior_predict(fit_tonic, ndraws = 200)
+  
+  # Compute accuracy for simulated data (simplified, uses observed grouping)
+  sim_acc <- matrix(NA, nrow = 200, ncol = length(unique(d$difficulty_level)))
+  for (i in 1:200) {
+    for (j in seq_along(unique(d$difficulty_level))) {
+      cond_mask <- d$difficulty_level == unique(d$difficulty_level)[j]
+      sim_acc[i, j] <- mean(post_pred[i, cond_mask], na.rm = TRUE)
+    }
+  }
+  
+  # Create comparison plot
+  sim_acc_df <- data.frame(
+    condition = rep(unique(d$difficulty_level), each = 200),
+    accuracy = as.vector(sim_acc)
+  )
+  
+  p_acc <- ggplot(sim_acc_df, aes(x = condition, y = accuracy)) +
+    geom_violin(alpha = 0.3, fill = "steelblue") +
+    geom_boxplot(alpha = 0.5, width = 0.2) +
+    geom_point(data = obs_acc, aes(y = mean_acc), color = "red", size = 3) +
+    geom_errorbar(data = obs_acc, aes(ymin = mean_acc - se_acc, ymax = mean_acc + se_acc),
+                  color = "red", width = 0.1, linewidth = 1) +
+    labs(
+      title = "Posterior Predictive Check: Accuracy by Condition",
+      subtitle = "Red dots = observed, Blue = predicted",
+      x = "Condition",
+      y = "Accuracy"
+    ) +
+    theme_minimal()
+  
+  ggsave("output/figures/ppc/tonic_alpha_acc_by_condition.png", p_acc,
+         width = 10, height = 6, dpi = 300)
+}
+
+cat("PPC plots saved to output/figures/ppc/\n")
+
 cat("\n✅ Tonic→α analysis complete!\n")
