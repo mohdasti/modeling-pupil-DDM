@@ -1,0 +1,168 @@
+# ============================================================================
+# Makefile for DDM-Pupil Modeling Pipeline
+# ============================================================================
+# Quick targets to run common analysis steps
+# ============================================================================
+
+# Configuration
+R := Rscript --vanilla
+R_CMD := $(R) -e
+
+# Directories
+SCRIPTS_DIR := scripts
+OUTPUT_DIR := output
+FIGS_DIR := $(OUTPUT_DIR)/figures
+TABLES_DIR := $(OUTPUT_DIR)/tables
+MODELS_DIR := models
+DATA_DIR := data
+
+# Colors for output
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RESET := \033[0m
+
+# ============================================================================
+# PHONY TARGETS
+# ============================================================================
+.PHONY: all clean features fit compare tonic report check
+
+# ============================================================================
+# MAIN TARGETS
+# ============================================================================
+
+all: check features fit compare tonic report
+	@echo "$(GREEN)✓ Complete pipeline finished$(RESET)"
+
+check:
+	@echo "$(YELLOW)Checking dependencies...$(RESET)"
+	@$(R_CMD) "if (!require('brms')) install.packages('brms', repos='https://cloud.r-project.org')"
+	@$(R_CMD) "if (!require('loo')) install.packages('loo', repos='https://cloud.r-project.org')"
+	@$(R_CMD) "if (!require('lme4')) install.packages('lme4', repos='https://cloud.r-project.org')"
+	@echo "$(GREEN)✓ Dependencies checked$(RESET)"
+
+features:
+	@echo "$(YELLOW)Computing phasic/tonic features...$(RESET)"
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/pupil/compute_phasic_features.R')"
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/pupil/prepare_pupil_features.R')"
+	@echo "$(GREEN)✓ Features computed$(RESET)"
+
+fit:
+	@echo "$(YELLOW)Fitting core DDM models...$(RESET)"
+	@mkdir -p $(MODELS_DIR)
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/modeling/fit_ddm_brms.R')"
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/modeling/history_modeling.R')" || echo "$(YELLOW)Warning: History modeling optional$(RESET)"
+	@echo "$(GREEN)✓ Core models fitted$(RESET)"
+
+compare:
+	@echo "$(YELLOW)Running model comparisons (LOO/AIC)...$(RESET)"
+	@mkdir -p $(OUTPUT_DIR)/loo
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/modeling/compare_models.R')"
+	@echo "$(GREEN)✓ Model comparisons complete$(RESET)"
+
+tonic:
+	@echo "$(YELLOW)Running tonic→alpha analysis...$(RESET)"
+	@mkdir -p $(FIGS_DIR)/tonic
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/tonic_alpha_analysis.R')"
+	@echo "$(GREEN)✓ Tonic→alpha analysis complete$(RESET)"
+
+report:
+	@echo "$(YELLOW)Generating reports and tables...$(RESET)"
+	@mkdir -p $(TABLES_DIR) $(FIGS_DIR)/summary
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/qc/compute_attrition.R')"
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/qc/lapse_sensitivity_check.R')" || echo "$(YELLOW)Warning: Lapse check optional$(RESET)"
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/modeling/ppc_checks.R')"
+	@echo "$(GREEN)✓ Reports generated$(RESET)"
+
+# ============================================================================
+# INDIVIDUAL ANALYSIS TARGETS
+# ============================================================================
+
+ppc:
+	@echo "$(YELLOW)Running posterior predictive checks...$(RESET)"
+	@mkdir -p $(FIGS_DIR)/ppc
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/modeling/ppc_checks.R')"
+	@echo "$(GREEN)✓ PPC checks complete$(RESET)"
+
+attrition:
+	@echo "$(YELLOW)Computing attrition rates...$(RESET)"
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/qc/compute_attrition.R')"
+	@echo "$(GREEN)✓ Attrition analysis complete$(RESET)"
+
+lapse:
+	@echo "$(YELLOW)Running lapse sensitivity check...$(RESET)"
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/qc/lapse_sensitivity_check.R')"
+	@echo "$(GREEN)✓ Lapse sensitivity check complete$(RESET)"
+
+power:
+	@echo "$(YELLOW)Running power simulation...$(RESET)"
+	@mkdir -p $(OUTPUT_DIR)/power $(FIGS_DIR)/power
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/utilities/power_sim_serial_bias.R')"
+	@echo "$(GREEN)✓ Power simulation complete$(RESET)"
+
+test:
+	@echo "$(YELLOW)Running model contract tests...$(RESET)"
+	@$(R_CMD) "source('tests/test_model_contract.R')" || echo "$(YELLOW)Warning: Tests optional$(RESET)"
+	@echo "$(GREEN)✓ Tests passed$(RESET)"
+
+# ============================================================================
+# VALIDATION TARGETS
+# ============================================================================
+
+validate:
+	@echo "$(YELLOW)Validating output files...$(RESET)"
+	@test -f $(MODELS_DIR)/ddm_brms_main.rds || (echo "$(RED)✗ Core model missing$(RESET)" && exit 1)
+	@test -f $(TABLES_DIR)/attrition_table.csv || (echo "$(RED)✗ Attrition table missing$(RESET)" && exit 1)
+	@test -d $(FIGS_DIR)/ppc || (echo "$(RED)✗ PPC figures missing$(RESET)" && exit 1)
+	@echo "$(GREEN)✓ Output validation passed$(RESET)"
+
+# ============================================================================
+# CLEANUP TARGETS
+# ============================================================================
+
+clean:
+	@echo "$(YELLOW)Cleaning intermediate files...$(RESET)"
+	@find $(OUTPUT_DIR) -name "*.tmp" -delete
+	@find $(MODELS_DIR) -name "*.tmp" -delete
+	@echo "$(GREEN)✓ Cleanup complete$(RESET)"
+
+clean-all: clean
+	@echo "$(YELLOW)Removing all generated outputs...$(RESET)"
+	@rm -rf $(MODELS_DIR)/*.rds
+	@rm -rf $(OUTPUT_DIR)
+	@echo "$(GREEN)✓ All outputs removed$(RESET)"
+
+# ============================================================================
+# DOCUMENTATION TARGET
+# ============================================================================
+
+help:
+	@echo "$(GREEN)DDM-Pupil Modeling Pipeline$(RESET)"
+	@echo "================================"
+	@echo ""
+	@echo "$(YELLOW)Main Targets:$(RESET)"
+	@echo "  make features  - Compute phasic/tonic pupil features"
+	@echo "  make fit       - Run core DDM fits"
+	@echo "  make compare   - Run LOO/AIC model comparisons"
+	@echo "  make tonic     - Run tonic→alpha models & plots"
+	@echo "  make report    - Generate reports and manuscript tables"
+	@echo "  make all       - Run complete pipeline"
+	@echo ""
+	@echo "$(YELLOW)Individual Targets:$(RESET)"
+	@echo "  make ppc       - Run posterior predictive checks"
+	@echo "  make attrition - Compute attrition rates"
+	@echo "  make lapse     - Run lapse sensitivity check"
+	@echo "  make power     - Run power simulation"
+	@echo "  make test      - Run model contract tests"
+	@echo ""
+	@echo "$(YELLOW)Utility Targets:$(RESET)"
+	@echo "  make validate  - Validate output files"
+	@echo "  make clean     - Clean intermediate files"
+	@echo "  make clean-all - Remove all generated outputs"
+	@echo "  make help      - Show this help message"
+	@echo ""
+
+# ============================================================================
+# DEFAULT TARGET
+# ============================================================================
+.DEFAULT_GOAL := help

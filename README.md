@@ -194,6 +194,37 @@ Rscript scripts/create_condition_effects_forest_plot.R
 Rscript scripts/create_rt_sanity_check_plot.R
 ```
 
+### Using the Makefile (Quick Targets)
+
+For convenient one-liner commands to run analysis stages, use the provided Makefile:
+
+```bash
+# Show available targets
+make help
+
+# Main pipeline targets
+make features   # Compute phasic/tonic pupil features
+make fit        # Run core DDM fits
+make compare    # LOO/AIC model comparisons
+make tonic      # Tonic→alpha models & plots
+make report     # Generate reports and manuscript tables
+
+# Run complete pipeline
+make all
+
+# Individual analysis targets
+make ppc        # Posterior predictive checks
+make attrition  # Compute attrition rates
+make lapse      # Lapse sensitivity check
+make power      # Power simulation
+make test       # Run model contract tests
+
+# Utility targets
+make validate   # Validate output files
+make clean      # Clean intermediate files
+make clean-all  # Remove all generated outputs
+```
+
 ## 🔬 Key Methodological Contributions
 
 ### Drift Diffusion Modeling
