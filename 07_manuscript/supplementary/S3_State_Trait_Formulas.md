@@ -66,3 +66,14 @@ PHASIC_wp_ij ~ TONIC_wp_ij + difficulty_j + effort_j
 | PHASIC_TER_AUC | 0.69 | 0.31 | 1.00 |
 
 *Note*: All features show substantial between-person variance (>65%), indicating strong trait-like stability in pupillometry measures.
+
+## Model Comparison Approach
+
+### Bayesian Models (DDM with brms)
+We report **PSIS-LOO (Pareto-Smoothed Importance Sampling Leave-One-Out)** cross-validation for all Bayesian hierarchical drift diffusion models. LOO was computed using the `loo` package with `reloo = TRUE` to automatically refit models for observations with high Pareto-k diagnostic values (>0.7). Model comparison between competing specifications (e.g., history models) was performed using `loo_compare()` to calculate expected log predictive density (elpd) differences and Akaike weights. All Bayesian models were fit using the cmdstanr backend.
+
+### Frequentist Models (GLMER)
+For frequentist generalized linear mixed-effects models (GLMER), we report **AIC (Akaike Information Criterion)** and **BIC (Bayesian Information Criterion)** for model comparison and selection. AIC weights were calculated to quantify relative support for competing models.
+
+### Exceptions
+Where models were fit exclusively with `ggdmc` (Python-based DDM fitting), we report **WAIC (Widely Applicable Information Criterion)** and **DIC (Deviance Information Criterion)** with explicit rationale provided in the relevant supplementary materials.

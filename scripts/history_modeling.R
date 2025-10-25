@@ -152,6 +152,7 @@ for (model_id in names(models_to_fit)) {
       data = d,
       family = wiener(link_bs = "log", link_ndt = "log", link_bias = "logit"),
       prior = priors,
+      backend = "cmdstanr",
       cores = max(2, parallel::detectCores() - 2),
       chains = 4, iter = 4000, warmup = 1000,
       control = list(adapt_delta = 0.9, max_treedepth = 12),
@@ -185,12 +186,22 @@ for (model_id in names(fits)) {
   })
 }
 
+# Save individual LOO files
+dir.create("output/loo", recursive = TRUE, showWarnings = FALSE)
+for (model_id in names(loo_results)) {
+  saveRDS(loo_results[[model_id]], paste0("output/loo/", model_id, "_loo.rds"))
+  cat("Saved", paste0("output/loo/", model_id, "_loo.rds"), "\n")
+}
+
 # Compare models
 if (length(loo_results) > 0) {
   cat("\nPerforming LOO comparison...\n")
   loo_compare_result <- loo_compare(loo_results)
   
   print(loo_compare_result)
+  
+  # Save comparison output
+  writeLines(capture.output(loo_compare_result), "output/loo/history_models_loo_compare.txt")
   
   # Extract comparison table
   comparison_data <- data.frame(

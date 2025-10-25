@@ -83,6 +83,7 @@ fit_tonic <- brm(
   data = d,
   family = wiener(link_bs = "log", link_ndt = "log", link_bias = "logit"),
   prior = priors,
+  backend = "cmdstanr",
   cores = max(2, parallel::detectCores() - 2),
   chains = 4, iter = 4000, warmup = 1000,
   control = list(adapt_delta = 0.9, max_treedepth = 12),
@@ -93,6 +94,19 @@ fit_tonic <- brm(
 dir.create("models", showWarnings = FALSE, recursive = TRUE)
 saveRDS(fit_tonic, "models/ddm_alpha_tonic.rds")
 cat("Model saved to models/ddm_alpha_tonic.rds\n")
+
+# Compute LOO
+cat("\nComputing LOO for model evaluation...\n")
+library(loo)
+loo_tonic <- loo(fit_tonic, reloo = TRUE)
+
+dir.create("output/loo", recursive = TRUE, showWarnings = FALSE)
+saveRDS(loo_tonic, "output/loo/ddm_alpha_tonic_loo.rds")
+cat("LOO saved to output/loo/ddm_alpha_tonic_loo.rds\n")
+
+# Print LOO summary
+cat("\nLOO Summary:\n")
+print(loo_tonic)
 
 # =========================================================================
 # EXTRACT POSTERIOR ESTIMATES
