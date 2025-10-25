@@ -204,7 +204,7 @@ Rscript scripts/create_rt_sanity_check_plot.R
 ### DDM–Pupil Mapping (Tested via LOO & PPC)
 **Drift rate (v)**: increases with phasic/evoked pupil (trial-wise arousal) → faster, higher-SNR accumulation. [Murphy+2014; de Gee+2020]
 
-**Boundary (a/bs)**: decreases with higher baseline pupil (tonic arousal), reflecting lower caution. [Mækelæ+2024]
+**Boundary separation (α/bs)**: tested with tonic baseline (within-person linear + quadratic terms, plus between-person trait effects) to capture inverted-U relationships; models adjust response caution as a function of sustained arousal. [Mækelæ+2024]
 
 **Starting point (bias)**: pulled toward neutral on trials with larger evoked pupil (bias suppression). [de Gee+2017/2020]
 
