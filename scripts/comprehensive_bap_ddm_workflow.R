@@ -21,6 +21,17 @@ library(bayesplot)
 library(patchwork)
 
 # =========================================================================
+# CONFIGURATION: PHASIC PUPIL FEATURES
+# =========================================================================
+
+# Set phasic window defaults
+options(PHASIC_WINDOW_LOWER = 200L, PHASIC_WINDOW_UPPER = 900L)
+options(RUN_SENSITIVITY = getOption("RUN_SENSITIVITY", FALSE))
+
+# Source phasic feature computation
+source("scripts/pupil/compute_phasic_features.R")
+
+# =========================================================================
 # CONFIGURATION
 # =========================================================================
 
@@ -61,6 +72,23 @@ cat("\n📊 STEP 2: VIF ANALYSIS AND RESIDUALIZATION\n")
 
 # Load data
 data <- read_csv(DATA_FILE, show_col_types = FALSE)
+
+# Note: Phasic features are computed in preprocessing (scripts/utilities/state_trait_decomposition.R)
+# Primary metric: PHASIC_SLOPE (200-900 ms) - slope of pupil dilation using OLS
+# Sensitivity metrics: PEAK, AUC, EARLY, LATE are available but not primary
+
+# Export phasic features for inspection
+dir.create("output/results/feature_selection", recursive = TRUE, showWarnings = FALSE)
+phasic_export <- data %>%
+  select(trial_id = trial_index, subject_id, 
+         PHASIC_SLOPE_scaled, PHASIC_SLOPE_scaled_wp,
+         PHASIC_TER_PEAK_scaled, PHASIC_TER_AUC_scaled,
+         PHASIC_EARLY_PEAK_scaled, PHASIC_LATE_PEAK_scaled) %>%
+  distinct() %>%
+  filter(!is.na(PHASIC_SLOPE_scaled))
+
+readr::write_csv(phasic_export, "output/results/feature_selection/phasic_features_export.csv")
+cat("✅ Exported phasic features to output/results/feature_selection/phasic_features_export.csv\n")
 
 # Prepare data for VIF analysis
 vif_data <- data %>%

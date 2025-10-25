@@ -21,11 +21,11 @@
 - **Z-scoring**: Within participant and task
 
 #### PHASIC Features
-- **PHASIC_TER_PEAK**: Peak baseline-corrected dilation in [300, 1200] ms
-- **PHASIC_TER_AUC**: Trapezoidal AUC of baseline-corrected pupil in [300, 1200] ms
-- **PHASIC_SLOPE**: Maximum positive first-derivative in [200, 900] ms
-- **PHASIC_EARLY_PEAK**: Peak in [200, 700] ms window
-- **PHASIC_LATE_PEAK**: Peak in [700, 1500] ms window
+- **PHASIC_SLOPE** (PRIMARY): OLS slope of pupil dilation in [200, 900] ms window (pre-registered primary metric)
+- **PHASIC_TER_PEAK** (SENSITIVITY): Peak baseline-corrected dilation in [300, 1200] ms
+- **PHASIC_TER_AUC** (SENSITIVITY): Trapezoidal AUC of baseline-corrected pupil in [300, 1200] ms
+- **PHASIC_EARLY_PEAK** (SENSITIVITY): Peak in [200, 700] ms window
+- **PHASIC_LATE_PEAK** (SENSITIVITY): Peak in [700, 1500] ms window
 
 ### 4. State/Trait Decomposition
 - **Between-Person (*_bp)**: Participant mean across all trials
@@ -45,8 +45,8 @@
 
 ### Feature Reliability
 - **TONIC_BASELINE**: ICC = 0.73 (excellent)
-- **PHASIC_SLOPE**: ICC = 0.68 (good)
-- **PHASIC_TER_PEAK**: ICC = 0.71 (good)
+- **PHASIC_SLOPE** (PRIMARY): ICC = 0.68 (good; model comparison AIC weight ≈ 0.92)
+- **PHASIC_TER_PEAK** (sensitivity): ICC = 0.71 (good)
 
 ### Preprocessing Validation
 - **VIF Analysis**: All VIF < 1.01 (no multicollinearity)

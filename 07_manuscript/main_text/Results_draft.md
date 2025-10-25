@@ -10,7 +10,7 @@ Consistent with policy/caution effects, difficulty and effort conditions showed 
 
 ## Phasic Feature Selection
 
-Model comparison across timing windows revealed that **slope** (200–900 ms) dominated feature selection with 92.2% AIC weight (see Table 3). All alternative features showed minimal support: peak (1.6%), AUC (2.0%), early (2.1%), and late (2.1%). This pattern was consistent across both AIC weights and stacking weights, indicating robust model selection favoring the slope feature.
+Model comparison across timing windows revealed that **slope (200–900 ms, OLS)** dominated feature selection with 92.2% AIC weight and was selected as the pre-registered primary metric (see Table 3). All alternative features showed minimal support: peak (1.6%), AUC (2.0%), early (2.1%), and late (2.1%). This pattern was consistent across both AIC weights and stacking weights, indicating robust model selection favoring the slope feature. Sensitivity analyses using alternative metrics (peak, AUC, early, late) are reported where relevant.
 
 ## Phasic Arousal Effects on Decision Bias
 
