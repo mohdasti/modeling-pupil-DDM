@@ -24,6 +24,12 @@ LOO cross-validation was used to compare the four history model specifications. 
 
 **Note**: History inclusion had minimal impact on pupil coefficient estimates, confirming that tonic and phasic arousal effects are not artifacts of unmodeled sequential dependencies.
 
+## Power Analysis for Cross-Level Interaction
+
+Power simulations (500 replicates per condition) were conducted to quantify the sample size needed to detect a prev-choice × phasic slope interaction with β ≈ -0.07 (matching the observed null effect size). Results indicate that to achieve 80% power, approximately **≥ 40 participants with ≥ 600 trials per participant** would be required (see `output/power/power_serial_bias.md` for detailed simulation results and recommendations).
+
+This power analysis demonstrates that the current null finding (β = -0.069, p = .506) is consistent with a study design that was reasonably powered to detect effects of this magnitude, though larger samples would improve precision and power for smaller effects.
+
 ## GLMER Model Results
 
 ### Model Formula
