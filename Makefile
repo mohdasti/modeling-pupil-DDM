@@ -25,7 +25,7 @@ RESET := \033[0m
 # ============================================================================
 # PHONY TARGETS
 # ============================================================================
-.PHONY: all clean features fit compare tonic report check
+.PHONY: all clean features fit compare tonic report check setup-data
 
 # ============================================================================
 # MAIN TARGETS
@@ -40,6 +40,16 @@ check:
 	@$(R_CMD) "if (!require('loo')) install.packages('loo', repos='https://cloud.r-project.org')"
 	@$(R_CMD) "if (!require('lme4')) install.packages('lme4', repos='https://cloud.r-project.org')"
 	@echo "$(GREEN)✓ Dependencies checked$(RESET)"
+
+setup-data:
+	@echo "$(YELLOW)Setting up data directory structure...$(RESET)"
+	@mkdir -p $(DATA_DIR)/raw $(DATA_DIR)/derived $(DATA_DIR)/analysis_ready
+	@echo "$(GREEN)✓ Data directories created$(RESET)"
+	@echo "$(YELLOW)NOTE: You need to provide data files:$(RESET)"
+	@echo "  - $(DATA_DIR)/raw/trials_with_eyetracking.csv"
+	@echo "  - $(DATA_DIR)/raw/behavior.csv"
+	@echo "  - $(DATA_DIR)/analysis_ready/bap_clean_pupil.csv"
+	@echo "$(YELLOW)Or run preprocessing scripts first (see README)$(RESET)"
 
 features:
 	@echo "$(YELLOW)Computing phasic/tonic features...$(RESET)"
@@ -156,6 +166,7 @@ help:
 	@echo "  make test      - Run model contract tests"
 	@echo ""
 	@echo "$(YELLOW)Utility Targets:$(RESET)"
+	@echo "  make setup-data - Set up data directory structure"
 	@echo "  make validate  - Validate output files"
 	@echo "  make clean     - Clean intermediate files"
 	@echo "  make clean-all - Remove all generated outputs"
