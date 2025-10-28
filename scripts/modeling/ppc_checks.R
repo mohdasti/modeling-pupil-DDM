@@ -1,7 +1,7 @@
 suppressPackageStartupMessages({ library(brms); library(bayesplot); library(dplyr); library(readr) })
 
-fit <- readRDS("models/ddm_brms_main.rds")
-d   <- readr::read_csv("data/derived/trials_with_pupil.csv")
+        fit <- readRDS("models/ddm_brms_main.rds")
+        d   <- readr::read_csv("data/analysis_ready/bap_ddm_ready.csv", show_col_types = FALSE)
 
 # 1) Global RT distribution
 png("models/ppc_rt_overall.png", width=1000, height=700, res=120)

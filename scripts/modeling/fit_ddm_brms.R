@@ -4,31 +4,32 @@ suppressPackageStartupMessages({
 })
 
 # ---- Load cleaned trial-level data ----
-# expects cols: rt (sec), choice (0/1), subj, condition,
-# pupil_baseline_z, pupil_evoked_z, prev_choice, prev_outcome, luminance_z
-d <- read_csv("data/derived/trials_with_pupil.csv") %>%
+# Read from analysis-ready data
+d <- read_csv("data/analysis_ready/bap_ddm_ready.csv", show_col_types = FALSE) %>%
   mutate(
-    choice = as.integer(choice),
-    subj   = factor(subj)
+    # Rename columns
+    subj = factor(subject_id),
+    choice = as.integer(choice)
+  ) %>%
+  filter(
+    !is.na(rt), !is.na(choice),
+    rt > 0.25, rt < 2.5  # Filter extreme RTs
   )
 
-# ---- DDM with Wiener family ----
+# ---- Simple DDM model ----
 f_ddm <- bf(
-  rt | dec(choice) ~ 1 +
-    pupil_evoked_z + pupil_baseline_z + I(pupil_baseline_z^2) +
-    condition + prev_choice + prev_outcome + luminance_z +
-    (1 + pupil_evoked_z | subj),
-  bs   ~ 1 + pupil_baseline_z + (1 | subj),   # boundary separation
-  ndt  ~ 1 + (1 | subj),                      # non-decision time
-  bias ~ 1 + pupil_evoked_z + (1 | subj)      # starting point (0..1)
+  rt | dec(choice) ~ 1 + difficulty_level + effort_condition + (1 | subj),
+  bs   ~ 1 + difficulty_level + effort_condition + (1 | subj),
+  ndt  ~ 1 + (1 | subj),
+  bias ~ 1 + (1 | subj)
 )
 
 pri <- c(
-  prior(normal(0, 0.5), class = "b"),     # fixed effects on standardized inputs
-  prior(normal(0, 1),   class = "sd"),    # random effect sds
-  prior(normal(0, 0.2), class = "Intercept", dpar = "bias"),
+  prior(normal(0, 0.3), class = "b"),
+  prior(normal(0, 0.5), class = "sd"),
+  prior(normal(log(0.2), 0.3), class = "Intercept", dpar = "ndt"),
   prior(normal(0, 0.2), class = "Intercept", dpar = "bs"),
-  prior(normal(0, 0.2), class = "Intercept", dpar = "ndt")
+  prior(normal(0, 0.2), class = "Intercept", dpar = "bias")
 )
 
 fit <- brm(
@@ -36,10 +37,13 @@ fit <- brm(
   data = d,
   family = wiener(link_bs = "log", link_ndt = "log", link_bias = "logit"),
   prior = pri,
-  cores = max(2, parallel::detectCores() - 2),
-  chains = 4, iter = 4000, warmup = 1000,
-  control = list(adapt_delta = 0.9, max_treedepth = 12),
-  seed = 123
+  cores = 4,
+  chains = 4, 
+  iter = 2000, 
+  warmup = 1000,
+  control = list(adapt_delta = 0.95, max_treedepth = 12),
+  seed = 123,
+  init = 0.1
 )
 
 dir.create("models", showWarnings = FALSE)

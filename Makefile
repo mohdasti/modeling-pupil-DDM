@@ -25,13 +25,13 @@ RESET := \033[0m
 # ============================================================================
 # PHONY TARGETS
 # ============================================================================
-.PHONY: all clean features fit compare tonic report check setup-data
+.PHONY: all clean features fit compare tonic report check
 
 # ============================================================================
 # MAIN TARGETS
 # ============================================================================
 
-all: check features fit compare tonic report
+all: check load-data prepare-data features fit compare tonic report
 	@echo "$(GREEN)✓ Complete pipeline finished$(RESET)"
 
 check:
@@ -41,20 +41,20 @@ check:
 	@$(R_CMD) "if (!require('lme4')) install.packages('lme4', repos='https://cloud.r-project.org')"
 	@echo "$(GREEN)✓ Dependencies checked$(RESET)"
 
-setup-data:
-	@echo "$(YELLOW)Setting up data directory structure...$(RESET)"
-	@mkdir -p $(DATA_DIR)/raw $(DATA_DIR)/derived $(DATA_DIR)/analysis_ready
-	@echo "$(GREEN)✓ Data directories created$(RESET)"
-	@echo "$(YELLOW)NOTE: You need to provide data files:$(RESET)"
-	@echo "  - $(DATA_DIR)/raw/trials_with_eyetracking.csv"
-	@echo "  - $(DATA_DIR)/raw/behavior.csv"
-	@echo "  - $(DATA_DIR)/analysis_ready/bap_clean_pupil.csv"
-	@echo "$(YELLOW)Or run preprocessing scripts first (see README)$(RESET)"
+load-data:
+	@echo "$(YELLOW)Loading processed pupil data...$(RESET)"
+	@mkdir -p $(DATA_DIR)/analysis_ready
+	@$(R_CMD) "source('scripts/data/load_processed_pupil_data.R')"
+	@echo "$(GREEN)✓ Data loaded$(RESET)"
+
+prepare-data:
+	@echo "$(YELLOW)Preparing analysis-ready data...$(RESET)"
+	@$(R_CMD) "source('scripts/data/prepare_analysis_data.R')"
+	@echo "$(GREEN)✓ Data prepared$(RESET)"
 
 features:
 	@echo "$(YELLOW)Computing phasic/tonic features...$(RESET)"
-	@$(R_CMD) "source('$(SCRIPTS_DIR)/pupil/compute_phasic_features.R')"
-	@$(R_CMD) "source('$(SCRIPTS_DIR)/pupil/prepare_pupil_features.R')"
+	@$(R_CMD) "source('$(SCRIPTS_DIR)/pupil/compute_phasic_features_from_flat.R')"
 	@echo "$(GREEN)✓ Features computed$(RESET)"
 
 fit:
@@ -166,7 +166,6 @@ help:
 	@echo "  make test      - Run model contract tests"
 	@echo ""
 	@echo "$(YELLOW)Utility Targets:$(RESET)"
-	@echo "  make setup-data - Set up data directory structure"
 	@echo "  make validate  - Validate output files"
 	@echo "  make clean     - Clean intermediate files"
 	@echo "  make clean-all - Remove all generated outputs"

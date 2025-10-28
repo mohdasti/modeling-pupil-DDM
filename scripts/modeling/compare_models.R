@@ -3,9 +3,9 @@ suppressPackageStartupMessages({ library(brms); library(loo) })
 fit_full <- readRDS("models/ddm_brms_main.rds")
 
 # Refit restricted variants if not already saved
-ensure_fit <- function(path, formula_fun) {
-  if (!file.exists(path)) {
-    d <- readr::read_csv("data/derived/trials_with_pupil.csv")
+        ensure_fit <- function(path, formula_fun) {
+          if (!file.exists(path)) {
+            d <- readr::read_csv("data/analysis_ready/bap_ddm_ready.csv", show_col_types = FALSE)
     f <- formula_fun()
     saveRDS(brm(
       formula = f, data = d,
