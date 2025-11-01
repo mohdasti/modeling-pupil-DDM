@@ -143,7 +143,7 @@ if (!"effort_arousal_change" %in% names(ddm_data_pupil)) {
 PUPIL_FEATURES_AVAILABLE <- all(c("tonic_arousal", "effort_arousal_change") %in% names(ddm_data_pupil))
 
     ddm_data_behav <- ddm_data_behav %>%
-    dplyr::filter(rt >= 0.15 & rt <= 3.0, difficulty_level != "Standard") %>%
+    dplyr::filter(rt >= 0.2 & rt <= 3.0) %>%
     dplyr::mutate(
         response = as.integer(accuracy),
         effort_condition = as.factor(effort_condition),
@@ -159,7 +159,7 @@ if (all(unique(na.omit(ddm_data_behav$task)) %in% c("ADT","VDT"))) {
 }
 if (PUPIL_FEATURES_AVAILABLE) {
     ddm_data_pupil <- ddm_data_pupil %>%
-        dplyr::filter(rt >= 0.15 & rt <= 3.0, difficulty_level != "Standard") %>%
+        dplyr::filter(rt >= 0.2 & rt <= 3.0) %>%
         dplyr::mutate(
             response = as.integer(accuracy),
             effort_condition = as.factor(effort_condition),
@@ -196,6 +196,13 @@ create_ddm_models <- function() {
         "Model8_Task_Additive" = list(dataType = "behavioral", formula = brms::bf(rt | dec(decision) ~ effort_condition + difficulty_level + task + (1|subject_id))),
         "Model9_Task_Intx"     = list(dataType = "behavioral", formula = brms::bf(rt | dec(decision) ~ task * effort_condition + task * difficulty_level + (1|subject_id)))
     )
+    # Add parameterized Wiener model estimating both v and bs (and simple ndt)
+    param_bf <- brms::bf(
+        rt | dec(decision) ~ effort_condition + difficulty_level + (1|subject_id),
+        bs ~ effort_condition + difficulty_level + (1|subject_id),
+        ndt ~ 1 + (1|subject_id)
+    )
+    models[["Model10_Param_v_bs"]] <- list(dataType = "behavioral", formula = param_bf)
     if (PUPIL_FEATURES_AVAILABLE) {
         models <- c(
             models,

@@ -39,7 +39,7 @@ model_data <- read.csv(file_path)
 # Prepare data for modeling: filter invalid trials and select final variables
 model_data <- model_data %>%
     filter(!is.na(rt) & !is.na(accuracy) & !is.na(tonic_arousal)) %>%
-    filter(rt > 0.250 & rt < 3.0) # Filter out extreme RTs
+    filter(rt >= 0.2 & rt <= 3.0) # Filter out extreme RTs
 
 cat("Loaded and prepared", nrow(model_data), "trials for analysis.\n\n")
 
@@ -210,7 +210,7 @@ vis_data <- read.csv(file_path)
 # Prepare data for plotting: filter invalid trials and make factors for easier plotting
 vis_data <- vis_data %>%
     filter(!is.na(rt) & !is.na(accuracy)) %>%
-    filter(rt > 0.250 & rt < 3.0) %>%
+    filter(rt >= 0.2 & rt <= 3.0) %>%
     # For plotting, it's helpful to treat stimLev as a categorical factor
     mutate(stimLev_factor = as.factor(stimLev))
 

@@ -9,6 +9,7 @@ RUN_SENSITIVITY     <- getOption("RUN_SENSITIVITY", FALSE)
 # Expect trial-level long pupil data with columns:
 # trial_id, time_ms (relative to stimulus onset), pupil, blink_flag (0/1), subj, condition, luminance
 # Returns 1-row per trial with default slope + optional sensitivity features.
+# Note: "stimulus onset" = first stimulus onset (Standard). Stimulus phase = 700ms total (Standard 100ms + ISI 500ms + Target 100ms)
 compute_phasic_features <- function(pupil_long_df) {
   stopifnot(all(c("trial_id","time_ms","pupil","blink_flag") %in% names(pupil_long_df)))
 

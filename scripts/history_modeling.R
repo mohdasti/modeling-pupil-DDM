@@ -67,8 +67,7 @@ d <- d %>%
   filter(
     !is.na(rt), !is.na(choice_binary),
     !is.na(prev_choice_scaled), !is.na(prev_outcome_scaled),
-    rt > 0.15, rt < 5.0,
-    difficulty_level != "Standard",
+    rt >= 0.2, rt <= 3.0,
     prev_choice_scaled != 0  # Only include trials with valid history
   ) %>%
   mutate(

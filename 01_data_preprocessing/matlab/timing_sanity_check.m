@@ -1,6 +1,7 @@
 function timing_sanity_check()
 %% Timing Sanity Check for BAP Pupillometry Pipeline - CORRECTED FOR 8-PHASE PARADIGM
 % Analyzes trial and phase durations from generated CSV files
+% Note: Stimulus phase is 700ms consisting of: Standard (100ms) + ISI (500ms) + Target (100ms)
 
 %% Configuration
 output_dir = '/Users/mohdasti/Documents/LC-BAP/BAP/BAP_Pupillometry/BAP/BAP_processed';
@@ -12,7 +13,7 @@ EXPECTED.iti_baseline = 0;             % Variable duration - don't validate
 EXPECTED.squeeze = 3.0;                % Squeeze period
 EXPECTED.post_squeeze_blank = 0.25;    % Post-squeeze blank
 EXPECTED.pre_stimulus_fixation = 0.5;  % ADDED: Pre-stimulus fixation (500ms)
-EXPECTED.stimulus = 0.7;               % Stimulus presentation (700ms)
+EXPECTED.stimulus = 0.7;               % Stimulus presentation (700ms = Standard 100ms + ISI 500ms + Target 100ms)
 EXPECTED.post_stimulus_fixation = 0.25; % Post-stimulus fixation
 EXPECTED.response = 3.0;               % "Different?" response
 EXPECTED.confidence = 3.0;             % Confidence rating

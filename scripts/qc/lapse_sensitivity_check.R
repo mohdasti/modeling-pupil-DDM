@@ -22,8 +22,7 @@ d <- read_csv(data_file, show_col_types = FALSE)
 d <- d %>%
   filter(
     !is.na(rt), !is.na(choice_binary),
-    rt > 0.15, rt < 5.0,
-    difficulty_level != "Standard"
+    rt >= 0.2, rt <= 3.0
   ) %>%
   mutate(
     subj = as.factor(subject_id),

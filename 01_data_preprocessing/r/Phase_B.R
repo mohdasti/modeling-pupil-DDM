@@ -223,8 +223,8 @@ all_trials_df <- read.csv("BAP_all_subjects_aggregated_for_modeling.csv")
 # Prepare DDM data
 ddm_data <- all_trials_df %>%
     filter(!is.na(rt) & !is.na(accuracy)) %>%
-    filter(rt > 0.250) %>%
-    mutate(response = if_else(accuracy == 1, 2, 1))
+    filter(rt >= 0.2 & rt <= 3.0) %>%
+    mutate(response = if_else(accuracy == 1, 1, 0))
 
 cat("Trials loaded:", nrow(all_trials_df), "\n")
 cat("Trials for DDM:", nrow(ddm_data), "\n")
@@ -357,7 +357,7 @@ all_trials_df <- read.csv("BAP_all_subjects_aggregated_for_modeling.csv")
 # Prepare data for modeling
 model_data <- all_trials_df %>%
     filter(!is.na(rt) & !is.na(accuracy) & !is.na(tonic_arousal)) %>%
-    filter(rt > 0.250) # Ensure valid RTs
+    filter(rt >= 0.2 & rt <= 3.0) # Ensure valid RTs
 
 cat("Trials loaded:", nrow(all_trials_df), "\n")
 cat("Trials for Modeling:", nrow(model_data), "\n")

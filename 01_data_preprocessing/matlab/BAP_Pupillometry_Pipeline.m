@@ -1,6 +1,7 @@
 function BAP_Pupillometry_Pipeline()
 %% BAP Pupillometry Processing Pipeline - FULLY CORRECTED FOR 8-PHASE PARADIGM
 % This script processes pupillometry data with proper trial structure understanding
+% Note: Stimulus phase is 700ms consisting of: Standard (100ms) + ISI (500ms) + Target (100ms)
 
 %% Configuration - FULLY CORRECTED FOR 8-PHASE PARADIGM
 CONFIG = struct();
@@ -30,14 +31,14 @@ CONFIG.timing.iti_max = 4.5;                 % Maximum ITI
 CONFIG.timing.squeeze_duration = 3.0;        % 3000ms handgrip
 CONFIG.timing.post_squeeze_blank = 0.25;     % 250ms blank after squeeze
 CONFIG.timing.pre_stimulus_fixation = 0.5;   % 500ms fixation BEFORE stimulus (CRITICAL FIX!)
-CONFIG.timing.stimulus_duration = 0.7;       % 700ms stimulus sequence
+CONFIG.timing.stimulus_duration = 0.7;       % 700ms stimulus sequence (Standard 100ms + ISI 500ms + Target 100ms)
 CONFIG.timing.post_stim_fixation = 0.25;     % 250ms post-stimulus fixation
 CONFIG.timing.response_duration = 3.0;       % 3000ms "Different?" response
 CONFIG.timing.confidence_duration = 3.0;     % 3000ms confidence rating
 
 % CORRECTED total trial duration calculation
 % ITI(max 4.5) + Squeeze(3.0) + Post_Squeeze(0.25) + Pre_Stim_Fix(0.5) + 
-% Stimulus(0.7) + Post_Stim_Fix(0.25) + Response(3.0) + Confidence(3.0) = 15.2s
+% Stimulus(0.7 = Standard 100ms + ISI 500ms + Target 100ms) + Post_Stim_Fix(0.25) + Response(3.0) + Confidence(3.0) = 15.2s
 CONFIG.timing.max_trial_duration = 18.5;     % 15.2s + buffer for safety
 
 % FULLY CORRECTED phase definitions (8 phases now)
@@ -522,7 +523,7 @@ for i = 1:length(trial_times)
     elseif time_rel >= 3.25 && time_rel < 3.75
         phase_labels{i} = 'Pre_Stimulus_Fixation';
         
-    % Phase 5: Stimulus presentation (700ms - CORRECTED timing)
+    % Phase 5: Stimulus presentation (700ms = Standard 100ms + ISI 500ms + Target 100ms)
     elseif time_rel >= 3.75 && time_rel < 4.45
         phase_labels{i} = 'Stimulus';
         
