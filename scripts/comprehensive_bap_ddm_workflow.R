@@ -96,7 +96,7 @@ vif_data <- data %>%
     !is.na(rt), !is.na(choice_binary), !is.na(prev_choice),
     !is.na(difficulty_level), !is.na(effort_condition),
     !is.na(TONIC_BASELINE_scaled_wp), !is.na(PHASIC_SLOPE_scaled_wp_resid_wp),
-    rt > 0.1, rt < 5.0
+    rt >= 0.2, rt <= 3.0  # Standardized RT thresholds
   ) %>%
   mutate(
     participant = as.factor(subject_id),

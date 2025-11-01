@@ -13,7 +13,7 @@ d <- read_csv("data/analysis_ready/bap_ddm_ready.csv", show_col_types = FALSE) %
   ) %>%
   filter(
     !is.na(rt), !is.na(choice),
-    rt > 0.25, rt < 2.5  # Filter extreme RTs
+    rt >= 0.2, rt <= 3.0  # Filter extreme RTs (standardized threshold)
   )
 
 # ---- Simple DDM model ----
