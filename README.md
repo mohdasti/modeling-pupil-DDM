@@ -317,9 +317,9 @@ If you use this code in your research, please cite:
 ```bibtex
 @software{modeling_pupil_ddm,
   title={Modeling Pupil-DDM: Computational Modeling of Pupillometry and Decision-Making},
-  author={[Your Name]},
+  author={Mohammad Dastgheib},
   year={2024},
-  url={https://github.com/yourusername/modeling-pupil-DDM},
+  url={https://github.com/mohdasti/modeling-pupil-DDM},
   note={Computational modeling pipeline for pupillometry and behavioral analysis}
 }
 ```
