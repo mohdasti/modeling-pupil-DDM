@@ -390,8 +390,6 @@ This project is licensed under the GNU General Public License v3.0 (GPL-3.0) –
 ## 🙏 Acknowledgments
 
 - **Research Team**: Collaborators and research assistants
-- **Open Source**: R, Python, and MATLAB communities
-- **Funding**: Research grants and institutional support
 
 ## 📞 Contact
 
@@ -406,9 +404,9 @@ If you use this code in your research, please cite:
 ```bibtex
 @software{modeling_pupil_ddm,
   title={Modeling Pupil-DDM: Computational Modeling of Pupillometry and Decision-Making},
-  author={[Your Name]},
+  author={Dastgheib, Mohammad},
   year={2024},
-  url={https://github.com/yourusername/modeling-pupil-DDM},
+  url={https://github.com/mohdasti/modeling-pupil-DDM},
   note={Computational modeling pipeline for pupillometry and behavioral analysis}
 }
 ```
