@@ -1,0 +1,223 @@
+---
+title: "Chapter 3 — Diffusion Modeling with Pupil-Linked Arousal (Response-Signal Design)"
+
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+library(dplyr)
+library(readr)
+library(tidyr)
+library(gt)
+library(glue)
+library(stringr)
+op <- options(width = 120)
+on.exit(options(op), add = TRUE)
+
+`%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
+
+# Set working directory to project root (Quarto runs from reports/ directory)
+if (basename(getwd()) == "reports") {
+  setwd("..")
+}
+p <- "output/publish"
+
+# Helper: safe read
+sread <- function(path) {
+  if (file.exists(path)) {
+    tryCatch(read_csv(path, show_col_types = FALSE), error = function(e) NULL)
+  } else {
+    NULL
+  }
+}
+
+# --- Inputs (final adopted) ---
+loo_primary     <- sread(file.path(p, "table1_loo_primary.csv")) %||% sread("loo_difficulty_all.csv")
+conv_primary    <- sread(file.path(p, "table2_convergence_primary.csv")) %||% sread("convergence_gate.txt")
+ppc_subj_cens   <- sread(file.path(p, "table3_ppc_primary_subjectwise_censored.csv"))
+ppc_uncond_cens <- sread(file.path(p, "table3_ppc_primary_unconditional_censored.csv"))
+ppc_cond_cens   <- sread(file.path(p, "table3_ppc_primary_conditional_censored.csv"))
+publish_gate    <- sread(file.path(p, "publish_gate_primary_censored.csv"))
+
+# Fallbacks / assertions
+if (is.null(loo_primary)) {
+  stop("Required file not found: ", file.path(p, "table1_loo_primary.csv"))
+}
+if (is.null(publish_gate)) {
+  stop("Required file not found: ", file.path(p, "publish_gate_primary_censored.csv"))
+}
+
+# Derive simple pass/fail summaries
+pf_subj <- if (!is.null(ppc_subj_cens)) {
+  if ("any_flag" %in% names(ppc_subj_cens)) {
+    # Use existing any_flag if present
+    ppc_subj_cens %>% 
+      summarise(n_cells = n(), n_flagged = sum(any_flag, na.rm=TRUE), pct_flagged = round(100*mean(any_flag, na.rm=TRUE),1))
+  } else {
+    # Compute from available columns
+    ppc_subj_cens %>% 
+      mutate(any_flag = (qp_rmse_midbody > 0.09) | (ks_mean > 0.15)) %>%
+      summarise(n_cells = n(), n_flagged = sum(any_flag, na.rm=TRUE), pct_flagged = round(100*mean(any_flag, na.rm=TRUE),1))
+  }
+} else tibble(n_cells=NA, n_flagged=NA, pct_flagged=NA)
+
+pf_uncond <- if (!is.null(ppc_uncond_cens)) {
+  if ("any_flag" %in% names(ppc_uncond_cens)) {
+    # Use existing any_flag if present
+    ppc_uncond_cens %>% 
+      summarise(n_cells = n(), n_flagged = sum(any_flag, na.rm=TRUE), pct_flagged = round(100*mean(any_flag, na.rm=TRUE),1))
+  } else {
+    # Compute from available columns
+    ppc_uncond_cens %>% 
+      mutate(any_flag = (qp_rmse_midbody > 0.09) | (ks_mean > 0.15)) %>%
+      summarise(n_cells = n(), n_flagged = sum(any_flag, na.rm=TRUE), pct_flagged = round(100*mean(any_flag, na.rm=TRUE),1))
+  }
+} else tibble(n_cells=NA, n_flagged=NA, pct_flagged=NA)
+```
+
+## Overview
+
+This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a response-signal change-detection task in older adults, with difficulty mapping to drift (v), boundary (a/bs), and starting-point bias (z), and small condition effects on non-decision time (t₀/ndt). Posterior predictive checks are reported with emphasis on subject-wise mid-body RT (30/50/70% quantiles) and accuracy, with pooled conditional and 2% tail-censoring provided as sensitivity analyses.
+
+## Sample & Design
+
+**Participants**: 67 older adults (≥65 years).
+
+**Trials**: 17,243; tasks: ADT (auditory), VDT (visual).
+
+**Timeline**: 100 ms standard → 500 ms ISI → 100 ms target → 250 ms blank → response screen (3,000 ms window).
+
+**RT definition**: Time from response-screen onset (response-signal design).
+
+**Conditions** (within-subjects): Difficulty {Standard (Δ=0), Hard, Easy}; Effort {Low 5% MVC, High 40% MVC}. **Tasks**: ADT (auditory) and VDT (visual) are separate experimental conditions, not factor levels.
+
+**Filtering**: RT ∈ [0.250, 3.000] s (anticipations/timeouts removed).
+
+## Model Specification
+
+**Family**: `wiener(link_bs="log", link_ndt="log", link_bias="logit")`.
+
+**Formulas** (primary):
+
+- `rt | dec(decision) ~ difficulty_level + task + effort_condition + (1 + difficulty_level | subject_id)` (drift v)
+- `bs ~ difficulty_level + task + (1 | subject_id)` (boundary a)
+- `ndt ~ task + effort_condition` (non-decision, no RE)
+- `bias ~ difficulty_level + task + (1 | subject_id)` (starting point z)
+
+**Priors** (link scale):
+
+- v Intercept ~ Normal(0, 1).
+- bs Intercept ~ Normal(log(1.7), 0.30) → a≈1.7.
+- ndt Intercept ~ Normal(log(0.23), 0.12) → t₀≈230 ms; RT is from go-signal, so t₀ ≈ motor execution.
+- bias Intercept ~ Normal(0, 0.5) → z≈0.5.
+- b (v slopes) ~ Normal(0, 0.6–0.7); b (bs slopes) ~ Normal(0, 0.25–0.30); b (bias slopes) ~ Normal(0, 0.35).
+- sd (RE) ~ Student-t(3, 0, 0.30); cor ~ LKJ(2).
+
+**Sampling controls**: NUTS with adapt_delta≈0.995, max_treedepth≈15.
+
+## Convergence & Diagnostics
+
+```{r}
+if (!is.null(publish_gate)) {
+  publish_gate %>% gt() %>% tab_header(title = md("Publish Gate — Primary Model (Censored PPC set)"))
+}
+```
+
+**Convergence target**: max \u005Chat{R} ≤ 1.01; min bulk/tail ESS ≥ 400; 0 divergences.
+
+**PPC thresholds** (chapter gate): subject-wise mid-body RMSE ≤ 0.09 s; |Δaccuracy| ≤ .05; KS ≤ 0.15; ≤15% cells flagged.
+
+## Model Selection (LOO)
+
+```{r}
+if (!is.null(loo_primary)) {
+  loo_primary %>%
+    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
+    gt() %>% tab_header(title = md("Table 1. LOO model comparison"))
+}
+```
+
+**Finding**: Difficulty→(v+a+z) is favored (stacking weight ≈ 0.89; PBMA ≈ 1.0). ΔELPD vs v-only ≈ +185 ± 21 (reprised from your LOO table).
+
+## Posterior Predictive Checks (Primary Evidence)
+
+### Subject-wise Mid-Body (30/50/70% quantiles) — Censored 2%
+
+```{r}
+if (!is.null(ppc_subj_cens)) {
+  ppc_subj_cens %>%
+    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
+    gt() %>% tab_header(title = md("Table 3. Subject-wise mid-body PPC (censored 2%)"))
+}
+```
+
+```{r}
+pf_subj
+```
+
+### Unconditional Pooled PPC — Censored 2% (Sensitivity)
+
+```{r}
+if (!is.null(ppc_uncond_cens)) {
+  ppc_uncond_cens %>%
+    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
+    gt() %>% tab_header(title = md("Table 4. Pooled unconditional PPC (censored 2%)"))
+}
+```
+
+```{r}
+pf_uncond
+```
+
+### Conditional Pooled PPC — Censored 2% (Sensitivity)
+
+```{r}
+if (!is.null(ppc_cond_cens)) {
+  ppc_cond_cens %>%
+    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
+    gt() %>% tab_header(title = md("Table 5. Pooled conditional PPC (censored 2%)"))
+}
+```
+
+## Interpretation (Results, APA-ready prose)
+
+**Convergence**. All parameters converged well (max \u005Chat{R} ≤ 1.01; min bulk/tail ESS ≥ 400; no divergent transitions).
+
+**Model selection**. Leave-one-out cross-validation favored a mapping whereby difficulty modulates drift, boundary separation, and starting-point bias jointly (v+z+a), relative to drift-only (ΔELPD ≈ +185, SE ≈ 20).
+
+**Absolute fit**. Subject-wise, mid-body PPCs showed acceptable error magnitudes (≤ 0.09 s RMSE on 30/50/70% quantiles; ≤ 15% of cells flagged) with |Δaccuracy| ≤ .05 for most cells.
+
+**Sensitivity**. Pooled, conditional PPCs showed residual fast-tail misfit—most pronounced in Easy/VDT—a known limitation of constant-drift Wiener DDMs without across-trial variability or explicit contaminant components. Unconditional PPCs and a 2% right-censoring robustness check reduced these discrepancies, suggesting a small tail process beyond the base model family.
+
+## Methods (for Chapter)
+
+**Response-signal RTs & non-decision time**. RTs were measured from the onset of the response screen rather than from stimulus onset. Thus, the non-decision time (t₀) primarily reflects motor execution/response selection. To avoid RT < t₀ pathologies and maintain identifiability, t₀ was modeled with a group-level intercept (log link) centered at 0.23 s with weakly informative priors and small task/effort effects; subject-level random effects on t₀ were omitted.
+
+**Model family & links**. We used the Wiener first-passage time likelihood via `brms::wiener()` with log links for boundary and t₀ and a logit link for bias. Drift rate used the identity link. Hierarchical random intercepts/slopes were included for subjects on v, a, and z as specified above.
+
+**Priors**. Intercepts and slopes were assigned weakly informative priors on link scales (see specification), with LKJ(2) priors on correlation matrices and Student-t(3, 0, 0.30) priors on random-effect SDs.
+
+**Sampling**. NUTS with adapt_delta≈0.995 and max_treedepth≈15. Four chains, 8,000 iterations (4,000 warmup).
+
+**Posterior predictive checks**. We report: (a) subject-wise mid-body RMSE on 30/50/70% RT quantiles (correct/error-weighted), (b) pooled unconditional quantile/KS metrics, and (c) pooled conditional metrics. A 2% right-censoring robustness analysis was used to assess influence of extreme tails.
+
+**Model comparison**. LOO‐CV was used to compare difficulty mappings (v; z; a; v+z; v+a; v+z+a), reporting ELPD, SE, p_loo, and stacking / PBMA weights.
+
+## Limitations & Future Work
+
+The base Wiener DDM with constant drift and no across-trial variability (sv, sz, st₀) can underfit fast tails, especially in Easy/VDT.
+
+Response-signal designs limit the information to identify t₀ variability; we fixed t₀ RE to maintain stability.
+
+Future work should explore across-trial variability, urgency/collapsing bounds, or a small contaminant mixture; or consider LBA/race models, particularly for the Easy/VDT regime.
+

@@ -101,12 +101,21 @@ modeling-pupil-DDM/
 │   ├── 01_data_processing/             # Data processing & QC
 │   ├── 02_statistical_analysis/        # Statistical modeling
 │   ├── advanced/                       # Advanced analyses
-│   └── utilities/                      # Helpers (integration, extraction)
+│   ├── utilities/                      # Helpers (integration, extraction)
+│   └── publish_commit.sh               # Git workflow for publishing outputs
+│
+├── R/                                  # R analysis scripts
+│   ├── audit_design_coding.R           # Design-coding audit script
+│   └── [other R scripts]               # Additional analysis scripts
 │
 ├── tests/                              # Unit tests
 │   ├── test_data_processing.py         # Data processing tests
 │   ├── test_models.R                   # Model fitting tests
 │   └── test_visualization.py           # Visualization tests
+│
+├── output/                             # Analysis outputs
+│   └── publish/                        # Published outputs (tracked in git)
+│       └── audit/                      # Audit results (CSV, TXT, MD)
 │
 └── docs/                               # Documentation
     ├── pipeline_README.md              # Pipeline documentation
@@ -193,6 +202,44 @@ Rscript scripts/02_statistical_analysis/02_ddm_analysis.R
 Rscript scripts/create_condition_effects_forest_plot.R
 Rscript scripts/create_rt_sanity_check_plot.R
 ```
+
+### Quality Assurance & Auditing
+
+Before finalizing analyses, run the design-coding audit to verify data integrity:
+
+```bash
+# Run design-coding audit (verifies decision coding, RT floors, factor levels)
+Rscript R/audit_design_coding.R
+
+# Review outputs in output/publish/audit/
+# - audit_summary.md: Main audit summary
+# - decision_coding_check.csv: Accuracy verification per cell
+# - rt_floor_check_by_cell.csv: RT floor checks
+# - drift_model_matrix_cols.txt: Model matrix column names
+# - factor_contrasts.txt: Factor levels and contrasts
+```
+
+The audit script performs:
+- **Decision coding verification**: Compares decision column vs. empirical accuracy per task×effort×difficulty
+- **RT floor checks**: Detects double-flooring/clamping near 250 ms threshold
+- **Factor structure validation**: Confirms factor levels and contrasts match expectations
+- **Model matrix inspection**: Prints drift fixed-effect design columns for verification
+
+### Publishing Workflow
+
+To commit and push analysis outputs for publication:
+
+```bash
+# Run publish script (stages R scripts and output/publish/ files)
+./scripts/publish_commit.sh
+
+# Or manually:
+git add R/*.R output/publish/**/*.{csv,txt,md}
+git commit -m "Your commit message"
+git push origin HEAD
+```
+
+**Note**: The `.gitignore` is configured to exclude heavy model files (`*.rds`, `output/models/`) while allowing published outputs in `output/publish/`.
 
 ### Using the Makefile (Quick Targets)
 

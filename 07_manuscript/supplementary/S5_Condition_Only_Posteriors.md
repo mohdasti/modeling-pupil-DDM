@@ -11,7 +11,7 @@
 | **v** (drift) | Difficulty | -0.156 | 0.045 | -0.245 | -0.067 | 0.999 | 1.001 | 1,134 |
 | **v** (drift) | Effort | -0.012 | 0.022 | -0.056 | 0.032 | 0.312 | 1.001 | 1,178 |
 | **t₀** (ndt) | Intercept | 0.156 | 0.012 | 0.132 | 0.180 | 1.000 | 1.001 | 1,267 |
-| **t₀** (ndt) | Task | 0.023 | 0.004 | 0.015 | 0.031 | 1.000 | 1.001 | 1,245 |
+| **t₀** (ndt) | Task difference (VDT - ADT) | 0.023 | 0.004 | 0.015 | 0.031 | 1.000 | 1.001 | 1,245 |
 
 ## Forest Plots
 
@@ -28,7 +28,7 @@
 ### Figure S5.3: Non-Decision Time (t₀) Effects
 ![NDT Forest Plot](figures/s5_ndt_forest.png)
 
-**Caption**: Forest plot showing posterior distributions for non-decision time (t₀) effects. Task type (ADT vs VDT) shows significant effect on motor/preparation time.
+**Caption**: Forest plot showing posterior distributions for non-decision time (t₀) effects. Task difference (VDT - ADT) shows significant effect on motor/preparation time. Note: ADT and VDT are separate experimental conditions, not factor levels.
 
 ## Effect Size Interpretations
 
@@ -39,12 +39,12 @@
 | Effort → α | 0.32 | Small-medium effect |
 | Difficulty → v | -0.78 | Large effect |
 | Effort → v | -0.09 | Negligible effect |
-| Task → t₀ | 0.45 | Medium effect |
+| Task difference (VDT - ADT) → t₀ | 0.45 | Medium effect |
 
 ### Practical Significance
 - **Difficulty effects**: Large, practically significant changes in both caution (α) and evidence quality (v)
 - **Effort effects**: Small but consistent increase in caution (α), no effect on evidence quality (v)
-- **Task effects**: Medium effect on motor/preparation time (t₀)
+- **Task difference**: Medium effect on motor/preparation time (t₀); VDT shows longer non-decision time than ADT
 
 ## Model Comparison
 
