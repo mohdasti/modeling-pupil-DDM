@@ -850,7 +850,7 @@ if (!is.null(heatmap_wide)) {
 
 ## S3. Unconditional Pooled PPC Metrics (Reference)
 
-This table reports metrics from the strict unconditional pooled test (censored 2%), provided for completeness. As noted in the text, this pooled test is overly sensitive to small deviations in fast tails (100% flagged) and is superseded by the subject-wise gate (≤15% flagged).
+This table reports metrics from the strict unconditional pooled test (censored 2%), provided for completeness. As noted in the text, this pooled test is overly sensitive to small deviations in fast tails and is superseded by the subject-wise gate (≤15% flagged) and the joint model cell-wise PPCs (Standard/Easy good, VDT-Hard modest misfit).
 
 ```{r}
 if (!is.null(ppc_gate)) {
