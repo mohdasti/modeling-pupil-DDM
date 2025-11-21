@@ -37,6 +37,22 @@ if (basename(getwd()) == "reports") {
 proj_root <- getwd()
 p <- file.path(proj_root, "output/publish")
 
+# Helper: robust figure path resolution
+fig_path <- function(fig_name) {
+  # Try multiple possible paths
+  candidates <- c(
+    file.path(proj_root, "output/figures", fig_name),
+    file.path("output/figures", fig_name),
+    file.path("../output/figures", fig_name),
+    file.path("../../output/figures", fig_name)
+  )
+  for (path in candidates) {
+    if (file.exists(path)) return(path)
+  }
+  # If none found, return the most likely path
+  return(file.path(proj_root, "output/figures", fig_name))
+}
+
 # Helper: safe read
 sread <- function(path) {
   if (file.exists(path)) {
@@ -135,7 +151,7 @@ This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a
 ## Trial Timeline (Response-Signal Design)
 
 ```{r, fig.cap="Design Timeline. Trial structure for the response-signal task. RT is measured from the onset of the response screen (950 ms post-trial-onset), not from stimulus onset. This design constrains the interpretation of non-decision time (t₀) to primarily reflect motor execution and response selection.", out.width="100%", fig.align="center"}
-knitr::include_graphics("../output/figures/fig_design_timeline.pdf")
+knitr::include_graphics(fig_path("fig_design_timeline.pdf"))
 ```
 
 **Timeline**:
@@ -360,7 +376,7 @@ All priors are weakly informative and set on the link scale:
 ## Prior vs. Posterior for Non-Decision Time
 
 ```{r, fig.cap="NDT Prior vs Posterior. Prior (gray line) and posterior (blue shaded density) distributions for the NDT intercept. The prior is Normal(log(0.23), 0.12) on the log scale (≈0.23 s on natural scale). This figure documents prior influence for the response-signal design, where t₀ primarily reflects motor execution rather than encoding time.", out.width="85%", fig.align="center"}
-knitr::include_graphics("../output/figures/fig_ndt_prior_posterior.pdf")
+knitr::include_graphics(fig_path("fig_ndt_prior_posterior.pdf"))
 ```
 
 **Interpretation**: The posterior for t₀ is well-informed by the data while remaining compatible with the weakly informative prior, confirming adequate identifiability for the group-level intercept despite the response-signal design.
@@ -401,7 +417,7 @@ if (!is.null(loo_primary)) {
 **Pareto-k diagnostics**: All models showed acceptable Pareto-k values (k < 0.7 for >99% of observations). Moment matching was not required.
 
 ```{r, fig.cap="Model Comparison: Leave-One-Out Cross-Validation. ELPD (Expected Log-Predictive Density) with 95% SE bars by model. The best model (highest ELPD) is indicated with a dashed red line. ΔELPD values (difference from best) are annotated above each point. Larger ELPD indicates better out-of-sample predictive accuracy.", out.width="90%", fig.align="center"}
-knitr::include_graphics("../output/figures/fig_loo.pdf")
+knitr::include_graphics(fig_path("fig_loo.pdf"))
 ```
 
 **Interpretation**: The data strongly support a model in which task difficulty modulates drift rate, boundary separation, *and* starting-point bias simultaneously. Simpler models (e.g., difficulty affecting only drift) are decisively rejected by cross-validation.
@@ -440,11 +456,11 @@ if (!is.null(publish_gate)) {
 ## Fixed Effects: Forest Plots by Task
 
 ```{r, fig.cap="Fixed Effects: ADT (Auditory Detection Task). Posterior means (link scale) with 95% CrIs for drift (v), boundary separation (a/bs), and starting-point bias (z). In the additive model, difficulty and effort contrasts are identical for both tasks; only the intercepts differ.", out.width="90%", fig.align="center"}
-knitr::include_graphics("../output/figures/fig_fixed_effects_ADT.pdf")
+knitr::include_graphics(fig_path("fig_fixed_effects_ADT.pdf"))
 ```
 
 ```{r, fig.cap="Fixed Effects: VDT (Visual Detection Task). Posterior means (link scale) with 95% CrIs for drift (v), boundary separation (a/bs), and starting-point bias (z). In the additive model, difficulty and effort contrasts are identical for both tasks; only the intercepts differ.", out.width="90%", fig.align="center"}
-knitr::include_graphics("../output/figures/fig_fixed_effects_VDT.pdf")
+knitr::include_graphics(fig_path("fig_fixed_effects_VDT.pdf"))
 ```
 
 ## Fixed Effects Summary Table
@@ -570,25 +586,25 @@ if (!is.null(pf_subj) && !is.na(pf_subj$n_cells)) {
 ## RT Distribution Overlays
 
 ```{r, fig.cap="Posterior Predictive Check: RT Distributions. Empirical (black solid) vs. posterior predictive (blue solid) RT densities by Task × Effort × Difficulty. Overall model fit is good for central tendencies, with some misfit in fast tails (especially Easy/VDT).", out.width="95%", fig.align="center"}
-knitr::include_graphics("../output/figures/fig_ppc_rt_overlay.pdf")
+knitr::include_graphics(fig_path("fig_ppc_rt_overlay.pdf"))
 ```
 
 ## Quantile-Probability (QP) Plots
 
 ```{r, fig.cap="Quantile-Probability (QP) Plot. Empirical vs. predicted RT quantiles by difficulty level, with separate panels for Task × Effort. Points colored by difficulty (Standard=gray, Easy=blue, Hard=red) and shaped by response type (Correct/Error). Dashed diagonal = perfect prediction. Deviations primarily occur in fast tails for Easy/VDT conditions.", out.width="95%", fig.align="center"}
-knitr::include_graphics("../output/figures/fig_qp.pdf")
+knitr::include_graphics(fig_path("fig_qp.pdf"))
 ```
 
 ## Conditional Accuracy Function (CAF)
 
 ```{r, fig.cap="Conditional Accuracy Function (CAF). Empirical accuracy by RT bin for each Task × Effort × Difficulty combination. Shows the speed–accuracy tradeoff: faster responses (lower bins) tend toward chance accuracy, while slower responses show higher accuracy, consistent with evidence accumulation over time.", out.width="95%", fig.align="center"}
-knitr::include_graphics("../output/figures/fig_caf.pdf")
+knitr::include_graphics(fig_path("fig_caf.pdf"))
 ```
 
 ## PPC Residual Heatmaps
 
 ```{r, fig.cap="PPC Residual Heatmaps. KS statistic and QP RMSE by Task × Effort × Difficulty for all models (top panel) and primary model only (bottom panel). Darker red indicates larger residuals (poorer fit). The primary model shows acceptable fit across most cells, with notable misfit in Easy/VDT conditions.", out.width="100%", fig.align="center"}
-knitr::include_graphics("../output/figures/fig_ppc_heatmaps.pdf")
+knitr::include_graphics(fig_path("fig_ppc_heatmaps.pdf"))
 ```
 
 ### Heatmap Detail Tables
