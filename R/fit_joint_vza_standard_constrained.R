@@ -182,7 +182,7 @@ cat("\n=== Checking drift (v) estimates ===\n")
 # Extract drift coefficients
 v_draws <- as_draws_df(fit, variable = "^b_difficulty_level", regex = TRUE)
 if (ncol(v_draws) > 0) {
-  v_summary <- summarise_draws(v_draws, mean, median, q5, q95)
+  v_summary <- summarise_draws(v_draws, mean, median, ~quantile(.x, probs = c(0.05, 0.95)))
   cat("Drift (v) by difficulty:\n")
   print(v_summary)
   cat("\nNote: v(Standard) should be close to 0 (tight prior)\n")
@@ -194,7 +194,7 @@ if (ncol(v_draws) > 0) {
 # Check task/effort effects on drift (non-Standard only)
 v_interaction <- as_draws_df(fit, variable = "^b_.*:is_nonstd1", regex = TRUE)
 if (ncol(v_interaction) > 0) {
-  v_int_summary <- summarise_draws(v_interaction, mean, median, q5, q95)
+  v_int_summary <- summarise_draws(v_interaction, mean, median, ~quantile(.x, probs = c(0.05, 0.95)))
   cat("\nTask/Effort effects on drift (non-Standard only):\n")
   print(v_int_summary)
 }
@@ -203,7 +203,7 @@ cat("\n=== Checking bias (z) estimates ===\n")
 # Extract bias intercept and effects
 bias_draws <- as_draws_df(fit, variable = "^b_bias_", regex = TRUE)
 if (ncol(bias_draws) > 0) {
-  bias_summary <- summarise_draws(bias_draws, mean, median, q5, q95)
+  bias_summary <- summarise_draws(bias_draws, mean, median, ~quantile(.x, probs = c(0.05, 0.95)))
   cat("Bias (z) parameters summary:\n")
   print(bias_summary)
   cat("\nNote: Bias on logit scale. >0 = bias toward 'different', <0 = bias toward 'same'\n")

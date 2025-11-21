@@ -31,7 +31,8 @@ dd <- read_csv("data/analysis_ready/bap_ddm_ready_with_upper.csv", show_col_type
     task = factor(task),
     effort_condition = factor(effort_condition, levels = c("Low_5_MVC", "High_MVC")),
     difficulty_level = factor(difficulty_level, levels = c("Standard", "Hard", "Easy")),
-    decision = as.integer(dec_upper)
+    decision = as.integer(dec_upper),
+    is_nonstd = ifelse(difficulty_level == "Standard", 0L, 1L)  # Required for model predictions
   )
 
 cat("✓ Loaded data: ", nrow(dd), " trials\n")
