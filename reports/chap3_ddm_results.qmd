@@ -1,6 +1,6 @@
 ---
 title: "Chapter 3 — Diffusion Modeling with Pupil-Linked Arousal (Response-Signal Design)"
-author: "DDM Analysis Report"
+author: "Mohammad Dastgheib"
 format:
   html:
     toc: true
@@ -168,6 +168,12 @@ contrasts_table <- sread(file.path(p, "table_effect_contrasts.csv"))
 heatmap_wide <- sread(file.path(p, "ppc_heatmap_wide.csv"))
 heatmap_long <- sread(file.path(p, "ppc_heatmap_long.csv"))
 
+# Bias model results (response-side coding)
+bias_levels_std <- sread(file.path(p, "bias_standard_only_levels.csv"))
+bias_contr_std <- sread(file.path(p, "bias_standard_only_contrasts.csv"))
+bias_contr_joint <- sread(file.path(p, "bias_joint_contrast.csv"))
+ppc_joint_minimal <- sread(file.path(p, "ppc_joint_minimal.csv"))
+
 # Derive simple pass/fail summaries
 pf_subj <- if (!is.null(ppc_subj_cens)) {
   if ("any_flag" %in% names(ppc_subj_cens)) {
@@ -310,7 +316,7 @@ if (!is.null(qa_decision)) {
 }
 ```
 
-**Result**: All 67 subjects retained; no sub-chance performers. Decision coding verified: 0 mismatches (1=correct, 0=error confirmed across all trials).
+**Result**: All 67 subjects retained; no sub-chance performers. Decision coding is discussed in detail in the Model Specification section below.
 
 ## MVC Compliance
 
@@ -364,7 +370,7 @@ if (!is.null(acc_glmm)) {
 **Key findings**:
 
 - **Hard trials**: Substantially lower accuracy (β ≈ -2.79, *p* < .001)
-- **Easy trials**: Slightly lower than Standard (β ≈ -0.29, *p* < .001) — likely due to a ceiling effect where the default tendency to report "no change" (conservative bias) yields near-perfect Correct Rejection rates on Standard trials, slightly exceeding the Hit rates on Easy trials.
+- **Easy trials**: Slightly lower than Standard (β ≈ -0.29, *p* < .001) — likely due to a ceiling effect where the default tendency to report "same" (conservative bias) yields near-perfect rates on Standard trials, slightly exceeding the Hit rates on Easy trials.
 - **Task difference**: VDT showed higher accuracy than ADT (β ≈ 0.75, *p* < .001)
 
 ## RT: Linear Mixed Model on Median RT
@@ -400,6 +406,10 @@ if (!is.null(rt_lmm)) {
 
 # Model Specification
 
+## Decision Coding (Response-Side)
+
+We redefined the decision boundary such that the **upper boundary corresponds to "different"** and the **lower boundary to "same"**. This response-side coding is critical for identifying bias independently of correctness. On Standard (Δ=0) trials, participants chose "same" on 87.8% of trials and "different" on 12.2%—consistent with a conservative response tendency. The transformation from accuracy-based coding (dec=1 = correct) to response-side coding (dec_upper=1 = "different") was verified across all trials with zero mismatches.
+
 ## DDM Family and Links
 
 **Family**: `wiener(link_bs="log", link_ndt="log", link_bias="logit")`
@@ -411,7 +421,29 @@ if (!is.null(rt_lmm)) {
 - Non-decision time (t₀/ndt): log link
 - Starting-point bias (z): logit link
 
-## Formulas (Primary Model)
+## Standard-Only Bias Calibration
+
+To isolate bias identification from drift, we fit a hierarchical Wiener DDM to **Standard trials only** (3,472 trials from 67 subjects) with a tight drift prior to enforce near-zero evidence:
+
+- **Drift (v)**: `rt | dec(decision) ~ 1 + (1|subject_id)` with prior `normal(0, 0.03)` to enforce v ≈ 0
+- **Boundary (a/bs)**: `bs ~ 1 + (1|subject_id)` — intercept + subject random effects
+- **Non-decision time (t₀/ndt)**: `ndt ~ 1` — intercept-only (response-signal design)
+- **Bias (z)**: `bias ~ task + effort_condition + (1|subject_id)` — task/effort effects + subject random effects
+
+This isolates bias identification from drift, as Standard (Δ=0) trials should have zero evidence accumulation.
+
+## Joint Model (Confirmation)
+
+A full hierarchical model using all trials (17,243 trials) constrained Standard drift to ≈0 (tight prior `normal(0, 0.04)`) and allowed drift differences only for non-Standard trials (Easy/Hard) via an `is_nonstd` indicator:
+
+- **Drift (v)**: `rt | dec(decision) ~ 0 + difficulty_level + task:is_nonstd + effort_condition:is_nonstd + (1|subject_id)` — separate coefficients per difficulty, task/effort effects only for non-Standard
+- **Boundary (a/bs)**: `bs ~ difficulty_level + task + (1|subject_id)` — difficulty + task effects + subject random effects
+- **Non-decision time (t₀/ndt)**: `ndt ~ task + effort_condition` — task/effort effects, no random effects
+- **Bias (z)**: `bias ~ difficulty_level + task + (1|subject_id)` — difficulty + task effects + subject random effects
+
+This joint model confirms the bias estimates from the Standard-only model while providing additional information about difficulty effects.
+
+## Formulas (Primary Model - Original Analysis)
 
 The primary model includes difficulty effects on v, a, and z, with task and effort as additive factors:
 
@@ -525,6 +557,55 @@ if (!is.null(publish_gate)) {
 **Result**: The primary model passes all convergence gates. PPC performance is discussed in detail below.
 
 # Fixed Effects & Posterior Contrasts
+
+## Bias Results (Standard-Only Model)
+
+```{r}
+if (!is.null(bias_levels_std)) {
+  bias_levels_std %>%
+    filter(scale == "prob") %>%
+    mutate(
+      param_label = case_when(
+        param == "bias_ADT_Low" ~ "ADT, Low effort",
+        param == "bias_ADT_High" ~ "ADT, High effort",
+        param == "bias_VDT_Low" ~ "VDT, Low effort",
+        param == "bias_VDT_High" ~ "VDT, High effort",
+        TRUE ~ param
+      )
+    ) %>%
+    select(param_label, mean, q2.5, q97.5) %>%
+    gt() %>%
+    tab_header(title = md("**Bias Levels (z parameter, natural scale)**")) %>%
+    cols_label(
+      param_label = "Condition",
+      mean = "Mean",
+      q2.5 = "2.5%",
+      q97.5 = "97.5%"
+    ) %>%
+    fmt_number(columns = c(mean, q2.5, q97.5), decimals = 3)
+} else {
+  cat("Bias levels data not available.")
+}
+```
+
+```{r}
+if (!is.null(bias_contr_std)) {
+  bias_contr_std %>%
+    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
+    select(contrast, mean, q2.5, q97.5, Pr_gt_0) %>%
+    gt() %>%
+    tab_header(title = md("**Bias Contrasts (Standard-Only Model)**")) %>%
+    cols_label(
+      contrast = "Contrast",
+      mean = "Mean Δ (logit)",
+      q2.5 = "2.5%",
+      q97.5 = "97.5%",
+      Pr_gt_0 = "P(Δ>0)"
+    )
+} else {
+  cat("Bias contrasts data not available.")
+}
+```
 
 ## Fixed Effects: Forest Plots by Task
 
@@ -671,7 +752,7 @@ All parameters converged well (max $\hat{R}$ ≤ 1.01; min bulk/tail ESS ≥ 400
 
 **Boundary separation (a)**: Easy trials have narrower decision boundaries, consistent with reduced caution when discrimination is easier.
 
-**Starting-point bias (z)**: Difficulty affects bias toward the "change" response, with Easy trials showing stronger bias (participants anticipate correct "change" responses).
+**Starting-point bias (z)**: Results from the Standard-only bias calibration model are reported separately below.
 
 ## Task Differences (ADT vs. VDT)
 
@@ -710,10 +791,7 @@ All analysis code and de-identified data are available in the project repository
 
 ## Model Family Limitations
 
-1. **Constant-drift Wiener DDM**: The base Wiener DDM assumes constant drift within each trial and no across-trial variability in drift (sv), starting point (sz), or non-decision time (st₀). This can underfit fast tails, especially in conditions with high accuracy (Easy/VDT). Future work should explore:
-   - Full Ratcliff diffusion model with across-trial variability
-   - Collapsing/urgency bounds
-   - Explicit contaminant/lapse mixture models
+1. **Constant-drift Wiener DDM**: The base Wiener DDM assumes constant drift within each trial and no across-trial variability in drift (sv), starting point (sz), or non-decision time (st₀). This can underfit fast tails, especially in VDT-Hard conditions. The constant-drift Wiener DDM underfits fast RT tails, especially in VDT-Hard. Response-signal timing limits identifiability of across-trial variability. Future work could add a small contaminant mixture, across-trial variability (sv, sz), or urgency/collapsing bounds; LBA/race models may better capture fast-tail dynamics in the Easy/VDT regime.
 
 2. **Non-decision time (t₀) random effects omitted**: In the response-signal design, t₀ primarily reflects motor execution. We modeled t₀ with group-level intercepts and small task/effort effects but omitted subject-level random effects due to identifiability concerns and initialization failures in pilot models. This may underestimate individual differences in motor execution speed.
 
