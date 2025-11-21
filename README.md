@@ -338,7 +338,7 @@ make clean-all  # Remove all generated outputs
 4. 04_computational_modeling → `Rscript scripts/core/run_analysis.R`
 5. 05_statistical_analysis → `Rscript scripts/02_statistical_analysis/02_ddm_analysis.R`
 6. 06_visualization → `Rscript scripts/create_condition_effects_forest_plot.R`
-7. 07_manuscript → curated outputs in `07_manuscript/`
+7. 07_manuscript → `Rscript 07_manuscript/render_ddm_chapter.R` (generates `reports/chap3_ddm_results.qmd` HTML/DOCX)
 
 ## 🧪 Testing
 
