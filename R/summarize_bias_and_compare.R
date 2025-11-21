@@ -57,14 +57,16 @@ cat("✓ Wrote fixed effects tables\n")
 
 # Extract v(Standard) from the joint model
 # With 0 + difficulty_level, the coefficient should be named "difficulty_levelStandard"
+# Note: fixef() returns parameters without the "b_" prefix for the main formula
 cat("\n=== Extracting v(Standard) from Joint Model ===\n")
 
 # Try multiple possible parameter names
+# Main formula parameters (drift) don't have prefixes in fixef output
 v_std_candidates <- fx_joint %>%
   filter(
-    grepl("difficulty_levelStandard", param) |
-    grepl("^b_rt\\|dec.*difficulty_levelStandard", param) |
-    (grepl("^b_", param) & grepl("Standard", param) & !grepl("bias|bs|ndt", param))
+    param == "difficulty_levelStandard" |
+    grepl("^difficulty_levelStandard$", param) |
+    (grepl("Standard", param) & !grepl("bias|bs|ndt|Intercept", param) & !grepl(":", param))
   )
 
 if (nrow(v_std_candidates) == 0) {
