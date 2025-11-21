@@ -659,9 +659,54 @@ The Standard-only bias calibration model successfully:
 - ✅ Bias estimates are consistent across models (difference < 1%)
 
 **Output Files:**
-- `output/publish/bias_standard_only_levels.csv` - Bias levels on logit and natural scales
+- `output/publish/bias_standard_only_levels.csv` - Bias levels on logit and natural scales (all 4 conditions)
 - `output/publish/bias_standard_only_contrasts.csv` - Posterior contrasts with directional probabilities
 - `output/publish/bias_joint_contrast.csv` - Joint model contrast for comparison
+
+---
+
+## Figures Generated
+
+### Bias-Specific Figures
+
+1. **fig_bias_forest** - Bias (z) forest plot by task/effort
+   - Shows all 4 conditions: ADT-Low, ADT-High, VDT-Low, VDT-High
+   - 95% credible intervals with point estimates
+   - Reference line at z = 0.5 (no bias)
+   - Files: `output/figures/fig_bias_forest.png` (49 KB, 300 DPI), `.pdf`
+
+2. **fig_v_standard_posterior** - Posterior of v(Standard) with prior overlay
+   - Shows posterior distribution of drift on Standard trials
+   - Overlays tight prior (Normal(0, 0.03)) for comparison
+   - Demonstrates drift is effectively zero (validates approach)
+   - Files: `output/figures/fig_v_standard_posterior.png` (76 KB, 300 DPI), `.pdf`
+
+3. **fig_ppc_small_multiples** - PPC best/median/worst cells
+   - Shows best, median, and worst cells by QP RMSE
+   - Displays both QP RMSE and KS statistics
+   - Includes threshold lines (QP > 0.12, KS > 0.20)
+   - Color-coded by rank (green=best, orange=median, red=worst)
+   - Files: `output/figures/fig_ppc_small_multiples.png` (94 KB, 300 DPI), `.pdf`
+
+4. **fig_pdiff_heatmap** - Observed vs predicted p("different")
+   - Heatmap showing all 12 cells (2 tasks × 2 effort × 3 difficulty)
+   - Two panels: Observed and Predicted
+   - Color-coded by probability (blue=low, white=0.5, red=high)
+   - Values displayed in each tile
+   - Files: `output/figures/fig_pdiff_heatmap.png` (114 KB, 300 DPI), `.pdf`
+
+**All bias-specific figures verified complete** - All conditions included, no missing data.
+
+### Other Supporting Figures (from Primary Analysis)
+
+5. **fig_design_timeline** - Task design timeline schematic
+6. **fig_loo** - LOO model comparison
+7. **fig_fixed_effects** - Fixed effects forest plots (separate for ADT/VDT)
+8. **fig_ppc_rt_overlay** - RT distribution overlays
+9. **fig_qp** - Quantile-probability plots
+10. **fig_caf** - Conditional accuracy function
+11. **fig_ppc_heatmaps** - PPC residual heatmaps
+12. **fig_ndt_prior_posterior** - NDT prior vs posterior
 
 ---
 
