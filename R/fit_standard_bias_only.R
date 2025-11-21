@@ -53,9 +53,11 @@ fam <- wiener(
 form <- bf(
   rt | dec(decision) ~ 1 + (1 | subject_id),
   bs   ~ 1 + (1 | subject_id),
-  ndt  ~ task + effort_condition,
+  ndt  ~ 1,  # Simplified: no fixed effects on NDT to avoid initialization issues
   bias ~ task + effort_condition + (1 | subject_id)
 )
+cat("\nNOTE: NDT has no fixed effects (simplified to avoid initialization issues)\n")
+cat("Subject variation in NDT can be captured through other parameters\n")
 
 # Prior specifications:
 # - v intercept: tight around 0 (Standard should have v≈0)
@@ -72,7 +74,7 @@ pri <- c(
   prior(normal(log(0.23), 0.20), class = "Intercept", dpar = "ndt"),
   prior(normal(0, 0.5), class = "Intercept", dpar = "bias"),     # no bias on logit scale
   prior(normal(0, 0.35), class = "b", dpar = "bias"),            # task/effort effects on bias
-  prior(normal(0, 0.15), class = "b", dpar = "ndt"),             # small ndt effects
+  # Removed: prior(normal(0, 0.15), class = "b", dpar = "ndt"),  # No NDT fixed effects
   prior(student_t(3, 0, 0.30), class = "sd")                     # subject-level variation
 )
 
@@ -94,17 +96,13 @@ ndt_init <- log(min_rt_global * 0.6)
 cat("Using NDT initialization:", ndt_init, "=", exp(ndt_init), "seconds (60% of min RT)\n")
 
 # Safe initialization function
-# Try multiple initialization strategies - brms will use the first that works
+# With NDT ~ 1 (no fixed effects), use Intercept_ndt
 safe_init <- function(chain_id = 1) {
-  # Strategy: Initialize NDT intercept very low, all other NDT coefs to 0
-  # This ensures NDT = exp(low_value + 0 + 0) = low value for all conditions
   list(
     Intercept = 0,
     Intercept_bs = log(1.3),
     Intercept_bias = 0,
-    # Try both possible NDT parameter names
-    Intercept_ndt = ndt_init,  # For models without fixed effects
-    b_ndt_Intercept = ndt_init  # For models with fixed effects (will be ignored if doesn't exist)
+    Intercept_ndt = ndt_init  # NDT intercept (no fixed effects, so this is the only NDT param)
   )
 }
 
