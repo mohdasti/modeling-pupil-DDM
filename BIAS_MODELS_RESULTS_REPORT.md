@@ -588,6 +588,50 @@ The Standard-only bias calibration model successfully:
 
 ---
 
+---
+
+## Posterior Contrasts for Bias (APA-Ready)
+
+### Standard-Only Model
+
+**Bias Levels (Natural Scale, z parameter):**
+- **ADT, Low effort:** z = 0.567 (95% CrI: [0.534, 0.601])
+- **VDT, Low effort:** z = 0.523 (95% CrI: [0.490, 0.556])
+- **ADT, High effort:** z = 0.579 (95% CrI: [0.545, 0.612])
+
+**Posterior Contrasts:**
+
+| Contrast | Mean | SD | 95% CrI | P(>0) | Interpretation |
+|----------|------|----|---------|-------|----------------|
+| VDT - ADT (logit) | -0.179 | 0.040 | [-0.259, -0.101] | 0.000 | Strongly negative - VDT has ~4.4% lower bias toward "different" |
+| High - Low (logit) | 0.048 | 0.037 | [-0.025, 0.120] | 0.903 | Positive but negligible - CrI includes zero |
+
+**APA-Style Reporting:**
+> The task effect on bias was significant, with VDT showing lower bias toward "different" responses than ADT (Δ = -0.179, 95% CrI: [-0.259, -0.101], P(>0) < 0.001). The effort effect was negligible (Δ = 0.048, 95% CrI: [-0.025, 0.120], P(>0) = 0.903).
+
+### Joint Model (Confirmation)
+
+**Posterior Contrast:**
+
+| Contrast | Mean | SD | 95% CrI | P(>0) | Interpretation |
+|----------|------|----|---------|-------|----------------|
+| VDT - ADT (logit) | -0.100 | 0.021 | [-0.141, -0.059] | 0.000 | Strongly negative - Consistent with Standard-only model |
+
+**APA-Style Reporting:**
+> Results were consistent with the Standard-only model, showing a reliable task effect (Δ = -0.100, 95% CrI: [-0.141, -0.059], P(>0) < 0.001).
+
+**Consistency Check:**
+- ✅ Both models show VDT has lower bias toward "different" than ADT (reliable effect)
+- ✅ Effort has minimal effect on bias (negligible in both models)
+- ✅ Bias estimates are consistent across models (difference < 1%)
+
+**Output Files:**
+- `output/publish/bias_standard_only_levels.csv` - Bias levels on logit and natural scales
+- `output/publish/bias_standard_only_contrasts.csv` - Posterior contrasts with directional probabilities
+- `output/publish/bias_joint_contrast.csv` - Joint model contrast for comparison
+
+---
+
 **Report prepared:** November 21, 2025  
 **Analysis code:** 
 - Step 1: `R/00_build_decision_upper_diff.R`
@@ -595,6 +639,7 @@ The Standard-only bias calibration model successfully:
 - Step 3: `R/fit_joint_vza_standard_constrained.R`
 - Step 4: `R/summarize_bias_and_compare.R`
 - Step 5: `R/ppc_joint_minimal.R`
+- Bias Contrasts: `R/report_bias_contrasts.R`
 
 **Runner scripts:** 
 - `R/run_all_bias_models_overnight.R` (full pipeline)
