@@ -17,40 +17,75 @@ find_project_root <- function() {
   markers <- c("R/00_build_decision_upper_diff.R", ".git", "data/analysis_ready")
   for (marker in markers) {
     if (file.exists(marker)) {
-      return(current)
+      return(normalizePath(current))
     }
   }
   
   # Strategy 3: Go up directories looking for markers
   max_depth <- 5
-  path <- current
+  path <- normalizePath(current)
   for (i in 1:max_depth) {
     markers_found <- sapply(markers, function(m) file.exists(file.path(path, m)))
     if (any(markers_found)) {
       return(path)
     }
-    path <- dirname(path)
-    if (path == dirname(path)) break  # Reached filesystem root
+    parent <- dirname(path)
+    if (parent == path) break  # Reached filesystem root
+    path <- parent
   }
   
   # Strategy 4: Try common project location
   project_path <- file.path(Sys.getenv("HOME"), "Documents", "GitHub", "modeling-pupil-DDM", "modeling-pupil-DDM")
-  if (file.exists(project_path)) {
-    return(project_path)
+  if (dir.exists(project_path)) {
+    return(normalizePath(project_path))
+  }
+  
+  # Strategy 5: Try to find the script itself and use its directory
+  script_path <- tryCatch({
+    # If script was sourced, try to find it
+    sys_frames <- sys.frames()
+    if (length(sys_frames) > 0) {
+      # Look for the script in the call stack
+      for (frame in sys_frames) {
+        if (exists("ofile", frame)) {
+          script_dir <- dirname(frame$ofile)
+          parent_dir <- dirname(script_dir)
+          if (file.exists(file.path(parent_dir, "R", "00_build_decision_upper_diff.R"))) {
+            return(normalizePath(parent_dir))
+          }
+        }
+      }
+    }
+    NULL
+  }, error = function(e) NULL)
+  
+  if (!is.null(script_path)) {
+    return(script_path)
   }
   
   # If all else fails, return current directory
-  return(current)
+  return(normalizePath(current))
 }
 
 project_root <- find_project_root()
-if (getwd() != project_root) {
+original_wd <- getwd()
+
+if (normalizePath(getwd()) != project_root) {
   cat("Changing working directory to project root:\n")
-  cat("  From:", getwd(), "\n")
+  cat("  From:", original_wd, "\n")
   cat("  To:  ", project_root, "\n")
   setwd(project_root)
 }
+
+# Verify we're in the right place
+if (!file.exists("R/00_build_decision_upper_diff.R")) {
+  stop("Cannot find project files. Please run this script from the project root directory.\n",
+       "Expected location: ", file.path(Sys.getenv("HOME"), "Documents", "GitHub", "modeling-pupil-DDM", "modeling-pupil-DDM"), "\n",
+       "Current location: ", getwd())
+}
+
 cat("Working directory:", getwd(), "\n")
+cat("Project root verified.\n")
 
 # Create log file
 log_file <- paste0("output/logs/bias_models_run_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".log")
