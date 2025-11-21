@@ -494,11 +494,12 @@ if (!is.null(fx_table)) {
 if (!is.null(contrasts_table)) {
   contrasts_table %>%
     mutate(across(where(is.numeric), ~round(.x, 3))) %>%
-    select(contrast_label, parameter, mean, q2.5, q97.5, p_gt0, p_lt0, p_in_rope) %>%
+    rename(q2.5 = q05, q97.5 = q95) %>%
+    select(contrast, parameter, mean, q2.5, q97.5, p_gt0, p_lt0, p_in_rope) %>%
     gt() %>%
     tab_header(title = md("**Table: Posterior Contrasts (Directional Probabilities)**")) %>%
     cols_label(
-      contrast_label = "Contrast",
+      contrast = "Contrast",
       parameter = "Parameter",
       mean = "Mean Δ",
       q2.5 = "2.5%",
