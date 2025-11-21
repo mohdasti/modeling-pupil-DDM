@@ -15,8 +15,19 @@ to_prob <- function(x) 1/(1+exp(-x))
 fx_std <- as_draws_df(m_std)  # contains b_bias_*
 # Intercept is bias (logit) for baseline (task=ADT, effort=Low)
 b0   <- fx_std$`b_bias_Intercept`
-bVDT <- b0 + fx_std$`b_bias_taskVDT`
-bHi  <- b0 + fx_std$`b_bias_effort_conditionHigh_MVC`
+bVDT <- fx_std$`b_bias_taskVDT`
+bHi  <- fx_std$`b_bias_effort_conditionHigh_MVC`
+
+# Compute all 4 conditions:
+# 1. ADT-Low: b0 (baseline)
+# 2. ADT-High: b0 + bHi
+# 3. VDT-Low: b0 + bVDT
+# 4. VDT-High: b0 + bVDT + bHi (was missing!)
+
+b_ADT_Low  <- b0
+b_ADT_High <- b0 + bHi
+b_VDT_Low  <- b0 + bVDT
+b_VDT_High <- b0 + bVDT + bHi  # FIX: Added missing condition
 
 summarize_param <- function(draws, name, scale=c("logit","prob")) {
   scale <- match.arg(scale)
@@ -27,17 +38,21 @@ summarize_param <- function(draws, name, scale=c("logit","prob")) {
 }
 
 S <- bind_rows(
-  summarize_param(b0,   "bias_ADT_Low", "logit"),
-  summarize_param(b0,   "bias_ADT_Low", "prob"),
-  summarize_param(bVDT, "bias_VDT_Low", "logit"),
-  summarize_param(bVDT, "bias_VDT_Low", "prob"),
-  summarize_param(bHi,  "bias_ADT_High","logit"),
-  summarize_param(bHi,  "bias_ADT_High","prob")
+  summarize_param(b_ADT_Low,  "bias_ADT_Low", "logit"),
+  summarize_param(b_ADT_Low,  "bias_ADT_Low", "prob"),
+  summarize_param(b_ADT_High, "bias_ADT_High", "logit"),
+  summarize_param(b_ADT_High, "bias_ADT_High", "prob"),
+  summarize_param(b_VDT_Low,  "bias_VDT_Low", "logit"),
+  summarize_param(b_VDT_Low,  "bias_VDT_Low", "prob"),
+  summarize_param(b_VDT_High, "bias_VDT_High", "logit"),  # FIX: Added
+  summarize_param(b_VDT_High, "bias_VDT_High", "prob")     # FIX: Added
 )
 
 # Contrasts (logit scale)
-d_VDT_vs_ADT <- bVDT - b0
-d_Hi_vs_Low  <- (bHi - b0)
+# VDT vs ADT: average across effort levels
+d_VDT_vs_ADT <- ((b_VDT_Low + b_VDT_High) / 2) - ((b_ADT_Low + b_ADT_High) / 2)
+# High vs Low: average across tasks
+d_Hi_vs_Low  <- ((b_ADT_High + b_VDT_High) / 2) - ((b_ADT_Low + b_VDT_Low) / 2)
 
 Pr_pos <- function(x) mean(x>0)
 C <- tibble(
