@@ -742,6 +742,22 @@ We conducted additional sensitivity analyses (Unconditional Pooled PPC, Conditio
 
 # Interpretation & Key Findings
 
+## Bias (Standard-Only Model)
+
+The starting-point bias was above 0.5 (no bias), with posterior mean z = 0.567, 95% CrI [0.534, 0.601], indicating a slight bias toward "different" responses. VDT showed less bias toward "different" than ADT on the logit scale, with contrast Δ = -0.179, 95% CrI [-0.259, -0.101], P(Δ>0) < 0.001. Effort (High vs Low) was negligible, with contrast Δ = 0.048, 95% CrI [-0.025, 0.120], P(Δ>0) = 0.903. Drift on Standard trials was effectively zero, with posterior mean v = -0.036, 95% CrI [-0.094, 0.022], validating the use of Standard trials for bias identification. Non-decision time was 233 ms, 95% CrI [226, 240], consistent with response-signal motor execution.
+
+```{r, fig.cap="Bias (z) by task and effort with 95% CrIs; reference line at z=0.5 (no bias).", out.width="85%", fig.align="center"}
+knitr::include_graphics(fig_path("fig_bias_forest.png"))
+```
+
+```{r, fig.cap="Posterior of drift on Standard trials with prior overlay (v≈0). The tight prior Normal(0, 0.03) successfully constrained drift to near-zero, validating the Standard-only bias calibration approach.", out.width="85%", fig.align="center"}
+knitr::include_graphics(fig_path("fig_v_standard_posterior.png"))
+```
+
+## Joint Model (Confirmation)
+
+Standard drift remained near zero (posterior mean ≈ -0.10, 95% CrI [-0.179, -0.017]). Easy showed strong positive drift (≈1.77), Hard moderate positive drift (≈0.25). Bias intercept closely matched the Standard-only estimate (z = 0.572 vs. 0.567); the task effect replicated (VDT < ADT, Δ = -0.100, 95% CrI [-0.141, -0.059]).
+
 ## Convergence & Model Selection
 
 All parameters converged well (max $\hat{R}$ ≤ 1.01; min bulk/tail ESS ≥ 400; no divergent transitions). Leave-one-out cross-validation strongly favored a model in which **difficulty modulates drift, boundary separation, and starting-point bias jointly** (v+a+z), relative to drift-only or simpler models (ΔELPD ≈ +185, SE ≈ 20).
@@ -751,8 +767,6 @@ All parameters converged well (max $\hat{R}$ ≤ 1.01; min bulk/tail ESS ≥ 400
 **Drift rate (v)**: Easy trials show faster evidence accumulation than Hard trials (strong positive contrast, P(Δ>0) > 0.99 for both tasks).
 
 **Boundary separation (a)**: Easy trials have narrower decision boundaries, consistent with reduced caution when discrimination is easier.
-
-**Starting-point bias (z)**: Results from the Standard-only bias calibration model are reported separately below.
 
 ## Task Differences (ADT vs. VDT)
 
@@ -765,6 +779,16 @@ High effort (40% MVC) produces small but credible effects on drift rate and non-
 ## Model Fit
 
 **Absolute fit**: Subject-wise mid-body PPCs show acceptable error magnitudes (QP RMSE ≤ 0.09 s for most cells; ≤15% flagged). The model captures central RT tendencies and accuracy well.
+
+**PPC Summary (Joint Model)**: PPCs were good for Standard and Easy cells (QP RMSE < 0.13, KS < 0.08), with modest misfit in VDT-Hard (worst QP RMSE ≈ 0.206). This pattern suggests some residual fast-tail behavior not captured by a constant-drift Wiener process.
+
+```{r, fig.cap="Observed vs. model-predicted p('different') across 12 cells (Task × Effort × Difficulty).", out.width="90%", fig.align="center"}
+knitr::include_graphics(fig_path("fig_pdiff_heatmap.png"))
+```
+
+```{r, fig.cap="PPC best/median/worst cells (QP RMSE and KS with thresholds).", out.width="90%", fig.align="center"}
+knitr::include_graphics(fig_path("fig_ppc_small_multiples.png"))
+```
 
 **Known limitation**: Pooled conditional PPCs reveal residual fast-tail misfit, most pronounced in Easy/VDT conditions. This is a known limitation of constant-drift Wiener DDMs without across-trial variability (sv, sz, st₀) or explicit contaminant/lapse processes.
 
