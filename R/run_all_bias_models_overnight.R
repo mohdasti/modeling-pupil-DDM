@@ -4,9 +4,53 @@
 # Run this in RStudio or via: Rscript R/run_all_bias_models_overnight.R
 
 # Setup: ensure we're in the project root
-if (basename(getwd()) == "R") {
-  setwd("..")
+# Try multiple strategies to find project root
+find_project_root <- function() {
+  current <- getwd()
+  
+  # Strategy 1: If we're in R/ subdirectory, go up one level
+  if (basename(current) == "R") {
+    return(normalizePath(".."))
+  }
+  
+  # Strategy 2: Look for project markers (R/ directory, .git, etc.)
+  markers <- c("R/00_build_decision_upper_diff.R", ".git", "data/analysis_ready")
+  for (marker in markers) {
+    if (file.exists(marker)) {
+      return(current)
+    }
+  }
+  
+  # Strategy 3: Go up directories looking for markers
+  max_depth <- 5
+  path <- current
+  for (i in 1:max_depth) {
+    markers_found <- sapply(markers, function(m) file.exists(file.path(path, m)))
+    if (any(markers_found)) {
+      return(path)
+    }
+    path <- dirname(path)
+    if (path == dirname(path)) break  # Reached filesystem root
+  }
+  
+  # Strategy 4: Try common project location
+  project_path <- file.path(Sys.getenv("HOME"), "Documents", "GitHub", "modeling-pupil-DDM", "modeling-pupil-DDM")
+  if (file.exists(project_path)) {
+    return(project_path)
+  }
+  
+  # If all else fails, return current directory
+  return(current)
 }
+
+project_root <- find_project_root()
+if (getwd() != project_root) {
+  cat("Changing working directory to project root:\n")
+  cat("  From:", getwd(), "\n")
+  cat("  To:  ", project_root, "\n")
+  setwd(project_root)
+}
+cat("Working directory:", getwd(), "\n")
 
 # Create log file
 log_file <- paste0("output/logs/bias_models_run_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".log")
