@@ -6,6 +6,7 @@ format:
     toc: true
     toc-depth: 3
     number-sections: true
+    embed-resources: true
   docx:
     toc: true
     number-sections: true
@@ -68,39 +69,59 @@ fig_path <- function(fig_name) {
   png_name <- paste0(base_name, ".png")
   pdf_name <- paste0(base_name, ".pdf")
   
-  # Check which files exist
-  png_path <- file.path("../output/figures", png_name)
-  pdf_path <- file.path("../output/figures", pdf_name)
+  # Find the actual file location
+  png_abs <- NULL
+  pdf_abs <- NULL
   
-  png_exists <- file.exists(file.path(proj_root, "output/figures", png_name)) ||
-                file.exists(file.path("output/figures", png_name)) ||
-                file.exists(png_path)
+  candidates_png <- c(
+    file.path(proj_root, "output/figures", png_name),
+    file.path("output/figures", png_name),
+    file.path("../output/figures", png_name)
+  )
   
-  pdf_exists <- file.exists(file.path(proj_root, "output/figures", pdf_name)) ||
-                file.exists(file.path("output/figures", pdf_name)) ||
-                file.exists(pdf_path)
+  candidates_pdf <- c(
+    file.path(proj_root, "output/figures", pdf_name),
+    file.path("output/figures", pdf_name),
+    file.path("../output/figures", pdf_name)
+  )
+  
+  for (path in candidates_png) {
+    if (file.exists(path)) {
+      png_abs <- normalizePath(path)
+      break
+    }
+  }
+  
+  for (path in candidates_pdf) {
+    if (file.exists(path)) {
+      pdf_abs <- normalizePath(path)
+      break
+    }
+  }
   
   # Choose format based on output type
   # DOCX: prefer PDF (vector graphics work better in Word)
   # HTML: prefer PNG (better browser compatibility)
   if (!is.null(output_format) && grepl("docx|word", output_format, ignore.case = TRUE)) {
-    if (pdf_exists) {
-      return(pdf_path)
-    } else if (png_exists) {
-      return(png_path)
+    if (!is.null(pdf_abs)) {
+      # For DOCX, return relative path (Word handles it)
+      return(file.path("../output/figures", pdf_name))
+    } else if (!is.null(png_abs)) {
+      return(file.path("../output/figures", png_name))
     }
   } else {
-    # HTML or unknown: prefer PNG
-    if (png_exists) {
-      return(png_path)
-    } else if (pdf_exists) {
-      return(pdf_path)
+    # HTML: use relative path from reports/ directory
+    # Quarto will handle copying if needed
+    if (!is.null(png_abs)) {
+      return(file.path("../output/figures", png_name))
+    } else if (!is.null(pdf_abs)) {
+      return(file.path("../output/figures", pdf_name))
     }
   }
   
   # Fallback
   warning("Figure not found: ", fig_name)
-  return(if (pdf_exists) pdf_path else png_path)
+  return(file.path("../output/figures", if (!is.null(png_abs)) png_name else pdf_name))
 }
 
 # Helper: safe read
