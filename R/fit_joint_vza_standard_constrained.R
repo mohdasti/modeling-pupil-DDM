@@ -120,6 +120,25 @@ tryCatch({
 cat("\n=== Fitting model ===\n")
 cat("This may take a while (6000 iterations, 3 chains)...\n")
 
+# Safe initialization: NDT must be < min(RT) for all subjects
+min_rt_global <- min(dd$rt, na.rm = TRUE)
+cat("Global minimum RT:", min_rt_global, "seconds\n")
+cat("Using NDT initialization:", log(min_rt_global * 0.8), "(80% of min RT)\n")
+
+# Safe initialization function
+safe_init <- function(chain_id = 1) {
+  # NDT must be safely below all RTs
+  # Use 80% of minimum RT to ensure safety margin
+  ndt_init <- log(min_rt_global * 0.8)
+  
+  list(
+    Intercept_ndt = ndt_init,  # NDT intercept on log scale
+    Intercept_bs = log(1.3),  # Boundary separation (conservative)
+    Intercept_bias = 0,        # Bias intercept (no bias on logit scale)
+    Intercept = 0              # Drift intercept (will be overridden by difficulty_level coefficients)
+  )
+}
+
 fit <- brm(
   form,
   data = dd,
@@ -130,6 +149,7 @@ fit <- brm(
   warmup = 3000,
   cores = 3,
   threads = threading(2),
+  init = safe_init,
   control = list(adapt_delta = 0.99, max_treedepth = 14),
   backend = "cmdstanr",
   file = "output/models/joint_vza_stdconstrained",
