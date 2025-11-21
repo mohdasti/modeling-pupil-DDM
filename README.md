@@ -106,7 +106,12 @@ modeling-pupil-DDM/
 │
 ├── R/                                  # R analysis scripts
 │   ├── audit_design_coding.R           # Design-coding audit script
+│   ├── extract_*.R                     # Extraction scripts for QA, manipulation checks, LOO, PPC
+│   ├── run_extract_all.R               # Master runner for all extraction scripts
 │   └── [other R scripts]               # Additional analysis scripts
+│
+├── reports/                            # Comprehensive analysis reports
+│   └── chap3_ddm_results.qmd           # DDM chapter report (Quarto)
 │
 ├── tests/                              # Unit tests
 │   ├── test_data_processing.py         # Data processing tests
@@ -120,7 +125,8 @@ modeling-pupil-DDM/
 └── docs/                               # Documentation
     ├── pipeline_README.md              # Pipeline documentation
     ├── model_documentation.md          # DDM implementation details
-    └── api_reference.md                # Function documentation
+    ├── api_reference.md                # Function documentation
+    └── DDM_CHAPTER_INTEGRATION.md     # DDM chapter integration guide
 ```
 
 ## 🛠️ Installation
@@ -136,7 +142,7 @@ modeling-pupil-DDM/
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/modeling-pupil-DDM.git
+   git clone https://github.com/mohdasti/modeling-pupil-DDM.git
    cd modeling-pupil-DDM
    ```
 
@@ -224,6 +230,34 @@ The audit script performs:
 - **RT floor checks**: Detects double-flooring/clamping near 250 ms threshold
 - **Factor structure validation**: Confirms factor levels and contrasts match expectations
 - **Model matrix inspection**: Prints drift fixed-effect design columns for verification
+
+### Comprehensive DDM Chapter Report
+
+Generate the complete DDM chapter report (Step 7 of the pipeline):
+
+```bash
+# Generate complete report (extracts all tables and renders QMD)
+Rscript 07_manuscript/render_ddm_chapter.R
+
+# Or run extraction and rendering separately:
+Rscript R/run_extract_all.R              # Extract all tables to output/publish/
+Rscript R/render_chap3_report.R          # Render reports/chap3_ddm_results.qmd
+```
+
+**Outputs**:
+- `reports/chap3_ddm_results.html` - Interactive HTML report
+- `reports/chap3_ddm_results.docx` - Word document for manuscript
+- `output/publish/*.csv` - All extracted tables (QA, manipulation checks, LOO, PPC, contrasts)
+
+The QMD report integrates:
+- Design & data quality assurance
+- Manipulation checks (independent of DDM)
+- Model comparison (LOO-CV)
+- Fixed effects and posterior contrasts
+- Posterior predictive checks
+- Complete interpretation and limitations
+
+See `docs/DDM_CHAPTER_INTEGRATION.md` for detailed integration guide.
 
 ### Publishing Workflow
 
@@ -360,6 +394,7 @@ bash scripts/utilities/run_integration_tests.sh
 - **[Pipeline Documentation](docs/pipeline_README.md)**: Detailed pipeline description
 - **[Model Documentation](docs/model_documentation.md)**: DDM implementation details
 - **[API Reference](docs/api_reference.md)**: Function documentation
+- **[DDM Chapter Integration](docs/DDM_CHAPTER_INTEGRATION.md)**: How the comprehensive DDM report fits into the pipeline
 - **[Tutorials](docs/tutorials/)**: Step-by-step guides
 
 ## 🤝 Contributing
@@ -369,7 +404,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ### Development Setup
 ```bash
 # Fork and clone the repository
-git clone https://github.com/yourusername/modeling-pupil-DDM.git
+git clone https://github.com/mohdasti/modeling-pupil-DDM.git
 cd modeling-pupil-DDM
 
 # Create a development branch
