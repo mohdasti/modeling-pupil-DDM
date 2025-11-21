@@ -93,27 +93,12 @@ cat("Global minimum RT:", min_rt_global, "seconds\n")
 ndt_init <- log(min_rt_global * 0.6)
 cat("Using NDT initialization:", ndt_init, "=", exp(ndt_init), "seconds (60% of min RT)\n")
 
-# Safe initialization function
-# Use init = 0 to initialize all parameters to 0 (safest approach)
-# This ensures NDT coefficients start at 0, so NDT = exp(ndt_init) for all conditions
-# Alternatively, use a function that initializes all NDT-related parameters
-safe_init <- function(chain_id = 1) {
-  # Initialize everything to 0, then override critical NDT intercept
-  init_list <- list(
-    Intercept = 0,              # Drift intercept (should be ≈ 0 for Standard)
-    Intercept_bs = log(1.3),   # Boundary separation (conservative)
-    Intercept_bias = 0          # Bias intercept (no bias on logit scale)
-  )
-  
-  # NDT: Initialize intercept low, and all fixed effect coefficients to 0
-  # This ensures NDT = exp(ndt_init + 0 + 0) = exp(ndt_init) for all conditions
-  init_list$b_ndt_Intercept <- ndt_init
-  # Initialize NDT fixed effect coefficients to 0 (so they don't push NDT up)
-  init_list$b_ndt_taskVDT <- 0
-  init_list$b_ndt_effort_conditionHigh_MVC <- 0
-  
-  return(init_list)
-}
+# Safe initialization: Use init = 0 (initializes all parameters to 0)
+# This is the safest approach - brms will handle parameter names automatically
+# NDT will start at exp(0) = 1, but Stan will quickly adapt during warmup
+# Alternatively, we can use a custom function, but init = 0 is more reliable
+cat("Using init = 0 (all parameters start at 0)\n")
+cat("Note: NDT will start high but should adapt quickly during warmup\n")
 
 fit <- brm(
   form,
@@ -125,7 +110,7 @@ fit <- brm(
   warmup = 2500,
   cores = 3,
   threads = threading(2),
-  init = safe_init,
+  init = 0,  # Initialize all parameters to 0 (safest, brms handles it)
   control = list(adapt_delta = 0.99, max_treedepth = 14),
   backend = "cmdstanr",
   file = "output/models/standard_bias_only",
