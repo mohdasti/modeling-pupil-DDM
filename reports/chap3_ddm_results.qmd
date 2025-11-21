@@ -43,51 +43,64 @@ fig_path <- function(fig_name) {
   # Get base name without extension
   base_name <- tools::file_path_sans_ext(fig_name)
   
-  # Try to detect output format from Quarto metadata
-  # For HTML, prefer PNG; for DOCX, use PDF
-  use_png <- TRUE  # Default to PNG (better for HTML)
+  # Detect output format - try multiple methods
+  output_format <- NULL
   
-  # Check if we're rendering to DOCX (Quarto sets this)
-  if (!is.null(Sys.getenv("QUARTO_PROJECT_OUTPUT_DIR"))) {
-    # Check output format from environment or try to detect
-    output_file <- knitr::opts_knit$get("out.width")  # This won't work, but let's try another way
+  # Method 1: Check knitr's pandoc output format (most reliable)
+  pandoc_to <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+  if (!is.null(pandoc_to)) {
+    output_format <- pandoc_to
   }
   
-  # Simple heuristic: if PNG exists, use it (good for HTML)
-  # If only PDF exists, use PDF (good for DOCX)
+  # Method 2: Check if we're in a DOCX rendering context
+  # Quarto sets this in the knitr options
+  if (is.null(output_format)) {
+    # Check for DOCX-specific indicators
+    docx_indicators <- c(
+      knitr::opts_knit$get("quarto.document.format") == "docx",
+      grepl("docx", knitr::opts_knit$get("out.format") %||% "", ignore.case = TRUE)
+    )
+    if (any(docx_indicators, na.rm = TRUE)) {
+      output_format <- "docx"
+    }
+  }
+  
   png_name <- paste0(base_name, ".png")
   pdf_name <- paste0(base_name, ".pdf")
   
   # Check which files exist
-  candidates_png <- c(
-    file.path(proj_root, "output/figures", png_name),
-    file.path("output/figures", png_name),
-    file.path("../output/figures", png_name)
-  )
+  png_path <- file.path("../output/figures", png_name)
+  pdf_path <- file.path("../output/figures", pdf_name)
   
-  candidates_pdf <- c(
-    file.path(proj_root, "output/figures", pdf_name),
-    file.path("output/figures", pdf_name),
-    file.path("../output/figures", pdf_name)
-  )
+  png_exists <- file.exists(file.path(proj_root, "output/figures", png_name)) ||
+                file.exists(file.path("output/figures", png_name)) ||
+                file.exists(png_path)
   
-  # Prefer PNG if it exists (for HTML), otherwise use PDF
-  for (path in candidates_png) {
-    if (file.exists(path)) {
-      return(file.path("../output/figures", png_name))
+  pdf_exists <- file.exists(file.path(proj_root, "output/figures", pdf_name)) ||
+                file.exists(file.path("output/figures", pdf_name)) ||
+                file.exists(pdf_path)
+  
+  # Choose format based on output type
+  # DOCX: prefer PDF (vector graphics work better in Word)
+  # HTML: prefer PNG (better browser compatibility)
+  if (!is.null(output_format) && grepl("docx|word", output_format, ignore.case = TRUE)) {
+    if (pdf_exists) {
+      return(pdf_path)
+    } else if (png_exists) {
+      return(png_path)
+    }
+  } else {
+    # HTML or unknown: prefer PNG
+    if (png_exists) {
+      return(png_path)
+    } else if (pdf_exists) {
+      return(pdf_path)
     }
   }
   
-  # Fall back to PDF
-  for (path in candidates_pdf) {
-    if (file.exists(path)) {
-      return(file.path("../output/figures", pdf_name))
-    }
-  }
-  
-  # If neither found, return PNG path (will show error but at least consistent)
-  warning("Figure not found: ", fig_name, " (tried both PNG and PDF)")
-  return(file.path("../output/figures", png_name))
+  # Fallback
+  warning("Figure not found: ", fig_name)
+  return(if (pdf_exists) pdf_path else png_path)
 }
 
 # Helper: safe read
