@@ -133,11 +133,11 @@ This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a
 
 ## Participants
 
-**N = 67** older adults (≥65 years; mean age = 71.3 years, SD = 4.8). All participants provided written informed consent in accordance with the Institutional Review Board protocol. No participants were excluded for sub-chance performance.
+**N = 67** older adults (≥65 years; mean age = 71.3 years, SD = 4.8). This analysis uses the same dataset and participants as described in the LC behavioral report manuscript (see References). All participants provided written informed consent in accordance with the Institutional Review Board protocol. No participants were excluded for sub-chance performance.
 
 ## Tasks and Conditions
 
-**Tasks**: Auditory Detection Task (ADT) and Visual Detection Task (VDT) are separate experimental conditions, not factor levels in a single design.
+**Tasks**: Auditory Detection Task (ADT) and Visual Detection Task (VDT) are separate experimental conditions, not factor levels in a single design. *[Detailed task descriptions, stimulus parameters, and equipment specifications are provided in the LC behavioral report manuscript; see References.]*
 
 **Conditions** (within-subjects, fully crossed):
 
@@ -163,7 +163,9 @@ knitr::include_graphics(fig_path("fig_design_timeline.pdf"))
 5. **Response screen onset** (time 0 for RT measurement)
 6. Response window (3,000 ms)
 
-**RT definition**: Time from response-screen onset (response-signal design). This is a critical methodological detail: RTs do not include early perceptual/encoding processes, which are absorbed into the "standard" + ISI + "target" + blank period. Thus, **t₀ (non-decision time) primarily reflects motor execution** rather than the sum of encoding + motor time as in traditional RT tasks.
+*[Stimulus presentation parameters, equipment specifications, and response collection methods are detailed in the LC behavioral report manuscript; see References.]*
+
+**RT definition**: Time from response-screen onset (response-signal design). This is a critical methodological detail: RTs do not include early perceptual/encoding processes, which are absorbed into the "standard" + ISI + "target" + blank period. Thus, **t₀ (non-decision time) primarily reflects motor execution** rather than the sum of encoding + motor time as in traditional RT tasks. The response-signal design rationale is described in detail in the LC behavioral report manuscript.
 
 **Filtering**: RT ∈ [0.250, 3.000] s (anticipations and timeouts removed).
 
@@ -347,7 +349,7 @@ The primary model includes difficulty effects on v, a, and z, with task and effo
 - **Non-decision time (t₀/ndt)**: `ndt ~ task + effort_condition` *(no random effects)*
 - **Bias (z)**: `bias ~ difficulty_level + task + (1 | subject_id)`
 
-**Rationale for ndt formula**: In the response-signal design, t₀ primarily reflects motor execution. To avoid identifiability issues and maintain model stability, we modeled t₀ with group-level task and effort effects only, omitting subject-level random effects.
+**Rationale for ndt formula**: In the response-signal design, t₀ primarily reflects motor execution. To avoid identifiability issues and maintain model stability, we modeled t₀ with group-level task and effort effects only, omitting subject-level random effects. The response-signal task design and its implications for DDM parameter interpretation are described in the LC behavioral report manuscript (see References).
 
 ## Priors (Link Scale)
 
@@ -718,9 +720,11 @@ With N=67 subjects and ~260 trials per subject (17,243 total), hierarchical esti
 ## Data & Code Availability
 
 All analysis code and de-identified data are available in the project repository:  
-**Repository**: [modeling-pupil-DDM](https://github.com/[username]/modeling-pupil-DDM)  
+**Repository**: [modeling-pupil-DDM](https://github.com/mohdasti/modeling-pupil-DDM)  
 **Analysis scripts**: `R/`, `scripts/`  
 **Report source**: `reports/chap3_ddm_results.qmd`
+
+**Note**: The behavioral dataset and detailed task methodology are described in the LC behavioral report manuscript (see References). This DDM analysis uses the same dataset and participants.
 
 # Limitations & Future Directions
 
@@ -753,6 +757,12 @@ All analysis code and de-identified data are available in the project repository
 # Conclusions
 
 This chapter presents a comprehensive hierarchical Wiener DDM analysis of a response-signal change-detection task in older adults. The primary model, in which task difficulty modulates drift rate, boundary separation, and starting-point bias, is strongly supported by LOO cross-validation and shows acceptable fit to subject-wise mid-body RT quantiles. Key findings—difficulty effects on v, a, and z; task-specific processing differences; and small effort effects—are robust across multiple sensitivity analyses. While the base Wiener DDM shows localized misfit in fast tails (especially Easy/VDT), this does not undermine the core substantive conclusions. Future extensions incorporating across-trial variability, urgency, or mixture models may further improve absolute fit.
+
+# References
+
+*Note: The following reference describes the behavioral dataset and methodology used in this analysis. Please update with the full citation details from the LC behavioral report manuscript.*
+
+- LC Behavioral Report Manuscript (in preparation/published). *[Full citation to be added: authors, title, journal, year, DOI if available]*
 
 ---
 
