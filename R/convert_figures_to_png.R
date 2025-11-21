@@ -42,26 +42,22 @@ convert_with_pdftools <- function(pdf_path, png_path, dpi = 300) {
 }
 
 # Function to convert using system command (macOS sips or ImageMagick convert)
-convert_with_system <- function(pdf_path, png_path, dpi = 300) {
-  # Try sips (macOS built-in)
-  if (Sys.which("sips") != "") {
-    cmd <- paste0("sips -s format png '", pdf_path, "' --out '", png_path, "'")
-    result <- system(cmd, ignore.stdout = TRUE, ignore.stderr = TRUE)
-    if (result == 0) return(TRUE)
-  }
-  
-  # Try ImageMagick convert
+convert_with_system <- function(pdf_path, png_path, dpi = 600) {
+  # Try ImageMagick convert (best quality, respects DPI)
   if (Sys.which("convert") != "") {
-    cmd <- paste0("convert -density ", dpi, " '", pdf_path, "' '", png_path, "'")
+    # Use high quality settings: density for resolution, quality for compression
+    cmd <- paste0("convert -density ", dpi, " -quality 100 -colorspace RGB '", 
+                  pdf_path, "' '", png_path, "'")
     result <- system(cmd, ignore.stdout = TRUE, ignore.stderr = TRUE)
     if (result == 0) return(TRUE)
   }
   
-  # Try pdftoppm (poppler)
+  # Try pdftoppm (poppler) - better quality than sips
   if (Sys.which("pdftoppm") != "") {
     # pdftoppm creates files with -1, -2 suffix, need to rename
     base_name <- tools::file_path_sans_ext(png_path)
-    cmd <- paste0("pdftoppm -png -r ", dpi, " '", pdf_path, "' '", base_name, "'")
+    cmd <- paste0("pdftoppm -png -r ", dpi, " -scale-to-x -1 -scale-to-y -1 '", 
+                  pdf_path, "' '", base_name, "'")
     result <- system(cmd, ignore.stdout = TRUE, ignore.stderr = TRUE)
     if (result == 0) {
       # Find the generated file and rename it
@@ -73,24 +69,48 @@ convert_with_system <- function(pdf_path, png_path, dpi = 300) {
     }
   }
   
+  # Try sips (macOS built-in) - lower quality but available
+  if (Sys.which("sips") != "") {
+    # sips doesn't support DPI directly, but we can resize after
+    # First convert, then we'll need to check if we can improve quality
+    cmd <- paste0("sips -s format png -s formatOptions high '", pdf_path, 
+                  "' --out '", png_path, "'")
+    result <- system(cmd, ignore.stdout = TRUE, ignore.stderr = TRUE)
+    if (result == 0) {
+      # Try to upscale if the result is too small
+      # Get current dimensions
+      info_cmd <- paste0("sips -g pixelWidth -g pixelHeight '", png_path, "'")
+      info <- system(info_cmd, intern = TRUE, ignore.stderr = TRUE)
+      # If dimensions are small, this is a limitation of sips
+      # For now, return TRUE but note that quality might be lower
+      return(TRUE)
+    }
+  }
+  
   return(FALSE)
 }
 
-# Determine which method to use
+# Determine which method to use (prefer magick for best quality)
 use_method <- NULL
 if (requireNamespace("magick", quietly = TRUE)) {
   use_method <- "magick"
-  message("Using 'magick' R package for conversion\n")
+  message("Using 'magick' R package for high-quality conversion\n")
 } else if (requireNamespace("pdftools", quietly = TRUE)) {
   use_method <- "pdftools"
   message("Using 'pdftools' R package for conversion\n")
-} else if (Sys.which("sips") != "" || Sys.which("convert") != "" || Sys.which("pdftoppm") != "") {
+} else if (Sys.which("convert") != "") {
   use_method <- "system"
-  message("Using system tools for conversion\n")
+  message("Using ImageMagick (convert) for conversion\n")
+} else if (Sys.which("pdftoppm") != "") {
+  use_method <- "system"
+  message("Using pdftoppm for conversion\n")
+} else if (Sys.which("sips") != "") {
+  use_method <- "system"
+  message("Using sips for conversion (lower quality - consider installing magick package)\n")
 } else {
-  stop("No conversion tool available. Please install one of:\n",
-       "  - R package: install.packages('magick') or install.packages('pdftools')\n",
-       "  - System tool: brew install imagemagick poppler (macOS)")
+  stop("No conversion tool available. Please install:\n",
+       "  - R package: install.packages('magick') [RECOMMENDED]\n",
+       "  - Or system tool: brew install imagemagick poppler (macOS)")
 }
 
 # Convert each PDF
@@ -108,20 +128,22 @@ for (pdf_file in pdf_files) {
   message("🔄 Converting: ", basename(pdf_file))
   
   success <- FALSE
+  # Use 600 DPI for high quality (doubled from 300)
+  target_dpi <- 600
   if (use_method == "magick") {
     tryCatch({
-      success <- convert_with_magick(pdf_file, png_file, dpi = 300)
+      success <- convert_with_magick(pdf_file, png_file, dpi = target_dpi)
     }, error = function(e) {
       message("    Error: ", conditionMessage(e))
     })
   } else if (use_method == "pdftools") {
     tryCatch({
-      success <- convert_with_pdftools(pdf_file, png_file, dpi = 300)
+      success <- convert_with_pdftools(pdf_file, png_file, dpi = target_dpi)
     }, error = function(e) {
       message("    Error: ", conditionMessage(e))
     })
   } else if (use_method == "system") {
-    success <- convert_with_system(pdf_file, png_file, dpi = 300)
+    success <- convert_with_system(pdf_file, png_file, dpi = target_dpi)
   }
   
   if (success && file.exists(png_file)) {
