@@ -129,15 +129,18 @@ ndt_init <- log(min_rt_global * 0.6)
 cat("Using NDT initialization:", ndt_init, "=", exp(ndt_init), "seconds (60% of min RT)\n")
 
 # Safe initialization function
-# Note: When NDT has fixed effects (task + effort), brms uses b_ndt_Intercept
+# Initialize NDT intercept low, and all NDT fixed effect coefficients to 0
 safe_init <- function(chain_id = 1) {
   init_list <- list(
     Intercept = 0              # Drift intercept (will be overridden by difficulty_level coefficients)
   )
   
-  # NDT intercept: use b_ndt_Intercept when there are fixed effects
-  # This ensures NDT is safely below all RTs
+  # NDT: Initialize intercept low, and all fixed effect coefficients to 0
+  # This ensures NDT = exp(ndt_init + 0 + 0) = exp(ndt_init) for all conditions
   init_list$b_ndt_Intercept <- ndt_init
+  # Initialize NDT fixed effect coefficients to 0 (so they don't push NDT up)
+  init_list$b_ndt_taskVDT <- 0
+  init_list$b_ndt_effort_conditionHigh_MVC <- 0
   
   return(init_list)
 }
