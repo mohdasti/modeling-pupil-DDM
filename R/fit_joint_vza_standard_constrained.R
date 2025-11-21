@@ -123,20 +123,23 @@ cat("This may take a while (6000 iterations, 3 chains)...\n")
 # Safe initialization: NDT must be < min(RT) for all subjects
 min_rt_global <- min(dd$rt, na.rm = TRUE)
 cat("Global minimum RT:", min_rt_global, "seconds\n")
-cat("Using NDT initialization:", log(min_rt_global * 0.8), "(80% of min RT)\n")
+
+# Use very conservative initialization: 60% of minimum RT (on log scale)
+ndt_init <- log(min_rt_global * 0.6)
+cat("Using NDT initialization:", ndt_init, "=", exp(ndt_init), "seconds (60% of min RT)\n")
 
 # Safe initialization function
+# Note: When NDT has fixed effects (task + effort), brms uses b_ndt_Intercept
 safe_init <- function(chain_id = 1) {
-  # NDT must be safely below all RTs
-  # Use 80% of minimum RT to ensure safety margin
-  ndt_init <- log(min_rt_global * 0.8)
-  
-  list(
-    Intercept_ndt = ndt_init,  # NDT intercept on log scale
-    Intercept_bs = log(1.3),  # Boundary separation (conservative)
-    Intercept_bias = 0,        # Bias intercept (no bias on logit scale)
+  init_list <- list(
     Intercept = 0              # Drift intercept (will be overridden by difficulty_level coefficients)
   )
+  
+  # NDT intercept: use b_ndt_Intercept when there are fixed effects
+  # This ensures NDT is safely below all RTs
+  init_list$b_ndt_Intercept <- ndt_init
+  
+  return(init_list)
 }
 
 fit <- brm(
