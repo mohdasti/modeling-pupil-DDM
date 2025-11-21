@@ -7,6 +7,16 @@ format:
     toc-depth: 3
     number-sections: true
     embed-resources: true
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    documentclass: article
+    geometry:
+      - margin=1in
+    fontsize: 11pt
+    linestretch: 1.5
+    fig-pos: "H"
   docx:
     toc: true
     number-sections: true
