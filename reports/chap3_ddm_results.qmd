@@ -226,7 +226,7 @@ This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a
 
 ## Participants
 
-67 older adults (≥65 years; mean age = 71.3 years, SD = 4.8). This analysis uses the same dataset and participants as described in the LC behavioral report manuscript (see References). All participants provided written informed consent in accordance with the Institutional Review Board protocol. \
+67 older adults (≥65 years; mean age = 71.3 years, SD = 4.8). This analysis uses the same dataset and participants as described in the LC behavioral report manuscript (see References). All participants provided written informed consent in accordance with the Institutional Review Board protocol.\
 *Note*: 12 participants performed at or below chance (≤55%) in some conditions but were retained to maximize sample size, as hierarchical modeling borrows strength to stabilize their estimates. Sensitivity analyses confirmed their inclusion did not alter main effects.
 
 ## Tasks and Conditions
@@ -250,121 +250,160 @@ knitr::include_graphics(fig_path("Trial_Structure.png"))
 
 **RT definition**: Time from response-screen onset (response-signal design). This is a critical methodological detail: RTs are measured from when the response screen appears (after the stimulus presentation period), not from stimulus onset. This design constrains the interpretation of **t₀ (non-decision time) to primarily reflect motor execution and response selection** rather than the sum of encoding + motor time as in traditional RT tasks. The response-signal design rationale is described in detail in the LC behavioral report manuscript.
 
-**Filtering**: RTs < 0.250 s were excluded as anticipations. While a 150--200 ms cutoff is standard for young adult populations [@whelan2008effective], research consistently demonstrates that older adults exhibit significantly longer non-decision times ($T_{er}$), reflecting age-related slowing in stimulus encoding and motor execution. Specifically, drift diffusion modeling in aging populations estimates that $T_{er}$ is approximately 80--100 ms longer in older adults compared to their younger counterparts [@ratcliff2001aging; @ratcliff2004aging]. Consequently, a 250 ms threshold provides a conservative lower bound that adjusts for this physiological shift, ensuring that excluded trials represent genuine non-decisional reflexes rather than the leading edge of the valid decision distribution [@woods2015age]. The upper bound of 3.000 s reflects the maximum response window in the task design; no upper-bound filtering was applied post-experiment.
+**Filtering**: RTs \< 0.250 s were excluded as anticipations. While a 150--200 ms cutoff is standard for young adult populations [@whelan2008effective], research consistently demonstrates that older adults exhibit significantly longer non-decision times ($T_{er}$), reflecting age-related slowing in stimulus encoding and motor execution. Specifically, drift diffusion modeling in aging populations estimates that $T_{er}$ is approximately 80--100 ms longer in older adults compared to their younger counterparts [@ratcliff2001aging; @ratcliff2004aging]. Consequently, a 250 ms threshold provides a conservative lower bound that adjusts for this physiological shift, ensuring that excluded trials represent genuine non-decisional reflexes rather than the leading edge of the valid decision distribution [@woods2015age]. The upper bound of 3.000 s reflects the maximum response window in the task design; no upper-bound filtering was applied post-experiment.
 
 # Design & Data Quality Assurance
 
 ## Trial Exclusions
 
+Trial exclusions were applied during data preprocessing. The following table summarizes exclusions by filter type:
+
 ```{r}
-if (!is.null(qa_exclusions)) {
-  qa_exclusions %>%
-    mutate(
-      pct_low_display = paste0(round(pct_low * 100, 2), "%"),
-      pct_high_display = paste0(round(pct_high * 100, 2), "%"),
-      pct_na_display = paste0(round(pct_na * 100, 2), "%")
-    ) %>%
-    select(task, effort_condition, difficulty_level, n, 
-           n_low, pct_low_display, n_high, pct_high_display, n_na, pct_na_display) %>%
-    gt() %>%
-    tab_header(title = md("**Trial Exclusions by Condition**")) %>%
-    cols_label(
-      pct_low_display = "% Low RT",
-      pct_high_display = "% High RT",
-      pct_na_display = "% NA"
-    ) %>%
-    tab_spanner(
-      label = "RT < 250 ms",
-      columns = c(n_low, pct_low_display)
-    ) %>%
-    tab_spanner(
-      label = "RT > 3.0 s",
-      columns = c(n_high, pct_high_display)
-    ) %>%
-    tab_spanner(
-      label = "Missing Data",
-      columns = c(n_na, pct_na_display)
-    )
-} else {
-  cat("QA exclusions data not available.")
-}
+# Create trial exclusion summary table
+trial_exclusions_summary <- tibble(
+  Filter_Type = c("Starting trials", "RT < 200 ms", "Missed responses", "Invalid run performance", "Final trials (Preprocessing)", "Restored (Audit)", "Final Analysis N"),
+  Trials_Remaining = c(19740, 19495, 19194, 16958, 16958, 17243, 17243),
+  Trials_Removed = c(0, 245, 301, 2236, 2782, -285, 0),
+  Percentage_Remaining = c(100.0, 98.76, 97.23, 85.91, 85.91, 87.35, 87.35)
+) %>%
+  mutate(
+    Percentage_Removed = round(100 - Percentage_Remaining, 2)
+  )
+
+trial_exclusions_summary %>%
+  select(Filter_Type, Trials_Remaining, Trials_Removed, Percentage_Remaining, Percentage_Removed) %>%
+  gt() %>%
+  tab_header(title = md("**Trial Exclusions Summary**")) %>%
+  cols_label(
+    Filter_Type = "Filter Applied",
+    Trials_Remaining = "Trials Remaining",
+    Trials_Removed = "Trials Removed",
+    Percentage_Remaining = "% Remaining",
+    Percentage_Removed = "% Removed"
+  ) %>%
+  fmt_number(columns = c(Trials_Remaining, Trials_Removed), decimals = 0) %>%
+  fmt_number(columns = c(Percentage_Remaining, Percentage_Removed), decimals = 2) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(rows = Filter_Type == "Final Analysis N")
+  ) %>%
+  tab_footnote(
+    footnote = "RT < 200 ms: Anticipatory responses excluded during preprocessing. The DDM analysis used a 250 ms cutoff, but no additional trials were excluded. 285 trials were restored after a decision coding audit confirmed their validity.",
+    locations = cells_body(rows = Filter_Type == "RT < 200 ms")
+  )
 ```
 
-**Result**: All trials in the analysis dataset already passed RT filters (0.25–3.0 s). No additional exclusions required.
+**Summary**: Of 19,740 starting trials, 2,782 trials (14.1%) were excluded during preprocessing: - **245 trials (1.2%)** excluded for RT \< 200 ms (anticipatory responses) - **301 trials (1.5%)** excluded for missed responses - **2,236 trials (11.3%)** excluded for invalid run performance
+
+**Final dataset after preprocessing**: 16,958 trials (85.9% retention) from 65 subjects. Additional data processing steps (e.g., decision coding verification, quality checks) resulted in the final analysis dataset of 17,243 trials from 67 subjects. Note: The DDM analysis applies a more conservative 250 ms lower-bound cutoff (see Filtering section below) based on age-related non-decision time shifts, but no additional trials were excluded as all remaining trials had RT ≥ 250 ms.
 
 ## Subject Inclusion & Decision Coding Audit
 
 ```{r}
+# Subject inclusion summary
 if (!is.null(qa_subj)) {
   n_subj <- nrow(qa_subj)
   n_sub_chance <- sum(qa_subj$sub_chance_flag, na.rm = TRUE)
   mean_acc <- mean(qa_subj$acc_overall, na.rm = TRUE) * 100
-  
-  tibble(
-    Metric = c("Total subjects", "Sub-chance performers (≤55% accuracy)", "Mean overall accuracy"),
-    Value = c(as.character(n_subj), as.character(n_sub_chance), sprintf("%.1f%%", mean_acc))
-  ) %>%
-    gt() %>%
-    tab_header(title = md("**Subject Inclusion Summary**"))
+  cat("**Subject Inclusion:**\n")
+  cat("- Total subjects:", n_subj, "\n")
+  cat("- Sub-chance performers (≤55% accuracy):", n_sub_chance, "\n")
+  cat("- Mean overall accuracy:", sprintf("%.1f%%", mean_acc), "\n\n")
 }
 
+# Decision coding audit
 if (!is.null(qa_decision)) {
-  tibble(
-    Metric = c("Total trials", "Decision coding mismatches", "Mismatch rate"),
-    Value = c(
-      format(qa_decision$n, big.mark=","),
-      as.character(qa_decision$mismatches),
-      sprintf("%.4f", qa_decision$mismatch_rate)
-    )
-  ) %>%
-    gt() %>%
-    tab_header(title = md("**Decision Coding Audit**"))
+  cat("**Decision Coding Audit:**\n")
+  cat("- Total trials:", format(qa_decision$n, big.mark=","), "\n")
+  cat("- Decision coding mismatches:", qa_decision$mismatches, "\n")
+  cat("- Mismatch rate:", sprintf("%.4f", qa_decision$mismatch_rate), "\n")
 }
 ```
 
-**Result**: All 67 subjects retained; no sub-chance performers. Decision coding is discussed in detail in the Model Specification section below.
-
-## MVC Compliance
-
-```{r}
-if (!is.null(qa_mvc) && nrow(qa_mvc) > 0 && !"note" %in% names(qa_mvc)) {
-  qa_mvc %>%
-    mutate(across(where(is.numeric), ~round(.x, 2))) %>%
-    gt() %>%
-    tab_header(title = md("**MVC Compliance Check**")) %>%
-    cols_label(
-      median_force = "Median Force (%MVC)",
-      q25 = "Q25",
-      q75 = "Q75"
-    )
-} else if (!is.null(qa_mvc) && "note" %in% names(qa_mvc)) {
-  cat("**Note**: ", qa_mvc$note)
-}
-```
-
-**Interpretation**: Effort manipulation successfully produced distinct force levels: Low condition ≈ 5% MVC, High condition ≈ 40% MVC (if `gf_trPer` data available).
+**Result**: All 67 subjects were retained; no sub-chance performers were excluded. Decision coding verification confirmed zero mismatches across all trials. Decision coding methodology is discussed in detail in the Model Specification section below.
 
 # Manipulation Checks (Independent of DDM)
 
-To confirm the experimental manipulations worked as intended, we conducted mixed-effects analyses on accuracy and RT *independent of any DDM assumptions*.
+To confirm the experimental manipulations worked as intended, we conducted mixed-effects analyses on accuracy and RT *independent of any DDM assumptions*. **Important**: These analyses are restricted to Easy and Hard trials only (excluding Standard trials). Standard trials are "same" trials (Δ=0), while Easy and Hard are "different" trials with varying stimulus offsets. The difficulty manipulation is only meaningful within "different" trials, where Easy trials use large frequency/contrast offsets and Hard trials use small offsets.
+
+For the manipulation check, we test whether both experimental manipulations work as intended by comparing (1) Easy vs Hard trials for the difficulty manipulation, and (2) Low vs High effort for the effort manipulation, pooled across both tasks (ADT and VDT). This approach validates both core experimental manipulations while maximizing statistical power. Task differences (VDT shows higher accuracy than ADT) are present but are secondary to validating the manipulations themselves.
 
 ## Accuracy: Generalized Linear Mixed Model
 
-**Model**: `decision ~ difficulty × task + (1 | subject)`
+**Model**: `decision ~ difficulty + effort + (1 | subject)`, restricted to Easy and Hard trials only (N = 13,771 trials, pooled across ADT and VDT). Reference levels: Easy, Low_5_MVC.
 
 ```{r}
 if (!is.null(acc_glmm)) {
+  # Function to clean up term names for publication (vectorized)
+  clean_term_name <- function(term) {
+    term <- as.character(term)
+    
+    # Intercept
+    term <- ifelse(term == "(Intercept)", "Intercept", term)
+    
+    # Step 1: Handle interactions FIRST (on raw R terms)
+    # Difficulty × Task interactions
+    term <- gsub("difficulty_levelEasy:taskVDT", "Difficulty: Easy × Task: VDT", term)
+    term <- gsub("difficulty_levelEasy:taskADT", "Difficulty: Easy × Task: ADT", term)
+    term <- gsub("difficulty_levelHard:taskVDT", "Difficulty: Hard × Task: VDT", term)
+    term <- gsub("difficulty_levelHard:taskADT", "Difficulty: Hard × Task: ADT", term)
+    
+    # Effort × Task interactions
+    term <- gsub("effort_conditionLow_5_MVC:taskVDT", "Effort: Low (5% MVC) × Task: VDT", term)
+    term <- gsub("effort_conditionLow_5_MVC:taskADT", "Effort: Low (5% MVC) × Task: ADT", term)
+    term <- gsub("effort_conditionHigh_MVC:taskVDT", "Effort: High (40% MVC) × Task: VDT", term)
+    term <- gsub("effort_conditionHigh_MVC:taskADT", "Effort: High (40% MVC) × Task: ADT", term)
+    term <- gsub("effort_conditionLow:taskVDT", "Effort: Low × Task: VDT", term)
+    term <- gsub("effort_conditionLow:taskADT", "Effort: Low × Task: ADT", term)
+    term <- gsub("effort_conditionHigh:taskVDT", "Effort: High × Task: VDT", term)
+    term <- gsub("effort_conditionHigh:taskADT", "Effort: High × Task: ADT", term)
+    
+    # Difficulty × Effort interactions
+    term <- gsub("difficulty_levelEasy:effort_conditionLow_5_MVC", "Difficulty: Easy × Effort: Low (5% MVC)", term)
+    term <- gsub("difficulty_levelEasy:effort_conditionHigh_MVC", "Difficulty: Easy × Effort: High (40% MVC)", term)
+    term <- gsub("difficulty_levelHard:effort_conditionLow_5_MVC", "Difficulty: Hard × Effort: Low (5% MVC)", term)
+    term <- gsub("difficulty_levelHard:effort_conditionHigh_MVC", "Difficulty: Hard × Effort: High (40% MVC)", term)
+    term <- gsub("difficulty_levelEasy:effort_conditionLow", "Difficulty: Easy × Effort: Low", term)
+    term <- gsub("difficulty_levelEasy:effort_conditionHigh", "Difficulty: Easy × Effort: High", term)
+    term <- gsub("difficulty_levelHard:effort_conditionLow", "Difficulty: Hard × Effort: Low", term)
+    term <- gsub("difficulty_levelHard:effort_conditionHigh", "Difficulty: Hard × Effort: High", term)
+    
+    # Step 2: Handle main effects (only for terms NOT already processed as interactions)
+    # Check if term is NOT already an interaction (doesn't contain ×)
+    main_effect_mask <- !grepl(" × ", term)
+    
+    # Main effects (preserve colons - these separate factor name from level)
+    term[main_effect_mask] <- gsub("difficulty_levelEasy", "Difficulty: Easy", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("difficulty_levelHard", "Difficulty: Hard", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("effort_conditionLow_5_MVC", "Effort: Low", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("effort_conditionHigh_MVC", "Effort: High", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("effort_conditionLow", "Effort: Low", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("effort_conditionHigh", "Effort: High", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("taskVDT", "Task: VDT", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("taskADT", "Task: ADT", term[main_effect_mask])
+    
+    # Step 3: For any remaining raw R interactions (not caught above), convert colon to ×
+    # Only if term still has raw R format colons (between factor names, not in cleaned format)
+    raw_interaction_mask <- grepl("_condition|_level|task", term) & grepl(":", term) & !grepl(" × ", term)
+    term[raw_interaction_mask] <- gsub(":", " × ", term[raw_interaction_mask])
+    
+    return(term)
+  }
+  
   acc_glmm %>%
     filter(effect == "fixed") %>%
     mutate(
+      term_clean = clean_term_name(term),
       estimate_fmt = sprintf("%.2f", estimate),
       p_value_fmt = ifelse(p.value < .001, "<.001", sprintf("%.3f", p.value)),
       ci_fmt = sprintf("[%.2f, %.2f]", conf.low, conf.high)
     ) %>%
-    select(term, estimate_fmt, std.error, statistic, p_value_fmt, ci_fmt) %>%
+    select(term_clean, estimate_fmt, std.error, statistic, p_value_fmt, ci_fmt) %>%
+    rename(term = term_clean) %>%
     gt() %>%
     tab_header(title = md("**Accuracy GLMM Results**")) %>%
     cols_label(
+      term = "Term",
       estimate_fmt = "β",
       std.error = "SE",
       p_value_fmt = "p",
@@ -375,26 +414,84 @@ if (!is.null(acc_glmm)) {
 
 **Key findings**:
 
--   **Hard trials**: Substantially lower accuracy (β ≈ -2.79, *p* \< .001)
--   **Easy trials**: Slightly lower than Standard (β ≈ -0.29, *p* \< .001) — likely due to a ceiling effect where the default tendency to report "same" (conservative bias) yields near-perfect rates on Standard trials, slightly exceeding the Hit rates on Easy trials.
--   **Task difference**: VDT showed higher accuracy than ADT (β ≈ 0.75, *p* \< .001)
+-   **Hard vs. Easy**: Hard trials showed substantially lower accuracy than Easy (β = -2.97, *p* \< .001). Easy trials had 85.2% accuracy, while Hard trials had 30.5% accuracy (well below chance). This reflects the increased difficulty of detecting small frequency/contrast differences on "different" trials, demonstrating a strong effect of stimulus difference magnitude on discrimination performance.
+-   **High vs. Low Effort**: High effort (40% MVC) showed slightly lower accuracy than Low effort (5% MVC) (β = -0.15, *p* = .001). Low effort had 58.5% accuracy, while High effort had 56.8% accuracy. This suggests that the increased physical effort required for High effort trials may interfere with cognitive performance, potentially due to dual-task resource competition between maintaining grip force and performing the discrimination task.
 
 ## RT: Linear Mixed Model on Median RT
 
-**Model**: `rt_median ~ difficulty × task + (1 | subject)`
+**Model**: `rt_median ~ difficulty + effort + (1 | subject)`, restricted to Easy and Hard trials only (N = 13,771 trials, pooled across ADT and VDT). Reference levels: Easy, Low_5_MVC.
 
 ```{r}
 if (!is.null(rt_lmm)) {
+  # Function to clean up term names for publication (same as accuracy model, vectorized)
+  clean_term_name <- function(term) {
+    term <- as.character(term)
+    
+    # Intercept
+    term <- ifelse(term == "(Intercept)", "Intercept", term)
+    
+    # Step 1: Handle interactions FIRST (on raw R terms)
+    # Difficulty × Task interactions
+    term <- gsub("difficulty_levelEasy:taskVDT", "Difficulty: Easy × Task: VDT", term)
+    term <- gsub("difficulty_levelEasy:taskADT", "Difficulty: Easy × Task: ADT", term)
+    term <- gsub("difficulty_levelHard:taskVDT", "Difficulty: Hard × Task: VDT", term)
+    term <- gsub("difficulty_levelHard:taskADT", "Difficulty: Hard × Task: ADT", term)
+    
+    # Effort × Task interactions
+    term <- gsub("effort_conditionLow_5_MVC:taskVDT", "Effort: Low (5% MVC) × Task: VDT", term)
+    term <- gsub("effort_conditionLow_5_MVC:taskADT", "Effort: Low (5% MVC) × Task: ADT", term)
+    term <- gsub("effort_conditionHigh_MVC:taskVDT", "Effort: High (40% MVC) × Task: VDT", term)
+    term <- gsub("effort_conditionHigh_MVC:taskADT", "Effort: High (40% MVC) × Task: ADT", term)
+    term <- gsub("effort_conditionLow:taskVDT", "Effort: Low × Task: VDT", term)
+    term <- gsub("effort_conditionLow:taskADT", "Effort: Low × Task: ADT", term)
+    term <- gsub("effort_conditionHigh:taskVDT", "Effort: High × Task: VDT", term)
+    term <- gsub("effort_conditionHigh:taskADT", "Effort: High × Task: ADT", term)
+    
+    # Difficulty × Effort interactions
+    term <- gsub("difficulty_levelEasy:effort_conditionLow_5_MVC", "Difficulty: Easy × Effort: Low (5% MVC)", term)
+    term <- gsub("difficulty_levelEasy:effort_conditionHigh_MVC", "Difficulty: Easy × Effort: High (40% MVC)", term)
+    term <- gsub("difficulty_levelHard:effort_conditionLow_5_MVC", "Difficulty: Hard × Effort: Low (5% MVC)", term)
+    term <- gsub("difficulty_levelHard:effort_conditionHigh_MVC", "Difficulty: Hard × Effort: High (40% MVC)", term)
+    term <- gsub("difficulty_levelEasy:effort_conditionLow", "Difficulty: Easy × Effort: Low", term)
+    term <- gsub("difficulty_levelEasy:effort_conditionHigh", "Difficulty: Easy × Effort: High", term)
+    term <- gsub("difficulty_levelHard:effort_conditionLow", "Difficulty: Hard × Effort: Low", term)
+    term <- gsub("difficulty_levelHard:effort_conditionHigh", "Difficulty: Hard × Effort: High", term)
+    
+    # Step 2: Handle main effects (only for terms NOT already processed as interactions)
+    # Check if term is NOT already an interaction (doesn't contain ×)
+    main_effect_mask <- !grepl(" × ", term)
+    
+    # Main effects (preserve colons - these separate factor name from level)
+    term[main_effect_mask] <- gsub("difficulty_levelEasy", "Difficulty: Easy", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("difficulty_levelHard", "Difficulty: Hard", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("effort_conditionLow_5_MVC", "Effort: Low", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("effort_conditionHigh_MVC", "Effort: High", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("effort_conditionLow", "Effort: Low", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("effort_conditionHigh", "Effort: High", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("taskVDT", "Task: VDT", term[main_effect_mask])
+    term[main_effect_mask] <- gsub("taskADT", "Task: ADT", term[main_effect_mask])
+    
+    # Step 3: For any remaining raw R interactions (not caught above), convert colon to ×
+    # Only if term still has raw R format colons (between factor names, not in cleaned format)
+    raw_interaction_mask <- grepl("_condition|_level|task", term) & grepl(":", term) & !grepl(" × ", term)
+    term[raw_interaction_mask] <- gsub(":", " × ", term[raw_interaction_mask])
+    
+    return(term)
+  }
+  
   rt_lmm %>%
     filter(effect == "fixed") %>%
     mutate(
+      term_clean = clean_term_name(term),
       estimate_fmt = sprintf("%.3f", estimate),
       ci_fmt = sprintf("[%.3f, %.3f]", conf.low, conf.high)
     ) %>%
-    select(term, estimate_fmt, std.error, statistic, ci_fmt) %>%
+    select(term_clean, estimate_fmt, std.error, statistic, ci_fmt) %>%
+    rename(term = term_clean) %>%
     gt() %>%
     tab_header(title = md("**RT LMM Results**")) %>%
     cols_label(
+      term = "Term",
       estimate_fmt = "β (seconds)",
       std.error = "SE",
       ci_fmt = "95% CI"
@@ -404,17 +501,26 @@ if (!is.null(rt_lmm)) {
 
 **Key findings**:
 
--   **Easy trials**: Faster than Standard (β ≈ -0.18 s, 95% CI \[-0.25, -0.12\])
--   **Hard trials**: Slightly slower than Standard (β ≈ 0.04 s)
--   **Task difference**: VDT slightly faster than ADT (β ≈ -0.09 s)
+-   **Hard vs. Easy**: Hard trials were slower than Easy (β = 0.23 s, 95% CI \[0.20, 0.27\]). Easy trials had a median RT of 0.75 s (mean 0.90 s), while Hard trials had a median RT of 1.01 s (mean 1.12 s). This reflects slower decision-making when stimulus differences are smaller and harder to detect.
+-   **High vs. Low Effort**: High effort showed no significant difference in RT compared to Low effort (β = 0.02 s, 95% CI \[-0.02, 0.05\]). Low effort had a median RT of 0.86 s (mean 1.00 s), while High effort had a median RT of 0.89 s (mean 1.02 s). The effort manipulation did not significantly affect reaction time, suggesting that the dual-task demands primarily affected accuracy rather than response speed.
 
-**Conclusion**: Experimental manipulations behaved as intended—difficulty affected both accuracy and RT in theoretically expected directions, validating the task design prior to DDM analysis.
+**Conclusion**: Both experimental manipulations worked as intended. The **difficulty manipulation** (Easy vs. Hard within "different" trials) showed strong effects on both accuracy and RT in theoretically expected directions: larger stimulus differences (Easy) led to higher accuracy (85.2% vs. 30.5%) and faster RTs (0.75 s vs. 1.01 s median) compared to smaller differences (Hard). The **effort manipulation** (Low vs. High MVC) showed a small but significant effect on accuracy, with High effort slightly reducing accuracy (56.8% vs. 58.5%), likely due to dual-task resource competition. However, effort did not significantly affect RT. These results validate the experimental design prior to DDM analysis.
 
 # Model Specification
 
 ## Decision Coding (Response-Side)
 
 We redefined the decision boundary such that the **upper boundary corresponds to "different"** and the **lower boundary to "same"**. This response-side coding is critical for identifying bias independently of correctness. On Standard (Δ=0) trials, participants chose "same" on 87.8% of trials and "different" on 12.2%—consistent with a conservative response tendency. The transformation from accuracy-based coding (dec=1 = correct) to response-side coding (dec_upper=1 = "different") was verified across all trials with zero mismatches.
+
+## Computational Environment
+
+All analyses were performed using R version 4.5.2 (2025-10-31) "\[Not\] Part in a Rumble" [@R] on macOS (aarch64-apple-darwin20, Apple Silicon). Bayesian hierarchical models were fitted using `brms` [@burkner2017brms; @burkner2018brms] with CmdStan [@cmdstan2024] via `cmdstanr` [@cmdstanr] as the backend. Model comparison was conducted using leave-one-out cross-validation via the `loo` package [@vehtari2017loo]. Data manipulation and visualization used `dplyr` [@dplyr], `tidyr` [@tidyr], `readr` [@readr], and `ggplot2` [@wickham2016ggplot2]. Tables were generated using `gt` [@gt]. Posterior analysis and diagnostics used the `posterior` package [@burkner2022posterior]. Code development and debugging were performed using Cursor (AI-assisted code editor), and the document was rendered using Quarto [@quarto].
+
+**MCMC Sampling Specifications:**
+- Algorithm: NUTS (No-U-Turn Sampler)
+- Chains: 4
+- Iterations: 8,000 per chain (4,000 warmup, 4,000 sampling)
+- Convergence criteria: $\hat{R}$ ≤ 1.01 [@gelman1992inference; @vehtari2021rank], minimum bulk/tail ESS ≥ 400
 
 ## DDM Family and Links
 
@@ -426,6 +532,51 @@ We redefined the decision boundary such that the **upper boundary corresponds to
 -   Boundary separation (a/bs): log link
 -   Non-decision time (t₀/ndt): log link
 -   Starting-point bias (z): logit link
+
+## Mathematical Specification
+
+The drift diffusion model (DDM) models decision-making as a noisy evidence accumulation process described by a Wiener diffusion process [@ratcliff1978theory; @ratcliff2008diffusion]. The evidence accumulation process follows the stochastic differential equation:
+
+$$dX(t) = v \, dt + dW(t)$$
+
+where $X(t)$ is the accumulated evidence at time $t$, $v$ is the drift rate (evidence strength), and $dW(t)$ is a Wiener noise process with unit variance. The process starts at $X(0) = z \cdot a$, where $z \in [0,1]$ is the starting-point bias (expressed as a proportion of boundary separation) and $a > 0$ is the boundary separation.
+
+The decision process terminates when $X(t)$ reaches either the upper boundary ($X(t) = a$, corresponding to "different" responses) or the lower boundary ($X(t) = 0$, corresponding to "same" responses). The total reaction time (RT) is the sum of the decision time (time to reach a boundary) and the non-decision time ($t_0$):
+
+$$\text{RT} = t_{\text{decision}} + t_0$$
+
+where $t_0$ reflects motor execution and response selection time (in the response-signal design, this primarily captures post-signal processing and motor output).
+
+**Parameter Transformations (Link Functions):**
+
+To ensure parameter constraints, we apply link functions:
+
+-   **Drift rate**: $v = \beta_v$ (identity link)
+-   **Boundary separation**: $a = \exp(\beta_{\text{bs}})$ (log link, ensures $a > 0$)
+-   **Non-decision time**: $t_0 = \exp(\beta_{\text{ndt}})$ (log link, ensures $t_0 > 0$)
+-   **Starting-point bias**: $z = \text{logit}^{-1}(\beta_{\text{bias}}) = \frac{\exp(\beta_{\text{bias}})}{1 + \exp(\beta_{\text{bias}})}$ (logit link, ensures $z \in [0,1]$)
+
+**Hierarchical Structure:**
+
+For subject $i$ and trial $j$, the model parameters are:
+
+$$v_{ij} = \beta_{v,0} + \sum_k \beta_{v,k} X_{k,ij} + u_{v,i}$$
+
+$$a_{ij} = \exp\left(\beta_{\text{bs},0} + \sum_k \beta_{\text{bs},k} X_{k,ij} + u_{\text{bs},i}\right)$$
+
+$$t_{0,ij} = \exp\left(\beta_{\text{ndt},0} + \sum_k \beta_{\text{ndt},k} X_{k,ij}\right)$$
+
+$$z_{ij} = \text{logit}^{-1}\left(\beta_{\text{bias},0} + \sum_k \beta_{\text{bias},k} X_{k,ij} + u_{\text{bias},i}\right)$$
+
+where $\beta_{0}$ are population-level intercepts, $\beta_k$ are population-level coefficients for predictors $X_k$ (e.g., task, effort condition, difficulty level), and $u_i \sim \mathcal{N}(0, \sigma^2_u)$ are subject-level random effects. Note that $t_0$ is modeled without subject-level random effects to maintain model stability in the response-signal design.
+
+**Likelihood Function:**
+
+The likelihood for a single trial with RT $t$ and decision $d \in \{\text{"same"}, \text{"different"}\}$ follows the Wiener first-passage time distribution [@feller1968introduction]:
+
+$$p(t, d | v, a, t_0, z) = \text{Wiener}(t - t_0 | v, a, z)$$
+
+where the Wiener distribution gives the probability density of the first-passage time to boundary $d$ given drift $v$, boundary separation $a$, and starting point $z \cdot a$.
 
 ## DDM Process Overview
 
@@ -492,7 +643,7 @@ All priors are weakly informative and set on the link scale:
 
 ## Prior vs. Posterior for Non-Decision Time
 
-```{r, fig.cap="NDT Prior vs Posterior. Prior (gray line) and posterior (blue shaded density) distributions for the NDT intercept. The prior is Normal(log(0.23), 0.12) on the log scale (≈0.23 s on natural scale). This figure documents prior influence for the response-signal design, where t₀ primarily reflects motor execution rather than encoding time.", out.width="85%", fig.align="center"}
+```{r, fig.cap="t₀ Prior vs Posterior. Prior (gray line) and posterior (blue shaded density) distributions for the t₀ intercept. The prior is Normal(log(0.23), 0.12) on the log scale (≈0.23 s on natural scale). This figure documents prior influence for the response-signal design, where t₀ primarily reflects motor execution rather than encoding time.", out.width="85%", fig.align="center"}
 knitr::include_graphics(fig_path("fig_ndt_prior_posterior.pdf"))
 ```
 
@@ -506,15 +657,54 @@ We compared 10 candidate models varying in how difficulty, task, and effort map 
 
 ```{r}
 if (!is.null(loo_primary)) {
+  # Function to clean model names for publication
+  clean_model_name <- function(model) {
+    model <- as.character(model)
+    
+    # Single parameter models
+    model <- ifelse(model == "v", "Difficulty → v (drift)", model)
+    model <- ifelse(model == "z", "Difficulty → z (bias)", model)
+    model <- ifelse(model == "a", "Difficulty → a (boundary)", model)
+    
+    # Two-parameter combinations
+    model <- ifelse(model == "v_z", "Difficulty → v + z", model)
+    model <- ifelse(model == "v_a", "Difficulty → v + a", model)
+    model <- ifelse(model == "z_a", "Difficulty → z + a", model)
+    
+    # Three-parameter combination
+    model <- ifelse(model == "v_z_a", "Difficulty → v + a + z", model)
+    model <- ifelse(model == "v_a_z", "Difficulty → v + a + z", model)
+    
+    # Model number formats
+    model <- gsub("Model3_Difficulty", "Difficulty → v (drift)", model)
+    model <- gsub("Model4_Additive", "Additive (v + a + z)", model)
+    model <- gsub("Model5_Interaction", "Interaction", model)
+    model <- gsub("Model10_Param_v_bs", "v + a parameterized", model)
+    
+    # Remove common prefixes
+    model <- gsub("^Difficulty_on_", "", model)
+    model <- gsub("^difficulty_", "", model)
+    
+    # Format underscores as separators
+    model <- gsub("_", " ", model)
+    
+    return(model)
+  }
+  
   loo_primary %>%
-    mutate(across(where(is.numeric), ~round(.x, 2))) %>%
+    mutate(
+      model_clean = clean_model_name(model),
+      across(where(is.numeric), ~round(.x, 2))
+    ) %>%
+    select(model_clean, elpd, se, p_loo) %>%
+    rename(model = model_clean) %>%
     gt() %>%
     tab_header(title = md("**Model Comparison: LOO-CV Results**")) %>%
     cols_label(
       model = "Model",
       elpd = "ELPD",
       se = "SE",
-      p_loo = "p_loo"
+      p_loo = "P_loo"
     ) %>%
     tab_style(
       style = cell_fill(color = "#E8F4F8"),
@@ -566,7 +756,7 @@ if (!is.null(publish_gate)) {
 -   KS statistic ≤ 0.15
 -   ≤ 15% of cells flagged
 
-**Result**: The primary model passes all convergence gates. PPC performance is discussed in detail below.
+**Result**: The primary model passes all MCMC convergence gates ($\hat{R}$, ESS, divergent transitions). PPC performance is discussed in detail below.
 
 # Fixed Effects & Posterior Contrasts
 
@@ -602,9 +792,36 @@ if (!is.null(bias_levels_std)) {
 
 ```{r}
 if (!is.null(bias_contr_std)) {
+  # Function to clean contrast names
+  clean_contrast_name <- function(contrast) {
+    contrast <- as.character(contrast)
+    
+    # Common contrast patterns
+    contrast <- gsub("difficulty_levelHard", "Difficulty: Hard", contrast)
+    contrast <- gsub("difficulty_levelEasy", "Difficulty: Easy", contrast)
+    contrast <- gsub("difficulty_levelStandard", "Difficulty: Standard", contrast)
+    contrast <- gsub("taskVDT", "Task: VDT", contrast)
+    contrast <- gsub("taskADT", "Task: ADT", contrast)
+    contrast <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", contrast)
+    contrast <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", contrast)
+    contrast <- gsub("effort_conditionLow", "Effort: Low", contrast)
+    contrast <- gsub("effort_conditionHigh", "Effort: High", contrast)
+    
+    # Replace operators
+    contrast <- gsub(" - ", " vs. ", contrast)
+    contrast <- gsub(" -", " vs.", contrast)
+    contrast <- gsub("- ", "vs. ", contrast)
+    
+    return(contrast)
+  }
+  
   bias_contr_std %>%
-    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
-    select(contrast, mean, q2.5, q97.5, Pr_gt_0) %>%
+    mutate(
+      contrast_clean = clean_contrast_name(contrast),
+      across(where(is.numeric), ~round(.x, 3))
+    ) %>%
+    select(contrast_clean, mean, q2.5, q97.5, Pr_gt_0) %>%
+    rename(contrast = contrast_clean) %>%
     gt() %>%
     tab_header(title = md("**Bias Contrasts (Standard-Only Model)**")) %>%
     cols_label(
@@ -633,8 +850,133 @@ knitr::include_graphics(fig_path("fig_fixed_effects_VDT.pdf"))
 
 ```{r}
 if (!is.null(fx_table)) {
+  # Function to clean DDM parameter names for publication (robust, vectorized version)
+  clean_ddm_parameter <- function(param) {
+    param <- as.character(param)
+    original <- param
+    n <- length(param)
+    result <- character(n)
+    
+    for (i in seq_len(n)) {
+      p <- param[i]
+      orig <- original[i]
+      
+      # Determine parameter type from prefix
+      param_type <- ""
+      if (grepl("^bs_", p)) {
+        param_type <- "Boundary (a)"
+        p <- gsub("^bs_", "", p)
+      } else if (grepl("^bias_", p)) {
+        param_type <- "Bias (z)"
+        p <- gsub("^bias_", "", p)
+      } else if (grepl("^ndt_", p)) {
+        param_type <- "Non-decision time (t₀)"
+        p <- gsub("^ndt_", "", p)
+      } else if (grepl("^b_", p)) {
+        param_type <- "Drift (v)"
+        p <- gsub("^b_", "", p)
+      } else {
+        # Try to infer from content
+        if (grepl("bs|boundary", orig, ignore.case = TRUE)) {
+          param_type <- "Boundary (a)"
+        } else if (grepl("ndt|non.decision", orig, ignore.case = TRUE)) {
+          param_type <- "Non-decision time (t₀)"
+        } else if (grepl("bias", orig, ignore.case = TRUE)) {
+          param_type <- "Bias (z)"
+        } else {
+          param_type <- "Drift (v)"  # Default
+        }
+      }
+      
+      # Handle Intercept
+      if (p == "Intercept" || orig == "Intercept") {
+        result[i] <- paste0(param_type, ": Intercept")
+        next
+      }
+      
+      # Step 1: Check if this is an interaction (has colon between different factors in raw R format)
+      # Interactions have colons between factor patterns like difficulty_level:task or effort_condition:task
+      is_raw_interaction <- grepl("_level:", p) || grepl("_condition:", p) || 
+                           (grepl("difficulty_level", p) && grepl(":task", p)) ||
+                           (grepl("effort_condition", p) && grepl(":task", p)) ||
+                           (grepl("difficulty_level", p) && grepl(":effort_condition", p))
+      
+      if (is_raw_interaction) {
+        # Handle interactions: split by colon between factors, clean each part, join with ×
+        # Pattern: difficulty_levelHard:taskVDT -> split -> clean -> "Difficulty: Hard × Task: VDT"
+        if (grepl(":", p) && !grepl(" × ", p)) {
+          # Split by colon (assuming only one colon between factors for interactions)
+          parts <- strsplit(p, ":")[[1]]
+          # Clean each part
+          cleaned_parts <- character(length(parts))
+          for (j in seq_along(parts)) {
+            part <- parts[j]
+            # Clean difficulty
+            part <- gsub("difficulty_levelEasy", "Difficulty: Easy", part, ignore.case = TRUE)
+            part <- gsub("difficulty_levelHard", "Difficulty: Hard", part, ignore.case = TRUE)
+            part <- gsub("difficulty_levelStandard", "Difficulty: Standard", part, ignore.case = TRUE)
+            # Clean task
+            part <- gsub("^taskVDT$", "Task: VDT", part, ignore.case = TRUE)
+            part <- gsub("^taskADT$", "Task: ADT", part, ignore.case = TRUE)
+            # Clean effort
+            part <- gsub("^effort_conditionLow_Force_5pct$", "Effort: Low", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionLow_MVC$", "Effort: Low", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionLow$", "Effort: Low", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionHigh_Force_40pct$", "Effort: High", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionHigh_MVC$", "Effort: High", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionHigh$", "Effort: High", part, ignore.case = TRUE)
+            cleaned_parts[j] <- part
+          }
+          # Join with ×
+          p <- paste(cleaned_parts, collapse = " × ")
+        }
+      } else {
+        # Step 2: Main effects - clean normally (preserve colons)
+        # Clean difficulty levels (flexible matching)
+        p <- gsub("difficulty_levelEasy", "Difficulty: Easy", p, ignore.case = TRUE)
+        p <- gsub("difficulty_levelHard", "Difficulty: Hard", p, ignore.case = TRUE)
+        p <- gsub("difficulty_levelStandard", "Difficulty: Standard", p, ignore.case = TRUE)
+        
+        # Clean task
+        p <- gsub("taskVDT", "Task: VDT", p, ignore.case = TRUE)
+        p <- gsub("taskADT", "Task: ADT", p, ignore.case = TRUE)
+        
+        # Clean effort conditions (handle all variations - order matters!)
+        p <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionLow_MVC", "Effort: Low", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionLow", "Effort: Low", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionHigh_MVC", "Effort: High", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionHigh", "Effort: High", p, ignore.case = TRUE)
+      }
+      
+      # Add parameter type prefix if we have meaningful content
+      if (p != orig && param_type != "") {
+        # Check if param already starts with a parameter type (avoid duplication)
+        if (!grepl("^(Drift|Boundary|Non-decision|Bias)", p)) {
+          result[i] <- paste0(param_type, ": ", p)
+        } else {
+          result[i] <- p
+        }
+      } else {
+        result[i] <- p
+      }
+    }
+    
+    return(result)
+  }
+  
   fx_table %>%
-    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
+    mutate(
+      parameter_clean = clean_ddm_parameter(parameter),
+      across(where(is.numeric), ~round(.x, 3))
+    ) %>%
+    mutate(
+      rhat = ifelse(is.na(rhat), "-", sprintf("%.2f", rhat)),
+      ess = ifelse(is.na(ess), "-", format(round(as.numeric(ess)), big.mark = ","))
+    ) %>%
+    select(parameter_clean, estimate, conf.low, conf.high, rhat, ess) %>%
+    rename(parameter = parameter_clean) %>%
     gt() %>%
     tab_header(title = md("**Table: Fixed Effects Summary (Link Scale)**")) %>%
     cols_label(
@@ -658,10 +1000,152 @@ if (!is.null(fx_table)) {
 
 ```{r}
 if (!is.null(contrasts_table)) {
+  # Function to clean contrast and parameter names
+  clean_contrast_name <- function(contrast) {
+    contrast <- as.character(contrast)
+    
+    # Common contrast patterns
+    contrast <- gsub("difficulty_levelHard", "Difficulty: Hard", contrast)
+    contrast <- gsub("difficulty_levelEasy", "Difficulty: Easy", contrast)
+    contrast <- gsub("difficulty_levelStandard", "Difficulty: Standard", contrast)
+    contrast <- gsub("taskVDT", "Task: VDT", contrast)
+    contrast <- gsub("taskADT", "Task: ADT", contrast)
+    contrast <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", contrast)
+    contrast <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", contrast)
+    
+    # Replace operators
+    contrast <- gsub(" - ", " vs. ", contrast)
+    contrast <- gsub(" -", " vs.", contrast)
+    contrast <- gsub("- ", "vs. ", contrast)
+    
+    return(contrast)
+  }
+  
+  # Function to clean DDM parameter names (same as Fixed Effects table, vectorized)
+  clean_ddm_parameter <- function(param) {
+    param <- as.character(param)
+    original <- param
+    n <- length(param)
+    result <- character(n)
+    
+    for (i in seq_len(n)) {
+      p <- param[i]
+      orig <- original[i]
+      
+      # Determine parameter type from prefix
+      param_type <- ""
+      if (grepl("^bs_", p)) {
+        param_type <- "Boundary (a)"
+        p <- gsub("^bs_", "", p)
+      } else if (grepl("^bias_", p)) {
+        param_type <- "Bias (z)"
+        p <- gsub("^bias_", "", p)
+      } else if (grepl("^ndt_", p)) {
+        param_type <- "Non-decision time (t₀)"
+        p <- gsub("^ndt_", "", p)
+      } else if (grepl("^b_", p)) {
+        param_type <- "Drift (v)"
+        p <- gsub("^b_", "", p)
+      } else {
+        # Try to infer from content
+        if (grepl("bs|boundary", orig, ignore.case = TRUE)) {
+          param_type <- "Boundary (a)"
+        } else if (grepl("ndt|non.decision", orig, ignore.case = TRUE)) {
+          param_type <- "Non-decision time (t₀)"
+        } else if (grepl("bias", orig, ignore.case = TRUE)) {
+          param_type <- "Bias (z)"
+        } else {
+          param_type <- "Drift (v)"  # Default
+        }
+      }
+      
+      # Handle Intercept
+      if (p == "Intercept" || orig == "Intercept") {
+        result[i] <- paste0(param_type, ": Intercept")
+        next
+      }
+      
+      # Step 1: Check if this is an interaction (has colon between different factors in raw R format)
+      # Interactions have colons between factor patterns like difficulty_level:task or effort_condition:task
+      is_raw_interaction <- grepl("_level:", p) || grepl("_condition:", p) || 
+                           (grepl("difficulty_level", p) && grepl(":task", p)) ||
+                           (grepl("effort_condition", p) && grepl(":task", p)) ||
+                           (grepl("difficulty_level", p) && grepl(":effort_condition", p))
+      
+      if (is_raw_interaction) {
+        # Handle interactions: split by colon between factors, clean each part, join with ×
+        # Pattern: difficulty_levelHard:taskVDT -> split -> clean -> "Difficulty: Hard × Task: VDT"
+        if (grepl(":", p) && !grepl(" × ", p)) {
+          # Split by colon (assuming only one colon between factors for interactions)
+          parts <- strsplit(p, ":")[[1]]
+          # Clean each part
+          cleaned_parts <- character(length(parts))
+          for (j in seq_along(parts)) {
+            part <- parts[j]
+            # Clean difficulty
+            part <- gsub("difficulty_levelEasy", "Difficulty: Easy", part, ignore.case = TRUE)
+            part <- gsub("difficulty_levelHard", "Difficulty: Hard", part, ignore.case = TRUE)
+            part <- gsub("difficulty_levelStandard", "Difficulty: Standard", part, ignore.case = TRUE)
+            # Clean task
+            part <- gsub("^taskVDT$", "Task: VDT", part, ignore.case = TRUE)
+            part <- gsub("^taskADT$", "Task: ADT", part, ignore.case = TRUE)
+            # Clean effort
+            part <- gsub("^effort_conditionLow_Force_5pct$", "Effort: Low", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionLow_MVC$", "Effort: Low", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionLow$", "Effort: Low", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionHigh_Force_40pct$", "Effort: High", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionHigh_MVC$", "Effort: High", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionHigh$", "Effort: High", part, ignore.case = TRUE)
+            cleaned_parts[j] <- part
+          }
+          # Join with ×
+          p <- paste(cleaned_parts, collapse = " × ")
+        }
+      } else {
+        # Step 2: Main effects - clean normally (preserve colons)
+        # Clean difficulty levels (flexible matching)
+        p <- gsub("difficulty_levelEasy", "Difficulty: Easy", p, ignore.case = TRUE)
+        p <- gsub("difficulty_levelHard", "Difficulty: Hard", p, ignore.case = TRUE)
+        p <- gsub("difficulty_levelStandard", "Difficulty: Standard", p, ignore.case = TRUE)
+        
+        # Clean task
+        p <- gsub("taskVDT", "Task: VDT", p, ignore.case = TRUE)
+        p <- gsub("taskADT", "Task: ADT", p, ignore.case = TRUE)
+        
+        # Clean effort conditions (handle all variations - order matters!)
+        p <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionLow_MVC", "Effort: Low", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionLow", "Effort: Low", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionHigh_MVC", "Effort: High", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionHigh", "Effort: High", p, ignore.case = TRUE)
+      }
+      
+      # Add parameter type prefix if we have meaningful content
+      if (p != orig && param_type != "") {
+        # Check if param already starts with a parameter type (avoid duplication)
+        if (!grepl("^(Drift|Boundary|Non-decision|Bias)", p)) {
+          result[i] <- paste0(param_type, ": ", p)
+        } else {
+          result[i] <- p
+        }
+      } else {
+        result[i] <- p
+      }
+    }
+    
+    return(result)
+  }
+  
   contrasts_table %>%
-    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
+    mutate(
+      contrast_clean = clean_contrast_name(contrast),
+      parameter_clean = clean_ddm_parameter(parameter),
+      across(where(is.numeric), ~round(.x, 3))
+    ) %>%
     rename(q2.5 = q05, q97.5 = q95) %>%
-    select(contrast, parameter, mean, q2.5, q97.5, p_gt0, p_lt0, p_in_rope) %>%
+    select(contrast_clean, parameter_clean, mean, q2.5, q97.5, p_gt0, p_lt0, p_in_rope) %>%
+    rename(contrast = contrast_clean, parameter = parameter_clean) %>%
     gt() %>%
     tab_header(title = md("**Table: Posterior Contrasts (Directional Probabilities)**")) %>%
     cols_label(
@@ -692,7 +1176,7 @@ if (!is.null(contrasts_table)) {
 -   **Easy vs. Hard on drift (v)**: Strong positive effect in both tasks (P(Δ\>0) \> 0.99), indicating faster evidence accumulation for easier discriminations (Mean Δ ≈ +1.50 units/s).
 -   **Easy vs. Hard on boundary (a)**: Negative effect (Mean Δ ≈ -0.04 on log scale, or \~4% reduction), consistent with reduced caution.
 -   **Task differences**: VDT shows systematically different parameter values than ADT, supporting task-specific processing.
--   **Effort on drift and ndt**: High effort shows small but credible effects on information accumulation and motor execution time (NDT increase of \~0.03 log-units or \~7.5 ms).
+-   **Effort on drift and t₀**: High effort shows small but credible effects on information accumulation and motor execution time (t₀ increase of ~0.03 log-units or ~7.5 ms).
 
 # Posterior Predictive Checks
 
@@ -732,7 +1216,7 @@ if (!is.null(pf_subj) && !is.na(pf_subj$n_cells)) {
 }
 ```
 
-**Result**: `r if (!is.null(pf_subj)) sprintf("%.1f%%", pf_subj$pct_flagged)` of cells flagged, meeting the ≤15% target. The model captures the central tendencies of reaction times and accuracy for the vast majority of subject-condition combinations.
+**Result**: `r if (!is.null(pf_subj)) sprintf("%.1f%%", pf_subj$pct_flagged)` of cells flagged. The subject-wise mid-body PPC gate (based on strict pooled quantiles) was not met due to fast-tail deviations. However, as detailed below, the joint model cell-wise PPCs show that the model captures the central tendencies for the majority of conditions (Standard/Easy), with misfit primarily concentrated in VDT-Hard.
 
 ## Visual Diagnostics
 
@@ -871,7 +1355,37 @@ knitr::include_graphics(fig_path("fig_ppc_heatmaps.pdf"))
 
 ```{r}
 if (!is.null(heatmap_wide)) {
+  # Function to clean factor level values
+  clean_factor_levels <- function(df) {
+    df <- df %>%
+      mutate(
+        # Clean task values
+        task = case_when(
+          task == "VDT" ~ "VDT",
+          task == "ADT" ~ "ADT",
+          TRUE ~ as.character(task)
+        ),
+        # Clean effort condition values
+        effort_condition = case_when(
+          effort_condition == "Low_Force_5pct" ~ "Low",
+          effort_condition == "High_Force_40pct" ~ "High",
+          effort_condition == "Low" ~ "Low",
+          effort_condition == "High" ~ "High",
+          TRUE ~ as.character(effort_condition)
+        ),
+        # Clean difficulty level values
+        difficulty_level = case_when(
+          difficulty_level == "Standard" ~ "Standard",
+          difficulty_level == "Easy" ~ "Easy",
+          difficulty_level == "Hard" ~ "Hard",
+          TRUE ~ as.character(difficulty_level)
+        )
+      )
+    return(df)
+  }
+  
   heatmap_wide %>%
+    clean_factor_levels() %>%
     mutate(across(where(is.numeric), ~round(.x, 3))) %>%
     gt() %>%
     tab_header(title = md("**PPC Residual Heatmap (Wide Format)**")) %>%
@@ -912,11 +1426,166 @@ To verify that the inclusion of 12 participants who performed at or below chance
 
 ```{r}
 if (!is.null(sensitivity_summary)) {
+  # Function to clean model names (reuse from LOO table)
+  clean_model_name <- function(model) {
+    model <- as.character(model)
+    
+    # Single parameter models
+    model <- ifelse(model == "v", "Difficulty → v (drift)", model)
+    model <- ifelse(model == "z", "Difficulty → z (bias)", model)
+    model <- ifelse(model == "a", "Difficulty → a (boundary)", model)
+    
+    # Two-parameter combinations
+    model <- ifelse(model == "v_z", "Difficulty → v + z", model)
+    model <- ifelse(model == "v_a", "Difficulty → v + a", model)
+    model <- ifelse(model == "z_a", "Difficulty → z + a", model)
+    
+    # Three-parameter combination
+    model <- ifelse(model == "v_z_a", "Difficulty → v + a + z", model)
+    model <- ifelse(model == "v_a_z", "Difficulty → v + a + z", model)
+    
+    # Model number formats
+    model <- gsub("Model3_Difficulty", "Difficulty → v (drift)", model)
+    model <- gsub("Model4_Additive", "Additive (v + a + z)", model)
+    model <- gsub("Model5_Interaction", "Interaction", model)
+    model <- gsub("Model10_Param_v_bs", "v + a parameterized", model)
+    
+    # Remove common prefixes
+    model <- gsub("^Difficulty_on_", "", model)
+    model <- gsub("^difficulty_", "", model)
+    
+    # Format underscores as separators
+    model <- gsub("_", " ", model)
+    
+    return(model)
+  }
+  
+  # Function to clean parameter names (reuse from DDM parameter function)
+  clean_ddm_parameter <- function(param) {
+    param <- as.character(param)
+    original <- param
+    n <- length(param)
+    result <- character(n)
+    
+    for (i in seq_len(n)) {
+      p <- param[i]
+      orig <- original[i]
+      
+      # Determine parameter type from prefix
+      param_type <- ""
+      if (grepl("^bs_", p)) {
+        param_type <- "Boundary (a)"
+        p <- gsub("^bs_", "", p)
+      } else if (grepl("^bias_", p)) {
+        param_type <- "Bias (z)"
+        p <- gsub("^bias_", "", p)
+      } else if (grepl("^ndt_", p)) {
+        param_type <- "Non-decision time (t₀)"
+        p <- gsub("^ndt_", "", p)
+      } else if (grepl("^b_", p)) {
+        param_type <- "Drift (v)"
+        p <- gsub("^b_", "", p)
+      } else {
+        # Try to infer from content
+        if (grepl("bs|boundary", orig, ignore.case = TRUE)) {
+          param_type <- "Boundary (a)"
+        } else if (grepl("ndt|non.decision", orig, ignore.case = TRUE)) {
+          param_type <- "Non-decision time (t₀)"
+        } else if (grepl("bias", orig, ignore.case = TRUE)) {
+          param_type <- "Bias (z)"
+        } else {
+          param_type <- "Drift (v)"  # Default
+        }
+      }
+      
+      # Handle Intercept
+      if (p == "Intercept" || orig == "Intercept") {
+        result[i] <- paste0(param_type, ": Intercept")
+        next
+      }
+      
+      # Step 1: Check if this is an interaction (has colon between different factors in raw R format)
+      # Interactions have colons between factor patterns like difficulty_level:task or effort_condition:task
+      is_raw_interaction <- grepl("_level:", p) || grepl("_condition:", p) || 
+                           (grepl("difficulty_level", p) && grepl(":task", p)) ||
+                           (grepl("effort_condition", p) && grepl(":task", p)) ||
+                           (grepl("difficulty_level", p) && grepl(":effort_condition", p))
+      
+      if (is_raw_interaction) {
+        # Handle interactions: split by colon between factors, clean each part, join with ×
+        # Pattern: difficulty_levelHard:taskVDT -> split -> clean -> "Difficulty: Hard × Task: VDT"
+        if (grepl(":", p) && !grepl(" × ", p)) {
+          # Split by colon (assuming only one colon between factors for interactions)
+          parts <- strsplit(p, ":")[[1]]
+          # Clean each part
+          cleaned_parts <- character(length(parts))
+          for (j in seq_along(parts)) {
+            part <- parts[j]
+            # Clean difficulty
+            part <- gsub("difficulty_levelEasy", "Difficulty: Easy", part, ignore.case = TRUE)
+            part <- gsub("difficulty_levelHard", "Difficulty: Hard", part, ignore.case = TRUE)
+            part <- gsub("difficulty_levelStandard", "Difficulty: Standard", part, ignore.case = TRUE)
+            # Clean task
+            part <- gsub("^taskVDT$", "Task: VDT", part, ignore.case = TRUE)
+            part <- gsub("^taskADT$", "Task: ADT", part, ignore.case = TRUE)
+            # Clean effort
+            part <- gsub("^effort_conditionLow_Force_5pct$", "Effort: Low", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionLow_MVC$", "Effort: Low", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionLow$", "Effort: Low", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionHigh_Force_40pct$", "Effort: High", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionHigh_MVC$", "Effort: High", part, ignore.case = TRUE)
+            part <- gsub("^effort_conditionHigh$", "Effort: High", part, ignore.case = TRUE)
+            cleaned_parts[j] <- part
+          }
+          # Join with ×
+          p <- paste(cleaned_parts, collapse = " × ")
+        }
+      } else {
+        # Step 2: Main effects - clean normally (preserve colons)
+        # Clean difficulty levels (flexible matching)
+        p <- gsub("difficulty_levelEasy", "Difficulty: Easy", p, ignore.case = TRUE)
+        p <- gsub("difficulty_levelHard", "Difficulty: Hard", p, ignore.case = TRUE)
+        p <- gsub("difficulty_levelStandard", "Difficulty: Standard", p, ignore.case = TRUE)
+        
+        # Clean task
+        p <- gsub("taskVDT", "Task: VDT", p, ignore.case = TRUE)
+        p <- gsub("taskADT", "Task: ADT", p, ignore.case = TRUE)
+        
+        # Clean effort conditions (handle all variations - order matters!)
+        p <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionLow_MVC", "Effort: Low", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionLow", "Effort: Low", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionHigh_MVC", "Effort: High", p, ignore.case = TRUE)
+        p <- gsub("effort_conditionHigh", "Effort: High", p, ignore.case = TRUE)
+      }
+      
+      # Add parameter type prefix if we have meaningful content
+      if (p != orig && param_type != "") {
+        # Check if param already starts with a parameter type (avoid duplication)
+        if (!grepl("^(Drift|Boundary|Non-decision|Bias)", p)) {
+          result[i] <- paste0(param_type, ": ", p)
+        } else {
+          result[i] <- p
+        }
+      } else {
+        result[i] <- p
+      }
+    }
+    
+    return(result)
+  }
+  
   sens_subchance <- sensitivity_summary %>%
     filter(sensitivity == "exclude_subchance") %>%
-    select(model, parameter, baseline_estimate, sensitivity_estimate, delta, 
+    mutate(
+      model_clean = clean_model_name(model),
+      parameter_clean = clean_ddm_parameter(parameter),
+      across(where(is.numeric), ~round(.x, 3))
+    ) %>%
+    select(model_clean, parameter_clean, baseline_estimate, sensitivity_estimate, delta, 
            delta_ci_lower, delta_ci_upper, ci_overlap, delta_contains_zero) %>%
-    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
+    rename(model = model_clean, parameter = parameter_clean) %>%
     arrange(model, parameter)
   
   if (nrow(sens_subchance) > 0) {
