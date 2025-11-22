@@ -1,6 +1,8 @@
 ---
 title: "Chapter 3 — Diffusion Modeling with Pupil-Linked Arousal (Response-Signal Design)"
 author: "Mohammad Dastgheib"
+bibliography: references.bib
+csl: apa-7th-edition.csl
 format:
   html:
     toc: true
@@ -224,16 +226,17 @@ This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a
 
 ## Participants
 
-**N = 67** older adults (≥65 years; mean age = 71.3 years, SD = 4.8). This analysis uses the same dataset and participants as described in the LC behavioral report manuscript (see References). All participants provided written informed consent in accordance with the Institutional Review Board protocol. Note: 12 participants performed at or below chance (≤55%) in some conditions but were retained to maximize sample size, as hierarchical modeling borrows strength to stabilize their estimates. Sensitivity analyses confirmed their inclusion did not alter main effects.
+67 older adults (≥65 years; mean age = 71.3 years, SD = 4.8). This analysis uses the same dataset and participants as described in the LC behavioral report manuscript (see References). All participants provided written informed consent in accordance with the Institutional Review Board protocol. \
+*Note*: 12 participants performed at or below chance (≤55%) in some conditions but were retained to maximize sample size, as hierarchical modeling borrows strength to stabilize their estimates. Sensitivity analyses confirmed their inclusion did not alter main effects.
 
 ## Tasks and Conditions
 
-**Tasks**: Auditory Detection Task (ADT) and Visual Detection Task (VDT) were modeled jointly with 'task' as a fixed effect, allowing for shared shrinkage while estimating task-specific offsets. *[Detailed task descriptions, stimulus parameters, and equipment specifications are provided in the LC behavioral report manuscript; see References.]*
+**Tasks**: Auditory Detection Task (ADT) and Visual Detection Task (VDT) were modeled jointly with 'task' as a fixed effect. This approach uses a single random effect variance parameter for subject-level variability across both tasks, allowing the model to share information between tasks and stabilize subject-specific estimates through hierarchical shrinkage while estimating task-specific offsets. *\[Detailed task descriptions, stimulus parameters, and equipment specifications are provided in the LC behavioral report manuscript; see References.\]*
 
-**Conditions** (within-subjects, fully crossed):
+**Conditions** (within-subjects, factorial design):
 
-- **Difficulty**: Standard (Δ=0), Easy, Hard
-- **Effort**: Low (5% MVC), High (40% MVC)
+-   **Difficulty**: Standard (Δ=0), Easy, Hard
+-   **Effort**: Low (5% MVC), High (40% MVC)
 
 **Total design cells**: 2 tasks × 3 difficulty levels × 2 effort conditions = 12 cells per subject.
 
@@ -241,24 +244,13 @@ This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a
 
 ## Trial Timeline (Response-Signal Design)
 
-```{r, fig.cap="Design Timeline. Trial structure for the response-signal task. RT is measured from the onset of the response screen (950 ms post-trial-onset), not from stimulus onset. This design constrains the interpretation of non-decision time (t₀) to primarily reflect motor execution and response selection.", out.width="100%", fig.align="center"}
-knitr::include_graphics(fig_path("fig_design_timeline.pdf"))
+```{r, fig.cap="Task design. Both Auditory and Visual tasks followed the same trial structure, but differed in stimuli. Each trial began with a 1.5-4.5 s jittered blank gray screen, followed by a 3 s grip gauge instructing low (5% MVC) or high (40% MVC) force with on-screen feedback. After a 0.25 s blank and 0.5 s fixation, a stimulus pair was presented. Auditory task: a 1000 Hz 0.1 s standard tone, a 0.5 s ISI, then a 0.1 s comparison tone that was either identical or increased by 8, 16, 32, or 64 Hz. Visual task: a central Gabor (1.5 cycles/degree, 0.2 Michelson contrast, 4°) followed by a 0.5 s blank and a second Gabor that was identical or increased in contrast by 0.06, 0.12, 0.24, or 0.48. Participants then released the grip and had 3 s to report \"same\" or \"different,\" followed by 3 s to rate their confidence on their same/different choice (1-4, low to high). All 5 stimulus levels and the 2 grip levels were presented in equal proportions across 150 trials per task, and were presented pseudorandomly.", out.width="100%", fig.align="center"}
+knitr::include_graphics(fig_path("Trial_Structure.png"))
 ```
 
-**Timeline**:
+**RT definition**: Time from response-screen onset (response-signal design). This is a critical methodological detail: RTs are measured from when the response screen appears (after the stimulus presentation period), not from stimulus onset. This design constrains the interpretation of **t₀ (non-decision time) to primarily reflect motor execution and response selection** rather than the sum of encoding + motor time as in traditional RT tasks. The response-signal design rationale is described in detail in the LC behavioral report manuscript.
 
-1. Standard tone/stimulus (100 ms)
-2. Inter-stimulus interval (500 ms)
-3. Target tone/stimulus (100 ms)
-4. Blank screen (250 ms)
-5. **Response screen onset** (time 0 for RT measurement)
-6. Response window (3,000 ms)
-
-*[Stimulus presentation parameters, equipment specifications, and response collection methods are detailed in the LC behavioral report manuscript; see References.]*
-
-**RT definition**: Time from response-screen onset (response-signal design). This is a critical methodological detail: RTs do not include early perceptual/encoding processes, which are absorbed into the "standard" + ISI + "target" + blank period. Thus, **t₀ (non-decision time) primarily reflects motor execution** rather than the sum of encoding + motor time as in traditional RT tasks. The response-signal design rationale is described in detail in the LC behavioral report manuscript.
-
-**Filtering**: RT ∈ [0.250, 3.000] s (anticipations and timeouts removed).
+**Filtering**: RTs < 0.250 s were excluded as anticipations. While a 150--200 ms cutoff is standard for young adult populations [@whelan2008effective], research consistently demonstrates that older adults exhibit significantly longer non-decision times ($T_{er}$), reflecting age-related slowing in stimulus encoding and motor execution. Specifically, drift diffusion modeling in aging populations estimates that $T_{er}$ is approximately 80--100 ms longer in older adults compared to their younger counterparts [@ratcliff2001aging; @ratcliff2004aging]. Consequently, a 250 ms threshold provides a conservative lower bound that adjusts for this physiological shift, ensuring that excluded trials represent genuine non-decisional reflexes rather than the leading edge of the valid decision distribution [@woods2015age]. The upper bound of 3.000 s reflects the maximum response window in the task design; no upper-bound filtering was applied post-experiment.
 
 # Design & Data Quality Assurance
 
@@ -383,9 +375,9 @@ if (!is.null(acc_glmm)) {
 
 **Key findings**:
 
-- **Hard trials**: Substantially lower accuracy (β ≈ -2.79, *p* < .001)
-- **Easy trials**: Slightly lower than Standard (β ≈ -0.29, *p* < .001) — likely due to a ceiling effect where the default tendency to report "same" (conservative bias) yields near-perfect rates on Standard trials, slightly exceeding the Hit rates on Easy trials.
-- **Task difference**: VDT showed higher accuracy than ADT (β ≈ 0.75, *p* < .001)
+-   **Hard trials**: Substantially lower accuracy (β ≈ -2.79, *p* \< .001)
+-   **Easy trials**: Slightly lower than Standard (β ≈ -0.29, *p* \< .001) — likely due to a ceiling effect where the default tendency to report "same" (conservative bias) yields near-perfect rates on Standard trials, slightly exceeding the Hit rates on Easy trials.
+-   **Task difference**: VDT showed higher accuracy than ADT (β ≈ 0.75, *p* \< .001)
 
 ## RT: Linear Mixed Model on Median RT
 
@@ -412,9 +404,9 @@ if (!is.null(rt_lmm)) {
 
 **Key findings**:
 
-- **Easy trials**: Faster than Standard (β ≈ -0.18 s, 95% CI [-0.25, -0.12])
-- **Hard trials**: Slightly slower than Standard (β ≈ 0.04 s)
-- **Task difference**: VDT slightly faster than ADT (β ≈ -0.09 s)
+-   **Easy trials**: Faster than Standard (β ≈ -0.18 s, 95% CI \[-0.25, -0.12\])
+-   **Hard trials**: Slightly slower than Standard (β ≈ 0.04 s)
+-   **Task difference**: VDT slightly faster than ADT (β ≈ -0.09 s)
 
 **Conclusion**: Experimental manipulations behaved as intended—difficulty affected both accuracy and RT in theoretically expected directions, validating the task design prior to DDM analysis.
 
@@ -430,19 +422,25 @@ We redefined the decision boundary such that the **upper boundary corresponds to
 
 **Links**:
 
-- Drift rate (v): identity link
-- Boundary separation (a/bs): log link
-- Non-decision time (t₀/ndt): log link
-- Starting-point bias (z): logit link
+-   Drift rate (v): identity link
+-   Boundary separation (a/bs): log link
+-   Non-decision time (t₀/ndt): log link
+-   Starting-point bias (z): logit link
+
+## DDM Process Overview
+
+```{r, fig.cap="Drift Diffusion Model: Evidence Accumulation Process. The DDM models decision-making as a noisy evidence accumulation process. Evidence accumulates from a starting point (z, starting-point bias) toward one of two decision boundaries: the upper boundary corresponds to \"different\" responses, and the lower boundary to \"same\" responses. The rate of evidence accumulation is determined by the drift rate (v), which reflects the quality of the stimulus evidence. The distance between boundaries is the boundary separation (a), which reflects response caution. The total reaction time (RT) is the sum of non-decision time (t₀, reflecting motor execution and response selection in the response-signal design) and the decision time (time to reach a boundary). In this example, the starting point is biased toward the upper boundary (z > 0.5), and positive drift leads to a \"different\" response.", out.width="90%", fig.align="center"}
+knitr::include_graphics(fig_path("fig_ddm_process.pdf"))
+```
 
 ## Standard-Only Bias Calibration
 
 To isolate bias identification from drift, we fit a hierarchical Wiener DDM to **Standard trials only** (3,472 trials from 67 subjects) with a tight drift prior to enforce near-zero evidence:
 
-- **Drift (v)**: `rt | dec(decision) ~ 1 + (1|subject_id)` with prior `normal(0, 0.03)` to enforce v ≈ 0
-- **Boundary (a/bs)**: `bs ~ 1 + (1|subject_id)` — intercept + subject random effects
-- **Non-decision time (t₀/ndt)**: `ndt ~ 1` — intercept-only (response-signal design)
-- **Bias (z)**: `bias ~ task + effort_condition + (1|subject_id)` — task/effort effects + subject random effects
+-   **Drift (v)**: `rt | dec(decision) ~ 1 + (1|subject_id)` with prior `normal(0, 0.03)` to enforce v ≈ 0
+-   **Boundary (a/bs)**: `bs ~ 1 + (1|subject_id)` — intercept + subject random effects
+-   **Non-decision time (t₀/ndt)**: `ndt ~ 1` — intercept-only (response-signal design)
+-   **Bias (z)**: `bias ~ task + effort_condition + (1|subject_id)` — task/effort effects + subject random effects
 
 This isolates bias identification from drift, as Standard (Δ=0) trials should have zero evidence accumulation.
 
@@ -450,10 +448,10 @@ This isolates bias identification from drift, as Standard (Δ=0) trials should h
 
 A full hierarchical model using all trials (17,243 trials) constrained Standard drift to ≈0 (tight prior `normal(0, 0.04)`) and allowed drift differences only for non-Standard trials (Easy/Hard) via an `is_nonstd` indicator:
 
-- **Drift (v)**: `rt | dec(decision) ~ 0 + difficulty_level + task:is_nonstd + effort_condition:is_nonstd + (1|subject_id)` — separate coefficients per difficulty, task/effort effects only for non-Standard
-- **Boundary (a/bs)**: `bs ~ difficulty_level + task + (1|subject_id)` — difficulty + task effects + subject random effects
-- **Non-decision time (t₀/ndt)**: `ndt ~ task + effort_condition` — task/effort effects, no random effects
-- **Bias (z)**: `bias ~ difficulty_level + task + (1|subject_id)` — difficulty + task effects + subject random effects
+-   **Drift (v)**: `rt | dec(decision) ~ 0 + difficulty_level + task:is_nonstd + effort_condition:is_nonstd + (1|subject_id)` — separate coefficients per difficulty, task/effort effects only for non-Standard
+-   **Boundary (a/bs)**: `bs ~ difficulty_level + task + (1|subject_id)` — difficulty + task effects + subject random effects
+-   **Non-decision time (t₀/ndt)**: `ndt ~ task + effort_condition` — task/effort effects, no random effects
+-   **Bias (z)**: `bias ~ difficulty_level + task + (1|subject_id)` — difficulty + task effects + subject random effects
 
 This joint model confirms the bias estimates from the Standard-only model while providing additional information about difficulty effects.
 
@@ -461,10 +459,10 @@ This joint model confirms the bias estimates from the Standard-only model while 
 
 The primary model includes difficulty effects on v, a, and z, with task and effort as additive factors:
 
-- **Drift (v)**: `rt | dec(decision) ~ difficulty_level + task + effort_condition + (1 + difficulty_level | subject_id)`
-- **Boundary (a/bs)**: `bs ~ difficulty_level + task + (1 | subject_id)`
-- **Non-decision time (t₀/ndt)**: `ndt ~ task + effort_condition` *(no random effects)*
-- **Bias (z)**: `bias ~ difficulty_level + task + (1 | subject_id)`
+-   **Drift (v)**: `rt | dec(decision) ~ difficulty_level + task + effort_condition + (1 + difficulty_level | subject_id)`
+-   **Boundary (a/bs)**: `bs ~ difficulty_level + task + (1 | subject_id)`
+-   **Non-decision time (t₀/ndt)**: `ndt ~ task + effort_condition` *(no random effects)*
+-   **Bias (z)**: `bias ~ difficulty_level + task + (1 | subject_id)`
 
 **Rationale for ndt formula**: In the response-signal design, t₀ primarily reflects motor execution. To avoid identifiability issues and maintain model stability, we modeled t₀ with group-level task and effort effects only, omitting subject-level random effects. The response-signal task design and its implications for DDM parameter interpretation are described in the LC behavioral report manuscript (see References).
 
@@ -474,21 +472,21 @@ All priors are weakly informative and set on the link scale:
 
 **Intercepts**:
 
-- v Intercept ~ Normal(0, 1)
-- bs Intercept ~ Normal(log(1.7), 0.30) → a ≈ 1.7 on natural scale
-- ndt Intercept ~ Normal(log(0.23), 0.12) → t₀ ≈ 230 ms on natural scale
-- bias Intercept ~ Normal(0, 0.5) → z ≈ 0.5 (no bias) on probability scale
+-   v Intercept \~ Normal(0, 1)
+-   bs Intercept \~ Normal(log(1.7), 0.30) → a ≈ 1.7 on natural scale
+-   ndt Intercept \~ Normal(log(0.23), 0.12) → t₀ ≈ 230 ms on natural scale
+-   bias Intercept \~ Normal(0, 0.5) → z ≈ 0.5 (no bias) on probability scale
 
 **Slopes**:
 
-- v slopes: Normal(0, 0.6–0.7)
-- bs slopes: Normal(0, 0.25–0.30)
-- bias slopes: Normal(0, 0.35)
+-   v slopes: Normal(0, 0.6–0.7)
+-   bs slopes: Normal(0, 0.25–0.30)
+-   bias slopes: Normal(0, 0.35)
 
 **Random effects**:
 
-- Standard deviations: Student-t(3, 0, 0.30)
-- Correlations: LKJ(2)
+-   Standard deviations: Student-t(3, 0, 0.30)
+-   Correlations: LKJ(2)
 
 **Sampling controls**: NUTS with `adapt_delta = 0.995`, `max_treedepth = 15`. Four chains, 8,000 iterations (4,000 warmup).
 
@@ -529,11 +527,11 @@ if (!is.null(loo_primary)) {
 
 **Winner**: The model with **difficulty → (v + a + z)** is strongly favored.
 
-- **ΔELPD vs. v-only**: ≈ +185 (SE ≈ 20)
-- **Stacking weight**: ≈ 0.89
-- **PBMA weight**: ≈ 1.0
+-   **ΔELPD vs. v-only**: ≈ +185 (SE ≈ 20)
+-   **Stacking weight**: ≈ 0.89
+-   **PBMA weight**: ≈ 1.0
 
-**Pareto-k diagnostics**: 1/17,243 observations had k > 0.7; moment matching was not required.
+**Pareto-k diagnostics**: 1/17,243 observations had k \> 0.7; moment matching was not required.
 
 ```{r, fig.cap="Model Comparison: Leave-One-Out Cross-Validation. ELPD (Expected Log-Predictive Density) with 95% SE bars by model. The best model (highest ELPD) is indicated with a dashed red line. ΔELPD values (difference from best) are annotated above each point. Larger ELPD indicates better out-of-sample predictive accuracy.", out.width="90%", fig.align="center"}
 knitr::include_graphics(fig_path("fig_loo.pdf"))
@@ -556,17 +554,17 @@ if (!is.null(publish_gate)) {
 
 **Convergence criteria**:
 
-- Max $\hat{R}$ ≤ 1.01 ✓
-- Min bulk ESS ≥ 400 ✓
-- Min tail ESS ≥ 400 ✓
-- Divergent transitions = 0 ✓
+-   Max $\hat{R}$ ≤ 1.01 ✓
+-   Min bulk ESS ≥ 400 ✓
+-   Min tail ESS ≥ 400 ✓
+-   Divergent transitions = 0 ✓
 
 **PPC thresholds** (pre-declared):
 
-- Subject-wise mid-body QP RMSE ≤ 0.09 s
-- |Δ accuracy| ≤ 0.05
-- KS statistic ≤ 0.15
-- ≤ 15% of cells flagged
+-   Subject-wise mid-body QP RMSE ≤ 0.09 s
+-   \|Δ accuracy\| ≤ 0.05
+-   KS statistic ≤ 0.15
+-   ≤ 15% of cells flagged
 
 **Result**: The primary model passes all convergence gates. PPC performance is discussed in detail below.
 
@@ -691,10 +689,10 @@ if (!is.null(contrasts_table)) {
 
 **Key contrasts interpreted**:
 
-- **Easy vs. Hard on drift (v)**: Strong positive effect in both tasks (P(Δ>0) > 0.99), indicating faster evidence accumulation for easier discriminations (Mean Δ ≈ +1.50 units/s).
-- **Easy vs. Hard on boundary (a)**: Negative effect (Mean Δ ≈ -0.04 on log scale, or ~4% reduction), consistent with reduced caution.
-- **Task differences**: VDT shows systematically different parameter values than ADT, supporting task-specific processing.
-- **Effort on drift and ndt**: High effort shows small but credible effects on information accumulation and motor execution time (NDT increase of ~0.03 log-units or ~7.5 ms).
+-   **Easy vs. Hard on drift (v)**: Strong positive effect in both tasks (P(Δ\>0) \> 0.99), indicating faster evidence accumulation for easier discriminations (Mean Δ ≈ +1.50 units/s).
+-   **Easy vs. Hard on boundary (a)**: Negative effect (Mean Δ ≈ -0.04 on log scale, or \~4% reduction), consistent with reduced caution.
+-   **Task differences**: VDT shows systematically different parameter values than ADT, supporting task-specific processing.
+-   **Effort on drift and ndt**: High effort shows small but credible effects on information accumulation and motor execution time (NDT increase of \~0.03 log-units or \~7.5 ms).
 
 # Posterior Predictive Checks
 
@@ -704,9 +702,9 @@ Our **primary gate** for model acceptance is the subject-wise mid-body PPC (cond
 
 **Thresholds** (pre-declared):
 
-- QP RMSE fail > 0.12 s (warn > 0.09 s)
-- KS statistic fail > 0.20 (warn > 0.15)
-- Target: ≤ 15% of cells flagged
+-   QP RMSE fail \> 0.12 s (warn \> 0.09 s)
+-   KS statistic fail \> 0.20 (warn \> 0.15)
+-   Target: ≤ 15% of cells flagged
 
 ```{r}
 if (!is.null(ppc_subj_cens)) {
@@ -758,7 +756,7 @@ We conducted additional sensitivity analyses (Unconditional Pooled PPC, Conditio
 
 ## Bias (Standard-Only Model)
 
-The starting-point bias was above 0.5 (no bias), with posterior mean z = 0.567, 95% CrI [0.534, 0.601], indicating a slight bias toward "different" responses. VDT showed less bias toward "different" than ADT on the logit scale, with contrast Δ = -0.179, 95% CrI [-0.259, -0.101], P(Δ>0) < 0.001. Effort (High vs Low) was negligible, with contrast Δ = 0.048, 95% CrI [-0.025, 0.120], P(Δ>0) = 0.903. Drift on Standard trials was effectively zero, with posterior mean v = -0.036, 95% CrI [-0.094, 0.022], validating the use of Standard trials for bias identification. Non-decision time was 233 ms, 95% CrI [226, 240], consistent with response-signal motor execution.
+The starting-point bias was above 0.5 (no bias), with posterior mean z = 0.567, 95% CrI \[0.534, 0.601\], indicating a slight bias toward "different" responses. VDT showed less bias toward "different" than ADT on the logit scale, with contrast Δ = -0.179, 95% CrI \[-0.259, -0.101\], P(Δ\>0) \< 0.001. Effort (High vs Low) was negligible, with contrast Δ = 0.048, 95% CrI \[-0.025, 0.120\], P(Δ\>0) = 0.903. Drift on Standard trials was effectively zero, with posterior mean v = -0.036, 95% CrI \[-0.094, 0.022\], validating the use of Standard trials for bias identification. Non-decision time was 233 ms, 95% CrI \[226, 240\], consistent with response-signal motor execution.
 
 ```{r, fig.cap="Bias (z) by task and effort with 95% CrIs; reference line at z=0.5 (no bias).", out.width="85%", fig.align="center"}
 knitr::include_graphics(fig_path("fig_bias_forest.png"))
@@ -770,7 +768,7 @@ knitr::include_graphics(fig_path("fig_v_standard_posterior.png"))
 
 ## Joint Model (Confirmation)
 
-Standard drift remained near zero (posterior mean ≈ -0.10, 95% CrI [-0.179, -0.017]). Easy showed strong positive drift (≈1.77), Hard moderate positive drift (≈0.25). Bias intercept closely matched the Standard-only estimate (z = 0.572 vs. 0.567); the task effect replicated (VDT < ADT, Δ = -0.100, 95% CrI [-0.141, -0.059]).
+Standard drift remained near zero (posterior mean ≈ -0.10, 95% CrI \[-0.179, -0.017\]). Easy showed strong positive drift (≈1.77), Hard moderate positive drift (≈0.25). Bias intercept closely matched the Standard-only estimate (z = 0.572 vs. 0.567); the task effect replicated (VDT \< ADT, Δ = -0.100, 95% CrI \[-0.141, -0.059\]).
 
 ## Convergence & Model Selection
 
@@ -778,7 +776,7 @@ All parameters converged well (max $\hat{R}$ ≤ 1.01; min bulk/tail ESS ≥ 400
 
 ## Difficulty Effects
 
-**Drift rate (v)**: Easy trials show faster evidence accumulation than Hard trials (strong positive contrast, P(Δ>0) > 0.99 for both tasks).
+**Drift rate (v)**: Easy trials show faster evidence accumulation than Hard trials (strong positive contrast, P(Δ\>0) \> 0.99 for both tasks).
 
 **Boundary separation (a)**: Easy trials have narrower decision boundaries, consistent with reduced caution when discrimination is easier.
 
@@ -794,7 +792,7 @@ High effort (40% MVC) produces small but credible effects on drift rate and non-
 
 **Absolute fit**: Subject-wise mid-body PPCs show acceptable error magnitudes (QP RMSE ≤ 0.09 s for most cells; ≤15% flagged). The model captures central RT tendencies and accuracy well.
 
-**PPC Summary (Joint Model)**: PPCs were good for Standard and Easy cells (QP RMSE < 0.13, KS < 0.08), with modest misfit in VDT-Hard (worst QP RMSE ≈ 0.206). This pattern suggests some residual fast-tail behavior not captured by a constant-drift Wiener process.
+**PPC Summary (Joint Model)**: PPCs were good for Standard and Easy cells (QP RMSE \< 0.13, KS \< 0.08), with modest misfit in VDT-Hard (worst QP RMSE ≈ 0.206). This pattern suggests some residual fast-tail behavior not captured by a constant-drift Wiener process.
 
 ```{r, fig.cap="Observed vs. model-predicted p('different') across 12 cells (Task × Effort × Difficulty).", out.width="90%", fig.align="center"}
 knitr::include_graphics(fig_path("fig_pdiff_heatmap.png"))
@@ -814,13 +812,13 @@ All participants provided written informed consent. The study was approved by th
 
 ## Sample Size & Precision
 
-With N=67 subjects and ~260 trials per subject (17,243 total), hierarchical estimation provides adequate precision for group-level and subject-level effects. Effective sample sizes (ESS) for all parameters exceeded 400, indicating stable posterior estimates.
+With N=67 subjects and \~260 trials per subject (17,243 total), hierarchical estimation provides adequate precision for group-level and subject-level effects. Effective sample sizes (ESS) for all parameters exceeded 400, indicating stable posterior estimates.
 
 ## Data & Code Availability
 
-All analysis code and de-identified data are available in the project repository:  
-**Repository**: [modeling-pupil-DDM](https://github.com/mohdasti/modeling-pupil-DDM)  
-**Analysis scripts**: `R/`, `scripts/`  
+All analysis code and de-identified data are available in the project repository:\
+**Repository**: [modeling-pupil-DDM](https://github.com/mohdasti/modeling-pupil-DDM)\
+**Analysis scripts**: `R/`, `scripts/`\
 **Report source**: `reports/chap3_ddm_results.qmd`
 
 **Note**: The behavioral dataset and detailed task methodology are described in the LC behavioral report manuscript (see References). This DDM analysis uses the same dataset and participants.
@@ -829,26 +827,27 @@ All analysis code and de-identified data are available in the project repository
 
 ## Model Family Limitations
 
-1. **Constant-drift Wiener DDM**: The base Wiener DDM assumes constant drift within each trial and no across-trial variability in drift (sv), starting point (sz), or non-decision time (st₀). This can underfit fast tails, especially in VDT-Hard conditions. The constant-drift Wiener DDM underfits fast RT tails, especially in VDT-Hard. Response-signal timing limits identifiability of across-trial variability. Future work could add a small contaminant mixture, across-trial variability (sv, sz), or urgency/collapsing bounds; LBA/race models may better capture fast-tail dynamics in the Easy/VDT regime.
+1.  **Constant-drift Wiener DDM**: The base Wiener DDM assumes constant drift within each trial and no across-trial variability in drift (sv), starting point (sz), or non-decision time (st₀). This can underfit fast tails, especially in VDT-Hard conditions. The constant-drift Wiener DDM underfits fast RT tails, especially in VDT-Hard. Response-signal timing limits identifiability of across-trial variability. Future work could add a small contaminant mixture, across-trial variability (sv, sz), or urgency/collapsing bounds; LBA/race models may better capture fast-tail dynamics in the Easy/VDT regime.
 
-2. **Non-decision time (t₀) random effects omitted**: In the response-signal design, t₀ primarily reflects motor execution. We modeled t₀ with group-level intercepts and small task/effort effects but omitted subject-level random effects due to identifiability concerns and initialization failures in pilot models. This may underestimate individual differences in motor execution speed.
+2.  **Non-decision time (t₀) random effects omitted**: In the response-signal design, t₀ primarily reflects motor execution. We modeled t₀ with group-level intercepts and small task/effort effects but omitted subject-level random effects due to identifiability concerns and initialization failures in pilot models. This may underestimate individual differences in motor execution speed.
 
-3. **Alternative model families**: Linear Ballistic Accumulator (LBA) or race models may provide better fit for fast-tail dynamics, particularly for Easy/VDT. These models allow for more flexible RT distributions and may better accommodate the response-signal design.
+3.  **Alternative model families**: Linear Ballistic Accumulator (LBA) or race models may provide better fit for fast-tail dynamics, particularly for Easy/VDT. These models allow for more flexible RT distributions and may better accommodate the response-signal design.
 
 ## Design-Specific Limitations
 
-4. **Response-signal RT measurement**: RTs are measured from response-screen onset, not stimulus onset. This constrains the interpretation of t₀ to motor execution and response selection, excluding early perceptual/encoding processes. While this is appropriate for the current design, it limits generalizability to traditional RT paradigms.
+4.  **Response-signal RT measurement**: RTs are measured from response-screen onset, not stimulus onset. This constrains the interpretation of t₀ to motor execution and response selection, excluding early perceptual/encoding processes. While this is appropriate for the current design, it limits generalizability to traditional RT paradigms.
 
-5. **Effort manipulation**: Physical effort (grip force) may interact with motor execution in complex ways not fully captured by small fixed effects on t₀. Future work integrating EMG or kinematic measures could provide richer insights into effort-motor interactions.
+5.  **Effort manipulation**: Physical effort (grip force) may interact with motor execution in complex ways not fully captured by small fixed effects on t₀. Future work integrating EMG or kinematic measures could provide richer insights into effort-motor interactions.
 
 ## Misfit in Easy/VDT
 
-6. **Fast-tail misfit**: The most pronounced misfit occurs in Easy/VDT conditions, where the model underpredicts the frequency of very fast correct responses. This suggests a subset of trials may reflect:
-   - Anticipatory responses (partially captured by 2% censoring)
-   - A "fast-guess" process not represented in the base DDM
-   - Extremely high drift rates that are incompatible with the assumed Wiener process for a small subset of trials
+6.  **Fast-tail misfit**: The most pronounced misfit occurs in Easy/VDT conditions, where the model underpredicts the frequency of very fast correct responses. This suggests a subset of trials may reflect:
 
-   Sensitivity analyses (2% censoring, unconditional PPCs) confirm that substantive conclusions are robust, but future work should explore mixture models or urgency signals to better account for these fast responses.
+    -   Anticipatory responses (partially captured by 2% censoring)
+    -   A "fast-guess" process not represented in the base DDM
+    -   Extremely high drift rates that are incompatible with the assumed Wiener process for a small subset of trials
+
+    Sensitivity analyses (2% censoring, unconditional PPCs) confirm that substantive conclusions are robust, but future work should explore mixture models or urgency signals to better account for these fast responses.
 
 # Conclusions
 
@@ -947,15 +946,15 @@ if (!is.null(sensitivity_summary)) {
 }
 ```
 
-**Results**: Most key parameters showed robust estimates when excluding sub-chance participants. For Model3_Difficulty and Model4_Additive, the drift intercept and boundary separation showed delta CIs that included zero, indicating no meaningful change. The Easy difficulty effect was also robust. The Hard difficulty effect showed a small shift (Δ ≈ -0.10, delta CI did not include zero), but this represents a small change in magnitude (~6.5% of the baseline estimate) and does not alter the substantive conclusion that Hard trials show negative drift relative to Standard. **Conclusion**: The inclusion of sub-chance participants did not meaningfully alter main effects or substantive conclusions, supporting our decision to retain all 67 participants to maximize sample size and leverage hierarchical modeling's ability to stabilize estimates through shrinkage.
+**Results**: Most key parameters showed robust estimates when excluding sub-chance participants. For Model3_Difficulty and Model4_Additive, the drift intercept and boundary separation showed delta CIs that included zero, indicating no meaningful change. The Easy difficulty effect was also robust. The Hard difficulty effect showed a small shift (Δ ≈ -0.10, delta CI did not include zero), but this represents a small change in magnitude (\~6.5% of the baseline estimate) and does not alter the substantive conclusion that Hard trials show negative drift relative to Standard. **Conclusion**: The inclusion of sub-chance participants did not meaningfully alter main effects or substantive conclusions, supporting our decision to retain all 67 participants to maximize sample size and leverage hierarchical modeling's ability to stabilize estimates through shrinkage.
 
 # References
 
-*Note: The following reference describes the behavioral dataset and methodology used in this analysis. Please update with the full citation details from the LC behavioral report manuscript.*
+::: {#refs}
+:::
 
-- LC Behavioral Report Manuscript (in preparation/published). *[Full citation to be added: authors, title, journal, year, DOI if available]*
+*Note: The LC behavioral report manuscript (in preparation/published) describes the behavioral dataset and methodology used in this analysis. Full citation details will be added when available.*
 
----
+------------------------------------------------------------------------
 
 **End of Report**
-
