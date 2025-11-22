@@ -1,0 +1,53 @@
+{
+    "R.rterm.windows": "/usr/local/bin/R",
+    "R.rterm.mac": "/usr/local/bin/R",
+    "R.rterm.linux": "/usr/local/bin/R",
+    
+    // DISABLE R LANGUAGE SERVER TO PREVENT CRASHES
+    "R.rtermSendDelay": 50,
+    "R.rpath.windows": "",
+    "R.rpath.mac": "",
+    "R.rpath.linux": "",
+    
+    // Disable R autocomplete and features that cause crashes
+    "r.lsp.enabled": false,
+    "r.lsp.args": [],
+    
+    // File associations (but don't load R language server)
+    "files.associations": {
+        "*.R": "r",
+        "*.r": "r"
+    },
+    
+    // Reduce file watching to prevent overload
+    "files.watcherExclude": {
+        "**/output/**": true,
+        "**/data/**": true,
+        "**/*.rds": true,
+        "**/*.RData": true,
+        "**/*.rda": true,
+        "**/node_modules/**": true
+    },
+    
+    // Reduce search/file indexing
+    "search.exclude": {
+        "**/output": true,
+        "**/data": true,
+        "**/*.rds": true,
+        "**/node_modules": true,
+        "**/.git": true
+    },
+    
+    // Performance optimizations
+    "extensions.autoUpdate": false,
+    "typescript.disableAutomaticTypeAcquisition": true,
+    "debug.allowBreakpointsEverywhere": false
+}
+
+
+
+
+
+
+
+

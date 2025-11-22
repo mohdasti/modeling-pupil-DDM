@@ -32,8 +32,10 @@ cat("Loading data...\n")
 data <- read_csv(INPUT_FILE, show_col_types = FALSE)
 
 # Filter for valid trials with RT and choice data
+# Standardized RT filtering: 0.2-3.0s (consistent with all other scripts)
 ddm_data <- data %>%
-    filter(!is.na(rt) & !is.na(choice_binary)) %>%
+    filter(!is.na(rt) & !is.na(choice_binary),
+           rt >= 0.2 & rt <= 3.0) %>%  # Standardized RT filtering
     mutate(
         participant = factor(subject_id),
         log_rt = log(rt),
@@ -42,6 +44,31 @@ ddm_data <- data %>%
 
 cat("Valid trials for DDM modeling:", nrow(ddm_data), "\n")
 cat("Participants:", length(unique(ddm_data$participant)), "\n")
+
+# =========================================================================
+# STANDARDIZED PRIORS: Literature-justified for older adults + response-signal design
+# =========================================================================
+
+priors_std <- c(
+    # Drift rate (v) - identity link
+    prior(normal(0, 1), class = "Intercept"),
+    prior(normal(0, 0.5), class = "b"),
+    
+    # Boundary separation (a/bs) - log link: center at log(1.7) for older adults
+    prior(normal(log(1.7), 0.30), class = "Intercept", dpar = "bs"),
+    prior(normal(0, 0.20), class = "b", dpar = "bs"),
+    
+    # Non-decision time (t0/ndt) - log link: center at log(0.35) for older adults + response-signal
+    prior(normal(log(0.35), 0.25), class = "Intercept", dpar = "ndt"),
+    prior(normal(0, 0.15), class = "b", dpar = "ndt"),
+    
+    # Starting point bias (z) - logit link: centered at 0.5 with moderate spread
+    prior(normal(0, 0.5), class = "Intercept", dpar = "bias"),
+    prior(normal(0, 0.3), class = "b", dpar = "bias"),
+    
+    # Random effects - subject-level variability
+    prior(student_t(3, 0, 0.5), class = "sd")
+)
 
 # =========================================================================
 # MODEL 1: STATE-LEVEL EFFECTS (WITHIN-PERSON)
@@ -57,6 +84,7 @@ model1_state <- brm(
                               (1 | participant),
     data = ddm_data,
     family = wiener(link_bs = "log", link_ndt = "log", link_bias = "logit"),
+    prior = priors_std,
     chains = 4, cores = 4, iter = 2000, warmup = 1000, seed = 12345,
     control = list(adapt_delta = 0.95, max_treedepth = 12),
     file = file.path(OUTPUT_DIR, "DDM_State_Level_Effects"),
@@ -81,6 +109,7 @@ model2_trait <- brm(
                               (1 | participant),
     data = ddm_data,
     family = wiener(link_bs = "log", link_ndt = "log", link_bias = "logit"),
+    prior = priors_std,
     chains = 4, cores = 4, iter = 2000, warmup = 1000, seed = 12346,
     control = list(adapt_delta = 0.95, max_treedepth = 12),
     file = file.path(OUTPUT_DIR, "DDM_Trait_Level_Effects"),
@@ -113,6 +142,7 @@ model3_combined <- brm(
                               (1 | participant),
     data = ddm_data,
     family = wiener(link_bs = "log", link_ndt = "log", link_bias = "logit"),
+    prior = priors_std,
     chains = 4, cores = 4, iter = 2000, warmup = 1000, seed = 12347,
     control = list(adapt_delta = 0.95, max_treedepth = 12),
     file = file.path(OUTPUT_DIR, "DDM_Combined_State_Trait_Effects"),
@@ -137,6 +167,7 @@ model4_interaction <- brm(
                               (1 | participant),
     data = ddm_data,
     family = wiener(link_bs = "log", link_ndt = "log", link_bias = "logit"),
+    prior = priors_std,
     chains = 4, cores = 4, iter = 2000, warmup = 1000, seed = 12348,
     control = list(adapt_delta = 0.95, max_treedepth = 12),
     file = file.path(OUTPUT_DIR, "DDM_Focused_State_Trait_Interaction"),
@@ -166,6 +197,7 @@ if (has_orthogonal) {
                                   (1 | participant),
         data = ddm_data,
         family = wiener(link_bs = "log", link_ndt = "log", link_bias = "logit"),
+        prior = priors_std,
         chains = 4, cores = 4, iter = 2000, warmup = 1000, seed = 12348,
         control = list(adapt_delta = 0.95, max_treedepth = 12),
         file = file.path(OUTPUT_DIR, "DDM_Temporal_Effects"),

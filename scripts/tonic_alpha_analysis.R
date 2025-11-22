@@ -68,12 +68,26 @@ f_tonic_alpha <- bf(
   bias ~ 1 + (1 | subj)
 )
 
+# STANDARDIZED PRIORS: Literature-justified for older adults + response-signal design
 priors <- c(
+  # Drift rate (v) - identity link
+  prior(normal(0, 1), class = "Intercept"),
   prior(normal(0, 0.5), class = "b"),
-  prior(normal(0, 1), class = "sd"),
-  prior(normal(0, 0.2), class = "Intercept", dpar = "bs"),
-  prior(normal(0, 0.2), class = "Intercept", dpar = "ndt"),
-  prior(normal(0, 0.2), class = "Intercept", dpar = "bias")
+  
+  # Boundary separation (a/bs) - log link: center at log(1.7) for older adults
+  prior(normal(log(1.7), 0.30), class = "Intercept", dpar = "bs"),
+  prior(normal(0, 0.20), class = "b", dpar = "bs"),
+  
+  # Non-decision time (t0/ndt) - log link: center at log(0.35) for older adults + response-signal
+  prior(normal(log(0.35), 0.25), class = "Intercept", dpar = "ndt"),
+  prior(normal(0, 0.15), class = "b", dpar = "ndt"),
+  
+  # Starting point bias (z) - logit link: centered at 0.5 with moderate spread
+  prior(normal(0, 0.5), class = "Intercept", dpar = "bias"),
+  prior(normal(0, 0.3), class = "b", dpar = "bias"),
+  
+  # Random effects - subject-level variability
+  prior(student_t(3, 0, 0.5), class = "sd")
 )
 
 # Fit model

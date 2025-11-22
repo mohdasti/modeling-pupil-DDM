@@ -84,3 +84,4 @@ cat("    - % flagged: ", sprintf("%.1f", gate$pct_flagged), "%\n")
 cat("    - Max QP RMSE: ", sprintf("%.3f", gate$max_qp), "\n")
 cat("    - Max KS: ", sprintf("%.3f", gate$max_ks), "\n")
 
+

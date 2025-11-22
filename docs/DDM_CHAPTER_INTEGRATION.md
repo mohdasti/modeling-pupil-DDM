@@ -175,3 +175,4 @@ When you add pupil data:
 - The report auto-reads CSV files, so updates propagate automatically
 - Figures are referenced via robust path resolution that works from any directory
 
+

@@ -180,62 +180,222 @@ if (PUPIL_FEATURES_AVAILABLE) {
 log_message("SUCCESS: Data loading and preparation complete.", "INFO")
 log_message(sprintf("Final datasets ready: BEHAVIORAL (%d trials), PUPIL (%d trials).", nrow(ddm_data_behav), nrow(ddm_data_pupil)))
 create_ddm_models <- function() {
-    common_priors <- c(
-        prior(normal(0, 1.5), class = "Intercept"),
-        prior(normal(0, 1), class = "b"),
-        prior(exponential(1), class = "sd")
+    # STANDARDIZED PRIORS: Literature-justified for older adults + response-signal design
+    # Base priors (intercept-only for all parameters)
+    # Note: b priors are added only when formulas have predictors
+    base_priors <- c(
+        # Drift rate (v) - identity link (intercept-only)
+        prior(normal(0, 1), class = "Intercept"),
+        
+        # Boundary separation (a/bs) - log link: center at log(1.7) for older adults
+        prior(normal(log(1.7), 0.30), class = "Intercept", dpar = "bs"),
+        
+        # Non-decision time (t0/ndt) - log link: center at log(0.23) for response-signal design
+        # RTs measured from response screen, so ndt reflects motor output only (not stimulus encoding)
+        # Prior mass ~95% ≈ 0.16-0.33s on natural scale
+        prior(normal(log(0.23), 0.20), class = "Intercept", dpar = "ndt"),
+        
+        # Starting point bias (z) - logit link: centered at 0.5 with moderate spread
+        prior(normal(0, 0.5), class = "Intercept", dpar = "bias"),
+        
+        # Random effects - subject-level variability
+        # NOTE: NDT random effects removed to avoid initialization issues
+        # Subject variation still captured in drift, boundary, and bias
+        prior(student_t(3, 0, 0.5), class = "sd")
+        # No sd prior for ndt since ndt has no random effects
     )
+    
+    # Priors for models with predictors on bs/ndt/bias (add when formulas have them)
+    dpar_b_priors <- c(
+        prior(normal(0, 0.20), class = "b", dpar = "bs"),
+        prior(normal(0, 0.15), class = "b", dpar = "ndt"),  # Note: ndt predictor priors rarely used (usually intercept-only)
+        prior(normal(0, 0.3), class = "b", dpar = "bias")
+    )
+    
+    # Common priors for models where bs/ndt/bias are intercept-only
+    common_priors <- base_priors
+    # All models need explicit bs, ndt, bias formulas to allow priors on them
     models <- list(
-        "Model1_Baseline"     = list(dataType = "behavioral", formula = brms::bf(rt | dec(decision) ~ 1 + (1|subject_id))),
-        "Model2_Force"        = list(dataType = "behavioral", formula = brms::bf(rt | dec(decision) ~ effort_condition + (1|subject_id))),
-        "Model3_Difficulty"   = list(dataType = "behavioral", formula = brms::bf(rt | dec(decision) ~ difficulty_level + (1|subject_id))),
-        "Model4_Additive"     = list(dataType = "behavioral", formula = brms::bf(rt | dec(decision) ~ effort_condition + difficulty_level + (1|subject_id))),
-        "Model5_Interaction"  = list(dataType = "behavioral", formula = brms::bf(rt | dec(decision) ~ effort_condition * difficulty_level + (1|subject_id))),
+        # NOTE: All models use ndt ~ 1 (no random effects) to avoid initialization issues
+        # Subject variation is still modeled in drift, boundary, and bias parameters
+        "Model1_Baseline"     = list(dataType = "behavioral", formula = brms::bf(
+            rt | dec(decision) ~ 1 + (1|subject_id),
+            bs ~ 1 + (1|subject_id),
+            ndt ~ 1,  # No RE - avoids initialization explosions
+            bias ~ 1 + (1|subject_id)
+        )),
+        "Model2_Force"        = list(dataType = "behavioral", formula = brms::bf(
+            rt | dec(decision) ~ effort_condition + (1|subject_id),
+            bs ~ 1 + (1|subject_id),
+            ndt ~ 1,  # No RE
+            bias ~ 1 + (1|subject_id)
+        )),
+        "Model3_Difficulty"   = list(dataType = "behavioral", formula = brms::bf(
+            rt | dec(decision) ~ difficulty_level + (1|subject_id),
+            bs ~ 1 + (1|subject_id),
+            ndt ~ 1,  # No RE
+            bias ~ 1 + (1|subject_id)
+        )),
+        "Model4_Additive"     = list(dataType = "behavioral", formula = brms::bf(
+            rt | dec(decision) ~ effort_condition + difficulty_level + (1|subject_id),
+            bs ~ 1 + (1|subject_id),
+            ndt ~ 1,  # No RE
+            bias ~ 1 + (1|subject_id)
+        )),
+        "Model5_Interaction"  = list(dataType = "behavioral", formula = brms::bf(
+            rt | dec(decision) ~ effort_condition * difficulty_level + (1|subject_id),
+            bs ~ 1 + (1|subject_id),
+            ndt ~ 1,  # No RE
+            bias ~ 1 + (1|subject_id)
+        )),
         # Sensitivity: include task main effect and interactions
-        "Model7_Task"          = list(dataType = "behavioral", formula = brms::bf(rt | dec(decision) ~ task + (1|subject_id))),
-        "Model8_Task_Additive" = list(dataType = "behavioral", formula = brms::bf(rt | dec(decision) ~ effort_condition + difficulty_level + task + (1|subject_id))),
-        "Model9_Task_Intx"     = list(dataType = "behavioral", formula = brms::bf(rt | dec(decision) ~ task * effort_condition + task * difficulty_level + (1|subject_id)))
+        "Model7_Task"          = list(dataType = "behavioral", formula = brms::bf(
+            rt | dec(decision) ~ task + (1|subject_id),
+            bs ~ 1 + (1|subject_id),
+            ndt ~ 1,  # No RE
+            bias ~ 1 + (1|subject_id)
+        )),
+        "Model8_Task_Additive" = list(dataType = "behavioral", formula = brms::bf(
+            rt | dec(decision) ~ effort_condition + difficulty_level + task + (1|subject_id),
+            bs ~ 1 + (1|subject_id),
+            ndt ~ 1,  # No RE
+            bias ~ 1 + (1|subject_id)
+        )),
+        "Model9_Task_Intx"     = list(dataType = "behavioral", formula = brms::bf(
+            rt | dec(decision) ~ task * effort_condition + task * difficulty_level + (1|subject_id),
+            bs ~ 1 + (1|subject_id),
+            ndt ~ 1,  # No RE
+            bias ~ 1 + (1|subject_id)
+        ))
     )
     # Add parameterized Wiener model estimating both v and bs (and simple ndt)
     param_bf <- brms::bf(
         rt | dec(decision) ~ effort_condition + difficulty_level + (1|subject_id),
         bs ~ effort_condition + difficulty_level + (1|subject_id),
-        ndt ~ 1 + (1|subject_id)
+        ndt ~ 1,  # No RE
+        bias ~ 1 + (1|subject_id)
     )
     models[["Model10_Param_v_bs"]] <- list(dataType = "behavioral", formula = param_bf)
     if (PUPIL_FEATURES_AVAILABLE) {
         models <- c(
             models,
             list(
-                "Model6_Pupillometry"  = list(dataType = "pupil", formula = brms::bf(rt | dec(decision) ~ effort_arousal_scaled + tonic_arousal_scaled + (1|subject_id))),
-                "Model6a_Pupil_Task"   = list(dataType = "pupil", formula = brms::bf(rt | dec(decision) ~ effort_arousal_scaled + tonic_arousal_scaled + task + (1|subject_id)))
+                "Model6_Pupillometry"  = list(dataType = "pupil", formula = brms::bf(
+                    rt | dec(decision) ~ effort_arousal_scaled + tonic_arousal_scaled + (1|subject_id),
+                    bs ~ 1 + (1|subject_id),
+                    ndt ~ 1,  # No RE
+                    bias ~ 1 + (1|subject_id)
+                )),
+                "Model6a_Pupil_Task"   = list(dataType = "pupil", formula = brms::bf(
+                    rt | dec(decision) ~ effort_arousal_scaled + tonic_arousal_scaled + task + (1|subject_id),
+                    bs ~ 1 + (1|subject_id),
+                    ndt ~ 1,  # No RE
+                    bias ~ 1 + (1|subject_id)
+                ))
             )
         )
     }
-    final_models <- purrr::map(models, ~ .x %>% purrr::list_modify(priors = common_priors))
-    # Override priors for baseline (no b parameters present)
-    final_models[["Model1_Baseline"]]$priors <- c(
-        prior(normal(0, 1.5), class = "Intercept"),
-        prior(exponential(1), class = "sd")
-    )
+    # DEFENSIVE PRIOR BUILDER: Prevents "argument 5 is empty" from trailing commas/empty args
+    build_priors <- function(...) {
+        pieces <- list(...)
+        # Filter out NULL, empty, or zero-length pieces
+        pieces <- Filter(function(x) !is.null(x) && length(x) > 0, pieces)
+        if (length(pieces) == 0) return(NULL)
+        do.call(c, pieces)
+    }
+    
+    # Assign priors based on model formulas (only include b priors when formulas have predictors)
+    final_models <- purrr::imap(models, function(model_spec, model_name) {
+        # Check drift rate formula for predictors
+        formula_str <- paste(deparse(model_spec$formula), collapse = " ")
+        drift_has_predictors <- any(grepl("~\\s*[^1(]+[a-zA-Z_]", formula_str))
+        
+        # Build priors defensively (no empty arguments)
+        has_bs_predictors <- grepl("Model10", model_name)  # Only Model10 has bs predictors
+        
+        model_priors <- build_priors(
+            base_priors,
+            if (drift_has_predictors) prior(normal(0, 0.5), class = "b") else NULL,
+            if (has_bs_predictors) prior(normal(0, 0.20), class = "b", dpar = "bs") else NULL
+        )
+        
+        # Fallback to base_priors if build_priors returns NULL (shouldn't happen)
+        if (is.null(model_priors)) model_priors <- base_priors
+        
+        model_spec$priors <- model_priors
+        return(model_spec)
+    })
+    
+    # Override priors for baseline (intercept-only for all parameters)
+    final_models[["Model1_Baseline"]]$priors <- base_priors
     return(final_models)
 }
 fit_ddm_model <- function(spec, data, model_name) {
+    # Minimal safe initialization: Only NDT must be initialized (must be < every RT)
+    # Parameter names: brms uses Intercept_ndt (not b_ndt_Intercept) for dpar intercepts
+    safe_init <- function(chain_id = 1) {
+        list(
+            Intercept_ndt = log(0.20),  # 200ms on log scale; safely below 250ms RT floor
+            Intercept_bs  = log(1.3),   # Optional: tamer init for older adults
+            Intercept_bias = 0,          # Optional: z ≈ 0.5 on logit scale
+            Intercept     = 0            # Optional: drift intercept at 0
+        )
+    }
+    
+    # Validate priors before fitting (catches mismatches early)
+    tryCatch({
+        brms::validate_prior(spec$formula, data = data, prior = spec$priors)
+    }, error = function(e) {
+        log_message(sprintf("Prior validation warning for %s: %s", model_name, e$message), "WARN")
+    })
+    
     # Now using proper wiener family for DDM models
     brm(
-        formula = spec$formula, data = data, family = wiener(link_bs = "log", link_ndt = "log"),
-        prior = spec$priors, chains = 4, iter = 2000, warmup = 1000, cores = 4,
-        backend = "cmdstanr", file = file.path(OUTPUT_PATHS$models, model_name), file_refit = "on_change"
+        formula = spec$formula, data = data, 
+        family = wiener(link_bs = "log", link_ndt = "log", link_bias = "logit"),  # Standardized links
+        prior = spec$priors, 
+        chains = 4, iter = 2000, warmup = 1000, cores = 4,
+        init = safe_init,
+        control = list(adapt_delta = 0.95, max_treedepth = 12),
+        backend = "cmdstanr", 
+        file = file.path(OUTPUT_PATHS$models, model_name), 
+        file_refit = "on_change",
+        refresh = 100
     )
 }
 model_specs <- create_ddm_models()
+
+# Check factor levels before fitting
+effort_levels <- length(unique(stats::na.omit(ddm_data_behav$effort_condition)))
+difficulty_levels <- length(unique(stats::na.omit(ddm_data_behav$difficulty_level)))
+task_levels <- length(unique(stats::na.omit(ddm_data_behav$task)))
+
+log_message(sprintf("Factor levels: effort=%d, difficulty=%d, task=%d", 
+                    effort_levels, difficulty_levels, task_levels), "INFO")
+
 for (model_name in names(model_specs)) {
     spec <- model_specs[[model_name]]
     if (spec$dataType == "pupil" && !PUPIL_FEATURES_AVAILABLE) {
         log_message(paste("Skipping", model_name, "(pupil features unavailable)"), "WARN")
         next
     }
+    
+    # Check if model requires factors with multiple levels
+    formula_str <- paste(deparse(spec$formula), collapse = " ")
+    requires_effort <- any(grepl("effort_condition", formula_str))
+    requires_task <- any(grepl("\\btask\\b", formula_str)) && !any(grepl("task_", formula_str))
+    
+    if (requires_effort && effort_levels < 2) {
+        log_message(paste("Skipping", model_name, "(requires multiple effort levels, but only", effort_levels, "level(s) available)"), "WARN")
+        next
+    }
+    if (requires_task && task_levels < 2) {
+        log_message(paste("Skipping", model_name, "(requires multiple task levels, but only", task_levels, "level(s) available)"), "WARN")
+        next
+    }
+    
     data_to_use <- if (spec$dataType == "pupil") ddm_data_pupil else ddm_data_behav
+    
     tryCatch({
         log_message(paste("--- FITTING:", model_name, "---"), "MODEL")
         fit_ddm_model(spec, data_to_use, model_name)
@@ -243,6 +403,68 @@ for (model_name in names(model_specs)) {
     }, error = function(e) {
         log_message(sprintf("FAILED to fit %s: %s", model_name, e$message), "ERROR")
     })
+}
+
+# ============================================================================
+# REFIT FOUR BORDERLINE MODELS WITH SAFER HMC SETTINGS AND SAVE DIAGNOSTICS
+# ============================================================================
+
+try({ dir.create(file.path(OUTPUT_PATHS$base, "verification"), recursive = TRUE, showWarnings = FALSE) }, silent = TRUE)
+
+borderline_models <- c("Model1_Baseline", "Model2_Force", "Model7_Task", "Model8_Task_Additive")
+convergence_rows <- list()
+
+for (model_name in borderline_models) {
+    if (!model_name %in% names(model_specs)) next
+    spec <- model_specs[[model_name]]
+    if (spec$dataType != "behavioral") next
+    data_to_use <- ddm_data_behav
+    log_message(paste("--- REFIT (SAFE HMC):", model_name, "---"), "MODEL")
+    # Use the same safe_init defined in fit_ddm_model
+    safe_init <- function(chain_id = 1) {
+        list(
+            Intercept_ndt = log(0.20),
+            Intercept_bs  = log(1.3),
+            Intercept_bias = 0,
+            Intercept     = 0
+        )
+    }
+    fit <- tryCatch({
+        brm(
+            formula = spec$formula, data = data_to_use,
+            family = wiener(link_bs = "log", link_ndt = "log", link_bias = "logit"),
+            prior = spec$priors,
+            chains = 6, iter = 8000, warmup = 4000, cores = 6,
+            init = safe_init,
+            control = list(adapt_delta = 0.99, max_treedepth = 15),
+            backend = "cmdstanr",
+            file = file.path(OUTPUT_PATHS$models, model_name),
+            file_refit = "on_change",
+            refresh = 200
+        )
+    }, error = function(e) {
+        log_message(sprintf("SAFE REFIT FAILED for %s: %s", model_name, e$message), "ERROR")
+        NULL
+    })
+    if (is.null(fit)) next
+    # Convergence diagnostics
+    rhat_vals <- brms::rhat(fit)
+    neff_rat <- brms::neff_ratio(fit)
+    max_rhat <- suppressWarnings(max(rhat_vals, na.rm = TRUE))
+    min_neff_ratio <- suppressWarnings(min(neff_rat, na.rm = TRUE))
+    convergence_rows[[length(convergence_rows) + 1]] <- data.frame(
+        model = model_name,
+        max_rhat = max_rhat,
+        min_neff_ratio = min_neff_ratio,
+        stringsAsFactors = FALSE
+    )
+}
+
+if (length(convergence_rows) > 0) {
+    convergence_df <- do.call(rbind, convergence_rows)
+    out_csv <- file.path(OUTPUT_PATHS$base, "verification", "convergence_refits.csv")
+    try(utils::write.csv(convergence_df, out_csv, row.names = FALSE), silent = TRUE)
+    log_message(paste("Saved convergence summaries to", out_csv), "SUCCESS")
 }
 
 # Optional: run all models separately for each task (ADT/VDT)

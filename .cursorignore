@@ -1,0 +1,56 @@
+# Cursor ignore rules to prevent crashes from large files
+# This prevents Cursor from indexing/searching these files
+
+# Model files (brms output - very large and binary)
+*.rds
+output/models/
+output/
+
+# Data files
+data/raw/
+data/processed/
+data/analysis_ready/*.csv
+*.mat
+*.h5
+*.hdf5
+
+# R binary data
+.RData
+.Rhistory
+
+# Large temporary files
+*.tmp
+*.temp
+ddm_analysis*.log
+*_background.log
+*_fresh_run.log
+
+# Documentation builds
+docs/_build/
+*.pdf
+
+# Jupyter notebooks (can be large)
+*.ipynb
+
+# Compiled R packages
+*.so
+*.dylib
+
+# Stan compiled models (extremely large)
+*.stan.html
+cmdstan/
+
+# Old backup files
+*_old.*
+*_backup.*
+*_TEST*.rds
+
+
+
+
+
+
+
+
+
+

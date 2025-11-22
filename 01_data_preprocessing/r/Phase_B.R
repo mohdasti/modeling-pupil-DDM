@@ -62,15 +62,27 @@ build_adaptive_ddm <- function(data,
         complexity <- "SIMPLE"
     }
     
-    # CORRECTED: Data-driven priors with numeric bounds
+    # STANDARDIZED PRIORS: Literature-justified for older adults + response-signal design
+    # All priors on link scale (log for bs/ndt, logit for bias, identity for drift)
     priors <- c(
-        prior(normal(0, 1), class = "Intercept"),  # For drift rate
-        prior(normal(1, 0.5), class = "Intercept", dpar = "bs"),  # For boundary separation
-        # FIXED: Use numeric value, not R variable
-        prior(normal(0.2, 0.08), class = "Intercept", dpar = "ndt", 
-              lb = 0.01, ub = max_ndt),  # max_ndt gets evaluated here
+        # Drift rate (v) - identity link
+        prior(normal(0, 1), class = "Intercept"),
         prior(normal(0, 0.5), class = "b"),
-        prior(exponential(2), class = "sd")  # Tighter prior as you wanted
+        
+        # Boundary separation (a/bs) - log link: center at log(1.7) for older adults
+        prior(normal(log(1.7), 0.30), class = "Intercept", dpar = "bs"),
+        prior(normal(0, 0.20), class = "b", dpar = "bs"),
+        
+        # Non-decision time (t0/ndt) - log link: center at log(0.35) for older adults + response-signal
+        prior(normal(log(0.35), 0.25), class = "Intercept", dpar = "ndt"),
+        prior(normal(0, 0.15), class = "b", dpar = "ndt"),
+        
+        # Starting point bias (z) - logit link: centered at 0.5 with moderate spread
+        prior(normal(0, 0.5), class = "Intercept", dpar = "bias"),
+        prior(normal(0, 0.3), class = "b", dpar = "bias"),
+        
+        # Random effects - subject-level variability
+        prior(student_t(3, 0, 0.5), class = "sd")
     )
     
     # Adaptive sampling settings
@@ -109,7 +121,7 @@ fit_ddm_with_retry <- function(data, model_spec, max_attempts = 3) {
             model <- brm(
                 formula = model_spec$formula,
                 data = data,
-                family = wiener(link_bs = "log", link_ndt = "identity", link_bias = "identity"),
+                family = wiener(link_bs = "log", link_ndt = "log", link_bias = "logit"),  # Standardized links
                 prior = model_spec$priors,
                 chains = 4,
                 iter = model_spec$sampling$iter,

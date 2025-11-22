@@ -52,3 +52,4 @@ cat("\nGenerated files:\n")
 cat("  - output/publish/checks_accuracy_glmm.csv\n")
 cat("  - output/publish/checks_rt_lmm.csv\n")
 
+
