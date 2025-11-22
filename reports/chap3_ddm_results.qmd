@@ -222,14 +222,91 @@ pf_uncond <- if (!is.null(ppc_uncond_cens)) {
 
 This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a response-signal change-detection task in older adults. The primary model maps task difficulty to drift rate (v), boundary separation (a), and starting-point bias (z), with small condition effects on non-decision time (t₀). We report comprehensive quality assurance checks, manipulation checks independent of the DDM, model comparison via LOO cross-validation, and extensive posterior predictive checks with emphasis on subject-wise mid-body RT quantiles.
 
-# Sample & Experimental Design
+# Methods
 
-## Participants
+## Drift Diffusion Model
 
-67 older adults (≥65 years; mean age = 71.3 years, SD = 4.8). This analysis uses the same dataset and participants as described in the LC behavioral report manuscript (see References). All participants provided written informed consent in accordance with the Institutional Review Board protocol.\
+The drift diffusion model (DDM) models decision-making as a noisy evidence accumulation process described by a Wiener diffusion process [@ratcliff1978theory; @ratcliff2008diffusion].
+
+```{r}
+#| label: fig-ddm-process
+#| fig-cap: "Drift Diffusion Model: Evidence Accumulation Process. The DDM models decision-making as a noisy evidence accumulation process. Evidence accumulates from a starting point (z, starting-point bias) toward one of two decision boundaries: the upper boundary corresponds to \"different\" responses, and the lower boundary to \"same\" responses. The rate of evidence accumulation is determined by the drift rate (v), which reflects the quality of the stimulus evidence. The distance between boundaries is the boundary separation (a), which reflects response caution. The total reaction time (RT) is the sum of non-decision time (t₀, reflecting motor execution and response selection in the response-signal design) and the decision time (time to reach a boundary). In this example, the starting point is biased toward the upper boundary (z > 0.5), and positive drift leads to a \"different\" response."
+#| fig-width: 90
+#| fig-align: center
+knitr::include_graphics(fig_path("fig_ddm_process.pdf"))
+```
+
+The evidence accumulation process follows the stochastic differential equation [@ratcliff1978theory; @ratcliff2008diffusion]:
+
+$$dX(t) = v \, dt + dW(t)$$ {#eq-sde}
+
+where $X(t)$ is the accumulated evidence at time $t$, $v$ is the drift rate (evidence strength), and $dW(t)$ is a Wiener noise process with unit variance. The process starts at $X(0) = z \cdot a$, where $z \in [0,1]$ is the starting-point bias (expressed as a proportion of boundary separation) and $a > 0$ is the boundary separation [@ratcliff2008diffusion].
+
+The decision process terminates when $X(t)$ reaches either the upper boundary ($X(t) = a$, corresponding to "different" responses) or the lower boundary ($X(t) = 0$, corresponding to "same" responses) [@ratcliff2008diffusion]. The total reaction time (RT) is the sum of the decision time (time to reach a boundary) and the non-decision time ($t_0$):
+
+$$\text{RT} = t_{\text{decision}} + t_0$$ {#eq-rt}
+
+where $t_0$ reflects motor execution and response selection time (in the response-signal design, this primarily captures post-signal processing and motor output) [@ratcliff2002estimating].
+
+### Parameter Transformations (Link Functions)
+
+To ensure parameter constraints, we apply link functions [@ratcliff2002estimating; @burkner2017brms]. The model was implemented using the `brms` package with `family = wiener(link_bs="log", link_ndt="log", link_bias="logit")`:
+
+-   **Drift rate**: $v = \beta_v$ (identity link)
+-   **Boundary separation**: $a = \exp(\beta_{\text{bs}})$ (log link, ensures $a > 0$)
+-   **Non-decision time**: $t_0 = \exp(\beta_{\text{ndt}})$ (log link, ensures $t_0 > 0$)
+-   **Starting-point bias**: $z = \text{logit}^{-1}(\beta_{\text{bias}}) = \frac{\exp(\beta_{\text{bias}})}{1 + \exp(\beta_{\text{bias}})}$ (logit link, ensures $z \in [0,1]$)
+
+### Hierarchical Structure
+
+For subject $i$ and trial $j$, the model parameters are [@burkner2017brms; @ratcliff2008diffusion]:
+
+$$v_{ij} = \beta_{v,0} + \sum_k \beta_{v,k} X_{k,ij} + u_{v,i}$$ {#eq-drift-hierarchical}
+
+$$a_{ij} = \exp\left(\beta_{\text{bs},0} + \sum_k \beta_{\text{bs},k} X_{k,ij} + u_{\text{bs},i}\right)$$ {#eq-boundary-hierarchical}
+
+$$t_{0,ij} = \exp\left(\beta_{\text{ndt},0} + \sum_k \beta_{\text{ndt},k} X_{k,ij}\right)$$ {#eq-ndt-hierarchical}
+
+$$z_{ij} = \text{logit}^{-1}\left(\beta_{\text{bias},0} + \sum_k \beta_{\text{bias},k} X_{k,ij} + u_{\text{bias},i}\right)$$ {#eq-bias-hierarchical}
+
+where $\beta_{0}$ are population-level intercepts, $\beta_k$ are population-level coefficients for predictors $X_k$ (e.g., task, effort condition, difficulty level), and $u_i \sim \mathcal{N}(0, \sigma^2_u)$ are subject-level random effects. Note that $t_0$ is modeled without subject-level random effects to maintain model stability in the response-signal design.
+
+### Likelihood Function
+
+The likelihood for a single trial with RT $t$ and decision $d \in \{\text{"same"}, \text{"different"}\}$ follows the Wiener first-passage time distribution [@feller1968introduction]:
+
+$$p(t, d | v, a, t_0, z) = \text{Wiener}(t - t_0 | v, a, z)$$ {#eq-likelihood}
+
+where the Wiener distribution gives the probability density of the first-passage time to boundary $d$ given drift $v$, boundary separation $a$, and starting point $z \cdot a$.
+
+## Decision Coding
+
+We employed **response-side coding** (also called "stimulus coding" or "response coding") where the upper boundary corresponds to "different" responses and the lower boundary corresponds to "same" responses (see @fig-ddm-process), rather than accuracy-based coding where boundaries represent correct/incorrect responses. This specification is necessary to disentangle *response bias* (a preference for one response alternative regardless of stimulus truth) from *discriminability* (drift rate) [@wiecki2013hddm; @ratcliff2008diffusion].
+
+In accuracy-based coding, bias would imply a preference for being correct (which is conceptually trivial), whereas response-side coding allows us to model the meaningful preference for the "same" response option observed in detection tasks. This is particularly important for same/different discrimination tasks where participants often exhibit specific response biases (e.g., a conservative "same" bias) rather than general accuracy biases. Previous work linking arousal to decision-making has demonstrated that phasic arousal reduces response biases in detection tasks [@deGee2020pupil], and capturing this effect requires mapping boundaries to response alternatives.
+
+On Standard (Δ=0) trials, participants chose "same" on 87.8% of trials and "different" on 12.2%—consistent with a conservative response tendency. The inclusion of Standard trials provides a critical constraint for estimating bias: since objective evidence on these trials is null (drift rate $v \approx 0$), the observed preference for "same" responses provides a clear estimate of the starting-point bias ($z$) shift [@urai2019choice]. This bias estimate would be unobtainable using accuracy-coded models, where Standard trials would be ambiguous (both "same" and "different" responses are technically correct when stimuli are identical).
+
+## Computational Methods
+
+All analyses were performed using R version 4.5.2 (2025-10-31) "\[Not\] Part in a Rumble" [@R] on macOS (aarch64-apple-darwin20, Apple Silicon). Bayesian hierarchical models were fitted using `brms` [@burkner2017brms; @burkner2018brms] with CmdStan [@cmdstan2024] via `cmdstanr` [@cmdstanr] as the backend. Model comparison was conducted using leave-one-out cross-validation via the `loo` package [@vehtari2017loo]. Data manipulation and visualization used `dplyr` [@dplyr], `tidyr` [@tidyr], `readr` [@readr], and `ggplot2` [@wickham2016ggplot2]. Tables were generated using `gt` [@gt]. Posterior analysis and diagnostics used the `posterior` package [@burkner2022posterior]. Code development and debugging were performed using Cursor (AI-assisted code editor), and the document was rendered using Quarto [@quarto].
+
+**MCMC Sampling Specifications:**
+
+-   Algorithm: NUTS (No-U-Turn Sampler)
+-   Chains: 4
+-   Iterations: 8,000 per chain (4,000 warmup, 4,000 sampling)
+-   Convergence criteria: $\hat{R}$ ≤ 1.01 [@gelman1992inference; @vehtari2021rank], minimum bulk/tail ESS ≥ 400
+
+## Sample & Experimental Design
+
+### Participants
+
+67 older adults (≥65 years; mean age = 71.3 years, SD = 4.8). This analysis uses the same dataset and participants as described in the LC behavioral report manuscript (see References). All participants provided informed consent and received course credit or financial compensation for participation. Study procedures were approved by the Institutional Review Board of the University of California, Riverside and all experimental procedures were performed in accordance with the approved guidelines and regulations.
+
 *Note*: 12 participants performed at or below chance (≤55%) in some conditions but were retained to maximize sample size, as hierarchical modeling borrows strength to stabilize their estimates. Sensitivity analyses confirmed their inclusion did not alter main effects.
 
-## Tasks and Conditions
+### Tasks and Conditions
 
 **Tasks**: Auditory Detection Task (ADT) and Visual Detection Task (VDT) were modeled jointly with 'task' as a fixed effect. This approach uses a single random effect variance parameter for subject-level variability across both tasks, allowing the model to share information between tasks and stabilize subject-specific estimates through hierarchical shrinkage while estimating task-specific offsets. *\[Detailed task descriptions, stimulus parameters, and equipment specifications are provided in the LC behavioral report manuscript; see References.\]*
 
@@ -250,11 +327,11 @@ knitr::include_graphics(fig_path("Trial_Structure.png"))
 
 **RT definition**: Time from response-screen onset (response-signal design). This is a critical methodological detail: RTs are measured from when the response screen appears (after the stimulus presentation period), not from stimulus onset. This design constrains the interpretation of **t₀ (non-decision time) to primarily reflect motor execution and response selection** rather than the sum of encoding + motor time as in traditional RT tasks. The response-signal design rationale is described in detail in the LC behavioral report manuscript.
 
-**Filtering**: RTs \< 0.250 s were excluded as anticipations. While a 150--200 ms cutoff is standard for young adult populations [@whelan2008effective], research consistently demonstrates that older adults exhibit significantly longer non-decision times ($T_{er}$), reflecting age-related slowing in stimulus encoding and motor execution. Specifically, drift diffusion modeling in aging populations estimates that $T_{er}$ is approximately 80--100 ms longer in older adults compared to their younger counterparts [@ratcliff2001aging; @ratcliff2004aging]. Consequently, a 250 ms threshold provides a conservative lower bound that adjusts for this physiological shift, ensuring that excluded trials represent genuine non-decisional reflexes rather than the leading edge of the valid decision distribution [@woods2015age]. The upper bound of 3.000 s reflects the maximum response window in the task design; no upper-bound filtering was applied post-experiment.
+**Filtering**: The DDM analysis applies a 250 ms lower-bound cutoff for anticipatory responses. While a 150--200 ms cutoff is standard for young adult populations [@whelan2008effective], research consistently demonstrates that older adults exhibit significantly longer non-decision times ($T_{er}$), reflecting age-related slowing in stimulus encoding and motor execution. Specifically, drift diffusion modeling in aging populations estimates that $T_{er}$ is approximately 80--100 ms longer in older adults compared to their younger counterparts [@ratcliff2001aging; @ratcliff2004aging]. Consequently, a 250 ms threshold provides a conservative lower bound that adjusts for this physiological shift, ensuring that excluded trials represent genuine non-decisional reflexes rather than the leading edge of the valid decision distribution [@woods2015age]. During preprocessing, trials with RT \< 200 ms were excluded (see Trial Exclusions section below). No additional trials were excluded at the 250 ms threshold as all remaining trials had RT ≥ 250 ms. The upper bound of 3.000 s reflects the maximum response window in the task design; no upper-bound filtering was applied post-experiment.
 
-# Design & Data Quality Assurance
+### Data Quality Assurance
 
-## Trial Exclusions
+#### Trial Exclusions
 
 Trial exclusions were applied during data preprocessing. The following table summarizes exclusions by filter type:
 
@@ -295,9 +372,9 @@ trial_exclusions_summary %>%
 
 **Summary**: Of 19,740 starting trials, 2,782 trials (14.1%) were excluded during preprocessing: - **245 trials (1.2%)** excluded for RT \< 200 ms (anticipatory responses) - **301 trials (1.5%)** excluded for missed responses - **2,236 trials (11.3%)** excluded for invalid run performance
 
-**Final dataset after preprocessing**: 16,958 trials (85.9% retention) from 65 subjects. Additional data processing steps (e.g., decision coding verification, quality checks) resulted in the final analysis dataset of 17,243 trials from 67 subjects. Note: The DDM analysis applies a more conservative 250 ms lower-bound cutoff (see Filtering section below) based on age-related non-decision time shifts, but no additional trials were excluded as all remaining trials had RT ≥ 250 ms.
+**Final dataset after preprocessing**: 16,958 trials (85.9% retention) from 65 subjects. Additional data processing steps (e.g., decision coding verification, quality checks) resulted in the final analysis dataset of 17,243 trials from 67 subjects. Two additional subjects were included after verification of their data quality during the decision coding audit. Note: The DDM analysis applies a more conservative 250 ms lower-bound cutoff (see Filtering section above) based on age-related non-decision time shifts, but no additional trials were excluded as all remaining trials had RT ≥ 250 ms.
 
-## Subject Inclusion & Decision Coding Audit
+### Subject Inclusion & Decision Coding Audit
 
 ```{r}
 # Subject inclusion summary
@@ -320,15 +397,15 @@ if (!is.null(qa_decision)) {
 }
 ```
 
-**Result**: All 67 subjects were retained; no sub-chance performers were excluded. Decision coding verification confirmed zero mismatches across all trials. Decision coding methodology is discussed in detail in the Model Specification section below.
+**Result**: All 67 subjects were retained; no sub-chance performers were excluded. Decision coding verification confirmed zero mismatches across all trials. Decision coding methodology is discussed in detail in the Decision Coding section above.
 
-# Manipulation Checks (Independent of DDM)
+### Manipulation Checks
 
 To confirm the experimental manipulations worked as intended, we conducted mixed-effects analyses on accuracy and RT *independent of any DDM assumptions*. **Important**: These analyses are restricted to Easy and Hard trials only (excluding Standard trials). Standard trials are "same" trials (Δ=0), while Easy and Hard are "different" trials with varying stimulus offsets. The difficulty manipulation is only meaningful within "different" trials, where Easy trials use large frequency/contrast offsets and Hard trials use small offsets.
 
 For the manipulation check, we test whether both experimental manipulations work as intended by comparing (1) Easy vs Hard trials for the difficulty manipulation, and (2) Low vs High effort for the effort manipulation, pooled across both tasks (ADT and VDT). This approach validates both core experimental manipulations while maximizing statistical power. Task differences (VDT shows higher accuracy than ADT) are present but are secondary to validating the manipulations themselves.
 
-## Accuracy: Generalized Linear Mixed Model
+#### Accuracy: Generalized Linear Mixed Model
 
 **Model**: `decision ~ difficulty + effort + (1 | subject)`, restricted to Easy and Hard trials only (N = 13,771 trials, pooled across ADT and VDT). Reference levels: Easy, Low_5_MVC.
 
@@ -417,7 +494,7 @@ if (!is.null(acc_glmm)) {
 -   **Hard vs. Easy**: Hard trials showed substantially lower accuracy than Easy (β = -2.97, *p* \< .001). Easy trials had 85.2% accuracy, while Hard trials had 30.5% accuracy (well below chance). This reflects the increased difficulty of detecting small frequency/contrast differences on "different" trials, demonstrating a strong effect of stimulus difference magnitude on discrimination performance.
 -   **High vs. Low Effort**: High effort (40% MVC) showed slightly lower accuracy than Low effort (5% MVC) (β = -0.15, *p* = .001). Low effort had 58.5% accuracy, while High effort had 56.8% accuracy. This suggests that the increased physical effort required for High effort trials may interfere with cognitive performance, potentially due to dual-task resource competition between maintaining grip force and performing the discrimination task.
 
-## RT: Linear Mixed Model on Median RT
+#### RT: Linear Mixed Model on Median RT
 
 **Model**: `rt_median ~ difficulty + effort + (1 | subject)`, restricted to Easy and Hard trials only (N = 13,771 trials, pooled across ADT and VDT). Reference levels: Easy, Low_5_MVC.
 
@@ -506,85 +583,9 @@ if (!is.null(rt_lmm)) {
 
 **Conclusion**: Both experimental manipulations worked as intended. The **difficulty manipulation** (Easy vs. Hard within "different" trials) showed strong effects on both accuracy and RT in theoretically expected directions: larger stimulus differences (Easy) led to higher accuracy (85.2% vs. 30.5%) and faster RTs (0.75 s vs. 1.01 s median) compared to smaller differences (Hard). The **effort manipulation** (Low vs. High MVC) showed a small but significant effect on accuracy, with High effort slightly reducing accuracy (56.8% vs. 58.5%), likely due to dual-task resource competition. However, effort did not significantly affect RT. These results validate the experimental design prior to DDM analysis.
 
-# Model Specification
+## Model Specifications
 
-## Decision Coding (Response-Side)
-
-We redefined the decision boundary such that the **upper boundary corresponds to "different"** and the **lower boundary to "same"**. This response-side coding is critical for identifying bias independently of correctness. On Standard (Δ=0) trials, participants chose "same" on 87.8% of trials and "different" on 12.2%—consistent with a conservative response tendency. The transformation from accuracy-based coding (dec=1 = correct) to response-side coding (dec_upper=1 = "different") was verified across all trials with zero mismatches.
-
-## Computational Environment
-
-All analyses were performed using R version 4.5.2 (2025-10-31) "\[Not\] Part in a Rumble" [@R] on macOS (aarch64-apple-darwin20, Apple Silicon). Bayesian hierarchical models were fitted using `brms` [@burkner2017brms; @burkner2018brms] with CmdStan [@cmdstan2024] via `cmdstanr` [@cmdstanr] as the backend. Model comparison was conducted using leave-one-out cross-validation via the `loo` package [@vehtari2017loo]. Data manipulation and visualization used `dplyr` [@dplyr], `tidyr` [@tidyr], `readr` [@readr], and `ggplot2` [@wickham2016ggplot2]. Tables were generated using `gt` [@gt]. Posterior analysis and diagnostics used the `posterior` package [@burkner2022posterior]. Code development and debugging were performed using Cursor (AI-assisted code editor), and the document was rendered using Quarto [@quarto].
-
-**MCMC Sampling Specifications:**
-- Algorithm: NUTS (No-U-Turn Sampler)
-- Chains: 4
-- Iterations: 8,000 per chain (4,000 warmup, 4,000 sampling)
-- Convergence criteria: $\hat{R}$ ≤ 1.01 [@gelman1992inference; @vehtari2021rank], minimum bulk/tail ESS ≥ 400
-
-## DDM Family and Links
-
-**Family**: `wiener(link_bs="log", link_ndt="log", link_bias="logit")`
-
-**Links**:
-
--   Drift rate (v): identity link
--   Boundary separation (a/bs): log link
--   Non-decision time (t₀/ndt): log link
--   Starting-point bias (z): logit link
-
-## Mathematical Specification
-
-The drift diffusion model (DDM) models decision-making as a noisy evidence accumulation process described by a Wiener diffusion process [@ratcliff1978theory; @ratcliff2008diffusion]. The evidence accumulation process follows the stochastic differential equation:
-
-$$dX(t) = v \, dt + dW(t)$$
-
-where $X(t)$ is the accumulated evidence at time $t$, $v$ is the drift rate (evidence strength), and $dW(t)$ is a Wiener noise process with unit variance. The process starts at $X(0) = z \cdot a$, where $z \in [0,1]$ is the starting-point bias (expressed as a proportion of boundary separation) and $a > 0$ is the boundary separation.
-
-The decision process terminates when $X(t)$ reaches either the upper boundary ($X(t) = a$, corresponding to "different" responses) or the lower boundary ($X(t) = 0$, corresponding to "same" responses). The total reaction time (RT) is the sum of the decision time (time to reach a boundary) and the non-decision time ($t_0$):
-
-$$\text{RT} = t_{\text{decision}} + t_0$$
-
-where $t_0$ reflects motor execution and response selection time (in the response-signal design, this primarily captures post-signal processing and motor output).
-
-**Parameter Transformations (Link Functions):**
-
-To ensure parameter constraints, we apply link functions:
-
--   **Drift rate**: $v = \beta_v$ (identity link)
--   **Boundary separation**: $a = \exp(\beta_{\text{bs}})$ (log link, ensures $a > 0$)
--   **Non-decision time**: $t_0 = \exp(\beta_{\text{ndt}})$ (log link, ensures $t_0 > 0$)
--   **Starting-point bias**: $z = \text{logit}^{-1}(\beta_{\text{bias}}) = \frac{\exp(\beta_{\text{bias}})}{1 + \exp(\beta_{\text{bias}})}$ (logit link, ensures $z \in [0,1]$)
-
-**Hierarchical Structure:**
-
-For subject $i$ and trial $j$, the model parameters are:
-
-$$v_{ij} = \beta_{v,0} + \sum_k \beta_{v,k} X_{k,ij} + u_{v,i}$$
-
-$$a_{ij} = \exp\left(\beta_{\text{bs},0} + \sum_k \beta_{\text{bs},k} X_{k,ij} + u_{\text{bs},i}\right)$$
-
-$$t_{0,ij} = \exp\left(\beta_{\text{ndt},0} + \sum_k \beta_{\text{ndt},k} X_{k,ij}\right)$$
-
-$$z_{ij} = \text{logit}^{-1}\left(\beta_{\text{bias},0} + \sum_k \beta_{\text{bias},k} X_{k,ij} + u_{\text{bias},i}\right)$$
-
-where $\beta_{0}$ are population-level intercepts, $\beta_k$ are population-level coefficients for predictors $X_k$ (e.g., task, effort condition, difficulty level), and $u_i \sim \mathcal{N}(0, \sigma^2_u)$ are subject-level random effects. Note that $t_0$ is modeled without subject-level random effects to maintain model stability in the response-signal design.
-
-**Likelihood Function:**
-
-The likelihood for a single trial with RT $t$ and decision $d \in \{\text{"same"}, \text{"different"}\}$ follows the Wiener first-passage time distribution [@feller1968introduction]:
-
-$$p(t, d | v, a, t_0, z) = \text{Wiener}(t - t_0 | v, a, z)$$
-
-where the Wiener distribution gives the probability density of the first-passage time to boundary $d$ given drift $v$, boundary separation $a$, and starting point $z \cdot a$.
-
-## DDM Process Overview
-
-```{r, fig.cap="Drift Diffusion Model: Evidence Accumulation Process. The DDM models decision-making as a noisy evidence accumulation process. Evidence accumulates from a starting point (z, starting-point bias) toward one of two decision boundaries: the upper boundary corresponds to \"different\" responses, and the lower boundary to \"same\" responses. The rate of evidence accumulation is determined by the drift rate (v), which reflects the quality of the stimulus evidence. The distance between boundaries is the boundary separation (a), which reflects response caution. The total reaction time (RT) is the sum of non-decision time (t₀, reflecting motor execution and response selection in the response-signal design) and the decision time (time to reach a boundary). In this example, the starting point is biased toward the upper boundary (z > 0.5), and positive drift leads to a \"different\" response.", out.width="90%", fig.align="center"}
-knitr::include_graphics(fig_path("fig_ddm_process.pdf"))
-```
-
-## Standard-Only Bias Calibration
+### Standard-Only Bias Calibration Model
 
 To isolate bias identification from drift, we fit a hierarchical Wiener DDM to **Standard trials only** (3,472 trials from 67 subjects) with a tight drift prior to enforce near-zero evidence:
 
@@ -595,7 +596,7 @@ To isolate bias identification from drift, we fit a hierarchical Wiener DDM to *
 
 This isolates bias identification from drift, as Standard (Δ=0) trials should have zero evidence accumulation.
 
-## Joint Model (Confirmation)
+### Joint Confirmation Model
 
 A full hierarchical model using all trials (17,243 trials) constrained Standard drift to ≈0 (tight prior `normal(0, 0.04)`) and allowed drift differences only for non-Standard trials (Easy/Hard) via an `is_nonstd` indicator:
 
@@ -606,7 +607,7 @@ A full hierarchical model using all trials (17,243 trials) constrained Standard 
 
 This joint model confirms the bias estimates from the Standard-only model while providing additional information about difficulty effects.
 
-## Formulas (Primary Model - Original Analysis)
+### Primary Analysis Model
 
 The primary model includes difficulty effects on v, a, and z, with task and effort as additive factors:
 
@@ -617,7 +618,7 @@ The primary model includes difficulty effects on v, a, and z, with task and effo
 
 **Rationale for ndt formula**: In the response-signal design, t₀ primarily reflects motor execution. To avoid identifiability issues and maintain model stability, we modeled t₀ with group-level task and effort effects only, omitting subject-level random effects. The response-signal task design and its implications for DDM parameter interpretation are described in the LC behavioral report manuscript (see References).
 
-## Priors (Link Scale)
+### Priors
 
 All priors are weakly informative and set on the link scale:
 
@@ -641,7 +642,7 @@ All priors are weakly informative and set on the link scale:
 
 **Sampling controls**: NUTS with `adapt_delta = 0.995`, `max_treedepth = 15`. Four chains, 8,000 iterations (4,000 warmup).
 
-## Prior vs. Posterior for Non-Decision Time
+#### Prior vs. Posterior for Non-Decision Time
 
 ```{r, fig.cap="t₀ Prior vs Posterior. Prior (gray line) and posterior (blue shaded density) distributions for the t₀ intercept. The prior is Normal(log(0.23), 0.12) on the log scale (≈0.23 s on natural scale). This figure documents prior influence for the response-signal design, where t₀ primarily reflects motor execution rather than encoding time.", out.width="85%", fig.align="center"}
 knitr::include_graphics(fig_path("fig_ndt_prior_posterior.pdf"))
@@ -649,11 +650,13 @@ knitr::include_graphics(fig_path("fig_ndt_prior_posterior.pdf"))
 
 **Interpretation**: The posterior for t₀ is well-informed by the data while remaining compatible with the weakly informative prior, confirming adequate identifiability for the group-level intercept despite the response-signal design.
 
-# Model Comparison (LOO Cross-Validation)
+## Model Comparison & Diagnostics
+
+### Model Comparison
 
 We compared 10 candidate models varying in how difficulty, task, and effort map onto DDM parameters. Leave-one-out cross-validation (LOO-CV) was used to select the best-fitting model.
 
-## LOO Summary Table
+#### LOO Summary
 
 ```{r}
 if (!is.null(loo_primary)) {
@@ -729,7 +732,7 @@ knitr::include_graphics(fig_path("fig_loo.pdf"))
 
 **Interpretation**: The data strongly support a model in which task difficulty modulates drift rate, boundary separation, *and* starting-point bias simultaneously. Simpler models (e.g., difficulty affecting only drift) are decisively rejected by cross-validation.
 
-# Convergence & Diagnostics
+### Model Diagnostics
 
 ```{r}
 if (!is.null(publish_gate)) {
@@ -758,9 +761,9 @@ if (!is.null(publish_gate)) {
 
 **Result**: The primary model passes all MCMC convergence gates ($\hat{R}$, ESS, divergent transitions). PPC performance is discussed in detail below.
 
-# Fixed Effects & Posterior Contrasts
+# Results
 
-## Bias Results (Standard-Only Model)
+## Bias Estimates (Standard-Only Model)
 
 ```{r}
 if (!is.null(bias_levels_std)) {
@@ -836,7 +839,9 @@ if (!is.null(bias_contr_std)) {
 }
 ```
 
-## Fixed Effects: Forest Plots by Task
+## Fixed Effects
+
+### Forest Plots by Task
 
 ```{r, fig.cap="Fixed Effects: ADT (Auditory Detection Task). Posterior means (link scale) with 95% CrIs for drift (v), boundary separation (a/bs), and starting-point bias (z). In the additive model, difficulty and effort contrasts are identical for both tasks; only the intercepts differ.", out.width="90%", fig.align="center"}
 knitr::include_graphics(fig_path("fig_fixed_effects_ADT.pdf"))
@@ -846,7 +851,7 @@ knitr::include_graphics(fig_path("fig_fixed_effects_ADT.pdf"))
 knitr::include_graphics(fig_path("fig_fixed_effects_VDT.pdf"))
 ```
 
-## Fixed Effects Summary Table
+### Summary Table
 
 ```{r}
 if (!is.null(fx_table)) {
@@ -932,22 +937,22 @@ if (!is.null(fx_table)) {
         }
       } else {
         # Step 2: Main effects - clean normally (preserve colons)
-        # Clean difficulty levels (flexible matching)
-        p <- gsub("difficulty_levelEasy", "Difficulty: Easy", p, ignore.case = TRUE)
-        p <- gsub("difficulty_levelHard", "Difficulty: Hard", p, ignore.case = TRUE)
-        p <- gsub("difficulty_levelStandard", "Difficulty: Standard", p, ignore.case = TRUE)
-        
-        # Clean task
-        p <- gsub("taskVDT", "Task: VDT", p, ignore.case = TRUE)
-        p <- gsub("taskADT", "Task: ADT", p, ignore.case = TRUE)
-        
-        # Clean effort conditions (handle all variations - order matters!)
-        p <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionLow_MVC", "Effort: Low", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionLow", "Effort: Low", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionHigh_MVC", "Effort: High", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionHigh", "Effort: High", p, ignore.case = TRUE)
+      # Clean difficulty levels (flexible matching)
+      p <- gsub("difficulty_levelEasy", "Difficulty: Easy", p, ignore.case = TRUE)
+      p <- gsub("difficulty_levelHard", "Difficulty: Hard", p, ignore.case = TRUE)
+      p <- gsub("difficulty_levelStandard", "Difficulty: Standard", p, ignore.case = TRUE)
+      
+      # Clean task
+      p <- gsub("taskVDT", "Task: VDT", p, ignore.case = TRUE)
+      p <- gsub("taskADT", "Task: ADT", p, ignore.case = TRUE)
+      
+      # Clean effort conditions (handle all variations - order matters!)
+      p <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionLow_MVC", "Effort: Low", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionLow", "Effort: Low", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionHigh_MVC", "Effort: High", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionHigh", "Effort: High", p, ignore.case = TRUE)
       }
       
       # Add parameter type prefix if we have meaningful content
@@ -996,7 +1001,7 @@ if (!is.null(fx_table)) {
 }
 ```
 
-## Posterior Contrasts with Directional Evidence
+## Parameter Contrasts
 
 ```{r}
 if (!is.null(contrasts_table)) {
@@ -1103,22 +1108,22 @@ if (!is.null(contrasts_table)) {
         }
       } else {
         # Step 2: Main effects - clean normally (preserve colons)
-        # Clean difficulty levels (flexible matching)
-        p <- gsub("difficulty_levelEasy", "Difficulty: Easy", p, ignore.case = TRUE)
-        p <- gsub("difficulty_levelHard", "Difficulty: Hard", p, ignore.case = TRUE)
-        p <- gsub("difficulty_levelStandard", "Difficulty: Standard", p, ignore.case = TRUE)
-        
-        # Clean task
-        p <- gsub("taskVDT", "Task: VDT", p, ignore.case = TRUE)
-        p <- gsub("taskADT", "Task: ADT", p, ignore.case = TRUE)
-        
-        # Clean effort conditions (handle all variations - order matters!)
-        p <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionLow_MVC", "Effort: Low", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionLow", "Effort: Low", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionHigh_MVC", "Effort: High", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionHigh", "Effort: High", p, ignore.case = TRUE)
+      # Clean difficulty levels (flexible matching)
+      p <- gsub("difficulty_levelEasy", "Difficulty: Easy", p, ignore.case = TRUE)
+      p <- gsub("difficulty_levelHard", "Difficulty: Hard", p, ignore.case = TRUE)
+      p <- gsub("difficulty_levelStandard", "Difficulty: Standard", p, ignore.case = TRUE)
+      
+      # Clean task
+      p <- gsub("taskVDT", "Task: VDT", p, ignore.case = TRUE)
+      p <- gsub("taskADT", "Task: ADT", p, ignore.case = TRUE)
+      
+      # Clean effort conditions (handle all variations - order matters!)
+      p <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionLow_MVC", "Effort: Low", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionLow", "Effort: Low", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionHigh_MVC", "Effort: High", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionHigh", "Effort: High", p, ignore.case = TRUE)
       }
       
       # Add parameter type prefix if we have meaningful content
@@ -1176,7 +1181,7 @@ if (!is.null(contrasts_table)) {
 -   **Easy vs. Hard on drift (v)**: Strong positive effect in both tasks (P(Δ\>0) \> 0.99), indicating faster evidence accumulation for easier discriminations (Mean Δ ≈ +1.50 units/s).
 -   **Easy vs. Hard on boundary (a)**: Negative effect (Mean Δ ≈ -0.04 on log scale, or \~4% reduction), consistent with reduced caution.
 -   **Task differences**: VDT shows systematically different parameter values than ADT, supporting task-specific processing.
--   **Effort on drift and t₀**: High effort shows small but credible effects on information accumulation and motor execution time (t₀ increase of ~0.03 log-units or ~7.5 ms).
+-   **Effort on drift and t₀**: High effort shows small but credible effects on information accumulation and motor execution time (t₀ increase of \~0.03 log-units or \~7.5 ms).
 
 # Posterior Predictive Checks
 
@@ -1226,19 +1231,19 @@ if (!is.null(pf_subj) && !is.na(pf_subj$n_cells)) {
 knitr::include_graphics(fig_path("fig_ppc_rt_overlay.pdf"))
 ```
 
-### 2. Quantile-Probability (QP) Plots
+### Quantile-Probability (QP) Plots
 
 ```{r, fig.cap="Quantile-Probability (QP) Plot. Empirical vs. predicted RT quantiles by difficulty level, with separate panels for Task × Effort. Points colored by difficulty (Standard=gray, Easy=blue, Hard=red) and shaped by response type (Correct/Error). Dashed diagonal = perfect prediction. Deviations primarily occur in fast tails for Easy/VDT conditions.", out.width="95%", fig.align="center"}
 knitr::include_graphics(fig_path("fig_qp.pdf"))
 ```
 
-## Sensitivity Analyses
+### Sensitivity Analyses
 
 We conducted additional sensitivity analyses (Unconditional Pooled PPC, Conditional Pooled PPC) which confirmed that the core findings are robust, though strict pooled metrics flag more cells due to fast-tail misfit. These additional checks are detailed in the Supplementary Figures.
 
-# Interpretation & Key Findings
+# Discussion
 
-## Bias (Standard-Only Model)
+## Bias Estimates (Standard-Only Model)
 
 The starting-point bias was above 0.5 (no bias), with posterior mean z = 0.567, 95% CrI \[0.534, 0.601\], indicating a slight bias toward "different" responses. VDT showed less bias toward "different" than ADT on the logit scale, with contrast Δ = -0.179, 95% CrI \[-0.259, -0.101\], P(Δ\>0) \< 0.001. Effort (High vs Low) was negligible, with contrast Δ = 0.048, 95% CrI \[-0.025, 0.120\], P(Δ\>0) = 0.903. Drift on Standard trials was effectively zero, with posterior mean v = -0.036, 95% CrI \[-0.094, 0.022\], validating the use of Standard trials for bias identification. Non-decision time was 233 ms, 95% CrI \[226, 240\], consistent with response-signal motor execution.
 
@@ -1250,11 +1255,11 @@ knitr::include_graphics(fig_path("fig_bias_forest.png"))
 knitr::include_graphics(fig_path("fig_v_standard_posterior.png"))
 ```
 
-## Joint Model (Confirmation)
+### Joint Confirmation Model
 
 Standard drift remained near zero (posterior mean ≈ -0.10, 95% CrI \[-0.179, -0.017\]). Easy showed strong positive drift (≈1.77), Hard moderate positive drift (≈0.25). Bias intercept closely matched the Standard-only estimate (z = 0.572 vs. 0.567); the task effect replicated (VDT \< ADT, Δ = -0.100, 95% CrI \[-0.141, -0.059\]).
 
-## Convergence & Model Selection
+## Model Convergence & Selection
 
 All parameters converged well (max $\hat{R}$ ≤ 1.01; min bulk/tail ESS ≥ 400; no divergent transitions). Leave-one-out cross-validation strongly favored a model in which **difficulty modulates drift, boundary separation, and starting-point bias jointly** (v+a+z), relative to drift-only or simpler models (ΔELPD ≈ +185, SE ≈ 20).
 
@@ -1288,11 +1293,7 @@ knitr::include_graphics(fig_path("fig_ppc_small_multiples.png"))
 
 **Known limitation**: Pooled conditional PPCs reveal residual fast-tail misfit, most pronounced in Easy/VDT conditions. This is a known limitation of constant-drift Wiener DDMs without across-trial variability (sv, sz, st₀) or explicit contaminant/lapse processes.
 
-# Ethics, Precision, and Data Availability
-
-## Ethics Statement
-
-All participants provided written informed consent. The study was approved by the Institutional Review Board and conducted in accordance with the Declaration of Helsinki.
+# Data Availability & Funding
 
 ## Sample Size & Precision
 
@@ -1306,6 +1307,10 @@ All analysis code and de-identified data are available in the project repository
 **Report source**: `reports/chap3_ddm_results.qmd`
 
 **Note**: The behavioral dataset and detailed task methodology are described in the LC behavioral report manuscript (see References). This DDM analysis uses the same dataset and participants.
+
+## Funding
+
+This research was supported by the National Institutes of Health (Project ID: 11096010). Additional grant details can be found at: https://reporter.nih.gov/search/l8qkCFX0Cki47b9kZOa3Pg/project-details/11096010. The content is solely the responsibility of the authors and does not necessarily represent the official views of the National Institutes of Health.
 
 # Limitations & Future Directions
 
@@ -1542,22 +1547,22 @@ if (!is.null(sensitivity_summary)) {
         }
       } else {
         # Step 2: Main effects - clean normally (preserve colons)
-        # Clean difficulty levels (flexible matching)
-        p <- gsub("difficulty_levelEasy", "Difficulty: Easy", p, ignore.case = TRUE)
-        p <- gsub("difficulty_levelHard", "Difficulty: Hard", p, ignore.case = TRUE)
-        p <- gsub("difficulty_levelStandard", "Difficulty: Standard", p, ignore.case = TRUE)
-        
-        # Clean task
-        p <- gsub("taskVDT", "Task: VDT", p, ignore.case = TRUE)
-        p <- gsub("taskADT", "Task: ADT", p, ignore.case = TRUE)
-        
-        # Clean effort conditions (handle all variations - order matters!)
-        p <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionLow_MVC", "Effort: Low", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionLow", "Effort: Low", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionHigh_MVC", "Effort: High", p, ignore.case = TRUE)
-        p <- gsub("effort_conditionHigh", "Effort: High", p, ignore.case = TRUE)
+      # Clean difficulty levels (flexible matching)
+      p <- gsub("difficulty_levelEasy", "Difficulty: Easy", p, ignore.case = TRUE)
+      p <- gsub("difficulty_levelHard", "Difficulty: Hard", p, ignore.case = TRUE)
+      p <- gsub("difficulty_levelStandard", "Difficulty: Standard", p, ignore.case = TRUE)
+      
+      # Clean task
+      p <- gsub("taskVDT", "Task: VDT", p, ignore.case = TRUE)
+      p <- gsub("taskADT", "Task: ADT", p, ignore.case = TRUE)
+      
+      # Clean effort conditions (handle all variations - order matters!)
+      p <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionLow_MVC", "Effort: Low", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionLow", "Effort: Low", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionHigh_MVC", "Effort: High", p, ignore.case = TRUE)
+      p <- gsub("effort_conditionHigh", "Effort: High", p, ignore.case = TRUE)
       }
       
       # Add parameter type prefix if we have meaningful content
