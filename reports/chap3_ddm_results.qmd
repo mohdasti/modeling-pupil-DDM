@@ -947,7 +947,7 @@ if (!is.null(sensitivity_summary)) {
 }
 ```
 
-**Results**: All key parameters showed robust estimates when excluding sub-chance participants. For Model3_Difficulty, the drift intercept, boundary separation, and difficulty effects (Hard, Easy) all showed delta CIs that included zero, indicating no meaningful change in parameter estimates. The same pattern held for Model4_Additive. **Conclusion**: The inclusion of sub-chance participants did not alter main effects, supporting our decision to retain all 67 participants to maximize sample size and leverage hierarchical modeling's ability to stabilize estimates through shrinkage.
+**Results**: Most key parameters showed robust estimates when excluding sub-chance participants. For Model3_Difficulty and Model4_Additive, the drift intercept and boundary separation showed delta CIs that included zero, indicating no meaningful change. The Easy difficulty effect was also robust. The Hard difficulty effect showed a small shift (Δ ≈ -0.10, delta CI did not include zero), but this represents a small change in magnitude (~6.5% of the baseline estimate) and does not alter the substantive conclusion that Hard trials show negative drift relative to Standard. **Conclusion**: The inclusion of sub-chance participants did not meaningfully alter main effects or substantive conclusions, supporting our decision to retain all 67 participants to maximize sample size and leverage hierarchical modeling's ability to stabilize estimates through shrinkage.
 
 # References
 
