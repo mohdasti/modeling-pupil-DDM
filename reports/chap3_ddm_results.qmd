@@ -184,6 +184,10 @@ bias_contr_std <- sread(file.path(p, "bias_standard_only_contrasts.csv"))
 bias_contr_joint <- sread(file.path(p, "bias_joint_contrast.csv"))
 ppc_joint_minimal <- sread(file.path(p, "ppc_joint_minimal.csv"))
 
+# Sensitivity analyses
+sensitivity_summary <- sread("output/checks/sensitivity_summary.csv") %||%
+                      sread("output/sensitivity/sensitivity_summary.csv")
+
 # Derive simple pass/fail summaries
 pf_subj <- if (!is.null(ppc_subj_cens)) {
   if ("any_flag" %in% names(ppc_subj_cens)) {
@@ -900,6 +904,50 @@ if (!is.null(ppc_gate)) {
     )
 }
 ```
+
+## S4. Sensitivity Analysis: Exclusion of Sub-Chance Participants
+
+To verify that the inclusion of 12 participants who performed at or below chance (≤55% accuracy) in some conditions did not bias our main findings, we conducted sensitivity analyses comparing the primary model (N=67) with models fit after excluding these participants (N=55).
+
+**Method**: We refit the primary model (Model3_Difficulty) and an additive model (Model4_Additive) on the reduced dataset excluding sub-chance participants. Parameter estimates were compared using delta (sensitivity - baseline) with conservative 95% credible intervals. If the delta CI includes zero and the baseline and sensitivity CIs overlap, we conclude the parameter is robust to exclusion.
+
+```{r}
+if (!is.null(sensitivity_summary)) {
+  sens_subchance <- sensitivity_summary %>%
+    filter(sensitivity == "exclude_subchance") %>%
+    select(model, parameter, baseline_estimate, sensitivity_estimate, delta, 
+           delta_ci_lower, delta_ci_upper, ci_overlap, delta_contains_zero) %>%
+    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
+    arrange(model, parameter)
+  
+  if (nrow(sens_subchance) > 0) {
+    sens_subchance %>%
+      gt() %>%
+      tab_header(title = md("**Sensitivity Analysis: Excluding Sub-Chance Participants**")) %>%
+      cols_label(
+        model = "Model",
+        parameter = "Parameter",
+        baseline_estimate = "Baseline",
+        sensitivity_estimate = "Excluded",
+        delta = "Δ",
+        delta_ci_lower = "Δ CI Lower",
+        delta_ci_upper = "Δ CI Upper",
+        ci_overlap = "CI Overlap",
+        delta_contains_zero = "Δ Contains 0"
+      ) %>%
+      tab_footnote(
+        footnote = "Baseline: N=67 (includes sub-chance). Excluded: N=55 (excludes sub-chance). Δ = Excluded - Baseline. If Δ CI contains 0 and CIs overlap, parameter is robust.",
+        locations = cells_column_labels(columns = delta_contains_zero)
+      )
+  } else {
+    cat("Sensitivity analysis results for sub-chance exclusion not available.")
+  }
+} else {
+  cat("Sensitivity analysis summary not available.")
+}
+```
+
+**Results**: All key parameters showed robust estimates when excluding sub-chance participants. For Model3_Difficulty, the drift intercept, boundary separation, and difficulty effects (Hard, Easy) all showed delta CIs that included zero, indicating no meaningful change in parameter estimates. The same pattern held for Model4_Additive. **Conclusion**: The inclusion of sub-chance participants did not alter main effects, supporting our decision to retain all 67 participants to maximize sample size and leverage hierarchical modeling's ability to stabilize estimates through shrinkage.
 
 # References
 
