@@ -59,38 +59,42 @@ cat("Subjects:", length(unique(pred_data$subject_id)), "\n\n")
 
 # Generate posterior predictions
 cat("Generating posterior predictions...\n")
-cat("  Using 500 draws from posterior\n")
-cat("  This may take 5-10 minutes...\n\n")
+# Allow user to specify ndraws (default 500, can increase to 1000)
+ndraws <- if (exists("NDRAWS")) NDRAWS else 500
+
+cat(sprintf("  Using %d draws from posterior\n", ndraws))
+cat("  This may take 5-15 minutes...\n\n")
 
 pp_start <- Sys.time()
-post_preds <- posterior_predict(fit, newdata = pred_data, ndraws = 500)
+# Generate posterior predictions (signed RTs)
+# CRITICAL: Must set negative_rt = TRUE to get signed RTs!
+# Positive RT = Upper boundary (Different), Negative RT = Lower boundary (Same)
+cat("  This simulates actual trials from the fitted Wiener process\n")
+cat("  Setting negative_rt = TRUE to get signed RTs (negative = Same, positive = Different)\n")
+post_preds <- posterior_predict(fit, newdata = pred_data, ndraws = ndraws, negative_rt = TRUE)
 pp_elapsed <- difftime(Sys.time(), pp_start, units = "mins")
 
-cat(sprintf("✓ Generated predictions in %.1f minutes\n", as.numeric(pp_elapsed)))
+cat(sprintf("✓ Generated posterior predictions in %.1f minutes\n", as.numeric(pp_elapsed)))
 cat("  Dimensions:", paste(dim(post_preds), collapse = " x "), "\n")
-cat("  Type:", class(post_preds), "\n\n")
+cat("  Type:", class(post_preds), "\n")
+cat("  Format: Signed RTs (positive = Different, negative = Same)\n\n")
 
 # Extract predicted choices
-# For brms wiener: posterior_predict returns RT values
-# The sign of RT indicates boundary: positive = upper (Different), negative = lower (Same)
-# However, we need to check the actual structure
+# CORRECTED: For brms wiener, posterior_predict() returns SIGNED RTs
+# - Positive RT (>0) = Upper Boundary hit = "Different" (dec_upper=1)
+# - Negative RT (<0) = Lower Boundary hit = "Same" (dec_upper=0)
+# The absolute value is the reaction time
 
-cat("Extracting predicted choices...\n")
-if (is.matrix(post_preds)) {
-  # Numeric matrix: sign indicates boundary
-  pred_choices <- post_preds > 0  # Positive = upper (Different)
-  cat("  Using sign-based extraction (positive = Different)\n")
-} else if (is.list(post_preds)) {
-  # List structure: might have separate components
-  if ("rt" %in% names(post_preds)) {
-    pred_choices <- post_preds$rt > 0
-    cat("  Using rt component from list\n")
-  } else {
-    stop("Unexpected prediction structure. Check brms documentation.")
-  }
-} else {
-  stop("Unexpected prediction format.")
-}
+cat("Extracting predicted choices from signed RTs...\n")
+cat("  posterior_predict() returns signed RTs:\n")
+cat("    Positive = Upper boundary (Different)\n")
+cat("    Negative = Lower boundary (Same)\n")
+
+# post_preds is already generated above - it contains signed RTs
+# Positive values indicate upper boundary hits ("Different")
+pred_choices <- post_preds > 0  # TRUE = Different (upper), FALSE = Same (lower)
+
+cat("  ✓ Extracted choices from sign of predicted RTs\n")
 
 # Calculate proportion "Different" for each posterior draw
 cat("Calculating proportions for each draw...\n")
@@ -112,7 +116,7 @@ cat(sprintf("Predicted proportion 'Different' (mean): %.3f (%.1f%%)\n",
             pred_mean, 100*pred_mean))
 cat(sprintf("Predicted proportion 'Different' (median): %.3f (%.1f%%)\n", 
             pred_median, 100*pred_median))
-cat(sprintf("95% Credible Interval: [%.3f, %.3f] (%.1f%%, %.1f%%)\n", 
+cat(sprintf("95%% Credible Interval: [%.3f, %.3f] (%.1f%%, %.1f%%)\n", 
             pred_q025, pred_q975, 100*pred_q025, 100*pred_q975))
 cat(sprintf("Observed proportion 'Different': %.3f (%.1f%%)\n\n", 
             obs_prop_diff, 100*obs_prop_diff))
@@ -120,16 +124,16 @@ cat(sprintf("Observed proportion 'Different': %.3f (%.1f%%)\n\n",
 # Validation
 cat("VALIDATION:\n")
 if (obs_prop_diff >= pred_q025 && obs_prop_diff <= pred_q975) {
-  cat("  ✅ VALIDATION PASSED: Observed falls within 95% PPC interval\n")
+  cat("  ✅ VALIDATION PASSED: Observed falls within 95%% PPC interval\n")
   cat("     Model accurately captures data distribution\n")
   cat("     The model fits the data well!\n")
 } else {
   if (obs_prop_diff < pred_q025) {
-    cat(sprintf("  ⚠ Observed (%.3f) is below 95% CI lower bound (%.3f)\n", 
+    cat(sprintf("  ⚠ Observed (%.3f) is below 95%% CI lower bound (%.3f)\n", 
                 obs_prop_diff, pred_q025))
     cat("     Model may be over-predicting 'Different' responses\n")
   } else {
-    cat(sprintf("  ⚠ Observed (%.3f) is above 95% CI upper bound (%.3f)\n", 
+    cat(sprintf("  ⚠ Observed (%.3f) is above 95%% CI upper bound (%.3f)\n", 
                 obs_prop_diff, pred_q975))
     cat("     Model may be under-predicting 'Different' responses\n")
   }
@@ -161,11 +165,11 @@ p <- ggplot(ppc_data, aes(x = predicted)) +
     subtitle = paste0(
       "Observed: ", sprintf("%.1f%%", 100*obs_prop_diff), 
       " | Predicted mean: ", sprintf("%.1f%%", 100*pred_mean),
-      " | 95% CI: [", sprintf("%.1f%%, %.1f%%]", 100*pred_q025, 100*pred_q975)
+      " | 95%% CI: [", sprintf("%.1f%%, %.1f%%]", 100*pred_q025, 100*pred_q975)
     ),
     x = "Predicted Proportion 'Different'",
     y = "Frequency",
-    caption = "Red dashed = Observed | Blue solid = Predicted mean | Orange dotted = 95% CI"
+    caption = "Red dashed = Observed | Blue solid = Predicted mean | Orange dotted = 95%% CI"
   ) +
   theme_minimal() +
   theme(
