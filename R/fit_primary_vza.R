@@ -36,7 +36,11 @@ log_line <- function(...) {
 
 # ---------- paths ----------
 
-DATA <- "data/analysis_ready/bap_ddm_ready.csv"
+# UPDATED: Use DDM-only data file with response-side coding
+# Legacy script - consider using 04_computational_modeling/drift_diffusion/fit_primary_vza.R instead
+DATA_DDM_ONLY <- "data/analysis_ready/bap_ddm_only_ready.csv"
+DATA_DDM_PUPIL <- "data/analysis_ready/bap_ddm_pupil_ready.csv"
+DATA <- if (file.exists(DATA_DDM_ONLY)) DATA_DDM_ONLY else if (file.exists(DATA_DDM_PUPIL)) DATA_DDM_PUPIL else "data/analysis_ready/bap_ddm_ready.csv"
 
 OUT_DIR <- "output/models"
 
@@ -76,30 +80,25 @@ tic_data <- Sys.time()
 
 dd <- read_csv(DATA, show_col_types = FALSE)
 
-# Harmonize/derive decision column (1=correct, 0=incorrect)
-if (!"decision" %in% names(dd)) {
-  log_line("Column 'decision' not found; attempting to derive from alternatives...")
-  if ("correct" %in% names(dd)) {
-    dd$decision <- as.integer(dd$correct)
-    log_line("Derived 'decision' from 'correct'.")
-  } else if ("iscorr" %in% names(dd)) {
-    dd$decision <- as.integer(dd$iscorr)
-    log_line("Derived 'decision' from 'iscorr'.")
-  } else if ("choice_binary" %in% names(dd)) {
-    stop("choice_binary is response side (left/right), not correctness. Map to correctness before fitting.")
-  } else if ("is_correct" %in% names(dd)) {
-    dd$decision <- as.integer(dd$is_correct)
-    log_line("Derived 'decision' from 'is_correct'.")
-  } else if ("accuracy" %in% names(dd)) {
-    dd$decision <- as.integer(dd$accuracy)
-    log_line("Derived 'decision' from 'accuracy'.")
-  } else if ("acc" %in% names(dd)) {
-    dd$decision <- as.integer(dd$acc)
-    log_line("Derived 'decision' from 'acc'.")
-  } else {
-    log_line("ERROR: Could not find a column to derive 'decision'. Available columns:")
-    log_line(paste(names(dd), collapse = ", "))
-    stop("Missing 'decision' (or equivalent). Expected one of: decision, correct, is_correct, accuracy, acc.")
+# CRITICAL UPDATE: Use response-side coding (dec_upper) instead of accuracy coding
+# Check for dec_upper column (response-side coding)
+if ("dec_upper" %in% names(dd)) {
+  log_line("Found 'dec_upper' column - using response-side coding")
+  log_line("  Upper boundary (1) = 'Different', Lower boundary (0) = 'Same'")
+  # Use dec_upper directly - no need to derive decision
+  dd$decision <- dd$dec_upper
+} else {
+  log_line("WARNING: 'dec_upper' not found - falling back to accuracy coding", level = "WARN")
+  log_line("  This script should use response-side coding. Consider using updated script:")
+  log_line("  04_computational_modeling/drift_diffusion/fit_primary_vza.R")
+  # Fallback to old logic (for backward compatibility only)
+  if (!"decision" %in% names(dd)) {
+    if ("iscorr" %in% names(dd)) {
+      dd$decision <- as.integer(dd$iscorr)
+      log_line("Derived 'decision' from 'iscorr' (accuracy coding - NOT RECOMMENDED)")
+    } else {
+      stop("Neither 'dec_upper' nor 'iscorr' found. Run data preparation scripts first.")
+    }
   }
 }
 
@@ -128,7 +127,7 @@ fam <- wiener(link_bs="log", link_ndt="log", link_bias="logit")
 # ---------- formulas (primary model: difficulty -> v + bs + bias; ndt with small condition effects) ----------
 
 form <- bf(
-  rt | dec(decision) ~ difficulty_level + task + effort_condition + (1|subject_id),
+  rt | dec(decision) ~ difficulty_level + task + effort_condition + (1|subject_id),  # Uses dec_upper if available
   bs   ~ difficulty_level + task + (1|subject_id),
   ndt  ~ task + effort_condition,  # small condition effects, no random effects
   bias ~ difficulty_level + task + (1|subject_id)

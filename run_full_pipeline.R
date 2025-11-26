@@ -14,7 +14,7 @@ cat("BAP DDM ANALYSIS - FULL PIPELINE EXECUTION\n")
 cat("================================================================================\n")
 cat("Date:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
 cat("Running with:\n")
-cat("  - Latest data: bap_trial_data_grip.csv\n")
+cat("  - Latest data: bap_beh_trialdata_v2.csv\n")
 cat("  - Standardized priors (literature-justified)\n")
 cat("  - RT filtering: 0.2-3.0s\n")
 cat("  - Standard trials included\n")
@@ -33,7 +33,7 @@ set.seed(12345)    # For reproducibility
 
 cat("\n[STEP 0] Verifying data file...\n")
 
-latest_data_file <- "/Users/mohdasti/Documents/LC-BAP/BAP/bap_trial_data_grip.csv"
+latest_data_file <- "/Users/mohdasti/Documents/LC-BAP/BAP/Nov2025/bap_beh_trialdata_v2.csv"
 
 if (!file.exists(latest_data_file)) {
     stop("ERROR: Latest data file not found at: ", latest_data_file, "\n",
@@ -50,7 +50,14 @@ library(dplyr)
 data_check <- read_csv(latest_data_file, show_col_types = FALSE, n_max = 10)
 cat("✅ Data file readable\n")
 cat("   Columns:", length(names(data_check)), "\n")
-cat("   Sample columns:", paste(head(names(data_check), 5), collapse = ", "), "\n\n")
+cat("   Sample columns:", paste(head(names(data_check), 5), collapse = ", "), "\n")
+# Check if this is the new format
+if ("subject_id" %in% names(data_check)) {
+  cat("   File format: NEW (v2 with subject_id, task_modality, etc.)\n")
+} else {
+  cat("   File format: OLD (legacy format)\n")
+}
+cat("\n")
 
 # =========================================================================
 # STEP 1: DATA PREPROCESSING

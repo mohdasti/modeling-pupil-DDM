@@ -8,7 +8,7 @@ library(stringr)
 
 # Set paths
 processed_dir <- "/Users/mohdasti/Documents/LC-BAP/BAP/BAP_Pupillometry/BAP/BAP_processed"
-behavioral_file <- file.path(processed_dir, "bap_trial_data_grip_type1.csv")
+behavioral_file <- "/Users/mohdasti/Documents/LC-BAP/BAP/Nov2025/bap_beh_trialdata_v2.csv"
 
 cat("=== BAP MERGER - CORRECTED FOR UPDATED PIPELINE ===\n\n")
 
@@ -64,11 +64,27 @@ merge_with_data_loss_fixed <- function() {
     cat("\nLoading behavioral data...\n")
     behavioral_data <- read_csv(behavioral_file, show_col_types = FALSE) %>%
         mutate(
+            # Map new column names to expected names
+            sub = as.character(subject_id),
+            task = case_when(
+                task_modality == "aud" ~ "aud",
+                task_modality == "vis" ~ "vis",
+                TRUE ~ as.character(task_modality)
+            ),
             task_pupil = case_when(
-                task == "aud" ~ "ADT",
-                task == "vis" ~ "VDT", 
-                TRUE ~ task
-            )
+                task_modality == "aud" ~ "ADT",
+                task_modality == "vis" ~ "VDT", 
+                TRUE ~ task_modality
+            ),
+            run = run_num,
+            trial = trial_num,
+            resp1RT = same_diff_resp_secs,
+            iscorr = as.integer(resp_is_correct),
+            stimLev = stim_level_index,
+            isOddball = as.integer(stim_is_diff),
+            gf_trPer = grip_targ_prop_mvc,
+            # Map additional columns if needed
+            resp1_isdiff = as.integer(resp_is_diff)
         )
     
     # Get unique pupillometry combinations
@@ -90,11 +106,13 @@ merge_with_data_loss_fixed <- function() {
             arrange(run, trial_index)
         
         # Get behavioral subset
+        # Note: Some columns from old file may not exist in new file (mvc, ses, isStrength, resp1, resp2, resp2RT, etc.)
         behavioral_subset <- behavioral_data %>%
             filter(sub == current_sub, task_pupil == current_task) %>%
-            select(sub, task, run, trial, mvc, ses, stimLev, isOddball, isStrength, 
-                   iscorr, resp1, resp1RT, resp2, resp2RT, auc_rel_mvc, resp1_isdiff,
-                   gf_trPer, hit, miss, fa, cr, auc, auc_prop_targ) %>%
+            select(sub, task, run, trial, stimLev, isOddball, 
+                   iscorr, resp1RT, resp1_isdiff, gf_trPer) %>%
+            # Add mvc if available, otherwise use NA
+            mutate(mvc = if("mvc" %in% names(behavioral_data)) mvc else NA_real_) %>%
             arrange(run, trial)
         
         cat(sprintf("Pupillometry: %d trials across %d runs\n", 

@@ -90,11 +90,46 @@ ddm_data_behav <- readr::read_csv(behavioral_file, show_col_types = FALSE)
 ddm_data_pupil <- readr::read_csv(pupil_file, show_col_types = FALSE)
 
 # Harmonize column names/types for behavioral data
-if (!"rt" %in% names(ddm_data_behav) && "resp1RT" %in% names(ddm_data_behav)) ddm_data_behav$rt <- ddm_data_behav$resp1RT
+# Map RT
+if (!"rt" %in% names(ddm_data_behav)) {
+    if ("resp1RT" %in% names(ddm_data_behav)) {
+        ddm_data_behav$rt <- ddm_data_behav$resp1RT
+    } else if ("same_diff_resp_secs" %in% names(ddm_data_behav)) {
+        ddm_data_behav$rt <- ddm_data_behav$same_diff_resp_secs
+    }
+}
 ddm_data_behav$rt <- suppressWarnings(as.numeric(ddm_data_behav$rt))
-if (!"accuracy" %in% names(ddm_data_behav) && "iscorr" %in% names(ddm_data_behav)) ddm_data_behav$accuracy <- ddm_data_behav$iscorr
-if (!"subject_id" %in% names(ddm_data_behav) && "sub" %in% names(ddm_data_behav)) ddm_data_behav$subject_id <- as.character(ddm_data_behav$sub)
-if (!"task" %in% names(ddm_data_behav) && "task_behav" %in% names(ddm_data_behav)) ddm_data_behav$task <- ddm_data_behav$task_behav
+
+# Map accuracy
+if (!"accuracy" %in% names(ddm_data_behav)) {
+    if ("iscorr" %in% names(ddm_data_behav)) {
+        ddm_data_behav$accuracy <- ddm_data_behav$iscorr
+    } else if ("resp_is_correct" %in% names(ddm_data_behav)) {
+        ddm_data_behav$accuracy <- as.integer(ddm_data_behav$resp_is_correct)
+    }
+}
+
+# Map subject_id
+if (!"subject_id" %in% names(ddm_data_behav)) {
+    if ("sub" %in% names(ddm_data_behav)) {
+        ddm_data_behav$subject_id <- as.character(ddm_data_behav$sub)
+    } else if ("subject_id" %in% names(ddm_data_behav)) {
+        ddm_data_behav$subject_id <- as.character(ddm_data_behav$subject_id)
+    }
+}
+
+# Map task
+if (!"task" %in% names(ddm_data_behav) || all(is.na(ddm_data_behav$task))) {
+    if ("task_behav" %in% names(ddm_data_behav)) {
+        ddm_data_behav$task <- ddm_data_behav$task_behav
+    } else if ("task_modality" %in% names(ddm_data_behav)) {
+        ddm_data_behav$task <- dplyr::case_when(
+            ddm_data_behav$task_modality == "aud" ~ "ADT",
+            ddm_data_behav$task_modality == "vis" ~ "VDT",
+            TRUE ~ as.character(ddm_data_behav$task_modality)
+        )
+    }
+}
 if (!"difficulty_level" %in% names(ddm_data_behav)) {
     if ("stimulus_condition" %in% names(ddm_data_behav)) {
         ddm_data_behav$difficulty_level <- ifelse(ddm_data_behav$stimulus_condition == "Standard", "Easy",
@@ -105,11 +140,46 @@ if (!"difficulty_level" %in% names(ddm_data_behav)) {
 }
 
 # Harmonize column names/types for pupil data
-if (!"rt" %in% names(ddm_data_pupil) && "resp1RT" %in% names(ddm_data_pupil)) ddm_data_pupil$rt <- ddm_data_pupil$resp1RT
+# Map RT
+if (!"rt" %in% names(ddm_data_pupil)) {
+    if ("resp1RT" %in% names(ddm_data_pupil)) {
+        ddm_data_pupil$rt <- ddm_data_pupil$resp1RT
+    } else if ("same_diff_resp_secs" %in% names(ddm_data_pupil)) {
+        ddm_data_pupil$rt <- ddm_data_pupil$same_diff_resp_secs
+    }
+}
 ddm_data_pupil$rt <- suppressWarnings(as.numeric(ddm_data_pupil$rt))
-if (!"accuracy" %in% names(ddm_data_pupil) && "iscorr" %in% names(ddm_data_pupil)) ddm_data_pupil$accuracy <- ddm_data_pupil$iscorr
-if (!"subject_id" %in% names(ddm_data_pupil) && "sub" %in% names(ddm_data_pupil)) ddm_data_pupil$subject_id <- as.character(ddm_data_pupil$sub)
-if (!"task" %in% names(ddm_data_pupil) && "task_behav" %in% names(ddm_data_pupil)) ddm_data_pupil$task <- ddm_data_pupil$task_behav
+
+# Map accuracy
+if (!"accuracy" %in% names(ddm_data_pupil)) {
+    if ("iscorr" %in% names(ddm_data_pupil)) {
+        ddm_data_pupil$accuracy <- ddm_data_pupil$iscorr
+    } else if ("resp_is_correct" %in% names(ddm_data_pupil)) {
+        ddm_data_pupil$accuracy <- as.integer(ddm_data_pupil$resp_is_correct)
+    }
+}
+
+# Map subject_id
+if (!"subject_id" %in% names(ddm_data_pupil)) {
+    if ("sub" %in% names(ddm_data_pupil)) {
+        ddm_data_pupil$subject_id <- as.character(ddm_data_pupil$sub)
+    } else if ("subject_id" %in% names(ddm_data_pupil)) {
+        ddm_data_pupil$subject_id <- as.character(ddm_data_pupil$subject_id)
+    }
+}
+
+# Map task
+if (!"task" %in% names(ddm_data_pupil) || all(is.na(ddm_data_pupil$task))) {
+    if ("task_behav" %in% names(ddm_data_pupil)) {
+        ddm_data_pupil$task <- ddm_data_pupil$task_behav
+    } else if ("task_modality" %in% names(ddm_data_pupil)) {
+        ddm_data_pupil$task <- dplyr::case_when(
+            ddm_data_pupil$task_modality == "aud" ~ "ADT",
+            ddm_data_pupil$task_modality == "vis" ~ "VDT",
+            TRUE ~ as.character(ddm_data_pupil$task_modality)
+        )
+    }
+}
 if (!"difficulty_level" %in% names(ddm_data_pupil)) {
     if ("stimulus_condition" %in% names(ddm_data_pupil)) {
         ddm_data_pupil$difficulty_level <- ifelse(ddm_data_pupil$stimulus_condition == "Standard", "Easy",

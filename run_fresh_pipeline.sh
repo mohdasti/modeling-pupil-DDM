@@ -9,7 +9,7 @@ echo "==========================================================================
 echo "Start time: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 echo "Starting fresh pipeline with:"
-echo "  - Latest data: bap_trial_data_grip.csv"
+echo "  - Latest data: bap_beh_trialdata_v2.csv"
 echo "  - Pupil data: /Users/mohdasti/Documents/LC-BAP/BAP/BAP_Pupillometry/BAP/BAP_processed/"
 echo "  - Standardized priors"
 echo "  - Standardized RT filtering (0.2-3.0s)"

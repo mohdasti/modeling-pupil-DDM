@@ -11,7 +11,7 @@ cat("RT FILTERING ANALYSIS WITH 0.2 SEC THRESHOLD\n")
 cat("================================================================================\n\n")
 
 # Load the data - using latest master dataset
-data_file <- "/Users/mohdasti/Documents/LC-BAP/BAP/bap_trial_data_grip.csv"
+data_file <- "/Users/mohdasti/Documents/LC-BAP/BAP/Nov2025/bap_beh_trialdata_v2.csv"
 if (!file.exists(data_file)) {
   # Fallback to analysis-ready if master not available
   data_file <- "data/analysis_ready/bap_ddm_ready.csv"
@@ -21,11 +21,32 @@ if (!file.exists(data_file)) {
 }
 
 cat("Loading data from:", data_file, "\n")
-data <- read_csv(data_file, show_col_types = FALSE)
+data_raw <- read_csv(data_file, show_col_types = FALSE)
 
-# Standardize RT column name if needed
-if (!"rt" %in% names(data) && "resp1RT" %in% names(data)) {
-  data$rt <- data$resp1RT
+# Map new column names to expected names
+if ("subject_id" %in% names(data_raw)) {
+  # New file format - map columns
+  data <- data_raw %>%
+    mutate(
+      sub = as.character(subject_id),
+      task = case_when(
+        task_modality == "aud" ~ "aud",
+        task_modality == "vis" ~ "vis",
+        TRUE ~ as.character(task_modality)
+      ),
+      rt = same_diff_resp_secs,
+      resp1RT = same_diff_resp_secs,
+      iscorr = as.integer(resp_is_correct),
+      stimLev = stim_level_index,
+      isOddball = as.integer(stim_is_diff)
+    )
+} else {
+  # Old file format - use as is
+  data <- data_raw
+  # Standardize RT column name if needed
+  if (!"rt" %in% names(data) && "resp1RT" %in% names(data)) {
+    data$rt <- data$resp1RT
+  }
 }
 
 cat("1. RAW DATA SUMMARY\n")

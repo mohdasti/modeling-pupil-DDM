@@ -12,12 +12,30 @@ library(survminer)
 
 # Set paths
 processed_dir <- "/Users/mohdasti/Documents/LC-BAP/BAP/BAP_Pupillometry/BAP/BAP_processed"
-behavioral_file <- file.path(processed_dir, "bap_trial_data_grip_type1.csv")
+behavioral_file <- "/Users/mohdasti/Documents/LC-BAP/BAP/Nov2025/bap_beh_trialdata_v2.csv"
 
 cat("=== BAP PUPILLOMETRY COMPREHENSIVE QC SUITE ===\n\n")
 
 # Load behavioral data for reference
-behavioral_data <- read_csv(behavioral_file, show_col_types = FALSE)
+behavioral_data_raw <- read_csv(behavioral_file, show_col_types = FALSE)
+
+# Map new column names to expected names for compatibility
+behavioral_data <- behavioral_data_raw %>%
+    mutate(
+        sub = as.character(subject_id),
+        task = case_when(
+            task_modality == "aud" ~ "aud",
+            task_modality == "vis" ~ "vis",
+            TRUE ~ as.character(task_modality)
+        ),
+        run = run_num,
+        trial = trial_num,
+        resp1RT = same_diff_resp_secs,
+        iscorr = as.integer(resp_is_correct),
+        stimLev = stim_level_index,
+        isOddball = as.integer(stim_is_diff),
+        gf_trPer = grip_targ_prop_mvc
+    )
 
 # QC1: PUPILLOMETRY DATA QUALITY ASSESSMENT
 qc1_pupillometry_quality <- function() {

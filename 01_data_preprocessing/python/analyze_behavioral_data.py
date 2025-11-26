@@ -11,8 +11,19 @@ def analyze_behavioral_data():
     """Analyze the behavioral data for subject BAP178"""
     
     # Load the behavioral data
-    csv_file = 'bap_trial_data_grip_type1.csv'
+    csv_file = '/Users/mohdasti/Documents/LC-BAP/BAP/Nov2025/bap_beh_trialdata_v2.csv'
     df = pd.read_csv(csv_file)
+    
+    # Map new column names to expected names
+    if 'subject_id' in df.columns:
+        df['sub'] = df['subject_id'].astype(str)
+        df['task'] = df['task_modality']
+        df['run'] = df['run_num']
+        df['trial'] = df['trial_num']
+        df['resp1RT'] = df['same_diff_resp_secs']
+        df['iscorr'] = df['resp_is_correct'].astype(int)
+        df['stimLev'] = df['stim_level_index']
+        df['isOddball'] = df['stim_is_diff'].astype(int)
     
     # Filter for subject BAP178
     bap178_data = df[df['sub'] == 'BAP178'].copy()

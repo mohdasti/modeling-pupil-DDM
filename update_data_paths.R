@@ -1,5 +1,5 @@
 # Quick script to check if we need to copy latest data to analysis_ready
-latest_file <- "/Users/mohdasti/Documents/LC-BAP/BAP/bap_trial_data_grip.csv"
+latest_file <- "/Users/mohdasti/Documents/LC-BAP/BAP/Nov2025/bap_beh_trialdata_v2.csv"
 target_file <- "data/analysis_ready/bap_ddm_ready.csv"
 
 if (file.exists(latest_file)) {

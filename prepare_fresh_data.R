@@ -20,7 +20,7 @@ library(purrr)
 
 # Data paths
 pupil_flat_dir <- "/Users/mohdasti/Documents/LC-BAP/BAP/BAP_Pupillometry/BAP/BAP_processed"
-behavioral_file <- "/Users/mohdasti/Documents/LC-BAP/BAP/bap_trial_data_grip.csv"
+behavioral_file <- "/Users/mohdasti/Documents/LC-BAP/BAP/Nov2025/bap_beh_trialdata_v2.csv"
 output_dir <- "data/analysis_ready"
 
 # Create output directory
@@ -69,27 +69,38 @@ cat("[", format(Sys.time(), "%H:%M:%S"), "] Step 2: Computing trial-level pupil 
 cat("Loading behavioral data...\n")
 behavioral_data <- read_csv(behavioral_file, show_col_types = FALSE)
 
-# Standardize column names
-if (!"rt" %in% names(behavioral_data) && "resp1RT" %in% names(behavioral_data)) {
-    behavioral_data$rt <- behavioral_data$resp1RT
-}
-if (!"iscorr" %in% names(behavioral_data) && "accuracy" %in% names(behavioral_data)) {
-    behavioral_data$iscorr <- behavioral_data$accuracy
-}
-
-# Filter behavioral data and standardize column names
+# Map new column names to expected names
+# New file has: subject_id, task_modality, run_num, trial_num, same_diff_resp_secs, resp_is_correct, etc.
 behavioral_data <- behavioral_data %>%
-    filter(!is.na(rt), rt >= 0.2, rt <= 3.0) %>%
     mutate(
-        sub = as.character(sub),
+        # Map subject identifier
+        sub = as.character(subject_id),
+        # Map task (convert "aud"/"vis" to "ADT"/"VDT")
         task = case_when(
-            task == "aud" ~ "ADT",
-            task == "vis" ~ "VDT",
-            TRUE ~ as.character(task)
+            task_modality == "aud" ~ "ADT",
+            task_modality == "vis" ~ "VDT",
+            TRUE ~ as.character(task_modality)
         ),
-        # Ensure trial_index exists (may be called "trial")
-        trial_index = if("trial_index" %in% names(.)) trial_index else if("trial" %in% names(.)) trial else NA_integer_
-    )
+        # Map run number
+        run = run_num,
+        # Map trial number
+        trial_index = trial_num,
+        # Map RT (response time in seconds)
+        rt = same_diff_resp_secs,
+        # Map accuracy (convert True/False to 1/0)
+        iscorr = as.integer(resp_is_correct),
+        # Map grip force (use grip_targ_prop_mvc which has numeric values 0.05/0.4)
+        gf_trPer = grip_targ_prop_mvc,
+        # Map stimulus level
+        stimLev = stim_level_index,
+        # Map oddball status (convert True/False to 1/0)
+        isOddball = as.integer(stim_is_diff),
+        # CRITICAL: Include direct response-side column for DDM
+        # resp_is_diff: TRUE = "different", FALSE = "same"
+        resp_is_diff = resp_is_diff
+    ) %>%
+    # Filter valid trials
+    filter(!is.na(rt), rt >= 0.2, rt <= 3.0)
 
 cat("Behavioral data: ", nrow(behavioral_data), "trials from", length(unique(behavioral_data$sub)), "subjects\n")
 
@@ -134,6 +145,7 @@ trialwise_pupil <- behavioral_data %>%
     left_join(phasic_features, by = c("sub", "task", "run", "trial_index" = "trial_index")) %>%
     mutate(
         subject_id = sub,
+        # CRITICAL: resp_is_diff is already in behavioral_data from the mutate() above
         # Create scaled features
         tonic_baseline_z = scale(tonic_baseline)[,1],
         phasic_slope_z = scale(phasic_slope)[,1],
@@ -157,17 +169,26 @@ cat("[", format(Sys.time(), "%H:%M:%S"), "] Step 3: Creating DDM-ready data...\n
 
 # Create effort_condition from gf_trPer (Grip Force Trial Percent)
 # Values: 0.05 = Low (5% MVC), 0.4 = High (40% MVC)
+# Note: New file has grip_targ_prop_mvc with values 0.05 and 0.4
 if (!"effort_condition" %in% names(trialwise_pupil)) {
     if ("gf_trPer" %in% names(trialwise_pupil)) {
         cat("Creating effort_condition from gf_trPer (0.05 = Low, 0.4 = High)...\n")
         trialwise_pupil$effort_condition <- case_when(
-            trialwise_pupil$gf_trPer == 0.05 ~ "Low_5_MVC",
-            trialwise_pupil$gf_trPer == 0.4 ~ "High_MVC",
+            abs(trialwise_pupil$gf_trPer - 0.05) < 0.001 ~ "Low_5_MVC",
+            abs(trialwise_pupil$gf_trPer - 0.4) < 0.001 ~ "High_40_MVC",
             TRUE ~ NA_character_
         )
         cat("Effort levels:", paste(unique(trialwise_pupil$effort_condition), collapse = ", "), "\n")
         cat("Count per level:\n")
         print(table(trialwise_pupil$effort_condition, useNA = "always"))
+    } else if ("grip_level" %in% names(trialwise_pupil)) {
+        # Fallback: use grip_level if gf_trPer not available
+        cat("Creating effort_condition from grip_level (low/high)...\n")
+        trialwise_pupil$effort_condition <- case_when(
+            tolower(trialwise_pupil$grip_level) == "low" ~ "Low_5_MVC",
+            tolower(trialwise_pupil$grip_level) == "high" ~ "High_40_MVC",
+            TRUE ~ NA_character_
+        )
     } else if ("mvc" %in% names(trialwise_pupil)) {
         # Fallback: use mvc median split if gf_trPer not available
         mvc_median <- median(trialwise_pupil$mvc, na.rm = TRUE)
@@ -185,30 +206,86 @@ if (!"effort_condition" %in% names(trialwise_pupil)) {
 ddm_ready <- trialwise_pupil %>%
     filter(
         !is.na(rt), !is.na(iscorr),
-        rt >= 0.25, rt <= 3.0  # Raised floor to 250ms (research recommendation)
+        rt >= 0.25, rt <= 3.0,  # Raised floor to 250ms (research recommendation)
+        !is.na(resp_is_diff)  # CRITICAL: Exclude trials with missing response choice
     ) %>%
     mutate(
         subject_id = as.factor(subject_id),
         task = as.factor(task),
         effort_condition = as.factor(if("effort_condition" %in% names(.)) effort_condition else "Unknown"),
         difficulty_level = case_when(
-            isOddball == 0 ~ "Standard",
-            stimLev %in% c(8, 16, 0.06, 0.12) ~ "Hard",
-            stimLev %in% c(32, 64, 0.24, 0.48) ~ "Easy",
+            isOddball == 0 | is.na(isOddball) ~ "Standard",
+            stimLev %in% c(0, 1, 2, 8, 16, 0.06, 0.12) ~ "Hard",
+            stimLev %in% c(3, 4, 32, 64, 0.24, 0.48) ~ "Easy",
             TRUE ~ NA_character_
         ),
         difficulty_level = as.factor(difficulty_level),
         choice = as.integer(iscorr),
-        choice_binary = as.integer(iscorr)
+        choice_binary = as.integer(iscorr),
+        # CRITICAL: Create explicit integer DDM boundary coding
+        # Upper boundary (1) = "different", Lower boundary (0) = "same"
+        resp_is_diff = as.logical(resp_is_diff),  # Ensure boolean
+        dec_upper = case_when(
+            resp_is_diff == TRUE  ~ 1L,  # Upper = Different
+            resp_is_diff == FALSE ~ 0L,  # Lower = Same
+            TRUE ~ NA_integer_
+        ),
+        # For readability/plotting only
+        response_label = ifelse(dec_upper == 1, "different", "same")
     ) %>%
     select(
         subject_id, task, run, trial_index, rt, choice, choice_binary, iscorr,
         difficulty_level, effort_condition, stimLev, isOddball,
+        resp_is_diff, dec_upper, response_label,  # CRITICAL: Include response-side columns
         tonic_baseline, tonic_baseline_z,
         phasic_slope, phasic_slope_z,
         phasic_mean, phasic_mean_z,
         effort_arousal_change, effort_arousal_change_z
     )
+
+# =========================================================================
+# VALIDATION CHECKS
+# =========================================================================
+
+cat("\n[", format(Sys.time(), "%H:%M:%S"), "] Running validation checks...\n")
+
+# Check 1: Verify boundary proportions match expectations
+prop_std_diff <- mean(subset(ddm_ready, difficulty_level=="Standard")$dec_upper, na.rm=TRUE)
+cat("  Standard trials - Proportion 'Different':", round(prop_std_diff, 3), 
+    "(Expected: ~0.12 for 87.8% 'Same')\n")
+
+# Check 2: Validate direct vs inferred coding match
+validation_check <- ddm_ready %>%
+    mutate(
+        inferred_diff = case_when(
+            difficulty_level == "Standard" & iscorr == 0 ~ 1L,  # Error on Standard = Different
+            difficulty_level != "Standard" & iscorr == 1 ~ 1L,  # Correct on Easy/Hard = Different
+            TRUE ~ 0L
+        )
+    ) %>%
+    summarise(
+        match_rate = mean(dec_upper == inferred_diff, na.rm=TRUE),
+        n_total = n(),
+        n_matched = sum(dec_upper == inferred_diff, na.rm=TRUE)
+    )
+
+cat("  Direct vs Inferred coding match rate:", round(validation_check$match_rate, 4), 
+    "(", validation_check$n_matched, "/", validation_check$n_total, ")\n")
+
+if(validation_check$match_rate < 0.999) {
+    warning("CRITICAL: Raw response data does not match inferred accuracy logic!")
+    warning("Match rate:", validation_check$match_rate, "- Investigate data quality issues")
+}
+
+# Check 3: Verify dec_upper is properly coded (should be only 0 or 1)
+invalid_dec <- sum(!ddm_ready$dec_upper %in% c(0L, 1L, NA_integer_), na.rm=TRUE)
+if(invalid_dec > 0) {
+    stop("ERROR: dec_upper contains invalid values (not 0, 1, or NA)")
+} else {
+    cat("  dec_upper coding: Valid (only 0, 1, or NA)\n")
+}
+
+cat("  Validation complete.\n\n")
 
 ddm_output <- file.path(output_dir, "bap_ddm_ready.csv")
 write_csv(ddm_ready, ddm_output)

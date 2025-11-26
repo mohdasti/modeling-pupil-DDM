@@ -214,3 +214,4 @@ For a **pure manipulation check** (validating the manipulation works), **Option 
 
 **Current model (with interaction)** is better if we want to test generalizability, but for a manipulation check, it might be asking more than necessary.
 
+

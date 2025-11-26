@@ -20,9 +20,49 @@ pupil_summary_per_trial <- pupil_data_raw %>%
     ) %>%
     dplyr::mutate(effort_arousal_change = effort_arousal_pupil - tonic_arousal)
 log_message("Loading and cleaning behavioral data...")
-behavioral_data_per_trial <- readr::read_csv(DATA_PATHS$behavioral_file, show_col_types = FALSE) %>%
-    dplyr::select(sub, task, run, trial, rt = resp1RT, accuracy = iscorr, gf_trPer, stimLev, isOddball) %>%
-    dplyr::mutate(task = dplyr::if_else(task == "aud", "ADT", "VDT")) %>%
+# Check if behavioral_file exists in DATA_PATHS, otherwise use behavioral_data
+behavioral_file_path <- if (!is.null(DATA_PATHS$behavioral_file)) {
+    DATA_PATHS$behavioral_file
+} else if (!is.null(DATA_PATHS$behavioral_data)) {
+    DATA_PATHS$behavioral_data
+} else {
+    stop("No behavioral data path found in DATA_PATHS")
+}
+
+behavioral_data_raw <- readr::read_csv(behavioral_file_path, show_col_types = FALSE)
+
+# Map new column names to expected names if needed
+behavioral_data_per_trial <- behavioral_data_raw %>%
+    dplyr::mutate(
+        # Map subject identifier
+        sub = if ("sub" %in% names(.)) sub else if ("subject_id" %in% names(.)) as.character(subject_id) else NA_character_,
+        # Map task (convert "aud"/"vis" to "ADT"/"VDT")
+        task = if ("task" %in% names(.)) {
+            dplyr::if_else(task == "aud", "ADT", 
+                          dplyr::if_else(task == "vis", "VDT", as.character(task)))
+        } else if ("task_modality" %in% names(.)) {
+            dplyr::case_when(
+                task_modality == "aud" ~ "ADT",
+                task_modality == "vis" ~ "VDT",
+                TRUE ~ as.character(task_modality)
+            )
+        } else NA_character_,
+        # Map run number
+        run = if ("run" %in% names(.)) run else if ("run_num" %in% names(.)) run_num else NA_integer_,
+        # Map trial number
+        trial = if ("trial" %in% names(.)) trial else if ("trial_num" %in% names(.)) trial_num else if ("trial_index" %in% names(.)) trial_index else NA_integer_,
+        # Map RT
+        rt = if ("rt" %in% names(.)) rt else if ("resp1RT" %in% names(.)) resp1RT else if ("same_diff_resp_secs" %in% names(.)) same_diff_resp_secs else NA_real_,
+        # Map accuracy
+        accuracy = if ("accuracy" %in% names(.)) accuracy else if ("iscorr" %in% names(.)) iscorr else if ("resp_is_correct" %in% names(.)) as.integer(resp_is_correct) else NA_integer_,
+        # Map grip force
+        gf_trPer = if ("gf_trPer" %in% names(.)) gf_trPer else if ("grip_targ_prop_mvc" %in% names(.)) grip_targ_prop_mvc else NA_real_,
+        # Map stimulus level
+        stimLev = if ("stimLev" %in% names(.)) stimLev else if ("stim_level_index" %in% names(.)) stim_level_index else NA_real_,
+        # Map oddball status
+        isOddball = if ("isOddball" %in% names(.)) isOddball else if ("stim_is_diff" %in% names(.)) as.integer(stim_is_diff) else NA_integer_
+    ) %>%
+    dplyr::select(sub, task, run, trial, rt, accuracy, gf_trPer, stimLev, isOddball) %>%
     dplyr::rename(trial_index = trial)
 log_message("Merging pupil summaries and behavioral data...")
 full_dataset <- dplyr::left_join(

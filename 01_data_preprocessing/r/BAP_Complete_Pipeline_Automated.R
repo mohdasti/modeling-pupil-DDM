@@ -40,7 +40,7 @@ library(gghalves)
 # Set working directory and paths
 setwd("/Users/mohdasti/Documents/LC-BAP/BAP/BAP_Pupillometry/BAP/BAP_cleaned")
 processed_dir <- "/Users/mohdasti/Documents/LC-BAP/BAP/BAP_Pupillometry/BAP/BAP_processed"
-behavioral_file <- file.path(processed_dir, "bap_trial_data_grip_type1.csv")
+behavioral_file <- "/Users/mohdasti/Documents/LC-BAP/BAP/Nov2025/bap_beh_trialdata_v2.csv"
 
 # Create timestamp for this analysis run
 analysis_timestamp <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
@@ -107,7 +107,26 @@ write_to_log(paste("Found", length(csv_files), "pupillometry CSV files"), "DATA_
 
 # Load behavioral data for structure documentation
 if(file.exists(behavioral_file)) {
-    behavioral_data <- read_csv(behavioral_file, show_col_types = FALSE)
+    behavioral_data_raw <- read_csv(behavioral_file, show_col_types = FALSE)
+    
+    # Map new column names to expected names for compatibility
+    behavioral_data <- behavioral_data_raw %>%
+        mutate(
+            sub = as.character(subject_id),
+            task = case_when(
+                task_modality == "aud" ~ "aud",
+                task_modality == "vis" ~ "vis",
+                TRUE ~ as.character(task_modality)
+            ),
+            run = run_num,
+            trial = trial_num,
+            resp1RT = same_diff_resp_secs,
+            iscorr = as.integer(resp_is_correct),
+            stimLev = stim_level_index,
+            isOddball = as.integer(stim_is_diff),
+            gf_trPer = grip_targ_prop_mvc
+        )
+    
     write_to_log(paste("Behavioral data loaded:", nrow(behavioral_data), "trials"), "DATA_DOC")
     
     # Document behavioral data structure

@@ -40,3 +40,4 @@ All functions tested with:
 - Main effects use ":" (factor name: level)
 - Interactions use "×" (Factor: Level × Factor: Level)
 
+
