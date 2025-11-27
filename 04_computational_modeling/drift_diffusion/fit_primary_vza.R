@@ -8,7 +8,8 @@
 # Model: rt | dec(dec_upper) ~ difficulty_level + task + effort_condition + (1|subject_id)
 #        bs ~ difficulty_level + task + (1|subject_id)
 #        ndt ~ task + effort_condition
-#        bias ~ difficulty_level + task + (1|subject_id)
+#        bias ~ task + effort_condition + (1|subject_id)
+#        NOTE: Bias does NOT vary by difficulty_level (expert guidance: randomized trials)
 # =========================================================================
 
 suppressPackageStartupMessages({
@@ -162,14 +163,18 @@ form <- bf(
   rt | dec(dec_upper) ~ difficulty_level + task + effort_condition + (1|subject_id),
   bs   ~ difficulty_level + task + (1|subject_id),
   ndt  ~ task + effort_condition,  # No random effects for stability
-  bias ~ difficulty_level + task + (1|subject_id)
+  # EXPERT GUIDANCE: Bias should NOT vary by difficulty_level because trials are randomized
+  # Participants cannot adjust starting point based on difficulty they don't know about yet
+  # Bias can vary by task (if blocked) and effort (if cued pre-trial)
+  bias ~ task + effort_condition + (1|subject_id)
 )
 
 log_msg("  Model formula:")
 log_msg("    Drift (v): rt | dec(dec_upper) ~ difficulty_level + task + effort_condition + (1|subject_id)")
 log_msg("    Boundary (a): bs ~ difficulty_level + task + (1|subject_id)")
 log_msg("    Non-decision time (t₀): ndt ~ task + effort_condition")
-log_msg("    Bias (z): bias ~ difficulty_level + task + (1|subject_id)")
+log_msg("    Bias (z): bias ~ task + effort_condition + (1|subject_id)")
+log_msg("    NOTE: Bias does NOT vary by difficulty_level (expert guidance: randomized trials)")
 log_msg("")
 
 # =========================================================================
