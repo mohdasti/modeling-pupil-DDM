@@ -221,7 +221,7 @@ pf_uncond <- if (!is.null(ppc_uncond_cens)) {
 
 # Abstract {.unnumbered}
 
-This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a response-signal change-detection task in older adults. The primary model maps task difficulty to drift rate (v), boundary separation (a), and starting-point bias (z), with small condition effects on non-decision time (t₀). We report comprehensive quality assurance checks, manipulation checks independent of the DDM, model comparison via LOO cross-validation, and extensive posterior predictive checks with emphasis on subject-wise mid-body RT quantiles.
+This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a response-signal change-detection task in older adults. The primary model maps task difficulty to drift rate (v) and boundary separation (a), with starting-point bias (z) varying by task and effort but constant across difficulty levels (reflecting the randomized trial design), and small condition effects on non-decision time (t₀). We report comprehensive quality assurance checks, manipulation checks independent of the DDM, model comparison via LOO cross-validation, and extensive posterior predictive checks with emphasis on subject-wise mid-body RT quantiles.
 
 # Introduction
 
@@ -651,31 +651,26 @@ To isolate bias identification from drift, we fit a single hierarchical Wiener D
 -   **Non-decision time (t₀/ndt)**: `ndt ~ 1` — intercept-only (response-signal design)
 -   **Bias (z)**: `bias ~ task + effort_condition + (1|subject_id)` — task/effort effects + subject random effects
 
+**Critical constraint on bias**: Starting-point bias ($z$) was allowed to vary by Task and Effort (which are known to the participant pre-trial) but was constrained to be constant across Difficulty levels, as trial difficulty was randomized and thus unknown at the onset of the decision process. This specification reflects the causal structure of the experimental design: participants cannot adjust their starting point based on an unknown future event (trial difficulty). Task differences in bias (if tasks were blocked) and effort differences (if effort was cued) are valid pre-stimulus settings, whereas difficulty-dependent bias would imply participants could anticipate trial difficulty, which contradicts the randomized design.
+
 *Note*: These formulas are all part of **one model** fitted simultaneously. The `bf()` function in `brms` allows specification of separate formulas for each DDM parameter (drift, boundary, non-decision time, bias) within a single hierarchical model.
 
 **Drift prior rationale**: While Standard trials theoretically have zero evidence (Δ=0), we used a relaxed drift prior (`normal(0, 2)`) rather than a tight prior to allow the model to capture any systematic drift patterns that might emerge from the data. This approach recognizes that even on Standard trials, participants may accumulate evidence toward "same" responses, which is consistent with the observed 89.1% "same" response rate. A tight prior forcing drift to zero would be inappropriate if participants are systematically accumulating evidence toward one boundary. The relaxed prior allows the model to estimate drift and bias jointly, with both parameters contributing to the observed choice proportions.
 
-### Joint Confirmation Model
-
-A full hierarchical model using all trials (17,834 trials) constrained Standard drift to ≈0 (tight prior `normal(0, 0.04)`) and allowed drift differences only for non-Standard trials (Easy/Hard) via an `is_nonstd` indicator:
-
--   **Drift (v)**: `rt | dec(dec_upper) ~ 0 + difficulty_level + task:is_nonstd + effort_condition:is_nonstd + (1|subject_id)` — separate coefficients per difficulty, task/effort effects only for non-Standard
--   **Boundary (a/bs)**: `bs ~ difficulty_level + task + (1|subject_id)` — difficulty + task effects + subject random effects
--   **Non-decision time (t₀/ndt)**: `ndt ~ task + effort_condition` — task/effort effects, no random effects
--   **Bias (z)**: `bias ~ difficulty_level + task + (1|subject_id)` — difficulty + task effects + subject random effects
-
-This joint model confirms the bias estimates from the Standard-only model while providing additional information about difficulty effects.
+*Note*: An earlier "Joint Confirmation Model" specification included difficulty in the bias formula, but this was methodologically incorrect as trial difficulty is randomized and thus unknown pre-trial. The primary model (described below) uses the correct specification where bias does not vary by difficulty.
 
 ### Primary Analysis Model
 
-The primary model is a **single hierarchical Wiener DDM** that includes difficulty effects on v, a, and z, with task and effort as additive factors. The model uses parameter-specific formulas:
+The primary model is a **single hierarchical Wiener DDM** that includes difficulty effects on v and a, with task and effort as additive factors. The model uses parameter-specific formulas:
 
 -   **Drift (v)**: `rt | dec(dec_upper) ~ difficulty_level + task + effort_condition + (1 + difficulty_level | subject_id)`
 -   **Boundary (a/bs)**: `bs ~ difficulty_level + task + (1 | subject_id)`
 -   **Non-decision time (t₀/ndt)**: `ndt ~ task + effort_condition` *(no random effects)*
--   **Bias (z)**: `bias ~ difficulty_level + task + (1 | subject_id)`
+-   **Bias (z)**: `bias ~ task + effort_condition + (1 | subject_id)` — task/effort effects + subject random effects
 
-*Note*: These formulas are all part of **one model** fitted simultaneously. The `bf()` function in `brms` allows specification of separate formulas for each DDM parameter within a single hierarchical model. The `dec_upper` variable (1 = "different", 0 = "same") is directly extracted from the raw data `resp_is_diff` column, ensuring accurate response-side coding for boundary assignments.
+**Critical constraint on bias**: Starting-point bias ($z$) was allowed to vary by Task and Effort (which are known to the participant pre-trial) but was constrained to be constant across Difficulty levels, as trial difficulty was randomized and thus unknown at the onset of the decision process. This specification reflects the causal structure of the experimental design: participants cannot adjust their starting point based on an unknown future event (trial difficulty). Task differences in bias (if tasks were blocked) and effort differences (if effort was cued) are valid pre-stimulus settings, whereas difficulty-dependent bias would imply participants could anticipate trial difficulty, which contradicts the randomized design.
+
+*Note*: These formulas are all part of **one model** fitted simultaneously. The `bf()` function in `brms` allows specification of separate formulas for each DDM parameter (drift, boundary, non-decision time, bias) within a single hierarchical model. The `dec_upper` variable (1 = "different", 0 = "same") is directly extracted from the raw data `resp_is_diff` column, ensuring accurate response-side coding for boundary assignments.
 
 **Rationale for ndt formula**: In the response-signal design, t₀ primarily reflects motor execution. To avoid identifiability issues and maintain model stability, we modeled t₀ with group-level task and effort effects only, omitting subject-level random effects. The response-signal task design and its implications for DDM parameter interpretation are described in the LC behavioral report manuscript (see References).
 
@@ -779,7 +774,7 @@ if (!is.null(loo_primary)) {
 }
 ```
 
-**Winner**: The model with **difficulty → (v + a + z)** is strongly favored.
+**Winner**: The model with **difficulty → (v + a)** is strongly favored, with bias constrained to be constant across difficulty levels.
 
 -   **ΔELPD vs. v-only**: ≈ +185 (SE ≈ 20)
 -   **Stacking weight**: ≈ 0.89
@@ -791,7 +786,7 @@ if (!is.null(loo_primary)) {
 knitr::include_graphics(fig_path("fig_loo.pdf"))
 ```
 
-**Interpretation**: The data strongly support a model in which task difficulty modulates drift rate, boundary separation, *and* starting-point bias simultaneously. Simpler models (e.g., difficulty affecting only drift) are decisively rejected by cross-validation.
+**Interpretation**: The data strongly support a model in which task difficulty modulates drift rate and boundary separation. Starting-point bias is constrained to be constant across difficulty levels (as trials are randomized), but varies by task and effort. Simpler models (e.g., difficulty affecting only drift) are decisively rejected by cross-validation.
 
 ### Model Diagnostics
 
@@ -1311,7 +1306,7 @@ knitr::include_graphics(fig_path("plot4_parameter_correlation.png"))
 
 To provide a comprehensive view of how experimental manipulations affect all DDM parameters simultaneously, we present an integrated visualization of condition effects across parameters.
 
-```{r, fig.cap="Integrated Condition Effects on DDM Parameters. Multi-panel forest plot showing posterior means with 95% credible intervals for difficulty and effort effects on each DDM parameter (drift rate v, boundary separation a, bias z, and non-decision time t₀). All effects are shown on their respective link scales. This integrated view allows direct comparison of effect magnitudes and directions across parameters, revealing that difficulty primarily affects drift rate and boundary separation, while effort shows smaller effects on drift and non-decision time. Note: Difficulty and effort effects are identical across ADT and VDT due to the additive model structure, so a single combined plot is shown.", out.width="95%", fig.align="center"}
+```{r, fig.cap="Integrated Condition Effects on DDM Parameters. Multi-panel forest plot showing posterior means with 95% credible intervals for difficulty and effort effects on each DDM parameter (drift rate v, boundary separation a, and non-decision time t₀). Note: Bias (z) does not vary by difficulty (see Methods section for rationale). All effects are shown on their respective link scales. This integrated view allows direct comparison of effect magnitudes and directions across parameters, revealing that difficulty primarily affects drift rate and boundary separation, while effort shows smaller effects on drift and non-decision time. Note: Difficulty and effort effects are identical across ADT and VDT due to the additive model structure, so a single combined plot is shown.", out.width="95%", fig.align="center"}
 knitr::include_graphics(fig_path("fig_integrated_condition_effects.pdf"))
 ```
 
@@ -1329,13 +1324,13 @@ knitr::include_graphics(fig_path("fig_brinley_plot.pdf"))
 
 ## Model Convergence & Selection
 
-All parameters converged well (max $\hat{R}$ ≤ 1.01; min bulk/tail ESS ≥ 400; no divergent transitions). Leave-one-out cross-validation strongly favored a model in which **difficulty modulates drift, boundary separation, and starting-point bias jointly** (v+a+z), relative to drift-only or simpler models (ΔELPD ≈ +185, SE ≈ 20).
+All parameters converged well (max $\hat{R}$ ≤ 1.01; min bulk/tail ESS ≥ 400; no divergent transitions). Leave-one-out cross-validation strongly favored a model in which **difficulty modulates drift and boundary separation jointly** (v+a), with starting-point bias constrained to be constant across difficulty levels (reflecting the randomized trial design), relative to drift-only or simpler models (ΔELPD ≈ +185, SE ≈ 20).
 
 ## Difficulty Effects
 
 **Drift rate (v)**: Easy trials show faster evidence accumulation than Hard trials (strong positive contrast, P(Δ\>0) \> 0.99 for both tasks).
 
-```{r, fig.cap="Drift Rate (v) Across Difficulty Levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard (Δ=0), Hard (Low Signal), and Easy (High Signal) trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift (v ≈ -1.26), indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials also show negative drift (v ≈ -1.88), explaining the below-chance accuracy (~30%). Easy trials show strong positive drift (v ≈ +1.76), enabling accurate discrimination. This pattern demonstrates the dramatic impact of stimulus discriminability on evidence accumulation.", out.width="85%", fig.align="center"}
+```{r, fig.cap="Drift Rate (v) Across Difficulty Levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard (Δ=0), Hard (Low Signal), and Easy (High Signal) trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift (v ≈ -1.23), indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials also show negative drift (v ≈ -0.64), indicating weak evidence for difference that is insufficient to overcome the tendency toward 'Same', explaining the below-chance accuracy (~30%). Easy trials show positive drift (v ≈ +0.90), enabling accurate discrimination. This pattern demonstrates the dramatic impact of stimulus discriminability on evidence accumulation.", out.width="85%", fig.align="center"}
 knitr::include_graphics(fig_path("plot1_drift_rate_by_difficulty.png"))
 ```
 
@@ -1546,7 +1541,7 @@ This research was supported by the National Institutes of Health (Project ID: 11
 
 # Conclusions
 
-This chapter presents a comprehensive hierarchical Wiener DDM analysis of a response-signal change-detection task in older adults. The primary model, in which task difficulty modulates drift rate, boundary separation, and starting-point bias, is strongly supported by LOO cross-validation and shows acceptable fit to subject-wise mid-body RT quantiles. Key findings—difficulty effects on v, a, and z; task-specific processing differences; and small effort effects—are robust across multiple sensitivity analyses. While the base Wiener DDM shows localized misfit in fast tails (especially Easy/VDT), this does not undermine the core substantive conclusions. Future extensions incorporating across-trial variability, urgency, or mixture models may further improve absolute fit.
+This chapter presents a comprehensive hierarchical Wiener DDM analysis of a response-signal change-detection task in older adults. The primary model, in which task difficulty modulates drift rate and boundary separation, with starting-point bias constant across difficulty levels (reflecting the randomized trial design), is strongly supported by LOO cross-validation and shows acceptable fit to subject-wise mid-body RT quantiles. Key findings—difficulty effects on v and a; task-specific differences in bias; and small effort effects—are robust across multiple sensitivity analyses. While the base Wiener DDM shows localized misfit in fast tails (especially Easy/VDT), this does not undermine the core substantive conclusions. Future extensions incorporating across-trial variability, urgency, or mixture models may further improve absolute fit.
 
 # Supplementary Figures
 
