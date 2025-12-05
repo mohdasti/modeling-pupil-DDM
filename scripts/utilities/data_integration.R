@@ -21,11 +21,27 @@ pupil_ddm_df <- read_csv('data/analysis_ready/BAP_analysis_ready_PUPIL.csv')
 behav_ddm_df <- read_csv('data/analysis_ready/BAP_analysis_ready_BEHAVIORAL.csv')
 
 cat("SUCCESS: All datasets loaded\n")
-cat("Demographics:", nrow(demographics_df), "subjects\n")
-cat("LC Integrity:", nrow(lc_integrity_df), "subjects\n")
-cat("Neuropsych:", nrow(neuropsych_df), "subjects\n")
+cat("Demographics (raw):", nrow(demographics_df), "rows\n")
+cat("LC Integrity (raw):", nrow(lc_integrity_df), "rows\n")
+cat("Neuropsych (raw):", nrow(neuropsych_df), "rows\n")
 cat("Pupil DDM:", nrow(pupil_ddm_df), "trials\n")
 cat("Behavioral DDM:", nrow(behav_ddm_df), "trials\n\n")
+
+# ============================================================================
+# SANITY CHECK 1: Identify all subjects (NO RUN-BASED FILTERING)
+# ============================================================================
+
+cat("=== SANITY CHECK 1: Identifying all subjects (no run threshold) ===\n")
+
+# NOTE: Subject filtering based on number of runs has been DISABLED
+# All subjects with data are included, regardless of number of runs
+
+valid_subjects <- unique(behav_ddm_df$subject_id)
+cat("Total subjects with data:", length(valid_subjects), "\n")
+cat("All subjects included (no run threshold applied)\n\n")
+
+# No filtering - all subjects are kept
+# pupil_ddm_df and behav_ddm_df remain unchanged
 
 cat("Preparing and merging subject-level data...\n")
 
@@ -33,20 +49,28 @@ cat("Preparing and merging subject-level data...\n")
 demographics_subset <- demographics_df %>%
   select(subject_id = `SUBJECT NUMBER_1`,
          age = `AGE AT BAP SESSION 1`) %>%
-  mutate(age = as.numeric(age)) %>%
+  mutate(
+    subject_id = as.character(subject_id),
+    age = as.numeric(age)
+  ) %>%
   # Remove duplicates by keeping the first occurrence
-  distinct(subject_id, .keep_all = TRUE)
+  distinct(subject_id, .keep_all = TRUE) %>%
+  # Keep all subjects (no filtering based on run count)
+  # filter(subject_id %in% valid_subjects)  # DISABLED
 
-cat("Demographics subset:", nrow(demographics_subset), "subjects\n")
+cat("Demographics subset (filtered to valid subjects):", nrow(demographics_subset), "subjects\n")
 
 # Prepare LC integrity data
 lc_integrity_subset <- lc_integrity_df %>%
   select(subject_id = `SUBJECT NUMBER`,
          lc_cnr_max = `LC_CNR_max`) %>%
+  mutate(subject_id = as.character(subject_id)) %>%
   # Remove duplicates by keeping the first occurrence
-  distinct(subject_id, .keep_all = TRUE)
+  distinct(subject_id, .keep_all = TRUE) %>%
+  # Keep all subjects (no filtering based on run count)
+  # filter(subject_id %in% valid_subjects)  # DISABLED
 
-cat("LC integrity subset:", nrow(lc_integrity_subset), "subjects\n")
+cat("LC integrity subset (filtered to valid subjects):", nrow(lc_integrity_subset), "subjects\n")
 
 # Prepare neuropsychology data and calculate TMT score
 neuropsych_subset <- neuropsych_df %>%
@@ -54,15 +78,18 @@ neuropsych_subset <- neuropsych_df %>%
          tmt_a = `Trail Making 1 (seconds)`,
          tmt_b = `Trail Making 2 (seconds)`) %>%
   mutate(
+    subject_id = as.character(subject_id),
     # Convert character to numeric, handling NA values
     tmt_a = as.numeric(tmt_a),
     tmt_b = as.numeric(tmt_b),
     tmt_b_minus_a = tmt_b - tmt_a
   ) %>%
   # Remove duplicates by keeping the first occurrence
-  distinct(subject_id, .keep_all = TRUE)
+  distinct(subject_id, .keep_all = TRUE) %>%
+  # Keep all subjects (no filtering based on run count)
+  # filter(subject_id %in% valid_subjects)  # DISABLED
 
-cat("Neuropsych subset:", nrow(neuropsych_subset), "subjects\n")
+cat("Neuropsych subset (filtered to valid subjects):", nrow(neuropsych_subset), "subjects\n")
 
 # Merge all subject-level data frames into one
 subject_data <- demographics_subset %>%
@@ -75,10 +102,16 @@ subject_data <- demographics_subset %>%
     tmt_scaled = scale(tmt_b_minus_a)[,1]
   )
 
-cat("Merged subject data:", nrow(subject_data), "subjects\n")
+cat("Merged subject data (filtered to valid subjects):", nrow(subject_data), "subjects\n")
 cat("Subjects with age data:", sum(!is.na(subject_data$age)), "\n")
 cat("Subjects with LC data:", sum(!is.na(subject_data$lc_cnr_max)), "\n")
 cat("Subjects with TMT data:", sum(!is.na(subject_data$tmt_b_minus_a)), "\n\n")
+
+# SANITY CHECK: Verify we're only working with valid subjects
+if(nrow(subject_data) != length(valid_subjects)) {
+  warning("WARNING: Subject data count (", nrow(subject_data), ") doesn't match valid subjects count (", length(valid_subjects), ")")
+  cat("This may indicate missing subject-level data for some valid subjects.\n")
+}
 
 cat("Merging subject-level data into trial-level datasets...\n")
 

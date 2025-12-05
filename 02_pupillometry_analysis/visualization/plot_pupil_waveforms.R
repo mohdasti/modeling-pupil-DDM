@@ -23,7 +23,8 @@ if(!exists("%>%")) {
 }
 
 cat("=== PUPIL WAVEFORM PLOTS ===\n")
-cat("Started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n\n")
+cat("Started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
+cat("NOTE: Using all available data (no run-based subject filtering)\n\n")
 
 # ============================================================================
 # CONFIGURATION

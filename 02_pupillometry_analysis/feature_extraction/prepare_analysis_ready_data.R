@@ -281,12 +281,12 @@ full_dataset <- behavioral_data_per_trial %>%
     rt, accuracy,
     # Primary metrics: Total AUC and Cognitive AUC (Zenon et al. 2014)
     total_auc, cognitive_auc,
-    # Baseline values for reference
-    baseline_B0, baseline_pre_stim,
+    # Baseline values for reference (only include if they exist)
+    any_of(c("baseline_B0", "baseline_pre_stim")),
     # Legacy metrics (kept for backward compatibility)
-    tonic_arousal, effort_arousal_change,
+    any_of(c("tonic_arousal", "effort_arousal_change")),
     # Quality metrics
-    quality_iti, quality_prestim
+    any_of(c("quality_iti", "quality_prestim"))
   ) %>%
   filter(!is.na(rt), !is.na(accuracy), !is.na(effort_condition), !is.na(difficulty_level))
 
@@ -315,37 +315,21 @@ write_csv(pupil_dataset, output_path_pupil)
 cat("  ✓ Saved:", output_path_pupil, "(", nrow(pupil_dataset), "trials)\n")
 
 # ============================================================================
-# 6. SANITY CHECKS: FILTER TO SUBJECTS WITH COMPLETE DATA
+# 6. SANITY CHECKS (NO SUBJECT FILTERING - ALL SUBJECTS INCLUDED)
 # ============================================================================
 
-cat("\n6. Applying sanity checks: filtering to subjects with complete data...\n")
+cat("\n6. Applying sanity checks (no run-based filtering)...\n")
 
-# Check for subjects with at least 5 runs for at least one task
-subject_task_runs <- full_dataset %>%
-  group_by(subject_id, task) %>%
-  summarise(n_runs = length(unique(run)), .groups = "drop") %>%
-  filter(n_runs >= 5)  # At least 5 runs (sessions) for a task
+# NOTE: Subject filtering based on number of runs has been DISABLED
+# All subjects with data are included, regardless of number of runs
+# This allows for more inclusive analysis and better data utilization
 
-valid_subjects <- unique(subject_task_runs$subject_id)
-cat("  Subjects with >= 5 runs for at least one task:", length(valid_subjects), "\n")
+valid_subjects <- unique(full_dataset$subject_id)
+cat("  Total subjects with data:", length(valid_subjects), "\n")
+cat("  All subjects included (no run threshold applied)\n")
 
-if(length(valid_subjects) == 0) {
-  warning("WARNING: No subjects found with >= 5 runs for any task!")
-  cat("  This may indicate a data issue. Proceeding with all subjects.\n")
-} else {
-  # Filter datasets to only include valid subjects
-  behavioral_dataset <- behavioral_dataset %>%
-    filter(subject_id %in% valid_subjects)
-  
-  pupil_dataset <- pupil_dataset %>%
-    filter(subject_id %in% valid_subjects)
-  
-  # Re-save filtered datasets
-  write_csv(behavioral_dataset, output_path_behav)
-  write_csv(pupil_dataset, output_path_pupil)
-  
-  cat("  ✓ Filtered datasets to", length(valid_subjects), "subjects with complete data\n")
-}
+# No filtering - all subjects are kept
+# Datasets remain unchanged
 
 # Additional sanity checks
 cat("\n7. Additional sanity checks...\n")
@@ -397,7 +381,7 @@ cat("Pupil trials (quality >= 80%):", nrow(pupil_dataset), "\n")
 if(nrow(behavioral_dataset) > 0) {
   cat("Quality filtering:", round(100 * nrow(pupil_dataset) / nrow(behavioral_dataset), 1), "% of behavioral trials retained\n")
 }
-cat("Valid subjects (>= 5 runs for at least one task):", length(valid_subjects), "\n")
+cat("Total subjects included (no run threshold):", length(valid_subjects), "\n")
 
 # AUC metrics summary
 if("total_auc" %in% names(pupil_dataset)) {
