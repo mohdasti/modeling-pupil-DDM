@@ -1,0 +1,39 @@
+function CONFIG = paths_config()
+% MATLAB Paths Configuration - EXAMPLE TEMPLATE
+% 
+% INSTRUCTIONS:
+% 1. Copy this file to paths_config.m (in same directory)
+% 2. Edit the paths below for your system
+% 3. paths_config.m is git-ignored (user-specific)
+%
+% This function returns a CONFIG struct with paths for the MATLAB pipeline.
+
+CONFIG = struct();
+
+% Get repository root (assumes this file is in config/ directory)
+[config_dir, ~, ~] = fileparts(mfilename('fullpath'));
+repo_root = fullfile(config_dir, '..');
+
+% OPTION 1: Use relative paths from repo root (RECOMMENDED)
+% Adjust these subdirectories to match your data organization
+CONFIG.cleaned_dir = fullfile(repo_root, 'data', 'BAP_cleaned');
+CONFIG.raw_dir = fullfile(repo_root, 'data', 'raw');
+CONFIG.output_dir = fullfile(repo_root, 'data', 'BAP_processed');
+
+% OPTION 2: Use absolute paths (if data is outside repo)
+% Uncomment and edit these if your data is elsewhere:
+% CONFIG.cleaned_dir = '/path/to/BAP_cleaned';
+% CONFIG.raw_dir = '/path/to/data';
+% CONFIG.output_dir = '/path/to/BAP_processed';
+
+% Validate paths exist (warn if not, but don't error - user may need to create)
+if ~exist(CONFIG.cleaned_dir, 'dir')
+    warning('CONFIG.cleaned_dir does not exist: %s', CONFIG.cleaned_dir);
+end
+if ~exist(CONFIG.raw_dir, 'dir')
+    warning('CONFIG.raw_dir does not exist: %s', CONFIG.raw_dir);
+end
+% output_dir will be created by pipeline if missing, so no check needed
+
+end
+

@@ -119,6 +119,15 @@ config/model_config.yaml
 # MATLAB
 *.asv
 *.m~
+config/paths_config.m
+BAP_cleaned/
+BAP_processed/
+data/raw/
+data/BAP_cleaned/
+data/BAP_processed/
+build_*/
+*_flat*.csv
+*.parquet
 
 # Backup files
 *.bak

@@ -1,0 +1,151 @@
+# A) REPO INVENTORY + WIRING CHECK
+
+## File Locations
+
+### Entry Point
+- **Main Pipeline**: `01_data_preprocessing/matlab/BAP_Pupillometry_Pipeline.m`
+  - Entry function: `BAP_Pupillometry_Pipeline()` (line 1)
+  - Main processing loop: lines 116-156
+
+### Helper Functions
+- **parse_filename.m**: `01_data_preprocessing/matlab/parse_filename.m`
+  - Function: `metadata = parse_filename(filename)` (line 297 in main file, standalone at line 1)
+  - Called from: `organize_files_by_session()` at line 250
+
+- **parse_logP_filename.m**: `01_data_preprocessing/matlab/parse_logP_filename.m`
+  - Function: `metadata = parse_logP_filename(logP_path)` (line 1)
+  - Called from: `process_single_run_improved()` at line 1098
+
+- **parse_logP_file.m**: `01_data_preprocessing/matlab/parse_logP_file.m`
+  - Function: `logP_data = parse_logP_file(logP_path)` (line 1)
+  - Called from: `process_single_run_improved()` at line 607
+
+- **convert_timebase.m**: `01_data_preprocessing/matlab/convert_timebase.m`
+  - Function: `[pupil_time_ptb, alignment_diagnostics] = convert_timebase(cleaned_data, logP_data, raw_data)` (line 1)
+  - Called from: `process_single_run_improved()` at line 651
+
+- **matlab_comprehensive_audit.m**: `scripts/matlab_comprehensive_audit.m`
+  - Standalone audit script (not called by pipeline)
+
+## Function Call Chain
+
+### Main Pipeline Flow
+```
+BAP_Pupillometry_Pipeline()
+  ├─> organize_files_by_session(cleaned_files)
+  │     └─> parse_filename(filename) [for each file]
+  │
+  └─> process_session(file_group, CONFIG)
+        └─> process_single_run_improved(cleaned_data, raw_data, file_info, trial_offset, CONFIG)
+              ├─> parse_logP_file(logP_path) [line 607]
+              ├─> validate_logP_plausibility(logP_data) [line 612]
+              ├─> convert_timebase(cleaned_data, logP_data, raw_data) [line 651]
+              └─> parse_logP_filename(logP_path) [line 1098]
+```
+
+### QC Output Functions
+```
+BAP_Pupillometry_Pipeline()
+  └─> [after all processing]
+        ├─> write_manifest(manifest_data, CONFIG.build_dir) [line 166]
+        ├─> save_quality_reports(all_quality_reports, CONFIG) [line 200]
+        ├─> write_qc_outputs(all_quality_reports, all_run_qc_stats, CONFIG) [line 203]
+        ├─> generate_falsification_summary(all_run_qc_stats, CONFIG) [line 206]
+        ├─> print_falsification_summary(all_run_qc_stats, CONFIG) [line 209]
+        ├─> generate_trial_level_flags(CONFIG.build_dir, CONFIG) [line 212]
+        └─> generate_audit_report(manifest_data, all_run_qc_stats, all_quality_reports, CONFIG) [line 218]
+```
+
+## Variable/Column Names in Flat Files
+
+### Core Identifiers
+- **subject_id**: Column name `sub` (string, e.g., "BAP202")
+  - Set at: line 1037 in `process_single_run_improved()`
+  - Source: `file_info.subject{1}` from parsed filename
+
+- **task**: Column name `task` (string: "ADT" or "VDT")
+  - Set at: line 1038
+  - Source: `file_info.task{1}` from parsed filename
+
+- **session**: Column name `ses` (numeric: 2 or 3)
+  - Set at: line 1039
+  - Source: `str2double(file_info.session{1})` from parsed filename
+
+- **run**: Column name `run` (numeric: 1-5)
+  - Set at: line 1040
+  - Source: `file_info.run` from parsed filename
+
+- **trial_in_run_raw**: Column name `trial_in_run_raw` (numeric: 1-30)
+  - Set at: lines 1047-1053
+  - Purpose: Preserves original trial index from logP row order or event sequence
+  - Critical for merging with behavioral data
+
+- **trial_index**: Column name `trial_index` (numeric: cumulative across runs)
+  - Set at: line 1041
+  - Source: `global_trial_idx = trial_offset + trial_idx`
+  - Purpose: Global trial counter across all runs in session
+
+### Segmentation Metadata
+- **segmentation_source**: Column name `segmentation_source` (string: "event_code" or "logP")
+  - Set at: line 1078
+  - Source: Determined in `process_single_run_improved()` lines 688-798
+  - Values:
+    - `"event_code"`: When event markers validated (lines 714, 747)
+    - `"logP"`: When logP fallback used (line 778)
+    - `"failed"`: When no anchors found (line 791)
+
+### Timebase Fields
+- **trial_start_time_ptb**: Column name `trial_start_time_ptb` (numeric: PTB timestamp)
+  - Set at: line 1075
+  - Source: `squeeze_time` from segmentation (line 832)
+  - Purpose: Trial start in PTB reference frame (aligned via `convert_timebase()`)
+
+- **timebase_method**: Stored in run-level QC, not flat file
+  - Available in: `qc_matlab_run_trial_counts.csv` column `timebase_method`
+  - Values: "already_ptb", "marker_alignment", "offset_fitting", "unknown", "failed"
+
+- **timebase_offset**: Stored in run-level QC, not flat file
+  - Available in: `qc_matlab_run_trial_counts.csv` column `timebase_offset`
+  - Units: seconds
+
+### QC Flags (in flat files)
+- **qc_fail_baseline**: Boolean flag (line 1071)
+- **qc_fail_overall**: Boolean flag (line 1072)
+- **window_oob**: Boolean flag (line 1077)
+- **all_nan**: Boolean flag (line 1090)
+
+## QC Artifact Files
+
+### Generated by `write_qc_outputs()` (line 203)
+1. **qc_matlab_run_trial_counts.csv**
+   - Location: `CONFIG.qc_dir/qc_matlab_run_trial_counts.csv`
+   - Columns: subject, task, session, run, n_log_trials, n_marker_anchors, n_trials_extracted, segmentation_source, n_window_oob, timebase_method, timebase_offset, confidence, window_oob_count, empty_trial_count, all_nan_trial_count, start_idx_monotonic, n_duplicate_segments, n_duplicate_hashes, logP_plausibility_valid, run_status, pipeline_run_id, notes
+
+2. **qc_matlab_skip_reasons.csv**
+   - Location: `CONFIG.qc_dir/qc_matlab_skip_reasons.csv`
+   - Columns: subject, task, session, run, skip_reason, details
+
+### Generated by `generate_falsification_summary()` (line 206)
+3. **falsification_validation_summary.md**
+   - Location: `CONFIG.qc_dir/falsification_validation_summary.md`
+   - Content: Overall statistics, skipped runs, window OOB distribution, failure analysis
+
+### Generated by `generate_trial_level_flags()` (line 212)
+4. **qc_matlab_trial_level_flags.csv**
+   - Location: `CONFIG.build_dir/qc_matlab/qc_matlab_trial_level_flags.csv`
+   - Columns: subject, task, session, run, trial_in_run_raw, segmentation_source, trial_start_ptb, n_samples, pct_non_nan_overall, pct_non_nan_baseline, pct_non_nan_prestim, pct_non_nan_stim, pct_non_nan_response, all_nan_trial_combined, window_oob, any_timebase_bug, pipeline_run_id
+
+## Verification Status
+
+✅ **PASS**: All required functions are called:
+- `parse_logP_file()` called at line 607 when logP exists
+- `convert_timebase()` called at line 651 when logP available
+- `segmentation_source` recorded per run (lines 714, 747, 778, 791) and written to flat file (line 1078)
+
+✅ **PASS**: QC artifacts are written every run:
+- `write_qc_outputs()` called unconditionally at line 203 (inside `if height(all_results) > 0`)
+- `generate_falsification_summary()` called at line 206
+- `generate_trial_level_flags()` called at line 212
+
+⚠️ **NOTE**: QC outputs are only written if `height(all_results) > 0`. If all runs fail, no QC files are generated. This is acceptable as there would be no data to QC.
+
