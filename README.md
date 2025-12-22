@@ -92,7 +92,8 @@ modeling-pupil-DDM/
 │   └── tables/                         # Analysis tables
 │
 ├── config/                             # Configuration files
-│   ├── paths_config.R                  # File path configurations
+│   ├── paths_config.R.example          # R path configuration template
+│   ├── paths_config.m.example          # MATLAB path configuration template
 │   ├── pipeline_config.R               # Pipeline settings
 │   └── model_config.yaml               # Model parameters
 │
@@ -189,7 +190,11 @@ Rscript scripts/comprehensive_bap_ddm_workflow.R
 ### Run Individual Analyses
 
 ```bash
-# Data preprocessing
+# MATLAB preprocessing (see MATLAB Setup below)
+# First configure paths in config/paths_config.m.example
+matlab -r "addpath('01_data_preprocessing/matlab'); BAP_Pupillometry_Pipeline(); exit;"
+
+# Python data preprocessing
 python 01_data_preprocessing/python/analyze_behavioral_data.py
 
 # Pupillometry analysis
@@ -208,6 +213,44 @@ Rscript scripts/02_statistical_analysis/02_ddm_analysis.R
 Rscript scripts/create_condition_effects_forest_plot.R
 Rscript scripts/create_rt_sanity_check_plot.R
 ```
+
+### MATLAB Preprocessing Setup
+
+The MATLAB pipeline requires path configuration before first use:
+
+1. **Configure paths**:
+   ```bash
+   # Copy the example config file
+   cp config/paths_config.m.example config/paths_config.m
+   
+   # Edit config/paths_config.m and update paths for your system
+   # Or the pipeline will use relative paths from repo root
+   ```
+
+2. **Run the pipeline**:
+   ```matlab
+   % In MATLAB
+   cd('path/to/modeling-pupil-DDM')
+   addpath('01_data_preprocessing/matlab')
+   BAP_Pupillometry_Pipeline()
+   ```
+
+3. **Verify outputs**:
+   - Flat CSV files: `data/BAP_processed/build_*/[SUBJECT]_[TASK]_flat.csv`
+   - QC files: `data/BAP_processed/build_*/qc_matlab/`
+     - `qc_matlab_run_trial_counts.csv` - Run-level statistics
+     - `qc_matlab_falsification_by_run.csv` - Alignment metrics
+     - `qc_matlab_excluded_files.csv` - Excluded files log
+     - `falsification_validation_summary.md` - Validation report
+
+**Note**: The pipeline automatically:
+- Filters out OutsideScanner and practice runs
+- Only processes sessions 2-3 (InsideScanner tasks)
+- Tracks session inference when session number is missing
+- Validates alignment between event-codes and logP files
+- Generates comprehensive QC artifacts
+
+See `QUICK_START_MATLAB.md` for detailed instructions.
 
 ### Quality Assurance & Auditing
 
@@ -336,6 +379,10 @@ make clean-all  # Remove all generated outputs
 
 ### 1. Data Preprocessing
 - **MATLAB**: Raw pupillometry data preprocessing and cleaning
+  - Configurable paths via `config/paths_config.m.example`
+  - Automatic contamination filtering (OutsideScanner, practice, session 1)
+  - Dual-mode segmentation (event-codes with logP fallback)
+  - Comprehensive QC outputs (falsification metrics, excluded files)
 - **Python**: Behavioral data analysis and quality control
 - **R**: Data merging and preparation for analysis
 
