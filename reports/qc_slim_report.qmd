@@ -1,0 +1,312 @@
+---
+title: "QC Slim Report - Dissertation Feasibility"
+author: "BAP Pupillometry Analysis Pipeline"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: true
+    code-tools: false
+    embed-resources: false
+    theme: flatly
+    df-print: paged
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(readr)
+  library(tidyr)
+  library(ggplot2)
+  library(knitr)
+})
+
+# Determine paths
+REPO_ROOT <- if (file.exists("R")) {
+  normalizePath(getwd())
+} else if (file.exists("../R")) {
+  normalizePath("..")
+} else {
+  normalizePath(getwd())
+}
+
+# Run export script to regenerate CSVs
+script_path <- file.path(REPO_ROOT, "R", "quick_share_export.R")
+if (file.exists(script_path)) {
+  cat("Regenerating quick-share CSVs...\n")
+  old_wd <- getwd()
+  setwd(REPO_ROOT)
+  source(script_path)
+  setwd(old_wd)
+  cat("✓ CSVs regenerated\n")
+} else {
+  stop("Cannot find R/quick_share_export.R")
+}
+
+# Load CSVs
+OUTPUT_DIR <- file.path(REPO_ROOT, "quick_share_v2")
+
+file_provenance <- read_csv(file.path(OUTPUT_DIR, "01_file_provenance.csv"), show_col_types = FALSE)
+design_table <- read_csv(file.path(OUTPUT_DIR, "02_design_expected_vs_observed.csv"), show_col_types = FALSE)
+trials_per_subject <- read_csv(file.path(OUTPUT_DIR, "03_trials_per_subject_task_ses.csv"), show_col_types = FALSE)
+run_level <- read_csv(file.path(OUTPUT_DIR, "04_run_level_counts.csv"), show_col_types = FALSE)
+window_summary <- read_csv(file.path(OUTPUT_DIR, "05_window_validity_summary.csv"), show_col_types = FALSE)
+gate_rates <- read_csv(file.path(OUTPUT_DIR, "06_gate_pass_rates_by_threshold.csv"), show_col_types = FALSE)
+bias_checks <- read_csv(file.path(OUTPUT_DIR, "07_bias_checks_key_gates.csv"), show_col_types = FALSE)
+prestim_dip <- read_csv(file.path(OUTPUT_DIR, "08_prestim_dip_summary.csv"), show_col_types = FALSE)
+```
+
+## 1. Coverage
+
+```{r coverage}
+# Subject/task/session coverage
+coverage_summary <- trials_per_subject %>%
+  group_by(task) %>%
+  summarise(
+    n_subjects = n_distinct(sub),
+    n_sessions = n(),
+    total_runs = sum(observed_runs, na.rm = TRUE),
+    total_trials = sum(observed_trials, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+kable(coverage_summary, caption = "Coverage Summary")
+
+# Missing sessions check
+expected_sessions <- design_table %>%
+  group_by(sub, task) %>%
+  summarise(expected_sessions = 2, .groups = "drop")  # Sessions 2 and 3
+
+observed_sessions <- trials_per_subject %>%
+  group_by(sub, task) %>%
+  summarise(observed_sessions = n(), .groups = "drop")
+
+missing_sessions <- expected_sessions %>%
+  left_join(observed_sessions, by = c("sub", "task")) %>%
+  mutate(observed_sessions = if_else(is.na(observed_sessions), 0L, observed_sessions)) %>%
+  filter(observed_sessions < expected_sessions)
+
+if (nrow(missing_sessions) > 0) {
+  cat("\n**Missing Sessions:**\n")
+  print(head(missing_sessions, 10))
+  if (nrow(missing_sessions) > 10) {
+    cat("... and", nrow(missing_sessions) - 10, "more\n")
+  }
+} else {
+  cat("\n✓ All expected sessions present\n")
+}
+```
+
+## 2. Trial Counts Sanity
+
+```{r trial-counts}
+# Run-level trial counts
+run_trial_stats <- run_level %>%
+  summarise(
+    median_trials = median(n_trials, na.rm = TRUE),
+    q25 = quantile(n_trials, 0.25, na.rm = TRUE),
+    q75 = quantile(n_trials, 0.75, na.rm = TRUE),
+    min_trials = min(n_trials, na.rm = TRUE),
+    max_trials = max(n_trials, na.rm = TRUE),
+    n_runs = n()
+  )
+
+cat("**Run-level trial counts:**\n")
+cat("- Median:", run_trial_stats$median_trials, "\n")
+cat("- IQR: [", run_trial_stats$q25, ", ", run_trial_stats$q75, "]\n", sep = "")
+cat("- Range: [", run_trial_stats$min_trials, ", ", run_trial_stats$max_trials, "]\n", sep = "")
+
+# Outliers
+outlier_runs <- run_level %>%
+  filter(n_trials < 28 | n_trials > 30) %>%
+  arrange(n_trials)
+
+if (nrow(outlier_runs) > 0) {
+  cat("\n**Runs with unusual trial counts (< 28 or > 30):**\n")
+  print(head(outlier_runs %>% select(sub, task, session_used, run_used, n_trials), 10))
+  if (nrow(outlier_runs) > 10) {
+    cat("... and", nrow(outlier_runs) - 10, "more\n")
+  }
+} else {
+  cat("\n✓ All runs have trial counts in [28, 30] range\n")
+}
+```
+
+## 3. Quality Tiers Table
+
+```{r quality-tiers}
+# Create quality tiers summary
+quality_tiers <- gate_rates %>%
+  filter(gate %in% c("baseline", "cog", "primary")) %>%
+  pivot_wider(names_from = c(gate, threshold), values_from = pass_rate, names_sep = "_thr") %>%
+  select(task, starts_with("baseline"), starts_with("cog"), starts_with("primary"))
+
+# Format for display
+quality_tiers_display <- quality_tiers %>%
+  mutate(across(where(is.numeric), ~ sprintf("%.1f%%", .x * 100)))
+
+kable(quality_tiers_display, caption = "Pass Rates by Gate and Threshold")
+
+# Chapter 2 readiness (baseline + posttarget >= 0.60)
+ch2_readiness <- trials_per_subject %>%
+  mutate(
+    ch2_usable = n_pass_primary_0.60,
+    ch2_pct = if_else(observed_trials > 0, ch2_usable / observed_trials, 0)
+  ) %>%
+  group_by(task) %>%
+  summarise(
+    median_usable = median(ch2_usable, na.rm = TRUE),
+    q25_usable = quantile(ch2_usable, 0.25, na.rm = TRUE),
+    q75_usable = quantile(ch2_usable, 0.75, na.rm = TRUE),
+    median_pct = median(ch2_pct, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cat("\n**Chapter 2 Readiness (baseline + posttarget >= 0.60):**\n")
+kable(ch2_readiness, digits = 1)
+```
+
+## 4. Bias Checks Status
+
+```{r bias-checks}
+if (nrow(bias_checks) > 0 && !all(is.na(bias_checks$estimate))) {
+  # Show key coefficients
+  key_coefs <- bias_checks %>%
+    filter(term != "MODEL_FIT", !is.na(p.value)) %>%
+    arrange(threshold, p.value) %>%
+    head(10)
+  
+  cat("**Key Coefficients (top 10 by p-value):**\n")
+  kable(key_coefs %>% select(threshold, term, estimate, p.value, interpretation), digits = 4)
+  
+  # Model fit summary
+  model_fit <- bias_checks %>%
+    filter(term == "MODEL_FIT") %>%
+    select(threshold, interpretation)
+  
+  cat("\n**Model Fit:**\n")
+  kable(model_fit)
+} else {
+  cat("**Bias checks:** Cannot compute until behavioral merge is available.\n")
+  cat("Current status: Behavioral condition columns not found in trial data.\n")
+}
+```
+
+## 5. So What for Dissertation?
+
+```{r dissertation-feasibility}
+# Chapter 2: GLMM-ready trials
+ch2_summary <- trials_per_subject %>%
+  mutate(
+    ch2_usable_60 = n_pass_primary_0.60,
+    ch2_usable_50 = n_pass_primary_0.50
+  ) %>%
+  group_by(task) %>%
+  summarise(
+    median_usable_60 = median(ch2_usable_60, na.rm = TRUE),
+    q25_60 = quantile(ch2_usable_60, 0.25, na.rm = TRUE),
+    q75_60 = quantile(ch2_usable_60, 0.75, na.rm = TRUE),
+    median_usable_50 = median(ch2_usable_50, na.rm = TRUE),
+    q25_50 = quantile(ch2_usable_50, 0.25, na.rm = TRUE),
+    q75_50 = quantile(ch2_usable_50, 0.75, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cat("### Chapter 2: Pupil-Indexed Arousal + Psychometric Sensitivity\n\n")
+cat("**Usable trials per subject (baseline + posttarget >= 0.60):**\n")
+kable(ch2_summary %>% select(task, median_usable_60, q25_60, q75_60), 
+      col.names = c("Task", "Median", "Q25", "Q75"), digits = 0)
+
+cat("\n**Usable trials per subject (baseline + posttarget >= 0.50):**\n")
+kable(ch2_summary %>% select(task, median_usable_50, q25_50, q75_50), 
+      col.names = c("Task", "Median", "Q25", "Q75"), digits = 0)
+
+# Chapter 3: DDM-ready
+ch3_summary <- gate_rates %>%
+  filter(gate == "primary", threshold == 0.50) %>%
+  group_by(task) %>%
+  summarise(
+    overall_pass_rate = mean(pass_rate, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cat("\n### Chapter 3: DDM-Ready Dataset\n\n")
+cat("**Overall quality (>= 0.50) pass rate:**\n")
+kable(ch3_summary %>% mutate(overall_pass_rate = sprintf("%.1f%%", overall_pass_rate * 100)),
+      col.names = c("Task", "Pass Rate"))
+
+cat("\n**Note:** Chapter 3 also requires RT filtering (placeholder - not computed here).\n")
+cat("Estimated median usable trials per subject: ~", 
+    round(median(trials_per_subject$observed_trials, na.rm = TRUE) * mean(ch3_summary$overall_pass_rate, na.rm = TRUE)), 
+    "\n", sep = "")
+```
+
+## 6. Window Validity Summary
+
+```{r window-validity}
+kable(window_summary %>% 
+      select(task, n_trials, baseline_valid_mean, cog_valid_mean, total_valid_mean) %>%
+      mutate(across(where(is.numeric), ~ if_else(is.na(.x), NA_character_, sprintf("%.3f", .x)))),
+      caption = "Window Validity (Mean)")
+
+# Plot
+p1 <- gate_rates %>%
+  filter(gate %in% c("baseline", "cog", "primary")) %>%
+  ggplot(aes(x = factor(threshold), y = pass_rate, fill = gate)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ task) +
+  labs(x = "Threshold", y = "Pass Rate", fill = "Gate",
+       title = "Gate Pass Rates by Threshold") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(p1)
+```
+
+## 7. Recommendations
+
+```{r recommendations}
+cat("### Chapter 2 Viability\n\n")
+ch2_median <- median(trials_per_subject$n_pass_primary_0.60, na.rm = TRUE)
+if (ch2_median >= 50) {
+  cat("✓ **VIABLE**: Median usable trials per subject =", round(ch2_median), 
+      "(sufficient for GLMM)\n")
+} else if (ch2_median >= 30) {
+  cat("⚠ **MARGINAL**: Median usable trials per subject =", round(ch2_median), 
+      "(may need to lower threshold or include more subjects)\n")
+} else {
+  cat("✗ **NOT VIABLE**: Median usable trials per subject =", round(ch2_median), 
+      "(insufficient for GLMM)\n")
+}
+
+cat("\n### Chapter 3 Viability\n\n")
+ch3_pass_rate <- mean(gate_rates$pass_rate[gate_rates$gate == "primary" & gate_rates$threshold == 0.50], na.rm = TRUE)
+if (ch3_pass_rate >= 0.70) {
+  cat("✓ **VIABLE**: Overall pass rate =", sprintf("%.1f%%", ch3_pass_rate * 100), 
+      "(sufficient for DDM)\n")
+} else if (ch3_pass_rate >= 0.50) {
+  cat("⚠ **MARGINAL**: Overall pass rate =", sprintf("%.1f%%", ch3_pass_rate * 100), 
+      "(may need to lower threshold)\n")
+} else {
+  cat("✗ **NOT VIABLE**: Overall pass rate =", sprintf("%.1f%%", ch3_pass_rate * 100), 
+      "(insufficient for DDM)\n")
+}
+```
+
+---
+
+**Note:** Full detailed tables are available in the CSV files in `quick_share_v2/`. This report shows only summaries to keep HTML size small.
+

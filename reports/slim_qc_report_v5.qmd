@@ -1,0 +1,159 @@
+---
+title: "Pupil QC Quick-Share v5"
+format:
+  html:
+    self-contained: false
+    df-print: paged
+    toc: true
+    toc-depth: 2
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 7,
+  fig.height = 4,
+  dpi = 100
+)
+
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(knitr)
+library(here)
+
+REPO_ROOT <- here::here()
+V5_ROOT   <- file.path(REPO_ROOT, "quick_share_v5")
+QC_DIR    <- file.path(V5_ROOT, "qc")
+AN_DIR    <- file.path(V5_ROOT, "analysis")
+
+join_health <- read_csv(file.path(QC_DIR, "01_join_health_by_subject_task.csv"), show_col_types = FALSE)
+gate_rates  <- read_csv(file.path(QC_DIR, "04_gate_pass_rates_by_task_threshold.csv"), show_col_types = FALSE)
+bias_inputs <- read_csv(file.path(QC_DIR, "05_bias_missingness_logit_inputs.csv"), show_col_types = FALSE)
+ch2_ready   <- read_csv(file.path(AN_DIR, "ch2_analysis_ready.csv"), show_col_types = FALSE)
+ch3_ready   <- read_csv(file.path(AN_DIR, "ch3_ddm_ready.csv"), show_col_types = FALSE)
+
+timing_qc_path <- file.path(QC_DIR, "03_timing_target_onset_qc.csv")
+has_timing_qc  <- file.exists(timing_qc_path)
+if (has_timing_qc) {
+  timing_qc <- read_csv(timing_qc_path, show_col_types = FALSE)
+}
+```
+
+## 1. Join Coverage
+
+```{r join-coverage}
+overall <- join_health %>%
+  summarise(
+    n_subjects      = n_distinct(sub),
+    mean_joined_reg = mean(joined_rate, na.rm = TRUE)
+  )
+
+cat("Overall subjects: ", overall$n_subjects, "\n", sep = "")
+cat("Mean joined_rate across subject-task: ",
+    sprintf("%.1f", 100 * overall$mean_joined_reg), "%\n\n", sep = "")
+
+kable(
+  join_health %>%
+    arrange(task, sub) %>%
+    mutate(joined_pct = sprintf("%.1f", 100 * joined_rate)) %>%
+    select(sub, task, n_total, n_joined, joined_pct, n_runs, sessions) %>%
+    head(30),
+  caption = "Join Health by Subject × Task (Top 30 rows)"
+)
+```
+
+## 2. Gate Pass Rates
+
+```{r gate-rates}
+kable(
+  gate_rates %>%
+    mutate(
+      threshold     = sprintf("%.2f", threshold),
+      pass_rate_pct = sprintf("%.1f", pass_rate_pct)
+    ) %>%
+    arrange(task, threshold),
+  caption = "Gate Pass Rates by Task and Threshold"
+)
+
+p_gate <- gate_rates %>%
+  ggplot(aes(x = factor(threshold), y = pass_rate_pct, fill = task)) +
+  geom_col(position = "dodge") +
+  labs(x = "Threshold", y = "Pass Rate (%)", fill = "Task") +
+  theme_minimal() +
+  ylim(0, 100)
+
+p_gate
+```
+
+## 3. Timing / Target-Onset QC
+
+```{r timing}
+if (has_timing_qc) {
+  kable(
+    timing_qc,
+    caption = "Target Onset Flag Availability by Task × Session"
+  )
+} else {
+  cat("No `target_onset_found` column available in merged v2; timing QC limited.\n")
+}
+```
+
+## 4. Analysis-Ready Counts (Ch2 / Ch3)
+
+```{r analysis-counts}
+ch2_counts <- ch2_ready %>%
+  count(task, name = "n_ch2")
+
+ch3_counts <- ch3_ready %>%
+  count(task, name = "n_ch3")
+
+kable(
+  full_join(ch2_counts, ch3_counts, by = "task"),
+  caption = "Analysis-Ready Trial Counts (Ch2 & Ch3)"
+)
+```
+
+## 5. Missingness Inputs (for Logit Models)
+
+```{r missingness}
+kable(
+  bias_inputs %>%
+    arrange(task, effort_group, intensity_bin) %>%
+    head(40),
+  caption = "Bias / Missingness Logit Inputs (Top 40 rows)"
+)
+```
+
+## 6. Headline Summary
+
+```{r summary}
+overall_join <- join_health %>%
+  summarise(
+    mean_join_pct = 100 * mean(joined_rate, na.rm = TRUE),
+    min_join_pct  = 100 * min(joined_rate, na.rm = TRUE),
+    max_join_pct  = 100 * max(joined_rate, na.rm = TRUE)
+  )
+
+cat("Headline:\n")
+cat("- Mean joined_rate across subject-task: ",
+    sprintf("%.1f", overall_join$mean_join_pct), "%\n", sep = "")
+cat("- Range of joined_rate: [",
+    sprintf("%.1f", overall_join$min_join_pct), ", ",
+    sprintf("%.1f", overall_join$max_join_pct), "]%\n", sep = "")
+
+cat("\nCh2/Ch3 readiness:\n")
+for (t in unique(ch2_ready$task)) {
+  n2 <- nrow(filter(ch2_ready, task == t))
+  n3 <- nrow(filter(ch3_ready, task == t))
+  cat("- ", t, ": Ch2=", n2, ", Ch3=", n3, "\n", sep = "")
+}
+```
+
+

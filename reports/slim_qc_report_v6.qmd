@@ -1,0 +1,217 @@
+---
+title: "Pupil QC Quick-Share v6"
+format:
+  html:
+    self-contained: false
+    df-print: paged
+    toc: true
+    toc-depth: 2
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 7,
+  fig.height = 4,
+  dpi = 100
+)
+
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(knitr)
+library(here)
+
+REPO_ROOT <- here::here()
+V6_ROOT   <- file.path(REPO_ROOT, "quick_share_v6")
+V6_QC     <- file.path(V6_ROOT, "qc")
+V6_ANALYSIS <- file.path(V6_ROOT, "analysis")
+V6_FIGS   <- file.path(V6_ROOT, "figs")
+
+# Load QC tables
+gate_rates <- read_csv(file.path(V6_QC, "gate_pass_rates_overview.csv"), show_col_types = FALSE)
+auc_missingness_reasons <- read_csv(file.path(V6_QC, "auc_missingness_reasons.csv"), show_col_types = FALSE)
+timing_coverage <- read_csv(file.path(V6_QC, "timing_event_time_coverage.csv"), show_col_types = FALSE)
+
+# Load analysis-ready datasets for summary
+ch2_ready <- read_csv(file.path(V6_ANALYSIS, "ch2_analysis_ready_with_auc.csv"), show_col_types = FALSE)
+ch3_ready <- read_csv(file.path(V6_ANALYSIS, "ch3_ddm_ready_with_auc.csv"), show_col_types = FALSE)
+
+# Check for missingness by condition
+missingness_by_condition_path <- file.path(V6_QC, "auc_missingness_by_condition.csv")
+has_missingness_by_condition <- file.exists(missingness_by_condition_path)
+if (has_missingness_by_condition) {
+  missingness_by_condition <- read_csv(missingness_by_condition_path, show_col_types = FALSE)
+}
+```
+
+## 1. Data Coverage
+
+```{r coverage}
+overall_coverage <- ch2_ready %>%
+  summarise(
+    n_trials_total = n(),
+    n_with_behavior = sum(has_behavioral_data, na.rm = TRUE),
+    n_with_auc = sum(auc_available, na.rm = TRUE),
+    pct_behavior = 100 * n_with_behavior / n_trials_total,
+    pct_auc = 100 * n_with_auc / n_trials_total
+  )
+
+cat("**Overall Coverage:**\n")
+cat("- Total trials: ", overall_coverage$n_trials_total, "\n", sep = "")
+cat("- Behavioral data: ", overall_coverage$n_with_behavior, " (", 
+    sprintf("%.1f", overall_coverage$pct_behavior), "%)\n", sep = "")
+cat("- AUC available: ", overall_coverage$n_with_auc, " (", 
+    sprintf("%.1f", overall_coverage$pct_auc), "%)\n\n", sep = "")
+
+# By task
+coverage_by_task <- ch2_ready %>%
+  group_by(task) %>%
+  summarise(
+    n_total = n(),
+    n_behavior = sum(has_behavioral_data, na.rm = TRUE),
+    n_auc = sum(auc_available, na.rm = TRUE),
+    pct_behavior = 100 * n_behavior / n_total,
+    pct_auc = 100 * n_auc / n_total,
+    .groups = "drop"
+  )
+
+kable(coverage_by_task, caption = "Coverage by Task")
+```
+
+## 2. Gate Pass Rates
+
+```{r gate-rates}
+kable(
+  gate_rates %>%
+    mutate(
+      threshold_050 = sprintf("%.1f", pct_pass_050),
+      threshold_060 = sprintf("%.1f", pct_pass_060),
+      threshold_070 = sprintf("%.1f", pct_pass_070),
+      auc_ready = sprintf("%.1f", pct_auc_ready)
+    ) %>%
+    select(task, threshold_050, threshold_060, threshold_070, auc_ready) %>%
+    rename(`Pass 0.50` = threshold_050, `Pass 0.60` = threshold_060, 
+           `Pass 0.70` = threshold_070, `AUC Ready` = auc_ready),
+  caption = "Gate Pass Rates by Task and Threshold"
+)
+
+# Plot
+if (file.exists(file.path(V6_FIGS, "gate_pass_rates_overview.png"))) {
+  knitr::include_graphics(file.path(V6_FIGS, "gate_pass_rates_overview.png"))
+}
+```
+
+## 3. AUC Missingness
+
+```{r auc-missingness}
+kable(
+  auc_missingness_reasons %>%
+    head(10),
+  caption = "Top AUC Missingness Reasons"
+)
+
+if (has_missingness_by_condition) {
+  kable(
+    missingness_by_condition %>%
+      head(15),
+    caption = "AUC Missingness by Condition (Top 15)"
+  )
+}
+```
+
+## 4. Event Timing Coverage
+
+```{r timing}
+overall_timing <- timing_coverage %>%
+  summarise(
+    n_trials_total = sum(n_trials),
+    n_ptb_total = sum(n_ptb),
+    pct_ptb_overall = 100 * n_ptb_total / n_trials_total
+  )
+
+cat("**Event Timing Source:**\n")
+cat("- PTB-derived: ", overall_timing$n_ptb_total, " / ", overall_timing$n_trials_total,
+    " (", sprintf("%.1f", overall_timing$pct_ptb_overall), "%)\n", sep = "")
+cat("- Default (4.35s/4.7s): ", 
+    sprintf("%.1f", 100 - overall_timing$pct_ptb_overall), "%\n\n", sep = "")
+
+kable(
+  timing_coverage %>%
+    select(task, session_used, run_used, n_trials, pct_ptb) %>%
+    head(20),
+  caption = "Timing Coverage by Task/Session/Run (Top 20)"
+)
+```
+
+## 5. Analysis-Ready Counts
+
+```{r analysis-counts}
+ch2_counts <- ch2_ready %>%
+  count(task, name = "n_ch2")
+
+ch3_counts <- ch3_ready %>%
+  count(task, name = "n_ch3")
+
+kable(
+  full_join(ch2_counts, ch3_counts, by = "task"),
+  caption = "Analysis-Ready Trial Counts (Ch2 & Ch3)"
+)
+
+# With AUC
+ch2_auc_counts <- ch2_ready %>%
+  filter(auc_available) %>%
+  count(task, name = "n_ch2_auc")
+
+ch3_auc_counts <- ch3_ready %>%
+  filter(auc_available) %>%
+  count(task, name = "n_ch3_auc")
+
+kable(
+  full_join(ch2_auc_counts, ch3_auc_counts, by = "task"),
+  caption = "Analysis-Ready Trials with AUC Available"
+)
+```
+
+## 6. Waveform Summaries
+
+```{r waveforms}
+if (file.exists(file.path(V6_FIGS, "waveform_panels_ch2.png"))) {
+  cat("### Chapter 2 Waveforms (50 Hz)\n\n")
+  knitr::include_graphics(file.path(V6_FIGS, "waveform_panels_ch2.png"))
+}
+
+if (file.exists(file.path(V6_FIGS, "waveform_panels_ch3.png"))) {
+  cat("\n### Chapter 3 Waveforms (250 Hz)\n\n")
+  knitr::include_graphics(file.path(V6_FIGS, "waveform_panels_ch3.png"))
+}
+```
+
+## 7. AUC Distributions
+
+```{r auc-dist}
+if (file.exists(file.path(V6_FIGS, "auc_distributions.png"))) {
+  knitr::include_graphics(file.path(V6_FIGS, "auc_distributions.png"))
+}
+```
+
+## 8. Headline Summary
+
+```{r summary}
+cat("**Quick-Share v6 Summary:**\n\n")
+cat("- Behavioral join rate: ", sprintf("%.1f", overall_coverage$pct_behavior), "%\n", sep = "")
+cat("- AUC availability: ", sprintf("%.1f", overall_coverage$pct_auc), "%\n", sep = "")
+cat("- Timing source: ", sprintf("%.1f", overall_timing$pct_ptb_overall), "% PTB, ", 
+    sprintf("%.1f", 100 - overall_timing$pct_ptb_overall), "% default\n", sep = "")
+cat("- Ch2 ready: ", nrow(ch2_ready), " trials\n", sep = "")
+cat("- Ch3 ready: ", nrow(ch3_ready), " trials\n", sep = "")
+cat("- Ch2 with AUC: ", sum(ch2_ready$auc_available, na.rm = TRUE), " trials\n", sep = "")
+cat("- Ch3 with AUC: ", sum(ch3_ready$auc_available, na.rm = TRUE), " trials\n", sep = "")
+```
+

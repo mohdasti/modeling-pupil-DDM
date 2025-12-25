@@ -9,16 +9,27 @@ if (length(csv_files) == 0) {
 }
 pupil_data_raw <- purrr::map_dfr(csv_files, readr::read_csv, show_col_types = FALSE)
 log_message(sprintf("Loaded %d rows from %d flat files.", nrow(pupil_data_raw), length(csv_files)))
+# UPDATED: Handle NaN values (zeros converted to NaN in MATLAB pipeline)
+# UPDATED: Use baseline_quality and overall_quality from MATLAB pipeline if available
 pupil_summary_per_trial <- pupil_data_raw %>%
     dplyr::group_by(sub, task, run, trial_index) %>%
     dplyr::summarise(
         tonic_arousal = mean(pupil[trial_label == "ITI_Baseline"], na.rm = TRUE),
         effort_arousal_pupil = mean(pupil[trial_label == "Pre_Stimulus_Fixation"], na.rm = TRUE),
-        quality_iti = mean(pupil[trial_label == "ITI_Baseline"] > 0, na.rm = TRUE),
-        quality_prestim = mean(pupil[trial_label == "Pre_Stimulus_Fixation"] > 0, na.rm = TRUE),
+        # UPDATED: Check for valid (non-NaN) data instead of > 0 (zeros are now NaN)
+        quality_iti = mean(!is.na(pupil[trial_label == "ITI_Baseline"]), na.rm = TRUE),
+        quality_prestim = mean(!is.na(pupil[trial_label == "Pre_Stimulus_Fixation"]), na.rm = TRUE),
+        # Use MATLAB pipeline quality metrics if available (more accurate)
+        baseline_quality = if("baseline_quality" %in% names(pupil_data_raw)) dplyr::first(na.omit(baseline_quality)) else NA_real_,
+        overall_quality = if("overall_quality" %in% names(pupil_data_raw)) dplyr::first(na.omit(overall_quality)) else NA_real_,
         .groups = "drop"
     ) %>%
-    dplyr::mutate(effort_arousal_change = effort_arousal_pupil - tonic_arousal)
+    dplyr::mutate(
+        effort_arousal_change = effort_arousal_pupil - tonic_arousal,
+        # Prefer MATLAB pipeline quality metrics if available
+        quality_iti = ifelse(!is.na(baseline_quality), baseline_quality, quality_iti),
+        quality_prestim = ifelse(!is.na(overall_quality), overall_quality, quality_prestim)
+    )
 log_message("Loading and cleaning behavioral data...")
 # Check if behavioral_file exists in DATA_PATHS, otherwise use behavioral_data
 behavioral_file_path <- if (!is.null(DATA_PATHS$behavioral_file)) {
@@ -98,8 +109,9 @@ behavioral_dataset <- full_dataset %>%
 output_path_behav <- file.path(DATA_PATHS$analysis_ready, "BAP_analysis_ready_BEHAVIORAL.csv")
 readr::write_csv(behavioral_dataset, output_path_behav)
 log_message(sprintf("SUCCESS: BEHAVIORAL dataset saved with %d trials.", nrow(behavioral_dataset)))
+# UPDATED: Use 80% quality threshold (matching MATLAB pipeline standard)
 pupil_dataset <- full_dataset %>%
-    dplyr::filter(quality_iti > 0.6 & quality_prestim > 0.6)
+    dplyr::filter(quality_iti >= 0.80 & quality_prestim >= 0.80)
 output_path_pupil <- file.path(DATA_PATHS$analysis_ready, "BAP_analysis_ready_PUPIL.csv")
 readr::write_csv(pupil_dataset, output_path_pupil)
 log_message(sprintf("SUCCESS: PUPIL dataset saved with %d high-quality trials.", nrow(pupil_dataset)))

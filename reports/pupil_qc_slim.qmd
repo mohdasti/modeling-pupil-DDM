@@ -1,0 +1,201 @@
+---
+title: "Pupil QC Slim Report"
+author: "BAP Pupillometry Analysis Pipeline"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: true
+    code-tools: false
+    self-contained: false
+    embed-resources: false
+    theme: flatly
+    df-print: paged
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(readr)
+  library(tidyr)
+  library(ggplot2)
+  library(knitr)
+})
+
+# Determine paths
+REPO_ROOT <- if (file.exists("R")) {
+  normalizePath(getwd())
+} else if (file.exists("../R")) {
+  normalizePath("..")
+} else {
+  normalizePath(getwd())
+}
+
+# Load CSVs from quick_share_v2
+OUTPUT_DIR <- file.path(REPO_ROOT, "quick_share_v2")
+
+if (!dir.exists(OUTPUT_DIR)) {
+  stop("quick_share_v2 directory not found. Run R/quick_share_v2_generate.R first.")
+}
+
+file_provenance <- read_csv(file.path(OUTPUT_DIR, "01_file_provenance.csv"), show_col_types = FALSE)
+design_table <- read_csv(file.path(OUTPUT_DIR, "02_design_expected_vs_observed.csv"), show_col_types = FALSE)
+trials_per_subject <- read_csv(file.path(OUTPUT_DIR, "03_trials_per_subject_task_ses.csv"), show_col_types = FALSE)
+run_level <- read_csv(file.path(OUTPUT_DIR, "04_run_level_counts.csv"), show_col_types = FALSE)
+window_summary <- read_csv(file.path(OUTPUT_DIR, "05_window_validity_summary.csv"), show_col_types = FALSE)
+gate_rates <- read_csv(file.path(OUTPUT_DIR, "06_gate_pass_rates_by_threshold.csv"), show_col_types = FALSE)
+bias_checks <- read_csv(file.path(OUTPUT_DIR, "07_bias_checks_key_gates.csv"), show_col_types = FALSE)
+prestim_dip <- read_csv(file.path(OUTPUT_DIR, "08_prestim_dip_summary.csv"), show_col_types = FALSE)
+```
+
+## 1. What Data Exists
+
+```{r coverage}
+# Design summary
+design_summary <- design_table %>%
+  group_by(task) %>%
+  summarise(
+    n_subjects = n_distinct(sub),
+    total_expected_runs = sum(expected_runs, na.rm = TRUE),
+    total_observed_runs = sum(observed_runs, na.rm = TRUE),
+    total_expected_trials = sum(expected_trials, na.rm = TRUE),
+    total_observed_trials = sum(observed_trials, na.rm = TRUE),
+    pct_runs_coverage = 100 * total_observed_runs / total_expected_runs,
+    pct_trials_coverage = 100 * total_observed_trials / total_expected_trials,
+    .groups = "drop"
+  )
+
+kable(design_summary, digits = 1, 
+      caption = "Design Coverage Summary")
+
+# Missing runs/trials
+missing_summary <- design_table %>%
+  filter(missing_runs > 0 | missing_trials > 0) %>%
+  arrange(desc(missing_trials))
+
+if (nrow(missing_summary) > 0) {
+  cat("\n**Subjects with missing runs/trials (top 10):**\n")
+  kable(head(missing_summary %>% 
+             select(sub, task, missing_runs, missing_trials), 10))
+} else {
+  cat("\n✓ All subjects have complete runs/trials\n")
+}
+
+# Run-level trial counts
+run_trial_stats <- run_level %>%
+  summarise(
+    median_trials = median(n_trials, na.rm = TRUE),
+    q25 = quantile(n_trials, 0.25, na.rm = TRUE),
+    q75 = quantile(n_trials, 0.75, na.rm = TRUE),
+    min_trials = min(n_trials, na.rm = TRUE),
+    max_trials = max(n_trials, na.rm = TRUE)
+  )
+
+cat("\n**Run-level trial counts:**\n")
+cat("- Median: ", run_trial_stats$median_trials, "\n", sep = "")
+cat("- IQR: [", run_trial_stats$q25, ", ", run_trial_stats$q75, "]\n", sep = "")
+cat("- Range: [", run_trial_stats$min_trials, ", ", run_trial_stats$max_trials, "]\n", sep = "")
+
+outlier_runs <- run_level %>%
+  filter(n_trials != 30) %>%
+  arrange(n_trials)
+
+if (nrow(outlier_runs) > 0) {
+  cat("\n**Runs with n_trials != 30 (top 10):**\n")
+  kable(head(outlier_runs %>% 
+             select(sub, task, ses_key, run_key, n_trials), 10))
+}
+```
+
+## 2. Window Validity and Gate Pass Rates
+
+```{r window-validity}
+# Window validity summary
+kable(window_summary %>% 
+      select(task, n_trials, baseline_mean, total_mean, cog_mean) %>%
+      mutate(across(where(is.numeric), ~ sprintf("%.1f", .x))),
+      caption = "Window Validity (Mean %)")
+
+# Gate pass rates
+gate_rates_display <- gate_rates %>%
+  mutate(pass_rate_pct = sprintf("%.1f%%", pass_rate * 100)) %>%
+  select(task, threshold, n_trials_total, n_trials_pass, pass_rate_pct) %>%
+  pivot_wider(names_from = threshold, values_from = pass_rate_pct, 
+              names_prefix = "pass_rate_thr")
+
+kable(gate_rates_display, caption = "Gate Pass Rates by Threshold")
+
+# Plot
+p1 <- gate_rates %>%
+  ggplot(aes(x = factor(threshold), y = pass_rate, fill = task)) +
+  geom_col(position = "dodge") +
+  labs(x = "Threshold (%)", y = "Pass Rate", fill = "Task",
+       title = "Gate Pass Rates by Threshold") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(p1)
+```
+
+## 3. Evidence of Bias in Trial Loss
+
+```{r bias-checks}
+if (nrow(bias_checks) > 0 && 
+    !all(is.na(bias_checks$estimate)) && 
+    !any(str_detect(bias_checks$interpretation, "not merged"))) {
+  
+  # Show key coefficients
+  key_coefs <- bias_checks %>%
+    filter(term != "MODEL_FIT", !is.na(p.value)) %>%
+    arrange(threshold, p.value) %>%
+    head(10)
+  
+  cat("**Key Coefficients (top 10 by p-value):**\n")
+  kable(key_coefs %>% 
+        select(threshold, term, estimate, p.value, interpretation) %>%
+        mutate(across(c(estimate, p.value), ~ sprintf("%.4f", .x))),
+        digits = 4)
+  
+  # Model fit summary
+  model_fit <- bias_checks %>%
+    filter(term == "MODEL_FIT") %>%
+    select(threshold, interpretation)
+  
+  cat("\n**Model Fit:**\n")
+  kable(model_fit)
+  
+} else {
+  cat("**Bias checks:** Cannot compute until behavioral merge is available.\n")
+  if (nrow(bias_checks) > 0) {
+    cat("Status: ", unique(bias_checks$interpretation), "\n", sep = "")
+  }
+}
+```
+
+## 4. Prestim/Baseline Failure Diagnostics
+
+```{r prestim-dip}
+kable(prestim_dip %>% 
+      select(task, n_trials, frac_baseline_lt50, frac_baseline_lt60, 
+             baseline_mean_missing_pct) %>%
+      mutate(across(where(is.numeric), ~ sprintf("%.1f", .x))),
+      caption = "Prestim/Baseline Failure Rates")
+```
+
+---
+
+**Note:** Full detailed tables are available in the CSV files in `quick_share_v2/`. 
+This report shows only summaries to keep HTML size small.

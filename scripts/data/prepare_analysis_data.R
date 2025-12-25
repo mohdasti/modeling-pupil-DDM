@@ -22,6 +22,35 @@ has_behav <- flat_data %>% filter(has_behavioral_data == 1)
 cat("Samples with behavioral data:", nrow(has_behav), "\n")
 
 # Create trial-level dataset with behavioral data
+# First, ensure all expected columns exist (add as NA if missing)
+has_behav <- has_behav %>%
+  mutate(
+    mvc = if ("mvc" %in% names(.)) mvc else NA_real_,
+    ses = if ("ses" %in% names(.)) ses else NA_real_,
+    stimLev = if ("stimLev" %in% names(.)) stimLev else NA_real_,
+    isOddball = if ("isOddball" %in% names(.)) isOddball else NA_integer_,
+    isStrength = if ("isStrength" %in% names(.)) isStrength else NA_integer_,
+    iscorr = if ("iscorr" %in% names(.)) iscorr else NA_integer_,
+    resp1 = if ("resp1" %in% names(.)) resp1 else NA_real_,
+    resp1RT = if ("resp1RT" %in% names(.)) resp1RT else NA_real_,
+    resp2 = if ("resp2" %in% names(.)) resp2 else NA_real_,
+    resp2RT = if ("resp2RT" %in% names(.)) resp2RT else NA_real_,
+    auc_rel_mvc = if ("auc_rel_mvc" %in% names(.)) auc_rel_mvc else NA_real_,
+    resp1_isdiff = if ("resp1_isdiff" %in% names(.)) resp1_isdiff else NA_integer_,
+    gf_trPer = if ("gf_trPer" %in% names(.)) gf_trPer else NA_real_,
+    hit = if ("hit" %in% names(.)) hit else NA_integer_,
+    miss = if ("miss" %in% names(.)) miss else NA_integer_,
+    fa = if ("fa" %in% names(.)) fa else NA_integer_,
+    cr = if ("cr" %in% names(.)) cr else NA_integer_,
+    auc = if ("auc" %in% names(.)) auc else NA_real_,
+    auc_prop_targ = if ("auc_prop_targ" %in% names(.)) auc_prop_targ else NA_real_,
+    run_index = if ("run_index" %in% names(.)) run_index else NA_integer_,
+    duration_index = if ("duration_index" %in% names(.)) duration_index else NA_integer_,
+    trial = if ("trial" %in% names(.)) trial else NA_integer_,
+    force_condition = if ("force_condition" %in% names(.)) force_condition else NA_character_,
+    stimulus_condition = if ("stimulus_condition" %in% names(.)) stimulus_condition else NA_character_
+  )
+
 trial_data <- has_behav %>%
   group_by(sub, task, run, trial_index) %>%
   summarise(
@@ -31,9 +60,6 @@ trial_data <- has_behav %>%
     pupil_mean = mean(pupil, na.rm = TRUE),
     
     # Behavioral data (take first non-NA value)
-    sub_behav = first(na.omit(sub_behav)),
-    task_behav = first(na.omit(task_behav)),
-    behavioral_trial = first(na.omit(behavioral_trial)),
     mvc = first(na.omit(mvc)),
     ses = first(na.omit(ses)),
     stimLev = first(na.omit(stimLev)),

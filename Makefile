@@ -25,7 +25,39 @@ RESET := \033[0m
 # ============================================================================
 # PHONY TARGETS
 # ============================================================================
-.PHONY: all clean features fit compare tonic report check
+.PHONY: all clean features fit compare tonic report check qc-quick-share
+
+# ============================================================================
+# QC QUICK SHARE
+# ============================================================================
+
+qc-quick-share:
+	@echo "$(YELLOW)Generating quick share QC snapshot...$(RESET)"
+	@$(R) 02_pupillometry_analysis/qc_export_quick_share.R
+	@echo "$(GREEN)✓ QC snapshot generated in data/qc/quick_share/$(RESET)"
+
+quick-share-v2:
+	@echo "$(YELLOW)Generating quick-share v2 CSVs...$(RESET)"
+	@$(R) R/quick_share_v2_generate.R
+	@echo "$(GREEN)✓ Quick-share v2 CSVs generated in quick_share_v2/$(RESET)"
+	@echo "$(YELLOW)Rendering slim HTML report...$(RESET)"
+	@quarto render reports/pupil_qc_slim.qmd
+	@echo "$(GREEN)✓ HTML report generated: reports/pupil_qc_slim.html$(RESET)"
+
+quick-share-v3:
+	@echo "$(YELLOW)Generating merged trial-level dataset + quick-share v3 CSVs...$(RESET)"
+	@$(R) scripts/make_merged_quickshare.R
+	@echo "$(GREEN)✓ Quick-share v3 CSVs generated in quick_share_v3/quick_share/$(RESET)"
+	@echo "$(GREEN)✓ Merged dataset: quick_share_v3/merged/BAP_triallevel_merged.csv$(RESET)"
+
+quick-share-v4:
+	@echo "$(YELLOW)Generating merged trial-level dataset + quick-share v4 CSVs...$(RESET)"
+	@$(R) scripts/make_merged_quickshare_v4.R
+	@echo "$(GREEN)✓ Quick-share v4 CSVs generated in quick_share_v4/quick_share/$(RESET)"
+	@echo "$(GREEN)✓ Merged dataset: quick_share_v4/merged/BAP_triallevel_merged.csv$(RESET)"
+	@echo "$(YELLOW)Rendering slim HTML report...$(RESET)"
+	@quarto render reports/slim_qc_report_v4.qmd
+	@echo "$(GREEN)✓ HTML report: reports/slim_qc_report_v4.html$(RESET)"
 
 # ============================================================================
 # MAIN TARGETS
@@ -166,6 +198,8 @@ help:
 	@echo "  make test      - Run model contract tests"
 	@echo ""
 	@echo "$(YELLOW)Utility Targets:$(RESET)"
+	@echo "  make qc-quick-share - Generate compact QC snapshot (8 CSVs)"
+	@echo "  make quick-share-v3 - Generate merged trial-level + quick-share v3 (8 CSVs)"
 	@echo "  make validate  - Validate output files"
 	@echo "  make clean     - Clean intermediate files"
 	@echo "  make clean-all - Remove all generated outputs"

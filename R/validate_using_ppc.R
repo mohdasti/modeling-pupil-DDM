@@ -116,3 +116,17 @@ cat("  ✓ Saved: output/ppc_primary_model_standard_trials.png\n\n")
 
 cat(strrep("=", 80), "\n")
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

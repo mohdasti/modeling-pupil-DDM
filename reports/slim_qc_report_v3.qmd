@@ -1,0 +1,280 @@
+---
+title: "Slim QC Report v3"
+author: "BAP Pupillometry Analysis Pipeline"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: true
+    code-tools: false
+    self-contained: false
+    embed-resources: false
+    theme: flatly
+    df-print: paged
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(readr)
+  library(tidyr)
+  library(ggplot2)
+  library(knitr)
+  library(here)
+  library(stringr)
+})
+
+# Load CSVs from quick_share_v3
+OUTPUT_DIR <- file.path(here::here(), "quick_share_v3")
+
+if (!dir.exists(OUTPUT_DIR)) {
+  stop("quick_share_v3 directory not found. Run scripts/make_quick_share_v3.R first.")
+}
+
+file_provenance <- read_csv(file.path(OUTPUT_DIR, "01_file_provenance.csv"), show_col_types = FALSE)
+design_table <- read_csv(file.path(OUTPUT_DIR, "02_design_expected_vs_observed.csv"), show_col_types = FALSE)
+trials_per_subject <- read_csv(file.path(OUTPUT_DIR, "03_trials_per_subject_task_ses.csv"), show_col_types = FALSE)
+run_level <- read_csv(file.path(OUTPUT_DIR, "04_run_level_counts.csv"), show_col_types = FALSE)
+window_summary <- read_csv(file.path(OUTPUT_DIR, "05_window_validity_summary.csv"), show_col_types = FALSE)
+gate_rates <- read_csv(file.path(OUTPUT_DIR, "06_gate_pass_rates_by_threshold.csv"), show_col_types = FALSE)
+bias_checks <- read_csv(file.path(OUTPUT_DIR, "07_bias_checks_key_gates.csv"), show_col_types = FALSE)
+prestim_dip <- read_csv(file.path(OUTPUT_DIR, "08_prestim_dip_summary.csv"), show_col_types = FALSE)
+```
+
+## 1. Executive Summary
+
+```{r executive-summary}
+# Key metrics
+total_subjects <- n_distinct(design_table$sub)
+total_trials <- file_provenance$n_trials
+total_runs <- sum(design_table$observed_runs, na.rm = TRUE)
+
+cat("**Dataset Overview:**\n")
+cat("- Subjects: ", total_subjects, "\n", sep = "")
+cat("- Total trials: ", total_trials, "\n", sep = "")
+cat("- Total runs: ", total_runs, "\n", sep = "")
+
+# Biggest issues
+missing_trials_total <- sum(design_table$missing_trials, na.rm = TRUE)
+cat("\n**Data Completeness:**\n")
+cat("- Missing trials: ", missing_trials_total, " (", 
+    sprintf("%.1f", 100 * missing_trials_total / sum(design_table$expected_trials, na.rm = TRUE)), "%)\n", sep = "")
+
+# Gate pass rates
+pass_60 <- gate_rates %>% filter(threshold == 0.60) %>% pull(pass_rate_pct) %>% mean(na.rm = TRUE)
+cat("\n**Quality:**\n")
+cat("- Pass rate at threshold 0.60: ", sprintf("%.1f", pass_60), "%\n", sep = "")
+```
+
+## 2. Data Coverage
+
+```{r data-coverage}
+# Expected vs observed
+coverage_summary <- design_table %>%
+  group_by(task) %>%
+  summarise(
+    n_subjects = n_distinct(sub),
+    total_expected_trials = sum(expected_trials, na.rm = TRUE),
+    total_observed_trials = sum(observed_trials, na.rm = TRUE),
+    total_missing_trials = sum(missing_trials, na.rm = TRUE),
+    pct_coverage = 100 * total_observed_trials / total_expected_trials,
+    .groups = "drop"
+  )
+
+kable(coverage_summary, digits = 1, caption = "Design Coverage by Task")
+
+# Subjects with missing data
+missing_subjects <- design_table %>%
+  filter(missing_trials > 0) %>%
+  arrange(desc(missing_trials)) %>%
+  head(10)
+
+if (nrow(missing_subjects) > 0) {
+  cat("\n**Top 10 subjects with missing trials:**\n")
+  kable(missing_subjects %>% select(sub, task, expected_trials, observed_trials, missing_trials))
+}
+```
+
+## 3. QC + Gate Pass Rates
+
+```{r qc-rates}
+# Window validity summary
+kable(window_summary %>% 
+      select(task, n_trials, baseline_quality_mean, trial_quality_mean, overall_quality_mean) %>%
+      mutate(across(where(is.numeric), ~ sprintf("%.3f", .x))),
+      caption = "Window Validity (Mean, 0-1 scale)")
+
+# Gate pass rates
+kable(gate_rates %>% 
+      mutate(across(c(pass_rate, pass_rate_pct), ~ sprintf("%.1f", .x))) %>%
+      select(task, threshold, n_trials_total, n_trials_pass, pass_rate_pct),
+      caption = "Gate Pass Rates")
+
+# Plot
+p1 <- gate_rates %>%
+  ggplot(aes(x = factor(threshold), y = pass_rate_pct, fill = task)) +
+  geom_col(position = "dodge") +
+  labs(x = "Threshold", y = "Pass Rate (%)", fill = "Task",
+       title = "Gate Pass Rates by Threshold") +
+  ylim(0, 100) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(p1)
+```
+
+## 4. Bias/Missingness Snapshot
+
+```{r bias-checks}
+if (nrow(bias_checks) > 0) {
+  # Show key comparisons
+  key_bias <- bias_checks %>%
+    filter(comparison == "passed_vs_failed", threshold == 0.60) %>%
+    head(10)
+  
+  cat("**Bias checks (passed vs failed at threshold 0.60):**\n")
+  kable(key_bias %>% 
+        mutate(across(c(mean_diff, cohens_d), ~ sprintf("%.3f", .x))) %>%
+        select(metric, mean_diff, cohens_d, n_passed, n_failed))
+  
+  # Session comparison
+  ses_bias <- bias_checks %>%
+    filter(comparison == "session_2_vs_3", threshold == 0.60)
+  
+  if (nrow(ses_bias) > 0) {
+    cat("\n**Session comparison (session 2 vs 3):**\n")
+    kable(ses_bias %>% 
+          mutate(mean_diff = sprintf("%.3f", mean_diff)) %>%
+          select(threshold, mean_diff, n_passed, n_failed))
+  }
+} else {
+  cat("**Bias checks:** No data available.\n")
+}
+```
+
+## 5. Decision Recommendations
+
+```{r recommendations}
+# Chapter 2 feasibility
+ch2_trials <- trials_per_subject %>%
+  group_by(task) %>%
+  summarise(
+    median_trials_per_subject = median(n_trials, na.rm = TRUE),
+    q25 = quantile(n_trials, 0.25, na.rm = TRUE),
+    q75 = quantile(n_trials, 0.75, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cat("### Chapter 2: Pupil-Indexed Arousal\n\n")
+cat("**Usable trials per subject (median):**\n")
+kable(ch2_trials, col.names = c("Task", "Median", "Q25", "Q75"), digits = 0)
+
+# Threshold recommendations
+threshold_rec <- gate_rates %>%
+  group_by(threshold) %>%
+  summarise(
+    mean_pass_rate = mean(pass_rate_pct, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cat("\n**Threshold recommendations:**\n")
+kable(threshold_rec %>% 
+      mutate(mean_pass_rate = sprintf("%.1f%%", mean_pass_rate)),
+      col.names = c("Threshold", "Mean Pass Rate"))
+
+cat("\n**Recommendation:**\n")
+if (pass_60 >= 40) {
+  cat("✓ **VIABLE**: Threshold 0.60 yields ", sprintf("%.1f", pass_60), 
+      "% pass rate. Sufficient for Chapter 2 GLMM analysis.\n", sep = "")
+} else {
+  cat("⚠ **MARGINAL**: Threshold 0.60 yields ", sprintf("%.1f", pass_60), 
+      "% pass rate. Consider threshold 0.50 or include more subjects.\n", sep = "")
+}
+
+# Chapter 3 feasibility
+ch3_pass_50 <- gate_rates %>% filter(threshold == 0.50) %>% pull(pass_rate_pct) %>% mean(na.rm = TRUE)
+cat("\n### Chapter 3: DDM Analysis\n\n")
+cat("**Overall pass rate at threshold 0.50: ", sprintf("%.1f", ch3_pass_50), "%\n", sep = "")
+if (ch3_pass_50 >= 50) {
+  cat("✓ **VIABLE**: Sufficient trials for DDM analysis.\n")
+} else {
+  cat("⚠ **MARGINAL**: May need to lower threshold or include more subjects.\n")
+}
+```
+
+## 6. Scanner TR Jitter Sanity Check
+
+```{r tr-jitter}
+# Load trial-level data for TR check
+jitter_file <- file.path(OUTPUT_DIR, "trial_level_for_jitter.csv")
+if (file.exists(jitter_file)) {
+  trial_jitter <- read_csv(jitter_file, show_col_types = FALSE)
+  
+  # Compute inter-trial intervals within each run
+  tr_intervals <- trial_jitter %>%
+    arrange(sub, task, session_used, run_used, trial_index) %>%
+    group_by(sub, task, session_used, run_used) %>%
+    mutate(
+      trial_start = if (!all(is.na(trial_start_time_ptb))) {
+        trial_start_time_ptb
+      } else {
+        time_min
+      },
+      prev_trial_start = lag(trial_start),
+      tr_interval = trial_start - prev_trial_start
+    ) %>%
+    filter(!is.na(tr_interval)) %>%
+    ungroup()
+  
+  if (nrow(tr_intervals) > 0) {
+    # Summary statistics
+    tr_summary <- tr_intervals %>%
+      summarise(
+        n_intervals = n(),
+        median_interval = median(tr_interval, na.rm = TRUE),
+        q25 = quantile(tr_interval, 0.25, na.rm = TRUE, names = FALSE),
+        q75 = quantile(tr_interval, 0.75, na.rm = TRUE, names = FALSE),
+        min_interval = min(tr_interval, na.rm = TRUE),
+        max_interval = max(tr_interval, na.rm = TRUE)
+      )
+    
+    cat("**Inter-trial interval statistics:**\n")
+    kable(tr_summary, digits = 2, caption = "TR Intervals (seconds)")
+    
+    # Histogram
+    p_tr <- tr_intervals %>%
+      ggplot(aes(x = tr_interval)) +
+      geom_histogram(bins = 50, fill = "steelblue", alpha = 0.7) +
+      labs(x = "Inter-trial interval (seconds)", y = "Frequency",
+           title = "Distribution of Inter-trial Intervals") +
+      theme_minimal()
+    
+    print(p_tr)
+    
+    cat("\n**Expected range:** ~10-15 seconds between trials\n")
+  } else {
+    cat("**TR jitter check:** Insufficient data for inter-trial interval computation.\n")
+  }
+} else {
+  cat("**TR jitter check:** Data file not found.\n")
+}
+```
+
+---
+
+**Note:** Full detailed tables are available in the CSV files in `quick_share_v3/`. 
+This report shows only summaries to keep HTML size small.
+

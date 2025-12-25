@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.33">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="BAP Pupillometry Analysis Pipeline">
+<meta name="dcterms.date" content="2025-12-22">
+
+<title>Slim QC Report v3</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="slim_qc_report_v3_files/libs/clipboard/clipboard.min.js"></script>
+<script src="slim_qc_report_v3_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="slim_qc_report_v3_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="slim_qc_report_v3_files/libs/quarto-html/popper.min.js"></script>
+<script src="slim_qc_report_v3_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="slim_qc_report_v3_files/libs/quarto-html/anchor.min.js"></script>
+<link href="slim_qc_report_v3_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="slim_qc_report_v3_files/libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="slim_qc_report_v3_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="slim_qc_report_v3_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="slim_qc_report_v3_files/libs/bootstrap/bootstrap-769b268fb290e116fe386cf5612ac759.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="slim_qc_report_v3_files/libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet">
+<script src="slim_qc_report_v3_files/libs/pagedtable-1.1/js/pagedtable.js"></script>
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#executive-summary" id="toc-executive-summary" class="nav-link active" data-scroll-target="#executive-summary"><span class="header-section-number">1</span> 1. Executive Summary</a></li>
+  <li><a href="#data-coverage" id="toc-data-coverage" class="nav-link" data-scroll-target="#data-coverage"><span class="header-section-number">2</span> 2. Data Coverage</a></li>
+  <li><a href="#qc-gate-pass-rates" id="toc-qc-gate-pass-rates" class="nav-link" data-scroll-target="#qc-gate-pass-rates"><span class="header-section-number">3</span> 3. QC + Gate Pass Rates</a></li>
+  <li><a href="#biasmissingness-snapshot" id="toc-biasmissingness-snapshot" class="nav-link" data-scroll-target="#biasmissingness-snapshot"><span class="header-section-number">4</span> 4. Bias/Missingness Snapshot</a></li>
+  <li><a href="#decision-recommendations" id="toc-decision-recommendations" class="nav-link" data-scroll-target="#decision-recommendations"><span class="header-section-number">5</span> 5. Decision Recommendations</a></li>
+  <li><a href="#scanner-tr-jitter-sanity-check" id="toc-scanner-tr-jitter-sanity-check" class="nav-link" data-scroll-target="#scanner-tr-jitter-sanity-check"><span class="header-section-number">6</span> 6. Scanner TR Jitter Sanity Check</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Slim QC Report v3</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>BAP Pupillometry Analysis Pipeline </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">December 22, 2025</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="executive-summary" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="executive-summary"><span class="header-section-number">1</span> 1. Executive Summary</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>**Dataset Overview:**</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>- Subjects: 63</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>- Total trials: 14586</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>- Total runs: 488</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+**Data Completeness:**</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>- Missing trials: 2814 (16.2%)</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+**Quality:**</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>- Pass rate at threshold 0.60: 33.3%</code></pre>
+</div>
+</div>
+</section>
+<section id="data-coverage" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="data-coverage"><span class="header-section-number">2</span> 2. Data Coverage</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Design Coverage by Task</caption>
+<colgroup>
+<col style="width: 5%">
+<col style="width: 11%">
+<col style="width: 23%">
+<col style="width: 23%">
+<col style="width: 22%">
+<col style="width: 13%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">task</th>
+<th style="text-align: right;">n_subjects</th>
+<th style="text-align: right;">total_expected_trials</th>
+<th style="text-align: right;">total_observed_trials</th>
+<th style="text-align: right;">total_missing_trials</th>
+<th style="text-align: right;">pct_coverage</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">ADT</td>
+<td style="text-align: right;">57</td>
+<td style="text-align: right;">8550</td>
+<td style="text-align: right;">7530</td>
+<td style="text-align: right;">1020</td>
+<td style="text-align: right;">88.1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">VDT</td>
+<td style="text-align: right;">59</td>
+<td style="text-align: right;">8850</td>
+<td style="text-align: right;">7056</td>
+<td style="text-align: right;">1794</td>
+<td style="text-align: right;">79.7</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+**Top 10 subjects with missing trials:**</code></pre>
+</div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">sub</th>
+<th style="text-align: left;">task</th>
+<th style="text-align: right;">expected_trials</th>
+<th style="text-align: right;">observed_trials</th>
+<th style="text-align: right;">missing_trials</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">BAP195</td>
+<td style="text-align: left;">VDT</td>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">130</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">BAP129</td>
+<td style="text-align: left;">VDT</td>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">120</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">BAP138</td>
+<td style="text-align: left;">ADT</td>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">120</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">BAP147</td>
+<td style="text-align: left;">VDT</td>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">120</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">BAP149</td>
+<td style="text-align: left;">VDT</td>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">120</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">BAP184</td>
+<td style="text-align: left;">ADT</td>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">120</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">BAP003</td>
+<td style="text-align: left;">VDT</td>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">90</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">BAP101</td>
+<td style="text-align: left;">ADT</td>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">90</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">BAP156</td>
+<td style="text-align: left;">VDT</td>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">90</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">BAP158</td>
+<td style="text-align: left;">ADT</td>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">90</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="qc-gate-pass-rates" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="qc-gate-pass-rates"><span class="header-section-number">3</span> 3. QC + Gate Pass Rates</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Window Validity (Mean, 0-1 scale)</caption>
+<colgroup>
+<col style="width: 6%">
+<col style="width: 11%">
+<col style="width: 28%">
+<col style="width: 25%">
+<col style="width: 27%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">task</th>
+<th style="text-align: left;">n_trials</th>
+<th style="text-align: left;">baseline_quality_mean</th>
+<th style="text-align: left;">trial_quality_mean</th>
+<th style="text-align: left;">overall_quality_mean</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">ADT</td>
+<td style="text-align: left;">7530.000</td>
+<td style="text-align: left;">0.437</td>
+<td style="text-align: left;">0.530</td>
+<td style="text-align: left;">0.510</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">VDT</td>
+<td style="text-align: left;">7056.000</td>
+<td style="text-align: left;">0.526</td>
+<td style="text-align: left;">0.588</td>
+<td style="text-align: left;">0.567</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Gate Pass Rates</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">task</th>
+<th style="text-align: right;">threshold</th>
+<th style="text-align: right;">n_trials_total</th>
+<th style="text-align: right;">n_trials_pass</th>
+<th style="text-align: left;">pass_rate_pct</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">ADT</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">7530</td>
+<td style="text-align: right;">2598</td>
+<td style="text-align: left;">34.5</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">VDT</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">7056</td>
+<td style="text-align: right;">3113</td>
+<td style="text-align: left;">44.1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">ADT</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">7530</td>
+<td style="text-align: right;">2195</td>
+<td style="text-align: left;">29.2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">VDT</td>
+<td style="text-align: right;">0.6</td>
+<td style="text-align: right;">7056</td>
+<td style="text-align: right;">2643</td>
+<td style="text-align: left;">37.5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">ADT</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">7530</td>
+<td style="text-align: right;">1727</td>
+<td style="text-align: left;">22.9</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">VDT</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">7056</td>
+<td style="text-align: right;">2171</td>
+<td style="text-align: left;">30.8</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="slim_qc_report_v3_files/figure-html/qc-rates-1.png" class="img-fluid figure-img" width="576"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="biasmissingness-snapshot" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="biasmissingness-snapshot"><span class="header-section-number">4</span> 4. Bias/Missingness Snapshot</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>**Bias checks (passed vs failed at threshold 0.60):**
+
+**Session comparison (session 2 vs 3):**</code></pre>
+</div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;">threshold</th>
+<th style="text-align: left;">mean_diff</th>
+<th style="text-align: right;">n_passed</th>
+<th style="text-align: right;">n_failed</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">0.056</td>
+<td style="text-align: right;">7267</td>
+<td style="text-align: right;">7319</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="decision-recommendations" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="decision-recommendations"><span class="header-section-number">5</span> 5. Decision Recommendations</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>### Chapter 2: Pupil-Indexed Arousal</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>**Usable trials per subject (median):**</code></pre>
+</div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Task</th>
+<th style="text-align: right;">Median</th>
+<th style="text-align: right;">Q25</th>
+<th style="text-align: right;">Q75</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">ADT</td>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">120</td>
+<td style="text-align: right;">150</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">VDT</td>
+<td style="text-align: right;">120</td>
+<td style="text-align: right;">120</td>
+<td style="text-align: right;">150</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+**Threshold recommendations:**</code></pre>
+</div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;">Threshold</th>
+<th style="text-align: left;">Mean Pass Rate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.5</td>
+<td style="text-align: left;">39.3%</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.6</td>
+<td style="text-align: left;">33.3%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.7</td>
+<td style="text-align: left;">26.9%</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+**Recommendation:**</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>⚠ **MARGINAL**: Threshold 0.60 yields 33.3% pass rate. Consider threshold 0.50 or include more subjects.</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+### Chapter 3: DDM Analysis</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>**Overall pass rate at threshold 0.50: 39.3%</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>⚠ **MARGINAL**: May need to lower threshold or include more subjects.</code></pre>
+</div>
+</div>
+</section>
+<section id="scanner-tr-jitter-sanity-check" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="scanner-tr-jitter-sanity-check"><span class="header-section-number">6</span> 6. Scanner TR Jitter Sanity Check</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>**Inter-trial interval statistics:**</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="slim_qc_report_v3_files/figure-html/tr-jitter-1.png" class="img-fluid figure-img" width="576"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+**Expected range:** ~10-15 seconds between trials</code></pre>
+</div>
+</div>
+<hr>
+<p><strong>Note:</strong> Full detailed tables are available in the CSV files in <code>quick_share_v3/</code>. This report shows only summaries to keep HTML size small.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

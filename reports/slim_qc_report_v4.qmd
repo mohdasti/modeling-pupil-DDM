@@ -1,0 +1,231 @@
+---
+title: "Pupil QC Quick-Share Report v4"
+format:
+  html:
+    self-contained: false
+    embed-resources: false
+    toc: true
+    toc-depth: 2
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 8,
+  fig.height = 5,
+  dpi = 100
+)
+
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(knitr)
+library(here)
+
+REPO_ROOT <- here::here()
+QUICKSHARE_DIR <- file.path(REPO_ROOT, "quick_share_v4", "quick_share")
+```
+
+## Executive Summary
+
+```{r exec-summary}
+# Load merge diagnostics
+merge_diag <- read_csv(file.path(QUICKSHARE_DIR, "01_merge_diagnostics.csv"), show_col_types = FALSE)
+
+cat("**Data Coverage:**\n")
+cat("- Total pupil trials:", merge_diag$n_pupil_trials[merge_diag$task == "ALL"], "\n")
+cat("- Matched with behavioral:", merge_diag$n_matched[merge_diag$task == "ALL"], 
+    " (", sprintf("%.1f", merge_diag$match_rate_pct[merge_diag$task == "ALL"]), "%)\n\n")
+
+# Load gate rates
+gate_rates <- read_csv(file.path(QUICKSHARE_DIR, "06_gate_pass_rates_by_threshold.csv"), show_col_types = FALSE)
+
+cat("**Gate Pass Rates (threshold 0.60):**\n")
+for (i in 1:nrow(gate_rates)) {
+  if (gate_rates$threshold[i] == 0.60) {
+    cat("- ", gate_rates$task[i], ": ", sprintf("%.1f", gate_rates$pass_rate_pct[i]), 
+        "% (", gate_rates$n_trials_pass[i], " / ", gate_rates$n_trials_total[i], ")\n", sep = "")
+  }
+}
+```
+
+## 1. Data Coverage
+
+```{r coverage}
+# Trials per subject/task/session
+trials_per_subject <- read_csv(file.path(QUICKSHARE_DIR, "02_trials_per_subject_task_ses.csv"), 
+                               show_col_types = FALSE)
+
+kable(
+  trials_per_subject %>%
+    group_by(task) %>%
+    summarise(
+      n_subjects = n_distinct(sub),
+      mean_trials = mean(n_trials, na.rm = TRUE),
+      mean_trials_with_beh = mean(n_trials_with_behavior, na.rm = TRUE),
+      .groups = "drop"
+    ),
+  caption = "Coverage Summary by Task"
+)
+```
+
+## 2. QC + Gate Pass Rates
+
+```{r qc-rates}
+# Window validity
+window_summary <- read_csv(file.path(QUICKSHARE_DIR, "05_window_validity_summary.csv"), 
+                          show_col_types = FALSE)
+
+kable(
+  window_summary %>%
+    select(task, effort, n_trials, baseline_mean, cog_mean, overall_mean) %>%
+    mutate(
+      baseline_mean = sprintf("%.3f", baseline_mean),
+      cog_mean = sprintf("%.3f", cog_mean),
+      overall_mean = sprintf("%.3f", overall_mean)
+    ),
+  caption = "Window Validity (Mean, 0-1 scale)"
+)
+
+# Gate pass rates
+gate_rates <- read_csv(file.path(QUICKSHARE_DIR, "06_gate_pass_rates_by_threshold.csv"), 
+                      show_col_types = FALSE)
+
+kable(
+  gate_rates %>%
+    mutate(across(c(pass_rate_pct), ~ sprintf("%.1f", .x))) %>%
+    select(task, threshold, n_trials_total, n_trials_pass, pass_rate_pct),
+  caption = "Gate Pass Rates"
+)
+
+# Plot
+p1 <- gate_rates %>%
+  ggplot(aes(x = factor(threshold), y = pass_rate_pct, fill = task)) +
+  geom_col(position = "dodge") +
+  labs(x = "Threshold", y = "Pass Rate (%)", fill = "Task",
+       title = "Gate Pass Rates by Threshold") +
+  ylim(0, 100) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(p1)
+```
+
+## 3. Run-Level Integrity
+
+```{r run-integrity}
+# Run level counts
+run_level <- read_csv(file.path(QUICKSHARE_DIR, "04_run_level_counts.csv"), 
+                     show_col_types = FALSE)
+
+run_summary <- run_level %>%
+  summarise(
+    mean_trials = mean(n_trials, na.rm = TRUE),
+    median_trials = median(n_trials, na.rm = TRUE),
+    min_trials = min(n_trials, na.rm = TRUE),
+    max_trials = max(n_trials, na.rm = TRUE),
+    n_runs = n()
+  )
+
+cat("**Run Integrity:**\n")
+cat("- Mean trials per run:", sprintf("%.1f", run_summary$mean_trials), "\n")
+cat("- Median trials per run:", run_summary$median_trials, "\n")
+cat("- Range: [", run_summary$min_trials, ", ", run_summary$max_trials, "]\n", sep = "")
+cat("- Total runs:", run_summary$n_runs, "\n\n")
+
+# Distribution plot
+p2 <- run_level %>%
+  ggplot(aes(x = n_trials)) +
+  geom_histogram(binwidth = 1, fill = "steelblue", alpha = 0.7) +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "red") +
+  labs(x = "Trials per Run", y = "Number of Runs",
+       title = "Distribution of Trials per Run") +
+  theme_minimal()
+
+print(p2)
+```
+
+## 4. Condition Cell Counts
+
+```{r condition-counts}
+# Condition cell counts
+condition_counts <- read_csv(file.path(QUICKSHARE_DIR, "03_condition_cell_counts.csv"), 
+                            show_col_types = FALSE)
+
+kable(
+  condition_counts %>%
+    group_by(task, effort, stimulus_intensity) %>%
+    summarise(
+      n_trials_total = sum(n_trials_total, na.rm = TRUE),
+      n_trials_valid_primary = sum(n_trials_valid_primary, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    head(20),
+  caption = "Condition Cell Counts (Top 20 rows)"
+)
+```
+
+## 5. Bias Checks
+
+```{r bias-checks}
+# Bias checks
+bias_checks <- read_csv(file.path(QUICKSHARE_DIR, "07_bias_checks_key_gates.csv"), 
+                       show_col_types = FALSE)
+
+kable(
+  bias_checks %>%
+    filter(threshold == 0.60) %>%
+    select(factor, level, n_total, n_pass, pass_rate) %>%
+    mutate(pass_rate = sprintf("%.3f", pass_rate)),
+  caption = "Bias Checks (Threshold 0.60)"
+)
+```
+
+## 6. Merge Diagnostics
+
+```{r merge-diag}
+# Merge diagnostics
+merge_diag <- read_csv(file.path(QUICKSHARE_DIR, "01_merge_diagnostics.csv"), 
+                      show_col_types = FALSE)
+
+kable(
+  merge_diag %>%
+    select(task, n_pupil_trials, n_matched, match_rate_pct) %>%
+    mutate(match_rate_pct = sprintf("%.1f", match_rate_pct)),
+  caption = "Merge Diagnostics"
+)
+
+if (!is.na(merge_diag$unmatched_pupil_sample[merge_diag$task == "ALL"])) {
+  cat("\n**Sample Unmatched Pupil Trials:**\n")
+  unmatched <- strsplit(merge_diag$unmatched_pupil_sample[merge_diag$task == "ALL"], "; ")[[1]]
+  cat(paste(head(unmatched, 10), collapse = "\n"))
+}
+```
+
+## Recommendations
+
+```{r recommendations}
+gate_60 <- gate_rates %>% filter(threshold == 0.60)
+
+cat("**Chapter 2 (Psychometric + Pupil) Readiness:**\n")
+for (i in 1:nrow(gate_60)) {
+  if (gate_60$pass_rate_pct[i] >= 50) {
+    cat("- ", gate_60$task[i], ": READY (", sprintf("%.1f", gate_60$pass_rate_pct[i]), 
+        "% pass rate)\n", sep = "")
+  } else {
+    cat("- ", gate_60$task[i], ": MARGINAL (", sprintf("%.1f", gate_60$pass_rate_pct[i]), 
+        "% pass rate)\n", sep = "")
+  }
+}
+
+cat("\n**Chapter 3 (DDM) Readiness:**\n")
+cat("- Requires behavioral data + pupil baseline quality >= 0.50\n")
+cat("- Matched trials: ", merge_diag$n_matched[merge_diag$task == "ALL"], "\n", sep = "")
+```
+

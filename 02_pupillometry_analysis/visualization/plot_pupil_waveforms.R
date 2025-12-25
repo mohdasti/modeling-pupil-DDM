@@ -5,35 +5,52 @@
 # ============================================================================
 # Generates publication-quality pupil waveform plots showing baseline-corrected
 # pupil traces across conditions, with event markers and AUC windows
+# Updated to use quick_share_v6 waveform summaries or process from flat files
 # Adapted from Zenon et al. (2014) method
 # ============================================================================
 
 suppressPackageStartupMessages({
-  library(dplyr)  # Includes pipe operator %>%
+  library(dplyr)
   library(tidyr)
   library(readr)
   library(purrr)
   library(ggplot2)
   library(patchwork)
+  library(yaml)
+  library(here)
 })
 
-# Ensure pipe operator is available
-if(!exists("%>%")) {
-  library(magrittr)
-}
-
 cat("=== PUPIL WAVEFORM PLOTS ===\n")
-cat("Started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
-cat("NOTE: Using all available data (no run-based subject filtering)\n\n")
+cat("Started at:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n\n")
 
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
-# Paths
-processed_dir <- "/Users/mohdasti/Documents/LC-BAP/BAP/BAP_Pupillometry/BAP/BAP_processed"
-output_dir <- "06_visualization/publication_figures"
+REPO_ROOT <- here::here()
+
+# Load config
+config_file <- file.path(REPO_ROOT, "config", "data_paths.yaml")
+if (file.exists(config_file)) {
+  config <- read_yaml(config_file)
+  processed_dir <- config$processed_dir
+} else {
+  processed_dir <- Sys.getenv("PUPIL_PROCESSED_DIR")
+  if (processed_dir == "") {
+    processed_dir <- "/Users/mohdasti/Documents/LC-BAP/BAP/BAP_Pupillometry/BAP/BAP_processed"
+  }
+}
+
+# Check for quick_share_v6 waveform summaries
+V6_ROOT <- file.path(REPO_ROOT, "quick_share_v6")
+V6_WAVEFORM_CH2 <- file.path(V6_ROOT, "analysis", "pupil_waveforms_condition_mean_ch2_50hz.csv")
+V6_WAVEFORM_CH3 <- file.path(V6_ROOT, "analysis", "pupil_waveforms_condition_mean_ch3_250hz.csv")
+
+output_dir <- file.path(REPO_ROOT, "06_visualization", "publication_figures")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+# Use waveform summaries if available
+use_waveform_summaries <- file.exists(V6_WAVEFORM_CH2) && file.exists(V6_WAVEFORM_CH3)
 
 # Define the common color scheme
 condition_colors <- c(
@@ -50,31 +67,31 @@ timeline_bar_colors <- list(
   cognitive_auc = "#D95F02"
 )
 
-# Task configurations (ADT and VDT)
+# Task configurations (ADT and VDT) - Updated timing
 task_configs <- list(
   ADT = list(
     task_name = "ADT",
     stimulus_label = "Target onset",
     response_label = "Response",
-    # Timing (relative to squeeze onset = 0)
-    target_onset = 4.35,  # Target stimulus onset (after Standard 100ms + ISI 500ms)
-    response_window_start = 4.7,  # Response window start
+    # Timing (relative to squeeze onset = 0) - Updated to match quick_share_v6
+    target_onset = 4.35,  # Target stimulus onset (3.75s stimulus start + 0.1s Standard + 0.5s ISI)
+    response_window_start = 4.7,  # Response_Different phase start
     total_auc_start = 0,  # From squeeze onset
-    baseline_window_start = -0.5,  # Baseline window start
-    baseline_window_end = 0,  # Baseline window end
-    cognitive_auc_latency = 0.3  # 300ms after target onset
+    baseline_window_start = -0.5,  # Baseline B0 window start
+    baseline_window_end = 0,  # Baseline B0 window end
+    cognitive_auc_latency = 0.3  # 300ms after target onset (cognitive window starts at 4.65s)
   ),
   VDT = list(
     task_name = "VDT",
     stimulus_label = "Target onset",
     response_label = "Response",
-    # Timing (relative to squeeze onset = 0)
-    target_onset = 4.35,  # Target stimulus onset (after Standard 100ms + ISI 500ms)
-    response_window_start = 4.7,  # Response window start
+    # Timing (relative to squeeze onset = 0) - Updated to match quick_share_v6
+    target_onset = 4.35,  # Target stimulus onset (3.75s stimulus start + 0.1s Standard + 0.5s ISI)
+    response_window_start = 4.7,  # Response_Different phase start
     total_auc_start = 0,  # From squeeze onset
-    baseline_window_start = -0.5,  # Baseline window start
-    baseline_window_end = 0,  # Baseline window end
-    cognitive_auc_latency = 0.3  # 300ms after target onset
+    baseline_window_start = -0.5,  # Baseline B0 window start
+    baseline_window_end = 0,  # Baseline B0 window end
+    cognitive_auc_latency = 0.3  # 300ms after target onset (cognitive window starts at 4.65s)
   )
 )
 
@@ -82,123 +99,191 @@ task_configs <- list(
 # 1. LOAD AND PREPARE DATA
 # ============================================================================
 
-cat("1. Loading merged flat files...\n")
-
-# Find merged flat files
-flat_files_merged <- list.files(processed_dir, pattern = "_flat_merged\\.csv$", full.names = TRUE)
-flat_files_reg <- list.files(processed_dir, pattern = "_flat\\.csv$", full.names = TRUE)
-
-# Prefer merged files
-if (length(flat_files_merged) > 0 && length(flat_files_reg) > 0) {
-  merged_ids <- gsub("_flat_merged\\.csv$", "", basename(flat_files_merged))
-  reg_ids <- gsub("_flat\\.csv$", "", basename(flat_files_reg))
-  reg_to_keep <- !reg_ids %in% merged_ids
-  flat_files <- c(flat_files_merged, flat_files_reg[reg_to_keep])
-  cat("  Using", length(flat_files_merged), "merged files +", sum(reg_to_keep), "regular files\n")
-} else {
-  flat_files <- c(flat_files_merged, flat_files_reg)
-}
-
-if(length(flat_files) == 0) {
-  stop("ERROR: No flat files found in ", processed_dir)
-}
-
-cat("  Found", length(flat_files), "flat files\n")
-
-# Load all flat files
-cat("  Loading data...\n")
-all_data <- purrr::map_dfr(flat_files, function(f) {
-  cat("    Loading:", basename(f), "\n")
-  readr::read_csv(f, show_col_types = FALSE, progress = FALSE)
-})
-
-cat("  Loaded", nrow(all_data), "total samples\n")
-
-# Filter to ADT and VDT only
-all_data <- dplyr::filter(all_data, task %in% c("ADT", "VDT"))
-
-if(nrow(all_data) == 0) {
-  stop("ERROR: No ADT or VDT data found")
-}
-
-cat("  Filtered to", nrow(all_data), "samples from ADT/VDT tasks\n")
-
-# ============================================================================
-# 2. CREATE BASELINE-CORRECTED PUPIL TRACE
-# ============================================================================
-
-cat("\n2. Creating baseline-corrected pupil traces...\n")
-
-# Calculate global baseline (B0) per trial: 500ms window before squeeze onset
-# Check if difficulty_level already exists
-has_difficulty_level <- "difficulty_level" %in% names(all_data)
-
-all_data <- dplyr::group_by(all_data, sub, task, run, trial_index)
-all_data <- dplyr::mutate(all_data,
-    # Calculate baseline B0 from -0.5s to 0s
-    baseline_B0 = mean(pupil[time >= -0.5 & time < 0 & !is.na(pupil)], na.rm = TRUE),
-    # Create isolated pupil trace (baseline-corrected)
-    pupil_isolated = pupil - baseline_B0,
-    # Create difficulty_level from isOddball and stimLev (if not already present)
-    difficulty_level = if(has_difficulty_level) {
-      difficulty_level
-    } else {
-      factor(case_when(
+if (use_waveform_summaries) {
+  cat("1. Loading waveform summaries from quick_share_v6...\n")
+  
+  waveform_ch2 <- read_csv(V6_WAVEFORM_CH2, show_col_types = FALSE)
+  waveform_ch3 <- read_csv(V6_WAVEFORM_CH3, show_col_types = FALSE)
+  
+  # Combine and standardize column names
+  waveform_data <- bind_rows(
+    waveform_ch2 %>% mutate(source = "ch2", fs = 50),
+    waveform_ch3 %>% mutate(source = "ch3", fs = 100)
+  ) %>%
+    rename(
+      time_from_squeeze = t,
+      mean_pupil_isolated = mean_pupil,
+      se_pupil_isolated = sem_pupil
+    ) %>%
+    mutate(
+      # Map isOddball to difficulty: 1 = Easy, 0 = Standard (but we filter out Standard)
+      difficulty_level = case_when(
+        isOddball == 1 ~ "Easy",
         isOddball == 0 ~ "Standard",
-        # Map based on actual stimLev values in data (1-4 for Oddball trials)
-        # Lower values = Hard (harder to detect), Higher values = Easy (easier to detect)
-        isOddball == 1 & stimLev %in% c(1, 2, 8, 16, 0.06, 0.12) ~ "Hard",
-        isOddball == 1 & stimLev %in% c(3, 4, 32, 64, 0.24, 0.48) ~ "Easy",
         TRUE ~ NA_character_
-      ), levels = c("Standard", "Easy", "Hard"))
-    },
-    # Map force_condition to Low/High
-    effort_level = case_when(
-      force_condition == "Low_Force_5pct" ~ "Low",
-      force_condition == "High_Force_40pct" ~ "High",
-      TRUE ~ NA_character_
-    ),
-    # Create condition label (Difficulty / Effort)
-    condition = case_when(
-      !is.na(difficulty_level) & !is.na(effort_level) ~ 
-        paste0(as.character(difficulty_level), " / ", effort_level),
-      TRUE ~ "Unknown"
-    ),
-    # Use time as time_from_squeeze (time is already relative to squeeze onset)
-    time_from_squeeze = time
-  )
-all_data <- dplyr::ungroup(all_data)
-
-# Filter to valid conditions only
-# Filter out Standard trials to only show Easy/Hard (matching the color scheme)
-all_data <- dplyr::filter(all_data,
-                          condition != "Unknown",
-                          !is.na(pupil_isolated),
-                          !is.na(time_from_squeeze),
-                          !grepl("Standard", condition))  # Only Easy/Hard trials
-
-# Count unique conditions (ensure condition is a character vector)
-all_data$condition <- as.character(all_data$condition)
-unique_conditions <- unique(all_data$condition[!is.na(all_data$condition) & all_data$condition != "Unknown"])
-n_conditions <- length(unique_conditions)
-cat("  Created baseline-corrected traces for", n_conditions, "conditions\n")
-if(n_conditions > 0) {
-  cat("    Conditions:", paste(unique_conditions, collapse = ", "), "\n")
+      ),
+      # Map effort to Low/High
+      effort_level = case_when(
+        effort == "Low" | effort == "Low_Force_5pct" ~ "Low",
+        effort == "High" | effort == "High_Force_40pct" ~ "High",
+        TRUE ~ NA_character_
+      ),
+      # Create condition label (Difficulty / Effort) matching color scheme
+      condition = case_when(
+        !is.na(difficulty_level) & !is.na(effort_level) ~ 
+          paste0(difficulty_level, " / ", effort_level),
+        TRUE ~ "Unknown"
+      )
+    ) %>%
+    filter(condition != "Unknown", !grepl("Standard", condition))  # Only Easy/Hard
+  
+  cat("  ✓ Loaded waveform summaries\n")
+  cat("    Ch2: ", nrow(waveform_ch2), " rows\n", sep = "")
+  cat("    Ch3: ", nrow(waveform_ch3), " rows\n", sep = "")
+  
+  # For plotting, use Ch2 (50Hz) waveforms
+  all_data <- waveform_data %>%
+    filter(source == "ch2") %>%
+    select(-source, -fs, -difficulty_level, -effort_level)
+  
+  cat("  Using Ch2 waveforms (50Hz) for plotting\n")
+  
+  # Ensure condition matches color scheme
+  all_data$condition <- as.character(all_data$condition)
+  
+} else {
+  cat("1. Loading merged flat files...\n")
+  cat("  (Waveform summaries not found; processing from flat files)\n")
+  
+  # Find flat files
+  flat_files_merged <- list.files(processed_dir, pattern = "_flat_merged\\.csv$", full.names = TRUE)
+  flat_files_reg <- list.files(processed_dir, pattern = "_flat\\.csv$", full.names = TRUE)
+  
+  # Prefer merged files
+  if (length(flat_files_merged) > 0 && length(flat_files_reg) > 0) {
+    merged_ids <- gsub("_flat_merged\\.csv$", "", basename(flat_files_merged))
+    reg_ids <- gsub("_flat\\.csv$", "", basename(flat_files_reg))
+    reg_to_keep <- !reg_ids %in% merged_ids
+    flat_files <- c(flat_files_merged, flat_files_reg[reg_to_keep])
+    cat("  Using", length(flat_files_merged), "merged files +", sum(reg_to_keep), "regular files\n")
+  } else {
+    flat_files <- c(flat_files_merged, flat_files_reg)
+  }
+  
+  if(length(flat_files) == 0) {
+    stop("ERROR: No flat files found in ", processed_dir)
+  }
+  
+  cat("  Found", length(flat_files), "flat files\n")
+  
+  # Load all flat files
+  cat("  Loading data...\n")
+  all_data <- purrr::map_dfr(flat_files, function(f) {
+    cat("    Loading:", basename(f), "\n")
+    readr::read_csv(f, show_col_types = FALSE, progress = FALSE)
+  })
+  
+  cat("  Loaded", nrow(all_data), "total samples\n")
+  
+  # Filter to ADT and VDT only
+  all_data <- dplyr::filter(all_data, task %in% c("ADT", "VDT"))
+  
+  if(nrow(all_data) == 0) {
+    stop("ERROR: No ADT or VDT data found")
+  }
+  
+  cat("  Filtered to", nrow(all_data), "samples from ADT/VDT tasks\n")
 }
 
-# Calculate median response onset times per task (from actual RT data)
-cat("\n3. Calculating median response onset times...\n")
-response_onsets <- all_data %>%
-  filter(!is.na(resp1RT), resp1RT > 0, resp1RT < 5.0) %>%
-  group_by(task) %>%
-  summarise(
-    median_rt = median(resp1RT, na.rm = TRUE),
-    median_response_onset = 4.7 + median_rt,  # Response window start + RT
-    .groups = "drop"
-  )
+# ============================================================================
+# 2. CREATE BASELINE-CORRECTED PUPIL TRACE (if not using summaries)
+# ============================================================================
 
-cat("  ADT median response onset:", round(response_onsets$median_response_onset[response_onsets$task == "ADT"], 2), "s\n")
-cat("  VDT median response onset:", round(response_onsets$median_response_onset[response_onsets$task == "VDT"], 2), "s\n")
+if (!use_waveform_summaries) {
+  cat("\n2. Creating baseline-corrected pupil traces...\n")
+  
+  # Calculate global baseline (B0) per trial: 500ms window before squeeze onset
+  # Check if difficulty_level already exists
+  has_difficulty_level <- "difficulty_level" %in% names(all_data)
+  
+  all_data <- dplyr::group_by(all_data, sub, task, run, trial_index)
+  all_data <- dplyr::mutate(all_data,
+      # Calculate baseline B0 from -0.5s to 0s (updated to match quick_share_v6)
+      baseline_B0 = mean(pupil[time >= -0.5 & time < 0 & !is.na(pupil)], na.rm = TRUE),
+      # Create isolated pupil trace (baseline-corrected using B0)
+      pupil_isolated = pupil - baseline_B0,
+      # Create difficulty_level from isOddball and stimLev (if not already present)
+      difficulty_level = if(has_difficulty_level) {
+        difficulty_level
+      } else {
+        factor(case_when(
+          isOddball == 0 ~ "Standard",
+          # Map based on actual stimLev values in data
+          # Lower values = Hard (harder to detect), Higher values = Easy (easier to detect)
+          isOddball == 1 & stimLev %in% c(1, 2, 8, 16, 0.06, 0.12) ~ "Hard",
+          isOddball == 1 & stimLev %in% c(3, 4, 32, 64, 0.24, 0.48) ~ "Easy",
+          TRUE ~ NA_character_
+        ), levels = c("Standard", "Easy", "Hard"))
+      },
+      # Map force_condition or effort to Low/High
+      effort_level = case_when(
+        force_condition == "Low_Force_5pct" | effort == "Low" ~ "Low",
+        force_condition == "High_Force_40pct" | effort == "High" ~ "High",
+        TRUE ~ NA_character_
+      ),
+      # Create condition label (Difficulty / Effort)
+      condition = case_when(
+        !is.na(difficulty_level) & !is.na(effort_level) ~ 
+          paste0(as.character(difficulty_level), " / ", effort_level),
+        TRUE ~ "Unknown"
+      ),
+      # Use time as time_from_squeeze (time is already relative to squeeze onset)
+      time_from_squeeze = time
+    )
+  all_data <- dplyr::ungroup(all_data)
+  
+  # Filter to valid conditions only
+  # Filter out Standard trials to only show Easy/Hard (matching the color scheme)
+  all_data <- dplyr::filter(all_data,
+                            condition != "Unknown",
+                            !is.na(pupil_isolated),
+                            !is.na(time_from_squeeze),
+                            !grepl("Standard", condition))  # Only Easy/Hard trials
+  
+  # Count unique conditions
+  all_data$condition <- as.character(all_data$condition)
+  unique_conditions <- unique(all_data$condition[!is.na(all_data$condition) & all_data$condition != "Unknown"])
+  n_conditions <- length(unique_conditions)
+  cat("  Created baseline-corrected traces for", n_conditions, "conditions\n")
+  if(n_conditions > 0) {
+    cat("    Conditions:", paste(unique_conditions, collapse = ", "), "\n")
+  }
+} else {
+  cat("\n2. Using pre-computed waveform summaries (baseline B0 already applied)\n")
+}
+
+# Calculate median response onset times per task
+cat("\n3. Calculating median response onset times...\n")
+if (!use_waveform_summaries && "resp1RT" %in% names(all_data)) {
+  response_onsets <- all_data %>%
+    filter(!is.na(resp1RT), resp1RT > 0, resp1RT < 5.0) %>%
+    group_by(task) %>%
+    summarise(
+      median_rt = median(resp1RT, na.rm = TRUE),
+      median_response_onset = 4.7 + median_rt,  # Response window start + RT
+      .groups = "drop"
+    )
+  
+  cat("  ADT median response onset:", round(response_onsets$median_response_onset[response_onsets$task == "ADT"], 2), "s\n")
+  cat("  VDT median response onset:", round(response_onsets$median_response_onset[response_onsets$task == "VDT"], 2), "s\n")
+} else {
+  # Use fixed response window start (4.7s) if no RT data or using summaries
+  response_onsets <- tibble(
+    task = c("ADT", "VDT"),
+    median_response_onset = c(4.7, 4.7)
+  )
+  cat("  Using fixed response onset: 4.7s (response window start)\n")
+}
 
 # ============================================================================
 # 4. GENERATE WAVEFORM PLOTS
@@ -229,16 +314,25 @@ for (task_name in c("ADT", "VDT")) {
   }
   
   # Create condition-specific averages for pupil_isolated
-  waveform_summary <- task_data %>%
-    dplyr::group_by(condition, time_from_squeeze) %>%
-    dplyr::summarise(
-      mean_pupil_isolated = mean(pupil_isolated, na.rm = TRUE),
-      se_pupil_isolated = sd(pupil_isolated, na.rm = TRUE) / sqrt(n()),
-      n_samples = n(),
-      .groups = "drop"
-    ) %>%
-    dplyr::filter(!is.na(mean_pupil_isolated),
-                  !is.na(time_from_squeeze))
+  if (use_waveform_summaries) {
+    # Use pre-aggregated waveform data (already has mean and SE)
+    waveform_summary <- task_data %>%
+      select(condition, time_from_squeeze, mean_pupil_isolated, se_pupil_isolated) %>%
+      distinct() %>%
+      filter(!is.na(mean_pupil_isolated), !is.na(time_from_squeeze))
+  } else {
+    # Aggregate from sample-level data
+    waveform_summary <- task_data %>%
+      dplyr::group_by(condition, time_from_squeeze) %>%
+      dplyr::summarise(
+        mean_pupil_isolated = mean(pupil_isolated, na.rm = TRUE),
+        se_pupil_isolated = sd(pupil_isolated, na.rm = TRUE) / sqrt(n()),
+        n_samples = n(),
+        .groups = "drop"
+      ) %>%
+      dplyr::filter(!is.na(mean_pupil_isolated),
+                    !is.na(time_from_squeeze))
+  }
   
   if(nrow(waveform_summary) == 0) {
     cat("    ⚠ No valid data for", task_name, "- skipping\n")
@@ -330,9 +424,21 @@ for (task_name in c("ADT", "VDT")) {
   plot_start_time <- config$baseline_window_start
   plot_end_time <- response_onset_median
   
-  # Ensure condition is a factor with proper levels
+  # Get conditions actually present in data
+  conditions_present <- unique(waveform_summary$condition)
+  conditions_present <- conditions_present[!is.na(conditions_present)]
+  
+  # Ensure condition is a factor with levels matching present conditions
   waveform_summary$condition <- factor(waveform_summary$condition, 
-                                       levels = names(condition_colors))
+                                       levels = sort(conditions_present))
+  
+  # Create color mapping for present conditions only
+  colors_for_plot <- condition_colors[names(condition_colors) %in% conditions_present]
+  if (length(colors_for_plot) == 0) {
+    # Fallback: use default colors if no matches
+    colors_for_plot <- scales::hue_pal()(length(conditions_present))
+    names(colors_for_plot) <- conditions_present
+  }
   
   # Create plot
   plot_waveform <- ggplot(waveform_summary, 
@@ -376,11 +482,11 @@ for (task_name in c("ADT", "VDT")) {
       fill = "Condition"
     ) +
     
-    scale_color_manual(values = condition_colors, name = "Condition", 
-                       breaks = names(condition_colors),
-                       guide = guide_legend(override.aes = list(fill = condition_colors))) +
-    scale_fill_manual(values = condition_colors, name = "Condition",
-                      breaks = names(condition_colors)) +
+    scale_color_manual(values = colors_for_plot, name = "Condition", 
+                       breaks = names(colors_for_plot),
+                       guide = guide_legend(override.aes = list(fill = colors_for_plot))) +
+    scale_fill_manual(values = colors_for_plot, name = "Condition",
+                      breaks = names(colors_for_plot)) +
     scale_x_continuous(breaks = seq(0, ceiling(plot_end_time), by = 1)) +
     coord_cartesian(xlim = c(plot_start_time, plot_end_time), 
                     ylim = c(y_lower_limit, y_upper_limit)) +

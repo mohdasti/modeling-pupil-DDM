@@ -1,0 +1,176 @@
+---
+title: "Slim QC Report"
+author: "BAP Pupillometry Analysis Pipeline"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: true
+    code-tools: false
+    self-contained: false
+    embed-resources: false
+    theme: flatly
+    df-print: paged
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(readr)
+  library(tidyr)
+  library(ggplot2)
+  library(knitr)
+  library(here)
+  library(stringr)
+})
+
+# Load CSVs from quick_share_v3
+OUTPUT_DIR <- file.path(here::here(), "quick_share_v3")
+
+if (!dir.exists(OUTPUT_DIR)) {
+  stop("quick_share_v3 directory not found. Run R/quickshare_export.R first.")
+}
+
+file_provenance <- read_csv(file.path(OUTPUT_DIR, "01_file_provenance.csv"), show_col_types = FALSE)
+design_table <- read_csv(file.path(OUTPUT_DIR, "02_design_expected_vs_observed.csv"), show_col_types = FALSE)
+trials_per_subject <- read_csv(file.path(OUTPUT_DIR, "03_trials_per_subject_task_ses.csv"), show_col_types = FALSE)
+run_level <- read_csv(file.path(OUTPUT_DIR, "04_run_level_counts.csv"), show_col_types = FALSE)
+window_summary <- read_csv(file.path(OUTPUT_DIR, "05_window_validity_summary.csv"), show_col_types = FALSE)
+gate_rates <- read_csv(file.path(OUTPUT_DIR, "06_gate_pass_rates_by_threshold.csv"), show_col_types = FALSE)
+bias_checks <- read_csv(file.path(OUTPUT_DIR, "07_bias_checks_key_gates.csv"), show_col_types = FALSE)
+prestim_dip <- read_csv(file.path(OUTPUT_DIR, "08_prestim_dip_summary.csv"), show_col_types = FALSE)
+```
+
+## 1. Data Integrity
+
+```{r data-integrity}
+# Coverage summary
+kable(file_provenance, caption = "Data Coverage")
+
+# Design compliance
+design_summary <- design_table %>%
+  group_by(task) %>%
+  summarise(
+    n_subjects = n_distinct(subject),
+    total_expected_trials = sum(expected_trials, na.rm = TRUE),
+    total_observed_trials = sum(observed_trials, na.rm = TRUE),
+    pct_coverage = 100 * total_observed_trials / total_expected_trials,
+    .groups = "drop"
+  )
+
+kable(design_summary, digits = 1, caption = "Design Compliance")
+
+# Run-level trial counts
+run_trial_stats <- run_level %>%
+  summarise(
+    median_trials = median(n_trials, na.rm = TRUE),
+    q25 = quantile(n_trials, 0.25, na.rm = TRUE),
+    q75 = quantile(n_trials, 0.75, na.rm = TRUE)
+  )
+
+cat("**Run-level trial counts:**\n")
+cat("- Median: ", run_trial_stats$median_trials, "\n", sep = "")
+cat("- IQR: [", run_trial_stats$q25, ", ", run_trial_stats$q75, "]\n", sep = "")
+```
+
+## 2. Window Validity Distributions
+
+```{r window-validity}
+# Summary table
+kable(window_summary %>% 
+      select(task, session_used, baseline_mean, cogwin_mean, overall_mean) %>%
+      mutate(across(where(is.numeric), ~ sprintf("%.1f", .x))),
+      caption = "Window Validity (Mean %)")
+
+# Distribution plot
+p1 <- window_summary %>%
+  select(task, session_used, baseline_mean, cogwin_mean, overall_mean) %>%
+  pivot_longer(cols = c(baseline_mean, cogwin_mean, overall_mean),
+               names_to = "window", values_to = "validity") %>%
+  mutate(window = str_remove(window, "_mean")) %>%
+  ggplot(aes(x = window, y = validity, fill = task)) +
+  geom_boxplot() +
+  facet_wrap(~ session_used) +
+  labs(x = "Window", y = "Validity (%)", fill = "Task",
+       title = "Window Validity Distributions") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(p1)
+```
+
+## 3. Gate Pass Rates
+
+```{r gate-rates}
+# Gate pass rates table
+gate_rates_display <- gate_rates %>%
+  mutate(pass_rate_pct = sprintf("%.1f%%", pass_rate * 100)) %>%
+  select(task, threshold, n_trials_total, n_trials_pass, pass_rate_pct)
+
+kable(gate_rates_display, caption = "Gate Pass Rates by Threshold")
+
+# Plot
+p2 <- gate_rates %>%
+  ggplot(aes(x = factor(threshold), y = pass_rate, fill = task)) +
+  geom_col(position = "dodge") +
+  labs(x = "Threshold (%)", y = "Pass Rate", fill = "Task",
+       title = "Gate Pass Rates by Threshold") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(p2)
+```
+
+## 4. Implications for Chapter 2 vs Chapter 3
+
+```{r implications}
+# Chapter 2: GLMM-ready (baseline + cogwin >= 60)
+ch2_summary <- trials_per_subject %>%
+  mutate(
+    ch2_usable = n_pass_t060
+  ) %>%
+  group_by(task) %>%
+  summarise(
+    median_usable = median(ch2_usable, na.rm = TRUE),
+    q25 = quantile(ch2_usable, 0.25, na.rm = TRUE),
+    q75 = quantile(ch2_usable, 0.75, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cat("### Chapter 2: Pupil-Indexed Arousal + Psychometric Sensitivity\n\n")
+cat("**Usable trials per subject (baseline + cogwin >= 60%):**\n")
+kable(ch2_summary, col.names = c("Task", "Median", "Q25", "Q75"), digits = 0)
+
+# Chapter 3: DDM-ready (overall >= 50)
+ch3_summary <- gate_rates %>%
+  filter(threshold == 50) %>%
+  group_by(task) %>%
+  summarise(
+    overall_pass_rate = mean(pass_rate, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cat("\n### Chapter 3: DDM-Ready Dataset\n\n")
+cat("**Overall quality (>= 50%) pass rate:**\n")
+kable(ch3_summary %>% mutate(overall_pass_rate = sprintf("%.1f%%", overall_pass_rate * 100)),
+      col.names = c("Task", "Pass Rate"))
+```
+
+---
+
+**Note:** Full detailed tables are available in the CSV files in `quick_share_v3/`. 
+This report shows only summaries to keep HTML size small.
+
