@@ -71,6 +71,7 @@ B0_WIN <- c(-0.5, 0.0)  # Pre-trial baseline (before squeeze onset)
 B1_WIN <- c(-0.5, 0.0)  # Pre-target baseline (before target onset)
 TARGET_ONSET_DEFAULT <- 4.35
 RESP_START_DEFAULT <- 4.70
+RESP_END_DEFAULT <- 7.70  # CH3 EXTENSION: End of Response 1 window (Resp1ET)
 COG_WIN_POST_TARGET <- c(0.3, 1.3)  # Cognitive window after target
 
 # ----------------------------------------------------------------------------
@@ -303,7 +304,7 @@ process_flat_file_v7 <- function(flat_path) {
           time_unit_inferred = time_info$unit, dt_median = time_info$dt_median,
           squeeze_onset_time = NA_real_, timing_anchor_found = FALSE,
           t_target_onset_rel = TARGET_ONSET_DEFAULT, t_resp_start_rel = RESP_START_DEFAULT,
-          total_auc = NA_real_, cog_auc = NA_real_,
+          total_auc = NA_real_, cog_auc = NA_real_, cog_auc_w3 = NA_real_, cog_auc_respwin = NA_real_,
           n_valid_B0 = 0L, n_valid_b0 = 0L,
           baseline_B0_mean = NA_real_, baseline_b0_mean = NA_real_,
           auc_available_total = FALSE, auc_available_cog = FALSE, auc_available_both = FALSE,
@@ -407,7 +408,7 @@ process_flat_file_v7 <- function(flat_path) {
         total_auc <- compute_auc(total_time, total_pupil_corrected)
       }
       
-      # Cognitive AUC: from (target_onset + 0.3) to response start
+      # Cognitive AUC: from (target_onset + 0.3) to response start (LEGACY - short window)
       cog_win_start <- TARGET_ONSET_DEFAULT + COG_WIN_POST_TARGET[1]
       cog_win_end <- min(TARGET_ONSET_DEFAULT + COG_WIN_POST_TARGET[2], RESP_START_DEFAULT)
       
@@ -419,6 +420,36 @@ process_flat_file_v7 <- function(flat_path) {
         
         if (sum(!is.na(cog_pupil_corrected) & is.finite(cog_pupil_corrected)) >= 2) {
           cog_auc <- compute_auc(cog_time, cog_pupil_corrected)
+        }
+      }
+      
+      # CH3 EXTENSION: cog_auc_w3 - target+0.3 to target+3.3 (capped at Resp1ET)
+      cog_auc_w3_start <- TARGET_ONSET_DEFAULT + 0.3
+      cog_auc_w3_end <- min(TARGET_ONSET_DEFAULT + 3.3, RESP_END_DEFAULT)
+      
+      cog_auc_w3 <- NA_real_
+      if (cog_auc_w3_end > cog_auc_w3_start) {
+        cog_w3_mask <- t_rel >= cog_auc_w3_start & t_rel <= cog_auc_w3_end
+        cog_w3_time <- t_rel[cog_w3_mask]
+        cog_w3_pupil_corrected <- pupil_partial_corrected[cog_w3_mask]
+        
+        if (sum(!is.na(cog_w3_pupil_corrected) & is.finite(cog_w3_pupil_corrected)) >= 2) {
+          cog_auc_w3 <- compute_auc(cog_w3_time, cog_w3_pupil_corrected)
+        }
+      }
+      
+      # CH3 EXTENSION: cog_auc_respwin - target+0.3 to Resp1ET (end of response window)
+      cog_auc_respwin_start <- TARGET_ONSET_DEFAULT + 0.3
+      cog_auc_respwin_end <- RESP_END_DEFAULT
+      
+      cog_auc_respwin <- NA_real_
+      if (cog_auc_respwin_end > cog_auc_respwin_start) {
+        cog_respwin_mask <- t_rel >= cog_auc_respwin_start & t_rel <= cog_auc_respwin_end
+        cog_respwin_time <- t_rel[cog_respwin_mask]
+        cog_respwin_pupil_corrected <- pupil_partial_corrected[cog_respwin_mask]
+        
+        if (sum(!is.na(cog_respwin_pupil_corrected) & is.finite(cog_respwin_pupil_corrected)) >= 2) {
+          cog_auc_respwin <- compute_auc(cog_respwin_time, cog_respwin_pupil_corrected)
         }
       }
       
@@ -449,7 +480,8 @@ process_flat_file_v7 <- function(flat_path) {
         squeeze_onset_time = if(timing_anchor_found) squeeze_onset else NA_real_,
         timing_anchor_found = timing_anchor_found,
         t_target_onset_rel = TARGET_ONSET_DEFAULT, t_resp_start_rel = RESP_START_DEFAULT,
-        total_auc = total_auc, cog_auc = cog_auc,
+        total_auc = total_auc, cog_auc = cog_auc, 
+        cog_auc_w3 = cog_auc_w3, cog_auc_respwin = cog_auc_respwin,
         n_valid_B0 = as.integer(n_valid_B0), n_valid_b0 = as.integer(n_valid_b0),
         baseline_B0_mean = baseline_B0_mean, baseline_b0_mean = baseline_b0_mean,
         auc_available_total = auc_available_total, 
@@ -792,7 +824,7 @@ cat("    cog_auc non-NA BEFORE join: ", sum(!is.na(all_auc_features$cog_auc)), "
 all_auc_features_head <- all_auc_features %>%
   head(200) %>%
   select(sub, task, session_used, run_used, trial_index,
-         n_valid_B0, n_valid_b0, total_auc, cog_auc,
+         n_valid_B0, n_valid_b0, total_auc, cog_auc, cog_auc_w3, cog_auc_respwin,
          auc_available_total, auc_available_cog, auc_available_both, auc_available)
 write_csv(all_auc_features_head, file.path(V7_QC, "11_all_auc_features_head.csv"))
 cat("  ✓ Saved: qc/11_all_auc_features_head.csv\n")
@@ -802,7 +834,8 @@ auc_features_unique <- all_auc_features %>%
   select(sub, task, session_used, run_used, trial_index,
          any_of(c("time_unit_inferred", "dt_median", "squeeze_onset_time", "timing_anchor_found",
                   "t_target_onset_rel", "t_resp_start_rel",
-                  "total_auc", "cog_auc", "n_valid_B0", "n_valid_b0",
+                  "total_auc", "cog_auc", "cog_auc_w3", "cog_auc_respwin",
+                  "n_valid_B0", "n_valid_b0",
                   "baseline_B0_mean", "baseline_b0_mean", 
                   "auc_available_total", "auc_available_cog", "auc_available_both",
                   "auc_available", "auc_missing_reason")))
@@ -823,7 +856,8 @@ merged_v4 <- merged_base %>%
             relationship = "many-to-one")
 
 # COALESCE .x/.y columns BEFORE dropping them (CRITICAL FIX)
-coalesce_fields <- c("total_auc", "cog_auc", "n_valid_B0", "n_valid_b0",
+coalesce_fields <- c("total_auc", "cog_auc", "cog_auc_w3", "cog_auc_respwin",
+                     "n_valid_B0", "n_valid_b0",
                      "baseline_B0_mean", "baseline_b0_mean",
                      "auc_available_total", "auc_available_cog", "auc_available_both",
                      "auc_available", "auc_missing_reason",
@@ -872,6 +906,12 @@ if (!"total_auc" %in% names(merged_v4)) {
 }
 if (!"cog_auc" %in% names(merged_v4)) {
   merged_v4$cog_auc <- NA_real_
+}
+if (!"cog_auc_w3" %in% names(merged_v4)) {
+  merged_v4$cog_auc_w3 <- NA_real_
+}
+if (!"cog_auc_respwin" %in% names(merged_v4)) {
+  merged_v4$cog_auc_respwin <- NA_real_
 }
 # TASK 2: Enforce flag consistency ALWAYS (recompute to ensure correctness)
 merged_v4 <- merged_v4 %>%
@@ -1272,8 +1312,9 @@ ch3_triallevel <- merged_v4_with_flags %>%
              "rt", "correct_final", "choice", "correct")),
     # MATLAB quality metrics
     any_of(c("baseline_quality", "cog_quality", "posttarget_quality", "overall_quality")),
-    # AUC columns/flags
-    total_auc, cog_auc, auc_available_total, auc_available_cog, auc_available_both,
+    # AUC columns/flags (legacy + CH3 extension)
+    total_auc, cog_auc, cog_auc_w3, cog_auc_respwin,
+    auc_available_total, auc_available_cog, auc_available_both,
     auc_available, auc_missing_reason,
     n_valid_B0, n_valid_b0, baseline_B0_mean, baseline_b0_mean,
     # Timing
@@ -1439,9 +1480,8 @@ if (nrow(waveform_trials) > 0) {
         pupil_full <- pupil_vals - baseline_B0_mean
         pupil_partial <- pupil_vals - baseline_b0_mean
         
-        # Filter to window - CH3 EXTENSION: Use extended window (up to 7.7s)
-        # For waveform generation, use extended window but can filter later if needed
-        wave_mask <- t_rel >= -0.5 & t_rel <= 7.7  # Extended to Resp1ET
+        # Filter to window - CH3 EXTENSION: Use extended window up to Resp1ET
+        wave_mask <- t_rel >= -0.5 & t_rel <= RESP_END_DEFAULT  # Extended to Resp1ET (7.70s)
         
         # Check we have enough valid data points
         valid_mask <- wave_mask & !is.na(pupil_full) & !is.na(pupil_partial) & is.finite(pupil_full) & is.finite(pupil_partial)
