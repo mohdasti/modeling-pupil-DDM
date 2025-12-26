@@ -474,6 +474,18 @@ All analyses were performed using R version 4.5.2 (2025-10-31) "\[Not\] Part in 
 
 Pupil diameter was continuously recorded using an MRI-compatible TRACKPixx binocular eye tracker (VPixx, Montreal, Canada) sampling at 2000 Hz. Raw eye-tracking data were exported as .mat files and processed through a multi-stage preprocessing pipeline designed to ensure high-quality pupillometry measurements. Blink artifacts and invalid samples were removed using the ET-remove-artifacts MATLAB toolbox (Huang et al., 2020), which employs a velocity-based detection algorithm that identifies blink onsets and offsets by detecting peaks and troughs in the filtered derivative of the pupil signal. The algorithm was configured with a 100th-order low-pass filter (passband: 10 Hz, stopband: 12 Hz) and peak/trough threshold factors of 5 standard deviations above baseline to detect blink events. Artifacts exceeding 2 seconds in duration were replaced with missing values rather than interpolated, following best practices for handling extended periods of signal loss. Following automated blink detection, all recordings underwent manual inspection and editing using the toolbox's interactive plot editor to identify and correct any remaining undetected artifacts and ensure proper interpolation across blink events. The manually cleaned pupil data were then trial-aligned using event timestamps extracted from the original recordings, synchronized with behavioral event markers, and downsampled from 2000 Hz to 250 Hz using an 8th-order anti-aliasing filter to preserve signal quality while reducing computational demands. This preprocessing pipeline resulted in artifact-corrected, trial-aligned pupil recordings integrated with behavioral metadata for subsequent statistical analyses.
 
+### Cognitive AUC Window Definition
+
+The cognitive AUC was calculated from **300ms after target stimulus onset until 3.3s post-target** (4.65s to 7.65s relative to squeeze onset), using baseline-corrected pupil data. This window (W3.0) was selected to capture the full task-evoked pupil response (TEPR) peak, which occurs at ~2.95s post-target. 
+
+**Justification for extending into response window**: Due to the 300ms physiological latency and the response window starting only 50ms later (at 4.70s), the cognitive TEPR necessarily unfolds during the response period. The peak response occurs at ~7.30s, well within the response window, indicating that cognitive processing (stimulus comparison, decision-making) continues during active responding.
+
+**Interpretation**: This cognitive AUC should be interpreted as **TEPR magnitude during the decision/response period**, rather than a pure pre-response predictor. For robustness, we also computed an early window (W1.3: target+0.3 to target+1.3s) that minimizes post-response contamination and serves as a sensitivity check.
+
+### Sensitivity Analysis
+
+To address potential concerns about post-response contamination, we computed an early cognitive window (W1.3: target+0.3 to target+1.3s) that extends only 0.95s into the response period. This provides a more conservative estimate of pre-response cognitive processing and serves as a robustness check for our primary analyses.
+
 ## Trial Timeline (Response-Signal Design)
 
 @fig-trial-structure shows the task design and trial timeline.
