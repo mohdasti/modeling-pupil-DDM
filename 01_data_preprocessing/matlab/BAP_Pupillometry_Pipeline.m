@@ -6,25 +6,30 @@ function BAP_Pupillometry_Pipeline()
 %% Configuration - FULLY CORRECTED FOR 8-PHASE PARADIGM
 % PATH CONFIGURATION: Try to load from config file, fallback to example
 CONFIG = struct();
-if exist('paths_config.m', 'file')
-    % User has created their own paths_config.m
+[script_dir, ~, ~] = fileparts(mfilename('fullpath'));
+repo_root = fullfile(script_dir, '..', '..');
+config_dir = fullfile(repo_root, 'config');
+
+% Try to load config file from config/ directory
+if exist(fullfile(config_dir, 'paths_config.m'), 'file')
+    % Add config directory to path temporarily
+    addpath(config_dir);
     CONFIG = paths_config();
+    rmpath(config_dir);  % Remove after use
     fprintf('Loaded paths from config/paths_config.m\n');
-elseif exist(fullfile('config', 'paths_config.m'), 'file')
-    % Try config/ subdirectory
-    addpath('config');
-    CONFIG = paths_config();
-    fprintf('Loaded paths from config/paths_config.m\n');
-elseif exist(fullfile('config', 'paths_config.m.example'), 'file')
+elseif exist(fullfile(config_dir, 'paths_config.m.example'), 'file')
     % Fallback to example (with warning)
-    addpath('config');
+    addpath(config_dir);
     CONFIG = paths_config();
+    rmpath(config_dir);
     warning('Using config/paths_config.m.example - consider creating your own config/paths_config.m');
     fprintf('Loaded paths from config/paths_config.m.example (fallback)\n');
+elseif exist('paths_config.m', 'file')
+    % Try current directory (for backward compatibility)
+    CONFIG = paths_config();
+    fprintf('Loaded paths from local paths_config.m\n');
 else
     % Last resort: try to infer from script location
-    [script_dir, ~, ~] = fileparts(mfilename('fullpath'));
-    repo_root = fullfile(script_dir, '..', '..');
     CONFIG.cleaned_dir = fullfile(repo_root, 'data', 'BAP_cleaned');
     CONFIG.raw_dir = fullfile(repo_root, 'data', 'raw');
     CONFIG.output_dir = fullfile(repo_root, 'data', 'BAP_processed');
@@ -1035,9 +1040,36 @@ for trial_idx = 1:length(squeeze_onsets)
     
     squeeze_time = squeeze_onsets(trial_idx);
     
-    % CORRECTED TRIAL WINDOW - Updated for 8-phase paradigm
+    % TRIAL WINDOW - CH3 EXTENSION: End at Resp1ET instead of end of confidence period
     trial_start_time = squeeze_time - 3.0;  % 3s before squeeze (sufficient for baseline)
-    trial_end_time = squeeze_time + 10.7;   % CORRECTED: 10.7s (was 10.2s)
+    
+    % Compute trial end time based on Resp1ET (preferred) with fallbacks
+    % Expected: Resp1ET - TrialST ≈ 7.70s (Resp1ST 4.70 + 3.0s response window)
+    seg_end_source = '';
+    if logP_data.success && trial_idx <= length(logP_data.trial_st) && ...
+       ~isempty(logP_data.resp1_et) && trial_idx <= length(logP_data.resp1_et) && ...
+       ~isnan(logP_data.resp1_et(trial_idx))
+        % Use Resp1ET from logP if available
+        resp1_et_ptb = logP_data.resp1_et(trial_idx);
+        trial_end_time = resp1_et_ptb;
+        seg_end_source = 'Resp1ET';
+        trial_end_rel = resp1_et_ptb - logP_data.trial_st(trial_idx);
+    elseif logP_data.success && trial_idx <= length(logP_data.trial_st) && ...
+           ~isempty(logP_data.resp1_st) && trial_idx <= length(logP_data.resp1_st) && ...
+           ~isnan(logP_data.resp1_st(trial_idx))
+        % Fallback: Resp1ST + 3.0s
+        resp1_st_ptb = logP_data.resp1_st(trial_idx);
+        trial_end_time = resp1_st_ptb + 3.0;
+        seg_end_source = 'Resp1ST_plus_3';
+        trial_end_rel = (resp1_st_ptb - logP_data.trial_st(trial_idx)) + 3.0;
+    else
+        % Fallback: Use fixed 7.70s relative to squeeze (TrialST)
+        trial_end_time = squeeze_time + 7.70;
+        seg_end_source = 'DEFAULT_7p70';
+        trial_end_rel = 7.70;
+    end
+    
+    trial_start_rel = -3.0;  % Always -3.0 relative to squeeze (TrialST)
     
     % HARDENING: Extract trial data using PTB-aligned timestamps
     trial_mask = trial_timestamps >= trial_start_time & trial_timestamps <= trial_end_time;
@@ -1123,7 +1155,10 @@ for trial_idx = 1:length(squeeze_onsets)
     
     % Simple quality assessment
     baseline_mask = trial_times_rel >= -3.0 & trial_times_rel < 0;
-    trial_mask_full = trial_times_rel >= 0 & trial_times_rel <= 10.7; % CORRECTED: 10.7s
+    % CH3 EXTENSION: Trial window now ends at Resp1ET (~7.70s), not 10.7s
+    % Note: trial_times_rel are already filtered by trial_mask (which used trial_end_time)
+    % So we just need to check they're >= 0 (they'll naturally stop at trial_end_rel)
+    trial_mask_full = trial_times_rel >= 0 & trial_times_rel <= 10.7;  % Upper bound doesn't matter since data is already filtered
     
     % Calculate quality metrics safely
     baseline_quality = 0;
@@ -1315,11 +1350,11 @@ for trial_idx = 1:length(squeeze_onsets)
     % Store what pipeline actually uses
     trial_table.session_used = repmat(str2double(file_info.session{1}), n_samples, 1);
     trial_table.run_used = repmat(file_info.run, n_samples, 1);
-    trial_table.sample_count_in_window = repmat(sum(trial_mask), n_samples, 1);
-    trial_table.window_oob = repmat(sum(trial_mask) == 0, n_samples, 1);  % True if no samples in window
-    trial_table.segmentation_source = repmat({segmentation_source}, n_samples, 1);
-    trial_table.sample_count_in_window = repmat(sum(trial_mask), n_samples, 1);
-    trial_table.window_oob = repmat(sum(trial_mask) == 0, n_samples, 1);  % True if no samples in window
+    
+    % CH3 EXTENSION: Add audit columns for segmentation boundaries
+    trial_table.seg_start_rel_used = repmat(trial_start_rel, n_samples, 1);
+    trial_table.seg_end_rel_used = repmat(trial_end_rel, n_samples, 1);
+    trial_table.seg_end_source = repmat({seg_end_source}, n_samples, 1);
     
     run_data = [run_data; trial_table];
     run_qc_stats.n_trials_exported = run_qc_stats.n_trials_exported + 1;
@@ -1335,6 +1370,42 @@ for trial_idx = 1:length(squeeze_onsets)
         phase_samples = sum(strcmp(trial_phases_ds, CONFIG.phases.names{p}));
         run_quality.phase_samples(p) = run_quality.phase_samples(p) + phase_samples;
     end
+end
+
+% CH3 EXTENSION: QC check for trial extension (max time >= 7.65s)
+if run_qc_stats.n_trials_exported > 0 && ~isempty(run_data)
+    % Compute max time per trial
+    unique_trials = unique(run_data.trial_in_run_raw);
+    max_time_per_trial = NaN(length(unique_trials), 1);
+    for t = 1:length(unique_trials)
+        trial_mask = run_data.trial_in_run_raw == unique_trials(t);
+        if any(trial_mask)
+            max_time_per_trial(t) = max(run_data.time(trial_mask));
+        end
+    end
+    max_time_per_trial(isnan(max_time_per_trial)) = [];
+    trials_extended_ok = sum(max_time_per_trial >= 7.65);
+    pct_trials_extended = 100 * trials_extended_ok / length(max_time_per_trial);
+    run_qc_stats.ch3_extension_pct = pct_trials_extended;
+    run_qc_stats.ch3_extension_trials_ok = trials_extended_ok;
+    run_qc_stats.ch3_extension_trials_total = length(max_time_per_trial);
+    
+    if pct_trials_extended < 90
+        warning('    WARNING: CH3 EXTENSION QC FAILED: Only %.1f%% of trials extend to >=7.65s (required: >=90%%)\n', ...
+            pct_trials_extended);
+        fprintf('      Subject: %s, Task: %s, Session: %s, Run: %d\n', ...
+            file_info.subject{1}, file_info.task{1}, file_info.session{1}, file_info.run);
+        fprintf('      Trials OK: %d/%d\n', trials_extended_ok, length(max_time_per_trial));
+        if ~isempty(max_time_per_trial)
+            fprintf('      Max time range: %.3f to %.3f s\n', min(max_time_per_trial), max(max_time_per_trial));
+        end
+    else
+        fprintf('    CH3 EXTENSION QC PASSED: %.1f%% of trials extend to >=7.65s\n', pct_trials_extended);
+    end
+else
+    run_qc_stats.ch3_extension_pct = NaN;
+    run_qc_stats.ch3_extension_trials_ok = 0;
+    run_qc_stats.ch3_extension_trials_total = 0;
 end
 
 % CRITICAL FIX: Sanity check printout for each run

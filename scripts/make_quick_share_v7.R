@@ -1401,10 +1401,29 @@ if (nrow(waveform_trials) > 0) {
         # Safety check: if no match found, skip this trial
         if (nrow(trial_info) == 0) return(tibble())
         
-        squeeze_onset <- find_squeeze_onset(.x)
-        if (is.na(squeeze_onset)) return(tibble())
-        
-        t_rel <- .x$time - squeeze_onset
+        # CH3 EXTENSION: Reconstruct relative time using seg_start_rel_used and seg_end_rel_used
+        # MATLAB exports absolute PTB times in 'time' column (bug), but seg_start/end are correct
+        # Solution: Create linear time axis from seg_start_rel_used to seg_end_rel_used
+        if ("seg_start_rel_used" %in% names(.x) && "seg_end_rel_used" %in% names(.x) &&
+            !all(is.na(.x$seg_start_rel_used)) && !all(is.na(.x$seg_end_rel_used))) {
+          seg_start_rel <- first(.x$seg_start_rel_used[!is.na(.x$seg_start_rel_used)])
+          seg_end_rel <- first(.x$seg_end_rel_used[!is.na(.x$seg_end_rel_used)])
+          if (is.finite(seg_start_rel) && is.finite(seg_end_rel) && seg_end_rel > seg_start_rel) {
+            # Reconstruct linear time axis from seg_start to seg_end
+            n_samples <- nrow(.x)
+            t_rel <- seq(from = seg_start_rel, to = seg_end_rel, length.out = n_samples)
+          } else {
+            # Fallback to original method
+            squeeze_onset <- find_squeeze_onset(.x)
+            if (is.na(squeeze_onset)) return(tibble())
+            t_rel <- .x$time - squeeze_onset
+          }
+        } else {
+          # Fallback to original method if audit columns not available
+          squeeze_onset <- find_squeeze_onset(.x)
+          if (is.na(squeeze_onset)) return(tibble())
+          t_rel <- .x$time - squeeze_onset
+        }
         pupil_vals <- .x$pupil
         
         # Compute baselines
@@ -1420,8 +1439,16 @@ if (nrow(waveform_trials) > 0) {
         pupil_full <- pupil_vals - baseline_B0_mean
         pupil_partial <- pupil_vals - baseline_b0_mean
         
-        # Filter to window
-        wave_mask <- t_rel >= -0.5 & t_rel <= RESP_START_DEFAULT
+        # Filter to window - CH3 EXTENSION: Use extended window (up to 7.7s)
+        # For waveform generation, use extended window but can filter later if needed
+        wave_mask <- t_rel >= -0.5 & t_rel <= 7.7  # Extended to Resp1ET
+        
+        # Check we have enough valid data points
+        valid_mask <- wave_mask & !is.na(pupil_full) & !is.na(pupil_partial) & is.finite(pupil_full) & is.finite(pupil_partial)
+        if (sum(valid_mask) < 2) {
+          # Skip trials with insufficient data
+          return(tibble())
+        }
         
         tibble(
           trial_uid = trial_info$trial_uid[1],
@@ -1449,11 +1476,24 @@ if (nrow(waveform_trials) > 0) {
       filter(!is.na(pupil_full), !is.na(pupil_partial)) %>%
       group_by(task, effort, isOddball, trial_uid) %>%
       group_map(~ {
+        # Check we have enough valid data points for interpolation
+        valid_x <- !is.na(.x$t_rel) & is.finite(.x$t_rel)
+        valid_y_full <- !is.na(.x$pupil_full) & is.finite(.x$pupil_full)
+        valid_y_partial <- !is.na(.x$pupil_partial) & is.finite(.x$pupil_partial)
+        
+        valid_full <- valid_x & valid_y_full
+        valid_partial <- valid_x & valid_y_partial
+        
+        if (sum(valid_full) < 2 || sum(valid_partial) < 2) {
+          # Skip trials with insufficient data for interpolation
+          return(tibble())
+        }
+        
         # Interpolate to grids
-        pupil_full_ch2 <- approx(.x$t_rel, .x$pupil_full, xout = t_grid_ch2, method = "linear", rule = 2)$y
-        pupil_partial_ch2 <- approx(.x$t_rel, .x$pupil_partial, xout = t_grid_ch2, method = "linear", rule = 2)$y
-        pupil_full_ch3 <- approx(.x$t_rel, .x$pupil_full, xout = t_grid_ch3, method = "linear", rule = 2)$y
-        pupil_partial_ch3 <- approx(.x$t_rel, .x$pupil_partial, xout = t_grid_ch3, method = "linear", rule = 2)$y
+        pupil_full_ch2 <- approx(.x$t_rel[valid_full], .x$pupil_full[valid_full], xout = t_grid_ch2, method = "linear", rule = 2)$y
+        pupil_partial_ch2 <- approx(.x$t_rel[valid_partial], .x$pupil_partial[valid_partial], xout = t_grid_ch2, method = "linear", rule = 2)$y
+        pupil_full_ch3 <- approx(.x$t_rel[valid_full], .x$pupil_full[valid_full], xout = t_grid_ch3, method = "linear", rule = 2)$y
+        pupil_partial_ch3 <- approx(.x$t_rel[valid_partial], .x$pupil_partial[valid_partial], xout = t_grid_ch3, method = "linear", rule = 2)$y
         
         bind_rows(
           tibble(

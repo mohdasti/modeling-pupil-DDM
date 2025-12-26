@@ -10,6 +10,7 @@ logP_data.blank_st = [];
 logP_data.fix_st = [];
 logP_data.av_st = [];
 logP_data.resp1_st = [];
+logP_data.resp1_et = [];  % Resp1ET (Resp1EndTimeP)
 logP_data.resp2_st = [];
 logP_data.headers = {};
 
@@ -101,6 +102,16 @@ for i = 1:length(headers)
     end
 end
 
+resp1_et_idx = [];
+for i = 1:length(headers)
+    h_trimmed = strtrim(headers{i});
+    if contains(lower(h_trimmed), 'resp1et') || contains(lower(h_trimmed), 'resp1_et') || ...
+       contains(lower(h_trimmed), 'resp1end') || contains(lower(h_trimmed), 'resp1_end')
+        resp1_et_idx = i;
+        break;
+    end
+end
+
 resp2_st_idx = [];
 for i = 1:length(headers)
     h_trimmed = strtrim(headers{i});
@@ -124,6 +135,7 @@ blank_st = [];
 fix_st = [];
 av_st = [];
 resp1_st = [];
+resp1_et = [];
 resp2_st = [];
 
 while ~feof(fid)
@@ -142,7 +154,7 @@ while ~feof(fid)
     parts = cellfun(@strtrim, parts, 'UniformOutput', false);
     
     % Only process if we have enough columns
-    max_idx = max([trial_st_idx, blank_st_idx, fix_st_idx, av_st_idx, resp1_st_idx, resp2_st_idx]);
+    max_idx = max([trial_st_idx, blank_st_idx, fix_st_idx, av_st_idx, resp1_st_idx, resp1_et_idx, resp2_st_idx]);
     if length(parts) < max_idx
         continue;
     end
@@ -177,6 +189,12 @@ while ~feof(fid)
             resp1_st(end+1) = resp1_st_val;
         end
     end
+    if ~isempty(resp1_et_idx) && length(parts) >= resp1_et_idx
+        resp1_et_val = str2double(parts{resp1_et_idx});
+        if ~isnan(resp1_et_val)
+            resp1_et(end+1) = resp1_et_val;
+        end
+    end
     if ~isempty(resp2_st_idx) && length(parts) >= resp2_st_idx
         resp2_st_val = str2double(parts{resp2_st_idx});
         if ~isnan(resp2_st_val)
@@ -201,6 +219,7 @@ logP_data.blank_st = blank_st;
 logP_data.fix_st = fix_st;
 logP_data.av_st = av_st;
 logP_data.resp1_st = resp1_st;
+logP_data.resp1_et = resp1_et;
 logP_data.resp2_st = resp2_st;
 
 fprintf('  Parsed logP: %d trials, TrialST range: %.3f to %.3f\n', ...
