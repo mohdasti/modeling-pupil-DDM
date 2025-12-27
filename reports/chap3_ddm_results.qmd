@@ -476,7 +476,7 @@ Pupil diameter was continuously recorded using an MRI-compatible TRACKPixx binoc
 
 ### Cognitive AUC Window Definition
 
-The cognitive AUC was calculated from **300ms after target stimulus onset until 3.3s post-target** (4.65s to 7.65s relative to squeeze onset), using baseline-corrected pupil data. This window (W3.0) was selected to capture the full task-evoked pupil response (TEPR) peak, which occurs at ~2.95s post-target. 
+The cognitive AUC was calculated from **300ms after target stimulus onset until 3.3s post-target** (4.65s to 7.65s relative to squeeze onset), using baseline-corrected pupil data. Baseline correction was performed by subtracting the mean pupil diameter in the baseline window (-0.5s to 0s relative to squeeze onset) from all timepoints in the trial. AUC was computed using trapezoidal integration of the baseline-corrected pupil signal within the cognitive window. This window (W3.0) was selected to capture the full task-evoked pupil response (TEPR) peak, which occurs at ~2.95s post-target. 
 
 **Justification for extending into response window**: Due to the 300ms physiological latency and the response window starting only 50ms later (at 4.70s), the cognitive TEPR necessarily unfolds during the response period. The peak response occurs at ~7.30s, well within the response window, indicating that cognitive processing (stimulus comparison, decision-making) continues during active responding.
 
@@ -484,7 +484,7 @@ The cognitive AUC was calculated from **300ms after target stimulus onset until 
 
 ### Sensitivity Analysis
 
-To address potential concerns about post-response contamination, we computed an early cognitive window (W1.3: target+0.3 to target+1.3s) that extends only 0.95s into the response period. This provides a more conservative estimate of pre-response cognitive processing and serves as a robustness check for our primary analyses.
+To address potential concerns about post-response contamination, we computed an early cognitive window (W1.3: target+0.3 to target+1.3s; 4.65s to 5.65s relative to squeeze onset) that extends only 0.95s into the response period. This window yields two complementary metrics: `cog_auc_w1p3` (area under the curve in the W1.3 window) and `cog_mean_w1p3` (mean pupil diameter in the W1.3 window). These early-window features provide a more conservative estimate of pre-response cognitive processing, as they capture the initial phase of the TEPR with minimal contamination from post-response processes. While our primary analyses focus on the full TEPR magnitude (W3.0 window), the W1.3 features serve as robustness checks to ensure that observed relationships between cognitive arousal and DDM parameters are not solely driven by post-response contamination. Both `cog_auc_w1p3` and `cog_mean_w1p3` will be included in exploratory analyses and sensitivity checks alongside the primary W3.0 metric.
 
 ## Trial Timeline (Response-Signal Design)
 
