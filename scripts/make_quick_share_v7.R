@@ -305,6 +305,7 @@ process_flat_file_v7 <- function(flat_path) {
           squeeze_onset_time = NA_real_, timing_anchor_found = FALSE,
           t_target_onset_rel = TARGET_ONSET_DEFAULT, t_resp_start_rel = RESP_START_DEFAULT,
           total_auc = NA_real_, cog_auc = NA_real_, cog_auc_w3 = NA_real_, cog_auc_respwin = NA_real_,
+          cog_auc_w1p3 = NA_real_, cog_mean_w1p3 = NA_real_,
           n_valid_B0 = 0L, n_valid_b0 = 0L,
           baseline_B0_mean = NA_real_, baseline_b0_mean = NA_real_,
           auc_available_total = FALSE, auc_available_cog = FALSE, auc_available_both = FALSE,
@@ -453,6 +454,31 @@ process_flat_file_v7 <- function(flat_path) {
         }
       }
       
+      # CH3 EXTENSION: cog_auc_w1p3 - target+0.3 to target+1.3 (early cognitive window for DDM sensitivity)
+      cog_auc_w1p3_start <- TARGET_ONSET_DEFAULT + 0.3
+      cog_auc_w1p3_end <- TARGET_ONSET_DEFAULT + 1.3
+      
+      cog_auc_w1p3 <- NA_real_
+      cog_mean_w1p3 <- NA_real_
+      if (cog_auc_w1p3_end > cog_auc_w1p3_start) {
+        cog_w1p3_mask <- t_rel >= cog_auc_w1p3_start & t_rel <= cog_auc_w1p3_end
+        cog_w1p3_time <- t_rel[cog_w1p3_mask]
+        cog_w1p3_pupil_corrected <- pupil_partial_corrected[cog_w1p3_mask]
+        
+        n_valid_w1p3 <- sum(!is.na(cog_w1p3_pupil_corrected) & is.finite(cog_w1p3_pupil_corrected))
+        if (n_valid_w1p3 >= 2) {
+          cog_auc_w1p3 <- compute_auc(cog_w1p3_time, cog_w1p3_pupil_corrected)
+          # Mean pupil (AUC/seconds) - less dependent on missing samples than raw AUC
+          window_duration <- cog_auc_w1p3_end - cog_auc_w1p3_start
+          if (window_duration > 0 && !is.na(cog_auc_w1p3)) {
+            cog_mean_w1p3 <- cog_auc_w1p3 / window_duration
+          } else {
+            # Fallback: direct mean calculation
+            cog_mean_w1p3 <- mean(cog_w1p3_pupil_corrected[!is.na(cog_w1p3_pupil_corrected) & is.finite(cog_w1p3_pupil_corrected)], na.rm = TRUE)
+          }
+        }
+      }
+      
       # AUC availability flags (separate for total and cog)
       auc_available_total <- !is.na(total_auc)
       auc_available_cog <- !is.na(cog_auc)
@@ -480,8 +506,9 @@ process_flat_file_v7 <- function(flat_path) {
         squeeze_onset_time = if(timing_anchor_found) squeeze_onset else NA_real_,
         timing_anchor_found = timing_anchor_found,
         t_target_onset_rel = TARGET_ONSET_DEFAULT, t_resp_start_rel = RESP_START_DEFAULT,
-        total_auc = total_auc, cog_auc = cog_auc, 
+        total_auc = total_auc, cog_auc = cog_auc,
         cog_auc_w3 = cog_auc_w3, cog_auc_respwin = cog_auc_respwin,
+        cog_auc_w1p3 = cog_auc_w1p3, cog_mean_w1p3 = cog_mean_w1p3,
         n_valid_B0 = as.integer(n_valid_B0), n_valid_b0 = as.integer(n_valid_b0),
         baseline_B0_mean = baseline_B0_mean, baseline_b0_mean = baseline_b0_mean,
         auc_available_total = auc_available_total, 
@@ -825,6 +852,7 @@ all_auc_features_head <- all_auc_features %>%
   head(200) %>%
   select(sub, task, session_used, run_used, trial_index,
          n_valid_B0, n_valid_b0, total_auc, cog_auc, cog_auc_w3, cog_auc_respwin,
+         cog_auc_w1p3, cog_mean_w1p3,
          auc_available_total, auc_available_cog, auc_available_both, auc_available)
 write_csv(all_auc_features_head, file.path(V7_QC, "11_all_auc_features_head.csv"))
 cat("  ✓ Saved: qc/11_all_auc_features_head.csv\n")
@@ -834,7 +862,7 @@ auc_features_unique <- all_auc_features %>%
   select(sub, task, session_used, run_used, trial_index,
          any_of(c("time_unit_inferred", "dt_median", "squeeze_onset_time", "timing_anchor_found",
                   "t_target_onset_rel", "t_resp_start_rel",
-                  "total_auc", "cog_auc", "cog_auc_w3", "cog_auc_respwin",
+                  "total_auc", "cog_auc", "cog_auc_w3", "cog_auc_respwin", "cog_auc_w1p3", "cog_mean_w1p3",
                   "n_valid_B0", "n_valid_b0",
                   "baseline_B0_mean", "baseline_b0_mean", 
                   "auc_available_total", "auc_available_cog", "auc_available_both",
@@ -912,6 +940,12 @@ if (!"cog_auc_w3" %in% names(merged_v4)) {
 }
 if (!"cog_auc_respwin" %in% names(merged_v4)) {
   merged_v4$cog_auc_respwin <- NA_real_
+}
+if (!"cog_auc_w1p3" %in% names(merged_v4)) {
+  merged_v4$cog_auc_w1p3 <- NA_real_
+}
+if (!"cog_mean_w1p3" %in% names(merged_v4)) {
+  merged_v4$cog_mean_w1p3 <- NA_real_
 }
 # TASK 2: Enforce flag consistency ALWAYS (recompute to ensure correctness)
 merged_v4 <- merged_v4 %>%
@@ -1313,7 +1347,7 @@ ch3_triallevel <- merged_v4_with_flags %>%
     # MATLAB quality metrics
     any_of(c("baseline_quality", "cog_quality", "posttarget_quality", "overall_quality")),
     # AUC columns/flags (legacy + CH3 extension)
-    total_auc, cog_auc, cog_auc_w3, cog_auc_respwin,
+    total_auc, cog_auc, cog_auc_w3, cog_auc_respwin, cog_auc_w1p3, cog_mean_w1p3,
     auc_available_total, auc_available_cog, auc_available_both,
     auc_available, auc_missing_reason,
     n_valid_B0, n_valid_b0, baseline_B0_mean, baseline_b0_mean,
@@ -1348,7 +1382,8 @@ cat("  (Generating condition-mean waveforms from AUC-ready trials)\n\n")
 # Use trials with valid AUC for waveforms
 waveform_trials <- merged_v4 %>%
   filter(auc_available == TRUE, !is.na(effort)) %>%
-  select(trial_uid, sub, task, session_used, run_used, trial_index, effort, isOddball)
+  select(trial_uid, sub, task, session_used, run_used, trial_index, effort, isOddball, 
+         any_of("stimulus_intensity"))
 
 if (nrow(waveform_trials) > 0) {
   cat("  Processing ", nrow(waveform_trials), " AUC-ready trials for waveforms...\n", sep = "")
@@ -1495,6 +1530,7 @@ if (nrow(waveform_trials) > 0) {
           task = trial_info$task[1],
           effort = trial_info$effort[1],
           isOddball = trial_info$isOddball[1],
+          stimulus_intensity = if("stimulus_intensity" %in% names(trial_info)) trial_info$stimulus_intensity[1] else NA_real_,
           t_rel = t_rel[wave_mask],
           pupil_full = pupil_full[wave_mask],
           pupil_partial = pupil_partial[wave_mask]
@@ -1512,9 +1548,14 @@ if (nrow(waveform_trials) > 0) {
     t_grid_ch3 <- seq(-0.5, t_max, by = 1/FS_CH3_WAVEFORM)
     
     # Aggregate to condition means
+    # Ensure stimulus_intensity exists (add NA if missing)
+    if (!"stimulus_intensity" %in% names(waveform_data)) {
+      waveform_data$stimulus_intensity <- NA_real_
+    }
+    
     waveform_summary <- waveform_data %>%
       filter(!is.na(pupil_full), !is.na(pupil_partial)) %>%
-      group_by(task, effort, isOddball, trial_uid) %>%
+      group_by(task, effort, isOddball, stimulus_intensity, trial_uid) %>%
       group_map(~ {
         # Check we have enough valid data points for interpolation
         valid_x <- !is.na(.x$t_rel) & is.finite(.x$t_rel)
@@ -1539,17 +1580,19 @@ if (nrow(waveform_trials) > 0) {
           tibble(
             chapter = "ch2", sample_rate_hz = FS_CH2_WAVEFORM,
             task = first(.x$task), effort = first(.x$effort), isOddball = first(.x$isOddball),
+            stimulus_intensity = if("stimulus_intensity" %in% names(.x)) first(.x$stimulus_intensity) else NA_real_,
             t_rel = t_grid_ch2, mean_pupil_full = pupil_full_ch2, mean_pupil_partial = pupil_partial_ch2
           ),
           tibble(
             chapter = "ch3", sample_rate_hz = FS_CH3_WAVEFORM,
             task = first(.x$task), effort = first(.x$effort), isOddball = first(.x$isOddball),
+            stimulus_intensity = if("stimulus_intensity" %in% names(.x)) first(.x$stimulus_intensity) else NA_real_,
             t_rel = t_grid_ch3, mean_pupil_full = pupil_full_ch3, mean_pupil_partial = pupil_partial_ch3
           )
         )
       }, .keep = TRUE) %>%
       bind_rows() %>%
-      group_by(chapter, sample_rate_hz, task, effort, isOddball, t_rel) %>%
+      group_by(chapter, sample_rate_hz, task, effort, isOddball, stimulus_intensity, t_rel) %>%
       summarise(
         mean_pupil_full = mean(mean_pupil_full, na.rm = TRUE),
         mean_pupil_partial = mean(mean_pupil_partial, na.rm = TRUE),

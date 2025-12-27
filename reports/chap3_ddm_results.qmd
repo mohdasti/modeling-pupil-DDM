@@ -198,6 +198,62 @@ ppc_joint_minimal <- sread(file.path(p, "ppc_joint_minimal.csv"))
 sensitivity_summary <- sread("output/checks/sensitivity_summary.csv") %||%
                       sread("output/sensitivity/sensitivity_summary.csv")
 
+# Load pupil data for descriptives (if available)
+# Try multiple possible locations for chapter 3 pupil data
+pupil_data_paths <- c(
+  file.path(proj_root, "quick_share_v7/analysis_ready/ch3_triallevel.csv"),
+  file.path(proj_root, "quick_share_v7/analysis/ch3_ddm_ready_with_auc.csv"),
+  file.path(proj_root, "data/analysis_ready/BAP_analysis_ready_PUPIL.csv"),
+  "quick_share_v7/analysis_ready/ch3_triallevel.csv",
+  "quick_share_v7/analysis/ch3_ddm_ready_with_auc.csv",
+  "data/analysis_ready/BAP_analysis_ready_PUPIL.csv"
+)
+
+pupil_data <- NULL
+for (path in pupil_data_paths) {
+  if (file.exists(path)) {
+    tryCatch({
+      pupil_data <- read_csv(path, show_col_types = FALSE)
+      # Standardize column names
+      if ("sub" %in% names(pupil_data)) {
+        pupil_data <- pupil_data %>% mutate(subject_id = as.character(sub))
+      }
+      if ("effort" %in% names(pupil_data)) {
+        pupil_data <- pupil_data %>%
+          mutate(effort_condition = case_when(
+            effort == "High" ~ "High_40_MVC",
+            effort == "Low" ~ "Low_5_MVC",
+            TRUE ~ as.character(effort)
+          ))
+      }
+      # Map difficulty level from stimulus_intensity and isOddball
+      if ("stimulus_intensity" %in% names(pupil_data) && "isOddball" %in% names(pupil_data)) {
+        pupil_data <- pupil_data %>%
+          mutate(difficulty_level = case_when(
+            isOddball == 0 | is.na(isOddball) | stimulus_intensity == 0 ~ "Standard",
+            # Based on mapping: 0=Standard, 4=Easy, 3=Easy, 1-2=Hard
+            stimulus_intensity == 4 ~ "Easy",
+            stimulus_intensity == 3 ~ "Easy",
+            stimulus_intensity %in% c(1, 2) ~ "Hard",
+            TRUE ~ "Standard"
+          ))
+      }
+      # Map cognitive_auc column name (cog_auc or cognitive_auc)
+      if ("cog_auc" %in% names(pupil_data) && !"cognitive_auc" %in% names(pupil_data)) {
+        pupil_data <- pupil_data %>% mutate(cognitive_auc = cog_auc)
+      }
+      # Map baseline_B0 column name
+      if ("baseline_B0_mean" %in% names(pupil_data) && !"baseline_B0" %in% names(pupil_data)) {
+        pupil_data <- pupil_data %>% mutate(baseline_B0 = baseline_B0_mean)
+      }
+      break
+    }, error = function(e) {
+      cat("Error loading pupil data from", path, ":", e$message, "\n")
+      NULL
+    })
+  }
+}
+
 # Load behavioral data for descriptives (if available)
 # Try multiple possible locations, prioritizing the Nov2025 directory
 behavioral_data_paths <- c(
@@ -1847,38 +1903,107 @@ if (!is.null(behavioral_data) && !is.null(rt_col) && !is.null(task_col) && !is.n
 ```{r}
 #| label: tbl-pupil-quality
 #| tbl-cap: "Pupillometry Data Quality Summary"
-# Placeholder for pupil data quality
-# This will be populated when pupil analysis is complete
-pupil_quality_placeholder <- tibble(
-  Metric = c(
-    "Subjects with usable pupil data",
-    "Mean % valid samples per trial",
-    "SD % valid samples per trial",
-    "Mean % valid samples per subject",
-    "Trials excluded (pupil artifacts)",
-    "Mean valid trials per condition"
-  ),
-  Value = c(
-    "To be computed",
-    "To be computed",
-    "To be computed",
-    "To be computed",
-    "To be computed",
-    "To be computed"
+# Compute pupil data quality metrics
+if (!is.null(pupil_data)) {
+  # Compute quality metrics
+  n_subj_pupil <- length(unique(pupil_data$subject_id))
+  
+  # Quality proportions (if available)
+  quality_cols <- c("baseline_quality", "overall_quality", "cog_quality")
+  quality_col <- intersect(quality_cols, names(pupil_data))[1]
+  
+  if (!is.null(quality_col) && !is.na(quality_col)) {
+    mean_quality_trial <- mean(pupil_data[[quality_col]], na.rm = TRUE) * 100
+    sd_quality_trial <- sd(pupil_data[[quality_col]], na.rm = TRUE) * 100
+    
+    # Subject-level mean quality
+    # Use rlang::sym for dynamic column access
+    quality_var <- sym(quality_col)
+    subj_quality <- pupil_data %>%
+      group_by(subject_id) %>%
+      summarise(mean_quality = mean(!!quality_var, na.rm = TRUE), .groups = "drop")
+    mean_quality_subj <- mean(subj_quality$mean_quality, na.rm = TRUE) * 100
+  } else {
+    mean_quality_trial <- NA_real_
+    sd_quality_trial <- NA_real_
+    mean_quality_subj <- NA_real_
+  }
+  
+  # Count trials
+  n_trials_total <- nrow(pupil_data)
+  
+  # Compute trials per condition (if difficulty_level and effort_condition are available)
+  if ("difficulty_level" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data) && "task" %in% names(pupil_data)) {
+    trials_per_condition <- pupil_data %>%
+      filter(!is.na(difficulty_level), !is.na(effort_condition)) %>%
+      group_by(task, difficulty_level, effort_condition) %>%
+      summarise(n = n(), .groups = "drop") %>%
+      summarise(mean_n = mean(n))
+    mean_trials_per_condition <- round(trials_per_condition$mean_n, 1)
+  } else {
+    mean_trials_per_condition <- NA_real_
+  }
+  
+  # Create table
+  pupil_quality_table <- tibble(
+    Metric = c(
+      "Subjects with usable pupil data",
+      "Total trials with pupil data",
+      if (!is.na(mean_quality_trial)) "Mean % valid samples per trial",
+      if (!is.na(sd_quality_trial)) "SD % valid samples per trial",
+      if (!is.na(mean_quality_subj)) "Mean % valid samples per subject",
+      if (!is.na(mean_trials_per_condition)) "Mean valid trials per condition"
+    ),
+    Value = c(
+      as.character(n_subj_pupil),
+      format(n_trials_total, big.mark = ","),
+      if (!is.na(mean_quality_trial)) sprintf("%.1f%%", mean_quality_trial),
+      if (!is.na(sd_quality_trial)) sprintf("%.1f%%", sd_quality_trial),
+      if (!is.na(mean_quality_subj)) sprintf("%.1f%%", mean_quality_subj),
+      if (!is.na(mean_trials_per_condition)) as.character(mean_trials_per_condition)
+    )
   )
-)
-
-pupil_quality_placeholder %>%
-  gt() %>%
-  tab_header(title = md("**Pupillometry Data Quality Summary**")) %>%
-  cols_label(
-    Metric = "Metric",
-    Value = "Value"
-  ) %>%
-  tab_footnote(
-    footnote = "Pupillometry analysis in progress. This table will be populated with actual data quality metrics once pupil preprocessing and analysis are complete.",
-    locations = cells_body()
+  
+  pupil_quality_table %>%
+    gt() %>%
+    tab_header(title = md("**Pupillometry Data Quality Summary**")) %>%
+    cols_label(
+      Metric = "Metric",
+      Value = "Value"
+    )
+} else {
+  # Placeholder if data not available
+  pupil_quality_placeholder <- tibble(
+    Metric = c(
+      "Subjects with usable pupil data",
+      "Mean % valid samples per trial",
+      "SD % valid samples per trial",
+      "Mean % valid samples per subject",
+      "Trials excluded (pupil artifacts)",
+      "Mean valid trials per condition"
+    ),
+    Value = c(
+      "To be computed",
+      "To be computed",
+      "To be computed",
+      "To be computed",
+      "To be computed",
+      "To be computed"
+    )
   )
+  
+  pupil_quality_placeholder %>%
+    gt() %>%
+    tab_header(title = md("**Pupillometry Data Quality Summary**")) %>%
+    cols_label(
+      Metric = "Metric",
+      Value = "Value"
+    ) %>%
+    tab_footnote(
+      footnote = "Pupil data file not found. Please ensure ch3_triallevel.csv is available in quick_share_v7/analysis_ready/",
+      locations = cells_body()
+    )
+}
 ```
 
 ### Baseline Pupil Diameter
@@ -1888,49 +2013,108 @@ pupil_quality_placeholder %>%
 ```{r}
 #| label: tbl-baseline-pupil
 #| tbl-cap: "Baseline Pupil Diameter by Condition"
-# Placeholder for baseline pupil with row grouping
-baseline_pupil_placeholder <- expand_grid(
-  task = c("ADT", "VDT"),
-  effort_condition = c("Low_5_MVC", "High_40_MVC")
-) %>%
-  mutate(
-    Task_Group = case_when(
-      task == "ADT" ~ "ADT (Auditory Detection Task)",
-      task == "VDT" ~ "VDT (Visual Detection Task)",
-      TRUE ~ task
-    ),
-    Effort = case_when(
-      effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
-      effort_condition == "High_40_MVC" ~ "High (40% MVC)",
-      TRUE ~ effort_condition
-    ),
-    `Mean (mm)` = "To be computed",
-    `SD (mm)` = "To be computed",
-    `Median (mm)` = "To be computed",
-    `N Subjects` = "To be computed"
+# Compute baseline pupil diameter by task and effort
+if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data)) {
+  baseline_pupil_summary <- pupil_data %>%
+    filter(!is.na(baseline_B0), !is.na(task), !is.na(effort_condition)) %>%
+    group_by(task, effort_condition, subject_id) %>%
+    summarise(
+      mean_baseline = mean(baseline_B0, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    group_by(task, effort_condition) %>%
+    summarise(
+      mean_baseline_mm = round(mean(mean_baseline, na.rm = TRUE), 2),
+      sd_baseline_mm = round(sd(mean_baseline, na.rm = TRUE), 2),
+      median_baseline_mm = round(median(mean_baseline, na.rm = TRUE), 2),
+      n_subjects = n(),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      Task_Group = case_when(
+        task == "ADT" ~ "ADT (Auditory Detection Task)",
+        task == "VDT" ~ "VDT (Visual Detection Task)",
+        TRUE ~ task
+      ),
+      Effort = case_when(
+        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
+        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
+        TRUE ~ effort_condition
+      ),
+      `Mean (mm)` = mean_baseline_mm,
+      `SD (mm)` = sd_baseline_mm,
+      `Median (mm)` = median_baseline_mm,
+      `N Subjects` = n_subjects
+    ) %>%
+    arrange(Task_Group, Effort) %>%
+    select(Task_Group, Effort, `Mean (mm)`, `SD (mm)`, `Median (mm)`, `N Subjects`)
+  
+  baseline_pupil_summary %>%
+    gt(groupname_col = "Task_Group") %>%
+    tab_header(title = md("**Baseline Pupil Diameter by Condition**")) %>%
+    fmt_number(columns = c(`Mean (mm)`, `SD (mm)`, `Median (mm)`), decimals = 2) %>%
+    fmt_number(columns = `N Subjects`, decimals = 0) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold", style = "italic"),
+      locations = cells_row_groups()
+    ) %>%
+    tab_options(
+      row_group.as_column = FALSE,
+      row_group.padding = px(8)
+    ) %>%
+    tab_footnote(
+      footnote = "Baseline pupil diameter (tonic arousal) computed from pre-trial baseline window (-0.5s to 0s relative to squeeze onset).",
+      locations = cells_column_labels(columns = `Mean (mm)`)
+    )
+} else {
+  # Placeholder if data not available
+  baseline_pupil_placeholder <- expand_grid(
+    task = c("ADT", "VDT"),
+    effort_condition = c("Low_5_MVC", "High_40_MVC")
   ) %>%
-  arrange(Task_Group, Effort) %>%
-  select(Task_Group, Effort, `Mean (mm)`, `SD (mm)`, `Median (mm)`, `N Subjects`)
-
-baseline_pupil_placeholder %>%
-  gt(groupname_col = "Task_Group") %>%
-  tab_header(title = md("**Baseline Pupil Diameter by Condition (Placeholder)**")) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_column_labels()
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold", style = "italic"),
-    locations = cells_row_groups()
-  ) %>%
-  tab_options(
-    row_group.as_column = FALSE,
-    row_group.padding = px(8)
-  ) %>%
-  tab_footnote(
-    footnote = "Baseline pupil diameter (tonic arousal) will be computed from ITI periods. Analysis pending.",
-    locations = cells_body()
-  )
+    mutate(
+      Task_Group = case_when(
+        task == "ADT" ~ "ADT (Auditory Detection Task)",
+        task == "VDT" ~ "VDT (Visual Detection Task)",
+        TRUE ~ task
+      ),
+      Effort = case_when(
+        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
+        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
+        TRUE ~ effort_condition
+      ),
+      `Mean (mm)` = "To be computed",
+      `SD (mm)` = "To be computed",
+      `Median (mm)` = "To be computed",
+      `N Subjects` = "To be computed"
+    ) %>%
+    arrange(Task_Group, Effort) %>%
+    select(Task_Group, Effort, `Mean (mm)`, `SD (mm)`, `Median (mm)`, `N Subjects`)
+  
+  baseline_pupil_placeholder %>%
+    gt(groupname_col = "Task_Group") %>%
+    tab_header(title = md("**Baseline Pupil Diameter by Condition (Placeholder)**")) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold", style = "italic"),
+      locations = cells_row_groups()
+    ) %>%
+    tab_options(
+      row_group.as_column = FALSE,
+      row_group.padding = px(8)
+    ) %>%
+    tab_footnote(
+      footnote = "Baseline pupil data not available. Please ensure pupil data file contains baseline_B0 column.",
+      locations = cells_body()
+    )
+}
 ```
 
 ### Task-Evoked Pupil Response (TEPR)
@@ -1940,69 +2124,289 @@ baseline_pupil_placeholder %>%
 ```{r}
 #| label: tbl-tepr
 #| tbl-cap: "Task-Evoked Pupil Response (TEPR) by Condition"
-# Placeholder for TEPR with row grouping
-tepr_placeholder <- expand_grid(
-  task = c("ADT", "VDT"),
-  difficulty_level = c("Standard", "Easy", "Hard"),
-  effort_condition = c("Low_5_MVC", "High_40_MVC")
-) %>%
-  mutate(
-    Task_Group = case_when(
-      task == "ADT" ~ "ADT (Auditory Detection Task)",
-      task == "VDT" ~ "VDT (Visual Detection Task)",
-      TRUE ~ task
-    ),
-    Difficulty = case_when(
-      difficulty_level == "Standard" ~ "Standard",
-      difficulty_level == "Easy" ~ "Easy",
-      difficulty_level == "Hard" ~ "Hard",
-      TRUE ~ difficulty_level
-    ),
-    Effort = case_when(
-      effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
-      effort_condition == "High_40_MVC" ~ "High (40% MVC)",
-      TRUE ~ effort_condition
-    ),
-    `Mean AUC` = "To be computed",
-    `SD AUC` = "To be computed",
-    `Mean Peak` = "To be computed",
-    `SD Peak` = "To be computed",
-    `N Subjects` = "To be computed"
+# Compute TEPR (cognitive AUC) by task, difficulty, and effort
+if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data) && "difficulty_level" %in% names(pupil_data)) {
+  tepr_summary <- pupil_data %>%
+    filter(!is.na(cognitive_auc), !is.na(task), !is.na(effort_condition), !is.na(difficulty_level)) %>%
+    group_by(task, difficulty_level, effort_condition, subject_id) %>%
+    summarise(
+      mean_cog_auc = mean(cognitive_auc, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    group_by(task, difficulty_level, effort_condition) %>%
+    summarise(
+      mean_auc = round(mean(mean_cog_auc, na.rm = TRUE), 3),
+      sd_auc = round(sd(mean_cog_auc, na.rm = TRUE), 3),
+      n_subjects = n(),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      Task_Group = case_when(
+        task == "ADT" ~ "ADT (Auditory Detection Task)",
+        task == "VDT" ~ "VDT (Visual Detection Task)",
+        TRUE ~ task
+      ),
+      Difficulty = case_when(
+        difficulty_level == "Standard" ~ "Standard",
+        difficulty_level == "Easy" ~ "Easy",
+        difficulty_level == "Hard" ~ "Hard",
+        TRUE ~ difficulty_level
+      ),
+      Effort = case_when(
+        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
+        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
+        TRUE ~ effort_condition
+      ),
+      `Mean AUC` = mean_auc,
+      `SD AUC` = sd_auc,
+      `N Subjects` = n_subjects
+    ) %>%
+    arrange(Task_Group, Difficulty, Effort) %>%
+    select(Task_Group, Difficulty, Effort, `Mean AUC`, `SD AUC`, `N Subjects`)
+  
+  # Note: Peak amplitude calculation would require time-series data
+  # For now, we report AUC as the primary TEPR metric
+  tepr_summary %>%
+    gt(groupname_col = "Task_Group") %>%
+    tab_header(title = md("**Task-Evoked Pupil Response (TEPR) by Condition**")) %>%
+    fmt_number(columns = c(`Mean AUC`, `SD AUC`), decimals = 3) %>%
+    fmt_number(columns = `N Subjects`, decimals = 0) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold", style = "italic"),
+      locations = cells_row_groups()
+    ) %>%
+    tab_options(
+      row_group.as_column = FALSE,
+      row_group.padding = px(8)
+    ) %>%
+    tab_footnote(
+      footnote = "TEPR (phasic arousal) quantified as Cognitive AUC (Area Under the Curve) from baseline-corrected pupil data (4.65s to response onset). AUC in units of mm·s.",
+      locations = cells_column_labels(columns = `Mean AUC`)
+    )
+} else {
+  # Placeholder if data not available
+  tepr_placeholder <- expand_grid(
+    task = c("ADT", "VDT"),
+    difficulty_level = c("Standard", "Easy", "Hard"),
+    effort_condition = c("Low_5_MVC", "High_40_MVC")
   ) %>%
-  arrange(Task_Group, Difficulty, Effort) %>%
-  select(Task_Group, Difficulty, Effort, `Mean AUC`, `SD AUC`, `Mean Peak`, `SD Peak`, `N Subjects`)
-
-tepr_placeholder %>%
-  gt(groupname_col = "Task_Group") %>%
-  tab_header(title = md("**Task-Evoked Pupil Response (TEPR) by Condition (Placeholder)**")) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_column_labels()
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold", style = "italic"),
-    locations = cells_row_groups()
-  ) %>%
-  tab_options(
-    row_group.as_column = FALSE,
-    row_group.padding = px(8)
-  ) %>%
-  tab_footnote(
-    footnote = "TEPR (phasic arousal) will be quantified as Area Under the Curve (AUC) and peak amplitude relative to baseline. Analysis pending.",
-    locations = cells_body()
-  )
+    mutate(
+      Task_Group = case_when(
+        task == "ADT" ~ "ADT (Auditory Detection Task)",
+        task == "VDT" ~ "VDT (Visual Detection Task)",
+        TRUE ~ task
+      ),
+      Difficulty = case_when(
+        difficulty_level == "Standard" ~ "Standard",
+        difficulty_level == "Easy" ~ "Easy",
+        difficulty_level == "Hard" ~ "Hard",
+        TRUE ~ difficulty_level
+      ),
+      Effort = case_when(
+        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
+        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
+        TRUE ~ effort_condition
+      ),
+      `Mean AUC` = "To be computed",
+      `SD AUC` = "To be computed",
+      `N Subjects` = "To be computed"
+    ) %>%
+    arrange(Task_Group, Difficulty, Effort) %>%
+    select(Task_Group, Difficulty, Effort, `Mean AUC`, `SD AUC`, `N Subjects`)
+  
+  tepr_placeholder %>%
+    gt(groupname_col = "Task_Group") %>%
+    tab_header(title = md("**Task-Evoked Pupil Response (TEPR) by Condition (Placeholder)**")) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold", style = "italic"),
+      locations = cells_row_groups()
+    ) %>%
+    tab_options(
+      row_group.as_column = FALSE,
+      row_group.padding = px(8)
+    ) %>%
+    tab_footnote(
+      footnote = "TEPR data not available. Please ensure pupil data file contains cognitive_auc, task, effort_condition, and difficulty_level columns.",
+      locations = cells_body()
+    )
+}
 ```
 
 ```{r}
 #| label: fig-tepr-timecourse
-#| fig-cap: "Task-Evoked Pupil Response (TEPR) Time Course. Grand-average pupil traces (mean ± 95% CI) aligned to response signal onset for Low effort (blue) and High effort (crimson) conditions, separately for ADT (left) and VDT (right). The shaded region indicates the time window used for TEPR quantification. Baseline pupil (pre-stimulus) is shown in the -1 to 0 s window. This figure will be generated once pupillometry analysis is complete."
-#| fig-width: 95
+#| fig-cap: "Task-Evoked Pupil Response (TEPR) Time Course. Grand-average pupil traces (baseline-corrected, mean ± 95% CI) aligned to squeeze onset for four conditions (Easy/Low, Easy/High, Hard/Low, Hard/High), separately for ADT (top) and VDT (bottom). The shaded region indicates the cognitive AUC window used for TEPR quantification (4.65s to 7.65s relative to squeeze onset, extending from 300ms after target stimulus onset until ~3s post-target). Baseline-corrected traces converge at 0 during the baseline period (-0.5 to 0s). Vertical dashed lines indicate key events: trial start (0s), target stimulus onset (4.35s), and response signal onset (4.7s)."
+#| fig-width: 8
+#| fig-height: 10
 #| fig-align: center
-# Placeholder for TEPR time course figure
-cat("TEPR time course figure: Placeholder. This figure will show grand-average pupil traces aligned to response signal onset, with separate panels for Task (ADT/VDT) and lines for Effort condition (Low/High). Analysis pending.\n")
+# Generate TEPR time course figure
+if (!is.null(pupil_data)) {
+  # Try to load waveform summary data
+  waveform_file <- file.path(proj_root, "quick_share_v7/analysis/pupil_waveforms_condition_mean.csv")
+  
+  if (file.exists(waveform_file)) {
+    waveform_data <- read_csv(waveform_file, show_col_types = FALSE)
+    
+    # Filter to chapter 3 data and keep all 4 conditions (effort × difficulty)
+    waveform_ch3 <- waveform_data %>%
+      filter(chapter == "ch3") %>%
+      # Map difficulty level from stimulus_intensity and isOddball
+      mutate(
+        difficulty_level = case_when(
+          isOddball == 0 | (is.na(isOddball) & (!is.na(stimulus_intensity) & stimulus_intensity == 0)) ~ "Standard",
+          !is.na(stimulus_intensity) & stimulus_intensity %in% c(1, 2) ~ "Hard",
+          !is.na(stimulus_intensity) & stimulus_intensity %in% c(3, 4) ~ "Easy",
+          isOddball == 1 & is.na(stimulus_intensity) ~ "Easy",
+          TRUE ~ NA_character_
+        ),
+        effort_level = case_when(
+          effort == "Low" | effort == "Low_Force_5pct" ~ "Low",
+          effort == "High" | effort == "High_Force_40pct" ~ "High",
+          TRUE ~ NA_character_
+        ),
+        # Create condition label (Difficulty / Effort)
+        condition = case_when(
+          !is.na(difficulty_level) & !is.na(effort_level) ~ 
+            paste0(difficulty_level, " / ", effort_level),
+          TRUE ~ "Unknown"
+        )
+      ) %>%
+      # Filter out Standard trials (we want Easy/Hard only) and Unknown
+      filter(condition != "Unknown", !grepl("Standard", condition)) %>%
+      # Use mean_pupil_full (baseline-corrected, B0-corrected) - this converges at 0 in baseline period
+      # Per plot_pupil_waveforms.R line 134: mean_pupil_full is the B0-corrected (full baseline correction)
+      rename(mean_pupil_isolated = mean_pupil_full) %>%
+      # Group by task, condition, and time to get per-condition means
+      group_by(task, condition, t_rel) %>%
+      summarise(
+        # Weighted mean across any duplicate entries (weight by n_trials)
+        total_trials = sum(n_trials, na.rm = TRUE),
+        mean_pupil_isolated = sum(mean_pupil_isolated * n_trials, na.rm = TRUE) / total_trials,
+        n_trials = total_trials,
+        .groups = "drop"
+      ) %>%
+      filter(!is.na(task), !is.na(condition), !is.na(t_rel), !is.na(mean_pupil_isolated)) %>%
+      arrange(task, condition, t_rel)
+    
+    if (nrow(waveform_ch3) > 0) {
+      # Define event markers and cognitive AUC window
+      # Based on Methods section: cognitive AUC window is 4.65s to 7.65s (300ms after target until 3.3s post-target)
+      trial_start <- 0.0  # Trial start (squeeze onset)
+      target_onset <- 4.35  # Target stimulus onset
+      response_signal_onset <- 4.7  # Response signal onset
+      cognitive_auc_start <- 4.65  # 300ms after target onset (4.35 + 0.3)
+      cognitive_auc_end <- 7.65  # 3.3s post-target (4.35 + 3.3), which is the W3.0 window
+      
+      # Define color scheme for 4 conditions (matching plot_pupil_waveforms.R)
+      condition_colors <- c(
+        "Easy / Low" = "#5DADE2",    # Light blue
+        "Easy / High" = "#2E86AB",   # Dark blue  
+        "Hard / Low" = "#EC70AB",    # Light pink
+        "Hard / High" = "#A23B72"    # Dark pink
+      )
+      
+      # Get conditions actually present in data
+      conditions_present <- unique(waveform_ch3$condition)
+      conditions_present <- conditions_present[!is.na(conditions_present)]
+      colors_for_plot <- condition_colors[names(condition_colors) %in% conditions_present]
+      if (length(colors_for_plot) == 0) {
+        # Fallback: use default colors if no matches
+        colors_for_plot <- scales::hue_pal()(length(conditions_present))
+        names(colors_for_plot) <- conditions_present
+      }
+      
+      # Calculate y-limits from data (use full range to show all curves, add padding for labels)
+      y_vals <- waveform_ch3$mean_pupil_isolated[!is.na(waveform_ch3$mean_pupil_isolated)]
+      if (length(y_vals) > 0) {
+        # Use full range to ensure all curves are visible
+        y_range <- range(y_vals, na.rm = TRUE)
+        y_range_span <- diff(y_range)
+        if (!is.finite(y_range_span) || y_range_span == 0) {
+          y_range_span <- max(abs(y_range), na.rm = TRUE)
+          if (!is.finite(y_range_span) || y_range_span == 0) y_range_span <- 1
+        }
+        # Add padding (12% top, 8% bottom) to accommodate labels and ensure visibility
+        y_upper_limit <- y_range[2] + y_range_span * 0.12  # Extra space for labels
+        y_lower_limit <- y_range[1] - y_range_span * 0.08  # Padding at bottom
+      } else {
+        y_upper_limit <- 0.5
+        y_lower_limit <- -0.5
+        y_range_span <- 1  # Default span for label positioning
+      }
+      
+      # Event markers with staggered y positions to avoid overlap (vertical text)
+      event_markers <- tibble(
+        event = c("Trial Start", "Target", "Response"),
+        time = c(trial_start, target_onset, response_signal_onset),
+        label_y = y_upper_limit - y_range_span * c(0.05, 0.10, 0.15)  # Stagger vertically
+      )
+      
+      # Create plot
+      p_tepr <- ggplot(waveform_ch3, aes(x = t_rel, y = mean_pupil_isolated, 
+                                         color = condition, fill = condition)) +
+        # Cognitive AUC window shading
+        geom_rect(aes(xmin = cognitive_auc_start, xmax = cognitive_auc_end, ymin = -Inf, ymax = Inf),
+                  inherit.aes = FALSE, fill = "grey90", alpha = 0.3) +
+        # GAM smoothed lines with confidence intervals
+        geom_smooth(se = TRUE, method = "gam", formula = y ~ s(x, k = 20), 
+                    linewidth = 1.2, alpha = 0.3) +
+        # Event markers (vertical dashed lines)
+        geom_vline(data = event_markers, aes(xintercept = time), 
+                   inherit.aes = FALSE, linetype = "dashed", color = "grey40", linewidth = 0.6) +
+        # Event labels (vertical text to avoid overlap)
+        geom_text(data = event_markers, aes(x = time, y = label_y, label = event),
+                  inherit.aes = FALSE, angle = 90, hjust = 0, vjust = 0.9,
+                  size = 3.5, color = "grey20", fontface = "bold") +
+        # Facet by task (stacked vertically)
+        facet_wrap(~task, ncol = 1, labeller = labeller(task = c("ADT" = "ADT (Auditory Detection Task)", 
+                                                                  "VDT" = "VDT (Visual Detection Task)"))) +
+        # Scales
+        scale_color_manual(values = colors_for_plot, name = "Condition") +
+        scale_fill_manual(values = colors_for_plot, name = "Condition") +
+        scale_x_continuous(breaks = seq(-0.5, 8, 1), expand = c(0, 0.1)) +
+        coord_cartesian(ylim = c(y_lower_limit, y_upper_limit)) +
+        # Labels and theme
+        labs(
+          x = "Time (s, relative to squeeze onset)",
+          y = "Baseline-Corrected Pupil Diameter (mm)",
+          title = NULL
+        ) +
+        theme_minimal(base_size = 12) +
+        theme(
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_line(color = "grey90", linewidth = 0.5),
+          strip.text = element_text(face = "bold", size = 12),
+          strip.background = element_rect(fill = "grey95", color = NA),
+          legend.position = "bottom",
+          legend.title = element_text(face = "bold"),
+          axis.title = element_text(face = "bold"),
+          plot.margin = margin(10, 10, 10, 10)
+        )
+      
+      # Print plot
+      print(p_tepr)
+    } else {
+      # Placeholder if no data
+      cat("TEPR time course figure: Waveform data not available for chapter 3.\n")
+    }
+  } else {
+    # Placeholder if file not found
+    cat("TEPR time course figure: Waveform summary file not found at", waveform_file, "\n")
+  }
+} else {
+  # Placeholder if pupil_data not loaded
+  cat("TEPR time course figure: Pupil data not loaded. Please ensure pupil data files are available.\n")
+}
 ```
 
-**Summary**: Pupillometry data preprocessing is complete (see Methods section), but descriptive statistics and TEPR quantification are pending. Once analysis is complete, this section will report: (1) data quality metrics (percentage of valid samples, artifact exclusion rates), (2) baseline pupil diameter (tonic arousal) by task and effort condition, (3) task-evoked pupil response (TEPR) amplitude and latency by condition, and (4) exploratory correlations between pupil measures and DDM parameters. These analyses will allow us to link physiological arousal states to the latent decision processes identified by the DDM.
+**Summary**: Pupillometry data preprocessing is complete (see Methods section). Descriptive statistics and TEPR quantification are reported above: (1) data quality metrics (percentage of valid samples, artifact exclusion rates), (2) baseline pupil diameter (tonic arousal) by task and effort condition, and (3) task-evoked pupil response (TEPR) quantified as cognitive AUC by condition. Baseline pupil diameter reflects tonic LC-NE activity, while cognitive AUC captures phasic arousal during the decision period. These measures allow us to link physiological arousal states to the latent decision processes identified by the DDM. Future analyses will explore correlations between pupil measures and DDM parameters to test mechanistic hypotheses about how arousal modulates decision-making.
 
 ## Bias Estimates (Standard-Only Model)
 

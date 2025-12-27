@@ -41,16 +41,15 @@ if (file.exists(config_file)) {
   }
 }
 
-# Check for quick_share_v6 waveform summaries
-V6_ROOT <- file.path(REPO_ROOT, "quick_share_v6")
-V6_WAVEFORM_CH2 <- file.path(V6_ROOT, "analysis", "pupil_waveforms_condition_mean_ch2_50hz.csv")
-V6_WAVEFORM_CH3 <- file.path(V6_ROOT, "analysis", "pupil_waveforms_condition_mean_ch3_250hz.csv")
+# Check for quick_share_v7 waveform summaries
+V7_ROOT <- file.path(REPO_ROOT, "quick_share_v7")
+V7_WAVEFORM_FILE <- file.path(V7_ROOT, "analysis", "pupil_waveforms_condition_mean.csv")
 
 output_dir <- file.path(REPO_ROOT, "06_visualization", "publication_figures")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Use waveform summaries if available
-use_waveform_summaries <- file.exists(V6_WAVEFORM_CH2) && file.exists(V6_WAVEFORM_CH3)
+use_waveform_summaries <- file.exists(V7_WAVEFORM_FILE)
 
 # Define the common color scheme
 condition_colors <- c(
@@ -71,27 +70,47 @@ timeline_bar_colors <- list(
 task_configs <- list(
   ADT = list(
     task_name = "ADT",
-    stimulus_label = "Target onset",
+    stimulus_label = "Target",
     response_label = "Response",
-    # Timing (relative to squeeze onset = 0) - Updated to match quick_share_v6
-    target_onset = 4.35,  # Target stimulus onset (3.75s stimulus start + 0.1s Standard + 0.5s ISI)
-    response_window_start = 4.7,  # Response_Different phase start
+    # Timing (relative to squeeze onset = 0) - Based on MATLAB task code
+    squeeze_end = 3.0,  # Squeeze ends (blank screen starts)
+    blank_end = 3.25,  # Blank screen ends (fixation starts)
+    fixation_end = 3.75,  # Fixation ends (Standard stimulus starts)
+    standard_onset = 3.75,  # Standard (1st stimulus) onset (A/V_ST) - 100ms duration
+    standard_end = 3.85,  # Standard ends (ISI starts)
+    isi_end = 4.35,  # ISI ends (Target stimulus starts)
+    target_onset = 4.35,  # Target (2nd stimulus) onset - 100ms duration
+    target_end = 4.45,  # Target ends (post-stimulus blank starts)
+    post_stim_blank_end = 4.7,  # Post-stimulus blank ends (Response window starts)
+    response_window_start = 4.7,  # Response window start (Resp1ST)
+    response_window_end = 7.70,  # End of Response 1 window (Resp1ET) - 3000ms duration
     total_auc_start = 0,  # From squeeze onset
     baseline_window_start = -0.5,  # Baseline B0 window start
     baseline_window_end = 0,  # Baseline B0 window end
-    cognitive_auc_latency = 0.3  # 300ms after target onset (cognitive window starts at 4.65s)
+    cognitive_auc_latency = 0.3,  # 300ms after target onset (cognitive window starts at 4.65s)
+    cognitive_auc_end = 6.65  # Cognitive AUC ends at target+2.3s (W2.0 window, extends into response period)
   ),
   VDT = list(
     task_name = "VDT",
-    stimulus_label = "Target onset",
+    stimulus_label = "Target",
     response_label = "Response",
-    # Timing (relative to squeeze onset = 0) - Updated to match quick_share_v6
-    target_onset = 4.35,  # Target stimulus onset (3.75s stimulus start + 0.1s Standard + 0.5s ISI)
-    response_window_start = 4.7,  # Response_Different phase start
+    # Timing (relative to squeeze onset = 0) - Based on MATLAB task code
+    squeeze_end = 3.0,  # Squeeze ends (blank screen starts)
+    blank_end = 3.25,  # Blank screen ends (fixation starts)
+    fixation_end = 3.75,  # Fixation ends (Standard stimulus starts)
+    standard_onset = 3.75,  # Standard (1st stimulus) onset (A/V_ST) - 100ms duration
+    standard_end = 3.85,  # Standard ends (ISI starts)
+    isi_end = 4.35,  # ISI ends (Target stimulus starts)
+    target_onset = 4.35,  # Target (2nd stimulus) onset - 100ms duration
+    target_end = 4.45,  # Target ends (post-stimulus blank starts)
+    post_stim_blank_end = 4.7,  # Post-stimulus blank ends (Response window starts)
+    response_window_start = 4.7,  # Response window start (Resp1ST)
+    response_window_end = 7.70,  # End of Response 1 window (Resp1ET) - 3000ms duration
     total_auc_start = 0,  # From squeeze onset
     baseline_window_start = -0.5,  # Baseline B0 window start
     baseline_window_end = 0,  # Baseline B0 window end
-    cognitive_auc_latency = 0.3  # 300ms after target onset (cognitive window starts at 4.65s)
+    cognitive_auc_latency = 0.3,  # 300ms after target onset (cognitive window starts at 4.65s)
+    cognitive_auc_end = 6.65  # Cognitive AUC ends at target+2.3s (W2.0 window, extends into response period)
   )
 )
 
@@ -100,26 +119,29 @@ task_configs <- list(
 # ============================================================================
 
 if (use_waveform_summaries) {
-  cat("1. Loading waveform summaries from quick_share_v6...\n")
+  cat("1. Loading waveform summaries from quick_share_v7...\n")
   
-  waveform_ch2 <- read_csv(V6_WAVEFORM_CH2, show_col_types = FALSE)
-  waveform_ch3 <- read_csv(V6_WAVEFORM_CH3, show_col_types = FALSE)
+  waveform_data <- read_csv(V7_WAVEFORM_FILE, show_col_types = FALSE)
   
-  # Combine and standardize column names
-  waveform_data <- bind_rows(
-    waveform_ch2 %>% mutate(source = "ch2", fs = 50),
-    waveform_ch3 %>% mutate(source = "ch3", fs = 100)
-  ) %>%
+  cat("  ✓ Loaded waveform summaries\n")
+  cat("    Total rows: ", nrow(waveform_data), "\n", sep = "")
+  cat("    Chapters: ", paste(unique(waveform_data$chapter), collapse = ", "), "\n", sep = "")
+  
+  # Standardize column names and create condition labels
+  all_data <- waveform_data %>%
     rename(
-      time_from_squeeze = t,
-      mean_pupil_isolated = mean_pupil,
-      se_pupil_isolated = sem_pupil
+      time_from_squeeze = t_rel,
+      mean_pupil_isolated = mean_pupil_full  # Use B0-corrected (full baseline correction)
     ) %>%
     mutate(
-      # Map isOddball to difficulty: 1 = Easy, 0 = Standard (but we filter out Standard)
+      # Map stimulus_intensity to difficulty: Easy vs Hard
+      # Standard mapping: stim_intensity 1-2 = Hard, 3-4 = Easy, 0 = Standard
+      # Note: stimulus_intensity may be NA for some trials
       difficulty_level = case_when(
-        isOddball == 1 ~ "Easy",
-        isOddball == 0 ~ "Standard",
+        isOddball == 0 | (is.na(isOddball) & (!is.na(stimulus_intensity) & stimulus_intensity == 0)) ~ "Standard",
+        !is.na(stimulus_intensity) & stimulus_intensity %in% c(1, 2) ~ "Hard",
+        !is.na(stimulus_intensity) & stimulus_intensity %in% c(3, 4) ~ "Easy",
+        isOddball == 1 & is.na(stimulus_intensity) ~ "Easy",  # Fallback: if isOddball=1 but no stimulus_intensity, assume Easy
         TRUE ~ NA_character_
       ),
       # Map effort to Low/High
@@ -137,16 +159,16 @@ if (use_waveform_summaries) {
     ) %>%
     filter(condition != "Unknown", !grepl("Standard", condition))  # Only Easy/Hard
   
-  cat("  ✓ Loaded waveform summaries\n")
-  cat("    Ch2: ", nrow(waveform_ch2), " rows\n", sep = "")
-  cat("    Ch3: ", nrow(waveform_ch3), " rows\n", sep = "")
-  
   # For plotting, use Ch2 (50Hz) waveforms
-  all_data <- waveform_data %>%
-    filter(source == "ch2") %>%
-    select(-source, -fs, -difficulty_level, -effort_level)
+  all_data <- all_data %>%
+    filter(chapter == "ch2", sample_rate_hz == 50) %>%
+    select(-chapter, -sample_rate_hz, -difficulty_level, -effort_level, -mean_pupil_partial, -n_trials)
   
   cat("  Using Ch2 waveforms (50Hz) for plotting\n")
+  cat("    Filtered to ", nrow(all_data), " rows\n", sep = "")
+  
+  # Calculate SE from n_trials if needed (for now, we'll use smoothed CI from geom_smooth)
+  # Note: quick_share_v7 doesn't include SE, so we'll rely on geom_smooth confidence intervals
   
   # Ensure condition matches color scheme
   all_data$condition <- as.character(all_data$condition)
@@ -315,9 +337,10 @@ for (task_name in c("ADT", "VDT")) {
   
   # Create condition-specific averages for pupil_isolated
   if (use_waveform_summaries) {
-    # Use pre-aggregated waveform data (already has mean and SE)
+    # Use pre-aggregated waveform data (mean_pupil_isolated already computed)
+    # Note: quick_share_v7 doesn't include SE, so we'll use geom_smooth for confidence intervals
     waveform_summary <- task_data %>%
-      select(condition, time_from_squeeze, mean_pupil_isolated, se_pupil_isolated) %>%
+      select(condition, time_from_squeeze, mean_pupil_isolated) %>%
       distinct() %>%
       filter(!is.na(mean_pupil_isolated), !is.na(time_from_squeeze))
   } else {
@@ -353,9 +376,17 @@ for (task_name in c("ADT", "VDT")) {
   })
   
   y_limits <- if (!is.null(smoothed_df) && nrow(smoothed_df) > 0) {
-    # Use wider range (0.01 to 0.99) to ensure confidence ribbons are fully visible
-    y_min <- quantile(smoothed_df$y[smoothed_df$x >= x_range[1] & smoothed_df$x <= x_range[2]], 0.01, na.rm = TRUE)
-    y_max <- quantile(smoothed_df$y[smoothed_df$x >= x_range[1] & smoothed_df$x <= x_range[2]], 0.99, na.rm = TRUE)
+    # For ADT, use full range (min/max of confidence ribbons) to capture all fluctuations
+    # For VDT, use quantile-based range (0.01 to 0.99) for cleaner visualization
+    x_mask <- smoothed_df$x >= x_range[1] & smoothed_df$x <= x_range[2]
+    if (task_name == "ADT") {
+      y_min <- min(smoothed_df$ymin[x_mask], na.rm = TRUE)
+      y_max <- max(smoothed_df$ymax[x_mask], na.rm = TRUE)
+    } else {
+      # VDT: use quantile-based range
+      y_min <- quantile(smoothed_df$y[x_mask], 0.01, na.rm = TRUE)
+      y_max <- quantile(smoothed_df$y[x_mask], 0.99, na.rm = TRUE)
+    }
     c(y_min, y_max)
   } else {
     c(NA_real_, NA_real_)
@@ -373,11 +404,12 @@ for (task_name in c("ADT", "VDT")) {
     y_limits <- c(-fallback_span, fallback_span)
   }
   
-  # Calculate cognitive AUC start time
-  cognitive_start_plot <- config$target_onset + config$cognitive_auc_latency
-  if (cognitive_start_plot > response_onset_median) {
-    cognitive_start_plot <- response_onset_median
-  }
+  # Calculate cognitive AUC window (extends into response window)
+  # Based on MATLAB task code: Cognitive processing continues during response period
+  # W2.0 window: target+0.3 to target+2.3 (4.65s to 6.65s) - commonly used
+  # For visualization, use W2.0 as a reasonable cognitive window
+  cognitive_start_plot <- config$target_onset + config$cognitive_auc_latency  # target+0.3s = 4.65s
+  cognitive_end_plot <- config$target_onset + 2.3  # target+2.3s = 6.65s (W2.0 window)
   
   y_range_span <- diff(y_limits)
   if (!is.finite(y_range_span) || y_range_span <= 0) {
@@ -391,11 +423,13 @@ for (task_name in c("ADT", "VDT")) {
   y_lower_limit <- y_limits[1] - extra_margin * 1.4
   y_upper_limit <- y_limits[2]
   
-  # Timeline bars
+  # Timeline bars (single Cognitive AUC ending at Response start)
   bar_positions <- tibble(
     label = c("Baseline", "Total AUC", "Cognitive AUC"),
-    xstart = c(config$baseline_window_start, config$total_auc_start, cognitive_start_plot),
-    xend = c(config$baseline_window_end, response_onset_median, response_onset_median),
+    xstart = c(config$baseline_window_start, config$total_auc_start, 
+               cognitive_start_plot),
+    xend = c(config$baseline_window_end, response_onset_median, 
+             cognitive_end_plot),
     color = c(
       timeline_bar_colors$baseline,
       timeline_bar_colors$total_auc,
@@ -411,18 +445,21 @@ for (task_name in c("ADT", "VDT")) {
       x_label = (xstart + xend) / 2
     )
   
-  # Event markers
+  # Event markers: Standard (1st stimulus), Target (2nd stimulus), Response
   event_markers_plot <- tibble(
-    event = c("Trial onset", config$stimulus_label, config$response_label),
-    time = c(0, config$target_onset, response_onset_median)
+    event = c("Standard", config$stimulus_label, config$response_label),
+    time = c(config$standard_onset, config$target_onset, config$response_window_start)
   ) %>%
     filter(!is.na(time))
   
-  event_label_y <- y_upper_limit - y_range_span * 0.005
+  # Stagger event labels vertically to avoid overlap
+  n_events <- nrow(event_markers_plot)
+  event_label_ys <- y_upper_limit - y_range_span * seq(0.005, 0.005 + (n_events - 1) * 0.025, length.out = n_events)
+  event_markers_plot$label_y <- event_label_ys
   
-  # Plotting range
+  # Plotting range (extend into response window to show cognitive AUC)
   plot_start_time <- config$baseline_window_start
-  plot_end_time <- response_onset_median
+  plot_end_time <- min(cognitive_end_plot + 0.5, max(waveform_summary$time_from_squeeze, na.rm = TRUE))
   
   # Get conditions actually present in data
   conditions_present <- unique(waveform_summary$condition)
@@ -448,13 +485,13 @@ for (task_name in c("ADT", "VDT")) {
     geom_smooth(method = "gam", formula = y ~ s(x, k = 30), 
                 linewidth = 1.2, span = 0.2, se = TRUE, alpha = 0.3) +
     
-    # Vertical markers for events
+    # Vertical markers for events (Standard, Target, Response)
     {if (nrow(event_markers_plot) > 0) 
       geom_vline(data = event_markers_plot, aes(xintercept = time), 
                  linetype = "dashed", color = "grey40", linewidth = 0.6)
     } +
     {if (nrow(event_markers_plot) > 0) 
-      geom_text(data = event_markers_plot, aes(x = time, y = event_label_y, label = event), 
+      geom_text(data = event_markers_plot, aes(x = time, y = label_y, label = event), 
                 inherit.aes = FALSE, size = 4.5, color = "grey20", hjust = 0.5, vjust = 1.1, fontface = "bold")
     } +
     
