@@ -97,19 +97,19 @@ modeling-pupil-DDM/
 │   ├── pipeline_config.R               # Pipeline settings
 │   └── model_config.yaml               # Model parameters
 │
-├── scripts/                            # Mirrored core analysis scripts
+├── scripts/                            # Core analysis scripts
+│   ├── R/                              # R analysis scripts (consolidated)
+│   │   ├── audit_design_coding.R       # Design-coding audit script
+│   │   ├── extract_*.R                 # Extraction scripts for QA, manipulation checks, LOO, PPC
+│   │   ├── run_extract_all.R           # Master runner for all extraction scripts
+│   │   └── [other R scripts]           # Additional analysis scripts
 │   ├── core/                           # Main model/analysis runners
 │   ├── 01_data_processing/             # Data processing & QC
-│   ├── 02_statistical_analysis/        # Statistical modeling
+│   ├── 02_statistical_analysis/       # Statistical modeling
 │   ├── advanced/                       # Advanced analyses
+│   ├── intermediary/                   # Development/test scripts
 │   ├── utilities/                      # Helpers (integration, extraction)
 │   └── publish_commit.sh               # Git workflow for publishing outputs
-│
-├── R/                                  # R analysis scripts
-│   ├── audit_design_coding.R           # Design-coding audit script
-│   ├── extract_*.R                     # Extraction scripts for QA, manipulation checks, LOO, PPC
-│   ├── run_extract_all.R               # Master runner for all extraction scripts
-│   └── [other R scripts]               # Additional analysis scripts
 │
 ├── reports/                            # Comprehensive analysis reports
 │   └── chap3_ddm_results.qmd           # DDM chapter report (Quarto)
@@ -119,11 +119,29 @@ modeling-pupil-DDM/
 │   ├── test_models.R                   # Model fitting tests
 │   └── test_visualization.py           # Visualization tests
 │
+├── data/                               # Data directories
+│   ├── analysis_ready/                 # Processed data ready for analysis
+│   ├── derived/                        # Derived datasets
+│   ├── intermediate/                   # Intermediate processing files
+│   └── qc/                             # Quality control outputs
+│
 ├── output/                             # Analysis outputs
 │   └── publish/                        # Published outputs (tracked in git)
 │       └── audit/                      # Audit results (CSV, TXT, MD)
 │
+├── logs/                               # Log files and status reports
+│   └── [*.log, *.csv]                  # Pipeline logs and status files
+│
+├── quick_share_v7/                     # Active quick_share data (latest version)
+│   ├── analysis/                       # Analysis-ready datasets
+│   ├── analysis_ready/                 # Processed trial-level data
+│   └── qc/                             # Quality control reports
+│
+├── quick_share_archive/                 # Archived quick_share versions (v2-v6)
+│   └── [quick_share_v2 through v6]     # Historical versions
+│
 └── docs/                               # Documentation
+    ├── development_notes/              # Development documentation and audit reports
     ├── pipeline_README.md              # Pipeline documentation
     ├── model_documentation.md          # DDM implementation details
     ├── api_reference.md                # Function documentation
@@ -258,7 +276,7 @@ Before finalizing analyses, run the design-coding audit to verify data integrity
 
 ```bash
 # Run design-coding audit (verifies decision coding, RT floors, factor levels)
-Rscript R/audit_design_coding.R
+Rscript scripts/R/audit_design_coding.R
 
 # Review outputs in output/publish/audit/
 # - audit_summary.md: Main audit summary
@@ -283,8 +301,8 @@ Generate the complete DDM chapter report (Step 7 of the pipeline):
 Rscript 07_manuscript/render_ddm_chapter.R
 
 # Or run extraction and rendering separately:
-Rscript R/run_extract_all.R              # Extract all tables to output/publish/
-Rscript R/render_chap3_report.R          # Render reports/chap3_ddm_results.qmd
+Rscript scripts/R/run_extract_all.R              # Extract all tables to output/publish/
+Rscript scripts/R/render_chap3_report.R          # Render reports/chap3_ddm_results.qmd
 ```
 
 **Outputs**:
@@ -311,12 +329,23 @@ To commit and push analysis outputs for publication:
 ./scripts/publish_commit.sh
 
 # Or manually:
-git add R/*.R output/publish/**/*.{csv,txt,md}
+git add scripts/R/*.R output/publish/**/*.{csv,txt,md}
 git commit -m "Your commit message"
 git push origin HEAD
 ```
 
-**Note**: The `.gitignore` is configured to exclude heavy model files (`*.rds`, `output/models/`) while allowing published outputs in `output/publish/`.
+**Note**: The `.gitignore` is configured to exclude heavy model files (`*.rds`, `output/models/`) while allowing published outputs in `output/publish/`. Log files and temporary files are stored in `logs/` and development notes in `docs/development_notes/`.
+
+## 📂 Repository Organization
+
+The repository has been reorganized for better structure and maintainability:
+
+- **Flat Structure**: No nested directories - all content is at the root level
+- **Consolidated Scripts**: All R scripts are in `scripts/R/` (previously in separate `R/` directory)
+- **Organized Documentation**: Development notes and audit reports in `docs/development_notes/`
+- **Log Management**: All log files and status CSVs in `logs/` directory
+- **Data Organization**: Clear separation between `data/`, `output/`, and `quick_share_v7/`
+- **Version Archive**: Old quick_share versions (v2-v6) archived in `quick_share_archive/`
 
 ### Using the Makefile (Quick Targets)
 
@@ -495,6 +524,13 @@ If you use this code in your research, please cite:
 
 ## 🔄 Version History
 
+- **v1.1.0** (2024-12-27): Major repository reorganization
+  - Flattened nested directory structure
+  - Consolidated R scripts into `scripts/R/`
+  - Organized documentation into `docs/development_notes/`
+  - Archived old quick_share versions (v2-v6) to `quick_share_archive/`
+  - Added `logs/` directory for log files and status reports
+  - Improved overall repository structure and organization
 - **v1.0.0** (2024-01-01): Initial release with complete pipeline
 - **v0.9.0** (2023-12-01): Beta release with core functionality
 - **v0.8.0** (2023-11-01): Alpha release with basic features
