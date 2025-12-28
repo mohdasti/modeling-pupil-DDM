@@ -4,6 +4,8 @@
 
 The comprehensive DDM chapter report (`reports/chap3_ddm_results.qmd`) and supporting extraction utilities have been successfully integrated into the 7-step pipeline. This document explains how the new components fit into the existing workflow.
 
+**Recent Updates (v1.2.0)**: The chapter now includes a complete "Pupil-DDM Integration" section with posterior correlation analyses, robustness checks, and publication-ready figures. See `scripts/02_statistical_analysis/06_pupil_ddm_integration.R` and `07_pupil_ddm_finalize.R` for the analysis pipeline.
+
 ## Integration Summary
 
 ### Step 7: Manuscript Generation (Updated)

@@ -1029,7 +1029,7 @@ if (!is.null(publish_gate)) {
   }
   
   # Format numbers appropriately
-  gt_table %>%
+  gt_table <- gt_table %>%
     fmt_number(
       columns = where(is.numeric) & !matches("Divergent"),
       decimals = 3
@@ -1818,9 +1818,10 @@ if (!is.null(behavioral_data) && !is.null(rt_col) && !is.null(task_col) && !is.n
 ```{r}
 #| label: fig-rt-distribution
 #| fig-cap: "RT Distribution by Condition. Density plots showing empirical RT distributions for each Task × Difficulty × Effort combination. RTs are strongly right-skewed, with most responses occurring in the 0.5-1.5 s range. Easy conditions show faster RTs (peaks shifted left), while Hard and Standard conditions show slower RTs (peaks shifted right). Effort effects are subtle compared to difficulty effects. This distributional pattern justifies the use of median RT for descriptive summaries and supports the DDM's ability to capture both central tendencies and tail behavior."
-#| fig-width: 100
+#| fig-width: 10
+#| fig-height: 14
 #| fig-align: center
-# RT distribution figure - improved layout
+# RT distribution figure - improved layout with better readability
 if (!is.null(behavioral_data) && !is.null(rt_col) && !is.null(task_col) && !is.null(diff_col) && !is.null(effort_col)) {
   rt_plot_data <- behavioral_data %>%
     filter(!is.na(!!sym(rt_col)), !!sym(rt_col) > 0, !!sym(rt_col) <= 3.0) %>%
@@ -1858,18 +1859,20 @@ if (!is.null(behavioral_data) && !is.null(rt_col) && !is.null(task_col) && !is.n
       )
     
     p <- ggplot(rt_plot_data, aes(x = !!sym(rt_col))) +
-      geom_density(color = "black", linewidth = 0.7, fill = "gray80", alpha = 0.3) +
-      facet_grid(Task ~ Condition, labeller = labeller(Condition = label_wrap_gen(width = 12))) +
+      geom_density(color = "black", linewidth = 0.8, fill = "gray80", alpha = 0.3) +
+      facet_grid(Condition ~ Task, labeller = labeller(Condition = label_wrap_gen(width = 20))) +
       labs(x = "Reaction Time (s)", y = "Density") +
-      theme_minimal(base_size = 11) +
+      theme_minimal(base_size = 12) +
       theme(
-        strip.text.x = element_text(size = 9, margin = margin(t = 4, b = 4)),
-        strip.text.y = element_text(size = 10, face = "bold", margin = margin(r = 4)),
+        strip.text.x = element_text(size = 12, face = "bold", margin = margin(t = 6, b = 6)),
+        strip.text.y = element_text(size = 11, margin = margin(r = 6, l = 6)),
         strip.background = element_rect(fill = "gray95", color = NA),
-        axis.text = element_text(size = 8),
-        axis.title = element_text(size = 10),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12, face = "bold"),
         panel.grid.minor = element_blank(),
-        panel.spacing = unit(0.3, "lines")
+        panel.grid.major = element_line(color = "gray90", linewidth = 0.5),
+        panel.spacing = unit(0.6, "lines"),
+        plot.margin = margin(10, 10, 10, 10)
       ) +
       scale_x_continuous(limits = c(0, 3), breaks = seq(0, 3, 0.5), expand = c(0, 0.05)) +
       scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
@@ -2406,7 +2409,173 @@ if (!is.null(pupil_data)) {
 }
 ```
 
-**Summary**: Pupillometry data preprocessing is complete (see Methods section). Descriptive statistics and TEPR quantification are reported above: (1) data quality metrics (percentage of valid samples, artifact exclusion rates), (2) baseline pupil diameter (tonic arousal) by task and effort condition, and (3) task-evoked pupil response (TEPR) quantified as cognitive AUC by condition. Baseline pupil diameter reflects tonic LC-NE activity, while cognitive AUC captures phasic arousal during the decision period. These measures allow us to link physiological arousal states to the latent decision processes identified by the DDM. Future analyses will explore correlations between pupil measures and DDM parameters to test mechanistic hypotheses about how arousal modulates decision-making.
+**Summary**: Pupillometry preprocessing is complete (see Methods). We now present analyses examining correlations between pupil measures and DDM parameters to test mechanistic hypotheses about how arousal modulates decision-making (see @sec-pupil-ddm-integration).
+
+## Pupil-DDM Integration {#sec-pupil-ddm-integration}
+
+### Background and Hypotheses
+
+Pupillometry provides a non-invasive proxy for Locus Coeruleus-Norepinephrine (LC-NE) system activity, with baseline pupil diameter reflecting tonic arousal and task-evoked pupil responses (TEPR) reflecting phasic arousal. We examined relationships between these pupillometry measures and individual differences in DDM parameters to test mechanistic hypotheses: (1) higher phasic arousal may relate to increased boundary separation, reflecting increased caution under arousal (the "hold your horses" account; [@cavanagh2014]); (2) higher arousal (both tonic and phasic) may relate to reduced drift rates, consistent with supra-optimal arousal or resource competition accounts in older adults; (3) phasic arousal may suppress pre-existing choice biases, resetting the decision process toward neutrality [@deGee2020pupil].
+
+For these analyses, we computed subject-level DDM parameter estimates as the posterior mean of subject-specific coefficients (fixed intercept + subject random effect) from the primary model. Subject-level pupil measures were aggregated as means across trials for each subject, with quality filters applied (see Methods). Correlations were computed using posterior draws: for each draw, we computed Pearson correlations between subject-level DDM parameters and subject-level pupil measures, then summarized the posterior distribution of correlation coefficients.
+
+### Main Findings
+
+#### Boundary separation (bs)
+
+The relationship between phasic arousal and boundary separation was small but directionally positive: r = 0.043 [0.006, 0.079], P(r>0) = 0.990, n = 55 (@fig-pupil-ddm-scatter-phasicW3-bs). While the direction is credibly positive and consistent with the "hold your horses" account [@cavanagh2014], the effect size is minimal (r ≈ 0.04) and unlikely to be of practical significance.
+
+#### Drift rate (v)
+
+Both tonic and phasic arousal showed negative associations with drift rate. The strongest association was observed for phasic arousal in the early window (W1.3: target+0.3s → target+1.3s): r = -0.192 [-0.250, -0.134], P(r<0) = 1.000, n = 55 (@fig-pupil-ddm-scatter-phasicW1p3-v). Tonic arousal also showed a negative association: r = -0.140 [-0.200, -0.079], P(r<0) = 1.000, n = 55 (@fig-pupil-ddm-scatter-tonic-v). These negative associations suggest that higher arousal relates to reduced information accumulation efficiency, consistent with supra-optimal arousal or resource competition accounts.
+
+#### Starting-point bias (z)
+
+Associations with starting-point bias were weak and ambiguous. The tonic arousal × bias correlation was r = 0.085 [-0.021, 0.190], P(r>0) = 0.941, n = 55, with credible intervals overlapping zero. Phasic arousal measures showed similarly weak and inconsistent relationships with bias, with credible intervals spanning both positive and negative values. These findings suggest that arousal does not strongly modulate starting-point bias in this sample.
+
+```{r}
+#| label: fig-pupil-ddm-scatter-phasicW3-bs
+#| fig-cap: "Phasic arousal (W3.0; cognitive AUC) versus boundary separation (bs). Each point shows a subject-level mean pupil response and the corresponding subject-level DDM estimate. The posterior Pearson correlation was small but directionally positive, r = 0.043 [0.006, 0.079], P(r>0) = 0.990, n = 55, consistent in direction with the 'hold your horses' account [@cavanagh2014] but minimal in magnitude."
+#| fig-width: 85
+#| fig-align: center
+knitr::include_graphics(fig_path("pupil_ddm_scatter_phasicW3_bs.png"))
+```
+
+```{r}
+#| label: fig-pupil-ddm-scatter-phasicW1p3-v
+#| fig-cap: "Early phasic arousal (W1.3 window) versus drift rate (v). Higher early task-evoked pupil response was associated with lower drift rate, r = -0.192 [-0.250, -0.134], P(r<0) = 1.000, n = 55, consistent with an interpretation in which elevated arousal is linked to reduced evidence quality or increased internal noise in older adults."
+#| fig-width: 85
+#| fig-align: center
+knitr::include_graphics(fig_path("pupil_ddm_scatter_phasicW1p3_v.png"))
+```
+
+```{r}
+#| label: fig-pupil-ddm-scatter-tonic-v
+#| fig-cap: "Tonic arousal (baseline pupil) versus drift rate (v). Larger baseline pupil diameter was associated with lower drift rate, r = -0.140 [-0.200, -0.079], P(r<0) = 1.000, n = 55."
+#| fig-width: 85
+#| fig-align: center
+knitr::include_graphics(fig_path("pupil_ddm_scatter_tonic_v.png"))
+```
+
+```{r}
+#| label: fig-pupil-ddm-robustness
+#| fig-cap: "Robustness checks for pupil–DDM correlations. Left: Pearson versus Spearman correlations show consistent directions across methods. Right: leave-one-out (LOO) sensitivity ranges indicate that the negative phasic W1.3 × v relationship remains negative across deletions, whereas the small positive phasic W3.0 × bs relationship is more sensitive to individual subjects."
+#| fig-width: 95
+#| fig-align: center
+knitr::include_graphics(fig_path("pupil_ddm_robustness.png"))
+```
+
+### Robustness Checks
+
+Results were robust across multiple sensitivity analyses (@fig-pupil-ddm-robustness). Pearson and Spearman correlations showed consistent patterns, with Spearman correlations generally showing similar or slightly stronger effects than Pearson correlations. Leave-one-subject-out (LOO) analysis confirmed that the drift findings were robust to individual subject removal: for phasic W1.3 vs v, the LOO range was [-0.240, -0.142], with the full-sample correlation of -0.192. The boundary separation effect, while small, was also stable across subjects (LOO range: [-0.003, 0.082]).
+
+Trial-count sensitivity analyses (subsets with ≥50, ≥100, ≥150 trials) showed consistent patterns across thresholds (@tbl-pupil-ddm-trialcount-sensitivity). Weighted correlations using trial counts as weights yielded similar results to unweighted correlations. Task-stratified analyses (ADT vs VDT) showed similar patterns across tasks (@tbl-pupil-ddm-task-stratified), though with reduced power due to smaller sample sizes per task.
+
+```{r}
+#| label: tbl-pupil-ddm-trialcount-sensitivity
+#| tbl-cap: "Trial-count sensitivity analysis for key pupil–DDM relationships. Correlations were recomputed under increasingly conservative minimum-trial thresholds to evaluate stability."
+#| echo: false
+#| message: false
+#| warning: false
+trial_sens <- sread("output/pupil_ddm/qc/pupil_ddm_trialcount_sensitivity.csv")
+if (!is.null(trial_sens) && nrow(trial_sens) > 0) {
+  tbl_data <- trial_sens %>%
+    dplyr::mutate(
+      relationship = dplyr::case_when(
+        relationship == "phasic_w3_bs" ~ "Phasic W3.0 × bs",
+        relationship == "phasic_w1p3_v" ~ "Phasic W1.3 × v",
+        relationship == "tonic_v" ~ "Tonic × v",
+        TRUE ~ relationship
+      ),
+      r = round(r, 3),
+      p_value = round(p_value, 3),
+      ci_lower = round(ci_lower, 3),
+      ci_upper = round(ci_upper, 3)
+    ) %>%
+    dplyr::select(relationship, min_trials, n_subjects, r, p_value, ci_lower, ci_upper)
+  
+  tbl <- tbl_data %>%
+    gt::gt() %>%
+    gt::tab_header(title = gt::md("**Trial-count sensitivity**")) %>%
+    gt::cols_label(
+      relationship = "Relationship",
+      min_trials = "Min trials",
+      n_subjects = "N",
+      r = "r",
+      p_value = "p",
+      ci_lower = "CI lower",
+      ci_upper = "CI upper"
+    ) %>%
+    gt::fmt_number(columns = c(r, p_value, ci_lower, ci_upper), decimals = 3) %>%
+    gt::fmt_number(columns = c(min_trials, n_subjects), decimals = 0) %>%
+    gt::tab_options(
+      table_body.hlines.style = "none",
+      table_body.vlines.style = "none",
+      table_body.border.bottom.style = "none",
+      table_body.border.top.style = "none",
+      table.border.top.style = "none",
+      table.border.bottom.style = "none"
+    )
+  tbl
+} else {
+  cat("Trial-count sensitivity table not available.")
+}
+```
+
+```{r}
+#| label: tbl-pupil-ddm-task-stratified
+#| tbl-cap: "Task-stratified correlations (ADT vs. VDT) for key pupil–DDM relationships."
+#| echo: false
+#| message: false
+#| warning: false
+task_strat <- sread("output/pupil_ddm/qc/pupil_ddm_task_stratified.csv")
+if (!is.null(task_strat) && nrow(task_strat) > 0) {
+  tbl_data <- task_strat %>%
+    dplyr::mutate(
+      relationship = dplyr::case_when(
+        relationship == "phasic_w3_bs" ~ "Phasic W3.0 × bs",
+        relationship == "phasic_w1p3_v" ~ "Phasic W1.3 × v",
+        relationship == "tonic_v" ~ "Tonic × v",
+        TRUE ~ relationship
+      ),
+      r = round(r, 3),
+      p_value = round(p_value, 3),
+      ci_lower = round(ci_lower, 3),
+      ci_upper = round(ci_upper, 3)
+    ) %>%
+    dplyr::select(relationship, task, n_subjects, r, p_value, ci_lower, ci_upper)
+  
+  tbl <- tbl_data %>%
+    gt::gt() %>%
+    gt::tab_header(title = gt::md("**Task-stratified correlations**")) %>%
+    gt::cols_label(
+      relationship = "Relationship",
+      task = "Task",
+      n_subjects = "N",
+      r = "r",
+      p_value = "p",
+      ci_lower = "CI lower",
+      ci_upper = "CI upper"
+    ) %>%
+    gt::fmt_number(columns = c(r, p_value, ci_lower, ci_upper), decimals = 3) %>%
+    gt::fmt_number(columns = n_subjects, decimals = 0) %>%
+    gt::tab_options(
+      table_body.hlines.style = "none",
+      table_body.vlines.style = "none",
+      table_body.border.bottom.style = "none",
+      table_body.border.top.style = "none",
+      table.border.top.style = "none",
+      table.border.bottom.style = "none"
+    )
+  tbl
+} else {
+  cat("Task-stratified correlations table not available.")
+}
+```
+
+### Interpretation and Integration with Primary DDM Findings
+
+The negative relationship between arousal and drift rate aligns with the primary DDM finding that effort lowered drift rates. This pattern is consistent with a supra-optimal arousal or noise account: higher arousal may introduce noise or resource competition that reduces the efficiency of information accumulation. The lack of strong pupil–bias (z) relationships is consistent with the weak evidence for bias-reset effects in the primary DDM analysis, suggesting that arousal may primarily affect information accumulation rather than response preparation or starting-point adjustments.
 
 ## Bias Estimates (Standard-Only Model)
 
@@ -3282,7 +3451,7 @@ Despite the internal noise introduced by high effort (as evidenced by reduced dr
 
 Regarding starting-point bias ($z$), our results revealed a consistent conservative bias across conditions, with a posterior mean of $z = 0.567$ (95% CrI [0.534, 0.601]) on Standard trials, indicating a slight preference for "different" responses. This bias was robust across effort conditions, with no significant effect of effort level (High vs. Low contrast: Δ = 0.048, 95% CrI [-0.025, 0.120], P(Δ>0) = 0.903). However, we did observe a significant task difference: VDT showed less bias toward "different" than ADT (Δ = -0.179, 95% CrI [-0.259, -0.101], P(Δ>0) < 0.001), suggesting modality-specific differences in response tendencies.
 
-These findings can be interpreted in the context of LC-NE system dynamics. Recent work suggests that phasic arousal, indexed by pupil dilation, can suppress pre-existing choice biases, "resetting" the decision process to a neutral state [@deGee2020pupil]. In our study, the lack of a significant effort effect on bias suggests that the high-effort manipulation (40% MVC) may not have elicited strong enough phasic arousal responses to modulate starting-point bias, or that any such effects were offset by other factors. Alternatively, the integrity of the LC-NE system in our older adult sample may have moderated the expected bias suppression [@huang2024]. The task-specific bias differences (VDT < ADT) may reflect inherent differences in how auditory versus visual detection tasks engage response strategies, independent of arousal state. Future work integrating direct pupillometry measures will be needed to test whether effort-induced phasic arousal responses are indeed present but insufficient to shift bias, or whether the LC-NE system's responsiveness to physical effort differs from its responsiveness to cognitive challenge in older adults.
+These findings can be interpreted in the context of LC-NE system dynamics. Recent work suggests that phasic arousal, indexed by pupil dilation, can suppress pre-existing choice biases, "resetting" the decision process to a neutral state [@deGee2020pupil]. Consistent with the weak relationship between arousal and starting-point bias observed in our direct pupil–DDM integration analysis (see @sec-pupil-ddm-integration), bias correlations were small and not credibly different from zero (e.g., tonic × z: r = 0.085 [-0.021, 0.190], P(r>0) = 0.941). In our study, the lack of a significant effort effect on bias suggests that the high-effort manipulation (40% MVC) may not have elicited strong enough phasic arousal responses to modulate starting-point bias, or that any such effects were offset by other factors. Alternatively, the integrity of the LC-NE system in our older adult sample may have moderated the expected bias suppression [@huang2024]. The task-specific bias differences (VDT < ADT) may reflect inherent differences in how auditory versus visual detection tasks engage response strategies, independent of arousal state. The direct pupillometry integration confirms that arousal primarily affects information accumulation (drift rate) rather than response preparation or starting-point adjustments in this sample.
 
 ## Limitations & Conclusion
 

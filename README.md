@@ -106,6 +106,8 @@ modeling-pupil-DDM/
 │   ├── core/                           # Main model/analysis runners
 │   ├── 01_data_processing/             # Data processing & QC
 │   ├── 02_statistical_analysis/       # Statistical modeling
+│   │   ├── 06_pupil_ddm_integration.R  # Pupil-DDM correlation analysis (posterior draws)
+│   │   └── 07_pupil_ddm_finalize.R     # Finalize pupil-DDM outputs for dissertation
 │   ├── advanced/                       # Advanced analyses
 │   ├── intermediary/                   # Development/test scripts
 │   ├── utilities/                      # Helpers (integration, extraction)
@@ -226,6 +228,10 @@ Rscript scripts/core/run_analysis.R
 
 # Statistical analysis
 Rscript scripts/02_statistical_analysis/02_ddm_analysis.R
+
+# Pupil-DDM integration analysis
+Rscript scripts/02_statistical_analysis/06_pupil_ddm_integration.R
+Rscript scripts/02_statistical_analysis/07_pupil_ddm_finalize.R
 
 # Generate figures (canonical location)
 Rscript scripts/create_condition_effects_forest_plot.R
@@ -386,13 +392,15 @@ make clean-all  # Remove all generated outputs
 - **Robustness Checks**: Comprehensive sensitivity analysis and model validation
 
 ### DDM–Pupil Mapping (Tested via LOO & PPC)
-**Drift rate (v)**: increases with phasic/evoked pupil (trial-wise arousal) → faster, higher-SNR accumulation. [Murphy+2014; de Gee+2020]
+**Drift rate (v)**: Negative correlations observed between tonic baseline and phasic task-evoked pupil responses with drift rate, consistent with supra-optimal arousal effects in older adults. Strongest effects observed for early phasic window (W1.3: target+0.3s → target+1.3s). [Murphy+2014; de Gee+2020]
 
-**Boundary separation (α/bs)**: tested with tonic baseline (within-person linear + quadratic terms, plus between-person trait effects) to capture inverted-U relationships; models adjust response caution as a function of sustained arousal. [Mækelæ+2024]
+**Boundary separation (α/bs)**: Small positive correlation with phasic arousal (W3.0 window), directionally consistent with "hold your horses" account [Cavanagh+2014] but minimal in magnitude. Tested with tonic baseline (within-person linear + quadratic terms, plus between-person trait effects) to capture inverted-U relationships; models adjust response caution as a function of sustained arousal. [Mækelæ+2024]
 
-**Starting point (bias)**: pulled toward neutral on trials with larger evoked pupil (bias suppression). [de Gee+2017/2020]
+**Starting point (bias)**: Weak/ambiguous correlations with both tonic and phasic measures, not credibly different from zero. Previous work suggests bias suppression toward neutral on trials with larger evoked pupil [de Gee+2017/2020], but evidence in this sample is limited.
 
-**History controls**: previous choice/outcome included so pupil effects are not confounded by sequential biases. [Urai+2019]
+**History controls**: Previous choice/outcome included so pupil effects are not confounded by sequential biases. [Urai+2019]
+
+**Analysis Method**: Subject-level posterior correlations computed draw-wise from hierarchical Bayesian DDM estimates, propagating uncertainty through both DDM parameters and pupil measures. Robustness checks include leave-one-out sensitivity, trial-count thresholds, and task-stratified analyses.
 
 ### Statistical Approaches
 - **Mixed-Effects Models**: Accounting for individual differences with lme4 and brms
@@ -429,6 +437,10 @@ make clean-all  # Remove all generated outputs
 - Hierarchical drift diffusion models
 - Bayesian parameter estimation
 - Model comparison and selection
+- **Pupil-DDM Integration**: Subject-level correlations between pupillometry measures (tonic baseline, phasic task-evoked responses) and DDM parameters (drift rate, boundary separation, starting-point bias)
+  - Posterior correlation analysis with uncertainty propagation
+  - Robustness checks (leave-one-out, trial-count sensitivity, task-stratified)
+  - Publication-ready figures and tables
 
 ### 5. Statistical Analysis
 - Mediation analysis
@@ -524,6 +536,15 @@ If you use this code in your research, please cite:
 
 ## 🔄 Version History
 
+- **v1.2.0** (2024-12-27): Pupil-DDM Integration & Chapter 3 Finalization
+  - Added comprehensive pupil-DDM integration analysis pipeline
+  - Implemented posterior correlation analysis with uncertainty propagation
+  - Added robustness checks (LOO, trial-count sensitivity, task-stratified)
+  - Integrated pupil-DDM results into Chapter 3 dissertation report
+  - Fixed LaTeX rendering issues for PDF output
+  - Improved figure layouts for better readability (6×2 facet arrangement)
+  - Generated publication-ready figures and tables for dissertation
+  - Added scripts: `06_pupil_ddm_integration.R` and `07_pupil_ddm_finalize.R`
 - **v1.1.0** (2024-12-27): Major repository reorganization
   - Flattened nested directory structure
   - Consolidated R scripts into `scripts/R/`
