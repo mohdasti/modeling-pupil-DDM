@@ -1,0 +1,9 @@
+Initial commit: Modeling Pupil-DDM pipeline
+
+- Comprehensive computational modeling pipeline for pupillometry and decision-making
+- Multi-language integration (R, Python, MATLAB)
+- Hierarchical Bayesian drift diffusion models
+- Automated data preprocessing and quality control
+- Advanced statistical analysis and visualization
+- Cloud deployment capabilities
+- Complete documentation and setup instructions

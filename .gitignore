@@ -2,7 +2,6 @@
 
 # Data files (too large for git)
 data/raw/
-data/interim/
 data/processed/
 data/analysis_ready/
 *.mat
@@ -20,15 +19,6 @@ models/
 *.png
 *.pdf
 *.svg
-
-# Heavy models / caches
-output/models/
-output/ppc/**/*.pdf
-**/*.rds
-.RData
-
-# Allow selected publish CSV/TXT/MD
-!output/publish/**
 
 # R specific
 .Rhistory
@@ -73,13 +63,11 @@ venv.bak/
 *.ipynb
 
 # IDE
+.vscode/
 .idea/
 *.swp
 *.swo
 *~
-# Keep .vscode for project settings
-!.vscode/
-!.vscode/settings.json
 
 # OS
 .DS_Store
@@ -119,15 +107,6 @@ config/model_config.yaml
 # MATLAB
 *.asv
 *.m~
-config/paths_config.m
-BAP_cleaned/
-BAP_processed/
-data/raw/
-data/BAP_cleaned/
-data/BAP_processed/
-build_*/
-*_flat*.csv
-*.parquet
 
 # Backup files
 *.bak

@@ -1,0 +1,11 @@
+# Data Paths Configuration
+# This file contains paths to data directories and files
+# DO NOT commit this file to git (it should be in .gitignore)
+
+# Directory containing MATLAB-processed flat CSV files
+processed_dir: "/Users/mohdasti/Documents/LC-BAP/BAP/BAP_Pupillometry/BAP/BAP_processed"
+
+# Behavioral trial-level CSV file (optional - set to null if not available)
+behavioral_csv: "/Users/mohdasti/Documents/GitHub/modeling-pupil-DDM/modeling-pupil-DDM/data/intermediate/behavior_TRIALLEVEL_normalized.csv"
+# behavioral_csv: null
+
