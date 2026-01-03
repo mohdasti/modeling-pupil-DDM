@@ -1,0 +1,846 @@
+---
+title: "Pupil Data Quality Report: Data Availability and Analysis Readiness for Chapters 2 & 3"
+subtitle: "BAP Study - Pupillometry Analysis Pipeline"
+author: "BAP Pupillometry Analysis Team"
+date: now
+date-format: "MMMM D, YYYY [at] hh:mm A"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: show
+    code-tools: true
+    theme: flatly
+    fig-width: 10
+    fig-height: 6
+    df-print: paged
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 6,
+  dpi = 300
+)
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(readr)
+  library(tidyr)
+  library(ggplot2)
+  library(plotly)
+  library(knitr)
+  library(kableExtra)
+  library(scales)
+  library(patchwork)
+})
+
+# Determine paths
+REPO_ROOT <- if (file.exists("02_pupillometry_analysis")) {
+  normalizePath(getwd())
+} else if (file.exists("../02_pupillometry_analysis")) {
+  normalizePath("..")
+} else {
+  normalizePath(getwd())
+}
+
+# Use quick_share_v7 (most recent version with fixed baseline alignment)
+v7_dir <- file.path(REPO_ROOT, "quick_share_v7")
+v7_qc_dir <- file.path(v7_dir, "qc")
+v7_analysis_dir <- file.path(v7_dir, "analysis_ready")
+
+if (!dir.exists(v7_dir)) {
+  stop("quick_share_v7 directory not found. Please ensure the v7 pipeline has been run.")
+}
+
+# Load QC data from quick_share_v7
+gate_rates <- read_csv(file.path(v7_qc_dir, "02_gate_pass_rates_by_task_threshold.csv"), show_col_types = FALSE)
+join_health <- read_csv(file.path(v7_qc_dir, "01_join_health_by_subject_task.csv"), show_col_types = FALSE)
+auc_rates <- read_csv(file.path(v7_qc_dir, "08_auc_non_na_rates.csv"), show_col_types = FALSE)
+auc_missing <- read_csv(file.path(v7_qc_dir, "03_auc_missingness_reasons.csv"), show_col_types = FALSE)
+
+# Load analysis-ready datasets
+ch2_data <- read_csv(file.path(v7_analysis_dir, "ch2_triallevel.csv"), show_col_types = FALSE)
+ch3_data <- read_csv(file.path(v7_analysis_dir, "ch3_triallevel.csv"), show_col_types = FALSE)
+
+# Load merged data for additional statistics
+merged_file <- file.path(v7_dir, "merged", "BAP_triallevel_merged_v4.csv")
+if (file.exists(merged_file)) {
+  merged_data <- read_csv(merged_file, show_col_types = FALSE)
+} else {
+  warning("Merged data file not found, using analysis-ready files only")
+  merged_data <- NULL
+}
+```
+
+## Executive Summary
+
+This report provides a comprehensive overview of the pupil data collected in the BAP (Brain, Aging and Perception) study, with a focus on data quality, availability, and readiness for two dissertation chapters:
+
+- **Chapter 2**: Psychometric sensitivity and pupil-indexed arousal coupling analyses
+- **Chapter 3**: Drift Diffusion Model (DDM) analyses with pupil predictors
+
+```{r exec-summary}
+# Calculate key metrics from quick_share_v7 data
+n_subjects <- length(unique(ch2_data$sub))
+total_trials <- nrow(ch2_data)
+
+# Behavioral join coverage
+if (!is.null(merged_data)) {
+  total_behavioral <- sum(merged_data$has_behavioral_data, na.rm = TRUE)
+  behavioral_rate <- 100 * total_behavioral / nrow(merged_data)
+} else {
+  # Estimate from join_health
+  total_behavioral <- sum(join_health$n_behavioral, na.rm = TRUE)
+  behavioral_rate <- 100 * sum(join_health$n_behavioral, na.rm = TRUE) / sum(join_health$n_total, na.rm = TRUE)
+}
+
+# Chapter 2 metrics (using gate_pupil_primary flag if available, otherwise use threshold)
+if ("gate_pupil_primary" %in% names(ch2_data)) {
+  ch2_primary_total <- sum(ch2_data$gate_pupil_primary, na.rm = TRUE)
+} else if ("pass_primary_060" %in% names(ch2_data)) {
+  ch2_primary_total <- sum(ch2_data$pass_primary_060, na.rm = TRUE)
+} else {
+  # Use gate rates at 0.60 threshold
+  ch2_primary_total <- sum(gate_rates$n_pass_060, na.rm = TRUE)
+}
+ch2_rate <- ifelse(total_trials > 0, 100 * ch2_primary_total / total_trials, 0)
+
+# Chapter 3 metrics (using ddm_ready flag if available)
+if ("ddm_ready" %in% names(ch3_data)) {
+  ch3_ready_total <- sum(ch3_data$ddm_ready, na.rm = TRUE)
+} else {
+  # Estimate from gate rates at 0.50 threshold
+  ch3_ready_total <- sum(gate_rates$n_pass_050, na.rm = TRUE)
+}
+ch3_rate <- ifelse(nrow(ch3_data) > 0, 100 * ch3_ready_total / nrow(ch3_data), 0)
+
+# AUC availability
+auc_available_both <- auc_rates %>% filter(task == "ALL") %>% pull(auc_available_both_pct)
+auc_available_adt <- auc_rates %>% filter(task == "ADT") %>% pull(auc_available_both_pct)
+auc_available_vdt <- auc_rates %>% filter(task == "VDT") %>% pull(auc_available_both_pct)
+
+# Task breakdown from gate rates
+task_summary <- gate_rates %>%
+  select(task, n_total, n_pass_050, n_pass_060, n_pass_070, n_auc_ready) %>%
+  mutate(
+    pct_pass_050 = 100 * n_pass_050 / n_total,
+    pct_pass_060 = 100 * n_pass_060 / n_total,
+    pct_auc = 100 * n_auc_ready / n_total
+  )
+```
+
+### Key Findings
+
+- **Total Participants**: `r n_subjects` participants with pupil data
+- **Total Trials Available**: 
+  - Total trials in dataset: `r format(total_trials, big.mark = ",")`
+  - Trials with behavioral data: `r format(total_behavioral, big.mark = ",")` (`r sprintf("%.1f", behavioral_rate)`% behavioral join rate)
+  - Trials with both AUC metrics: `r sprintf("%.1f", auc_available_both)`% overall
+
+- **Chapter 2 Readiness** (Primary threshold: 60% validity):
+  - Usable trials: `r format(ch2_primary_total, big.mark = ",")` (`r sprintf("%.1f", ch2_rate)`% of total trials)
+  - Analysis-ready dataset: `r format(nrow(ch2_data), big.mark = ",")` trials in `ch2_triallevel.csv`
+  
+- **Chapter 3 Readiness** (Primary threshold: 50% validity + behavioral RT filter):
+  - Pupil+behavior-ready trials: `r format(ch3_ready_total, big.mark = ",")` (`r sprintf("%.1f", ch3_rate)`% of Chapter 3 dataset)
+  - Analysis-ready dataset: `r format(nrow(ch3_data), big.mark = ",")` trials in `ch3_triallevel.csv`
+
+- **AUC Availability** (Both Total AUC and Cognitive AUC):
+  - Overall: `r sprintf("%.1f", auc_available_both)`%
+  - ADT: `r sprintf("%.1f", auc_available_adt)`%
+  - VDT: `r sprintf("%.1f", auc_available_vdt)`%
+
+### Data by Task
+
+```{r task-summary-table}
+task_display <- task_summary %>%
+  select(task, n_total, n_pass_060, pct_pass_060, n_auc_ready, pct_auc) %>%
+  mutate(across(where(is.numeric), ~ if_else(is.na(.x), 0, .x)))
+
+kable(task_display,
+      col.names = c("Task", "Total Trials", "Ch2 Ready (60%)", 
+                    "Ch2 %", "AUC Ready", "AUC %"),
+      digits = c(0, 0, 0, 1, 0, 1),
+      caption = "Data Availability by Task (from quick_share_v7)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+```
+
+## 1. Introduction and Research Context
+
+### 1.1 Study Overview
+
+The BAP study examines how physical effort and cognitive demands interact in older adults using a dual-task paradigm combining handgrip force manipulation with perceptual discrimination tasks. Pupillometry provides a continuous, non-invasive measure of arousal that reflects both physical effort (tonic arousal) and cognitive engagement (phasic arousal).
+
+### 1.2 Data Collection
+
+- **Tasks**: Auditory Discrimination Task (ADT) and Visual Discrimination Task (VDT)
+- **Sessions**: Scanner sessions 2-3 (session 1/practice excluded)
+- **Runs**: Up to 5 runs per task per session
+- **Sampling Rate**: 250 Hz (4 ms per sample)
+- **Trial Structure**: Each trial includes baseline, squeeze, stimulus presentation, and response periods
+
+### 1.3 Dissertation Chapters
+
+**Chapter 2: Psychometric-Pupil Coupling**
+
+- Tests how trial-wise pupil-indexed arousal (Cognitive AUC) modulates psychometric sensitivity
+- Requires high-quality baseline and cognitive window data (≥60% validity for primary analyses)
+- Uses Total AUC for effort manipulation checks and Cognitive AUC for psychometric coupling
+- **Quality gates**: `baseline_quality >= 0.60` AND `cog_quality >= 0.60` (from MATLAB pipeline quality metrics)
+
+**Chapter 3: DDM with Pupil Predictors**
+
+- Examines how pupil-indexed arousal influences decision-making processes (drift rate, boundary separation)
+- Requires behavioral RT data (0.2-3.0s) plus moderate-quality pupil data (≥50% validity)
+- Can also run behavior-only DDM models without pupil requirements
+
+## 2. Overall Data Availability
+
+### 2.1 Participant-Level Summary
+
+```{r participant-summary}
+# Chapter 2 participant summary
+participant_summary_ch2 <- ch2_data %>%
+  group_by(sub) %>%
+  summarise(
+    n_tasks = n_distinct(task),
+    n_sessions = n_distinct(session_used),
+    total_trials_ch2 = n(),
+    total_trials_ch2_ready = if ("gate_pupil_primary" %in% names(ch2_data)) {
+      sum(gate_pupil_primary, na.rm = TRUE)
+    } else if ("pass_primary_060" %in% names(ch2_data)) {
+      sum(pass_primary_060, na.rm = TRUE)
+    } else {
+      sum(baseline_quality >= 0.60 & cog_quality >= 0.60, na.rm = TRUE)
+    },
+    total_trials_auc_ch2 = sum(auc_available == TRUE, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    ch2_rate = ifelse(total_trials_ch2 > 0, 100 * total_trials_ch2_ready / total_trials_ch2, 0)
+  )
+
+# Chapter 3 participant summary
+participant_summary_ch3 <- ch3_data %>%
+  group_by(sub) %>%
+  summarise(
+    total_trials_ch3 = n(),
+    total_trials_ch3_ready = if ("ddm_ready" %in% names(ch3_data)) {
+      sum(ddm_ready, na.rm = TRUE)
+    } else {
+      sum(baseline_quality >= 0.50 & cog_quality >= 0.50 & 
+          !is.na(rt) & rt >= 0.2 & rt <= 3.0, na.rm = TRUE)
+    },
+    total_trials_auc_ch3 = sum(auc_available == TRUE, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    ch3_rate = ifelse(total_trials_ch3 > 0, 100 * total_trials_ch3_ready / total_trials_ch3, 0)
+  )
+
+# Combine summaries
+participant_summary <- participant_summary_ch2 %>%
+  full_join(participant_summary_ch3, by = "sub") %>%
+  mutate(
+    total_trials_ch2 = ifelse(is.na(total_trials_ch2), 0, total_trials_ch2),
+    total_trials_ch2_ready = ifelse(is.na(total_trials_ch2_ready), 0, total_trials_ch2_ready),
+    total_trials_ch3 = ifelse(is.na(total_trials_ch3), 0, total_trials_ch3),
+    total_trials_ch3_ready = ifelse(is.na(total_trials_ch3_ready), 0, total_trials_ch3_ready),
+    ch2_rate = ifelse(is.na(ch2_rate), 0, ch2_rate),
+    ch3_rate = ifelse(is.na(ch3_rate), 0, ch3_rate)
+  )
+
+# Summary statistics
+participant_stats <- participant_summary %>%
+  summarise(
+    median_trials_ch2 = median(total_trials_ch2, na.rm = TRUE),
+    q25_trials_ch2 = quantile(total_trials_ch2, 0.25, na.rm = TRUE),
+    q75_trials_ch2 = quantile(total_trials_ch2, 0.75, na.rm = TRUE),
+    median_trials_ch3 = median(total_trials_ch3, na.rm = TRUE),
+    q25_trials_ch3 = quantile(total_trials_ch3, 0.25, na.rm = TRUE),
+    q75_trials_ch3 = quantile(total_trials_ch3, 0.75, na.rm = TRUE),
+    median_trials_ch2_ready = median(total_trials_ch2_ready, na.rm = TRUE),
+    median_trials_ch3_ready = median(total_trials_ch3_ready, na.rm = TRUE),
+    median_ch2_rate = median(ch2_rate, na.rm = TRUE),
+    median_ch3_rate = median(ch3_rate, na.rm = TRUE)
+  )
+
+cat("**Per-Participant Summary Statistics:**\n\n")
+cat("**Chapter 2:**\n")
+cat("- Median total trials: ", participant_stats$median_trials_ch2, 
+    " (IQR: ", participant_stats$q25_trials_ch2, "-", participant_stats$q75_trials_ch2, ")\n", sep = "")
+cat("- Median Chapter 2 ready trials: ", participant_stats$median_trials_ch2_ready, "\n", sep = "")
+cat("- Median Chapter 2 retention rate: ", sprintf("%.1f", participant_stats$median_ch2_rate), "% (60% quality threshold)\n\n", sep = "")
+cat("**Chapter 3:**\n")
+cat("- Median total trials: ", participant_stats$median_trials_ch3, 
+    " (IQR: ", participant_stats$q25_trials_ch3, "-", participant_stats$q75_trials_ch3, ")\n", sep = "")
+cat("- Median Chapter 3 ready trials: ", participant_stats$median_trials_ch3_ready, "\n", sep = "")
+cat("- Median Chapter 3 retention rate: ", sprintf("%.1f", participant_stats$median_ch3_rate), "% (50% quality threshold + RT filter)\n\n", sep = "")
+cat("*Note: Chapter 3 has higher retention rates because it uses a more lenient quality threshold (50% vs 60%). This prioritizes sample size for DDM analyses, while Chapter 2 prioritizes high-quality data for psychometric coupling analyses.*\n", sep = "")
+```
+
+```{r participant-distribution-ch2-trials, fig.height=5}
+p1_data <- participant_summary %>%
+  filter(total_trials_ch2_ready > 0)
+
+p1 <- p1_data %>%
+  ggplot(aes(x = total_trials_ch2_ready, text = paste0("Subject: ", sub, "<br>",
+                                                         "Ch2 Ready Trials: ", total_trials_ch2_ready, "<br>",
+                                                         "Total Trials: ", total_trials_ch2, "<br>",
+                                                         "Retention Rate: ", round(ch2_rate, 1), "%"))) +
+  geom_histogram(bins = 30, fill = "darkgreen", alpha = 0.7, color = "white") +
+  labs(
+    x = "Chapter 2 Ready Trials",
+    y = "Number of Participants",
+    title = "Distribution of Chapter 2 Ready Trials Across Participants"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 12, face = "bold"))
+
+ggplotly(p1, tooltip = "text")
+```
+
+```{r participant-distribution-ch3-trials, fig.height=5}
+p2_data <- participant_summary %>%
+  filter(total_trials_ch3_ready > 0)
+
+p2 <- p2_data %>%
+  ggplot(aes(x = total_trials_ch3_ready, text = paste0("Subject: ", sub, "<br>",
+                                                         "Ch3 Ready Trials: ", total_trials_ch3_ready, "<br>",
+                                                         "Total Trials: ", total_trials_ch3, "<br>",
+                                                         "Retention Rate: ", round(ch3_rate, 1), "%"))) +
+  geom_histogram(bins = 30, fill = "darkblue", alpha = 0.7, color = "white") +
+  labs(
+    x = "Chapter 3 Ready Trials",
+    y = "Number of Participants",
+    title = "Distribution of Chapter 3 Ready Trials Across Participants"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 12, face = "bold"))
+
+ggplotly(p2, tooltip = "text")
+```
+
+```{r participant-distribution-ch2-rate, fig.height=5}
+p3_data <- participant_summary %>%
+  filter(total_trials_ch2 > 0)
+
+p3 <- p3_data %>%
+  ggplot(aes(x = ch2_rate, text = paste0("Subject: ", sub, "<br>",
+                                          "Retention Rate: ", round(ch2_rate, 1), "%", "<br>",
+                                          "Ch2 Ready Trials: ", total_trials_ch2_ready, "<br>",
+                                          "Total Trials: ", total_trials_ch2))) +
+  geom_histogram(bins = 30, fill = "darkgreen", alpha = 0.7, color = "white") +
+  labs(
+    x = "Chapter 2 Retention Rate (%)",
+    y = "Number of Participants",
+    title = "Distribution of Chapter 2 Retention Rates"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 12, face = "bold"))
+
+ggplotly(p3, tooltip = "text")
+```
+
+```{r participant-distribution-ch3-rate, fig.height=5}
+p4_data <- participant_summary %>%
+  filter(total_trials_ch3 > 0)
+
+p4 <- p4_data %>%
+  ggplot(aes(x = ch3_rate, text = paste0("Subject: ", sub, "<br>",
+                                          "Retention Rate: ", round(ch3_rate, 1), "%", "<br>",
+                                          "Ch3 Ready Trials: ", total_trials_ch3_ready, "<br>",
+                                          "Total Trials: ", total_trials_ch3))) +
+  geom_histogram(bins = 30, fill = "darkblue", alpha = 0.7, color = "white") +
+  labs(
+    x = "Chapter 3 Retention Rate (%)",
+    y = "Number of Participants",
+    title = "Distribution of Chapter 3 Retention Rates"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 12, face = "bold"))
+
+ggplotly(p4, tooltip = "text")
+```
+
+```{r participant-scatter-ch2-vs-ch3, fig.height=6}
+# Scatter plot comparing Chapter 2 vs Chapter 3 retention rates
+scatter_data <- participant_summary %>%
+  filter(total_trials_ch2 > 0 & total_trials_ch3 > 0)
+
+p_scatter <- scatter_data %>%
+  ggplot(aes(x = ch2_rate, y = ch3_rate, 
+             text = paste0("Subject: ", sub, "<br>",
+                           "Ch2 Rate: ", round(ch2_rate, 1), "%", "<br>",
+                           "Ch3 Rate: ", round(ch3_rate, 1), "%", "<br>",
+                           "Ch2 Ready: ", total_trials_ch2_ready, " / ", total_trials_ch2, "<br>",
+                           "Ch3 Ready: ", total_trials_ch3_ready, " / ", total_trials_ch3))) +
+  geom_point(alpha = 0.6, color = "steelblue", size = 2) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray50") +
+  labs(
+    x = "Chapter 2 Retention Rate (%)",
+    y = "Chapter 3 Retention Rate (%)",
+    title = "Chapter 2 vs Chapter 3 Retention Rates (Per Participant)"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 12, face = "bold"))
+
+ggplotly(p_scatter, tooltip = "text")
+```
+
+### 2.2 Task and Condition Breakdown
+
+```{r task-condition-breakdown}
+# Task-level summary for Chapter 2
+task_summary_ch2 <- ch2_data %>%
+  group_by(task) %>%
+  summarise(
+    n_total_ch2 = n(),
+    n_ch2_ready = if ("gate_pupil_primary" %in% names(ch2_data)) {
+      sum(gate_pupil_primary, na.rm = TRUE)
+    } else if ("pass_primary_060" %in% names(ch2_data)) {
+      sum(pass_primary_060, na.rm = TRUE)
+    } else {
+      sum(baseline_quality >= 0.60 & cog_quality >= 0.60, na.rm = TRUE)
+    },
+    pct_ch2 = ifelse(n_total_ch2 > 0, 100 * n_ch2_ready / n_total_ch2, 0),
+    .groups = "drop"
+  )
+
+# Task-level summary for Chapter 3
+task_summary_ch3 <- ch3_data %>%
+  group_by(task) %>%
+  summarise(
+    n_total_ch3 = n(),
+    n_ch3_ready = if ("ddm_ready" %in% names(ch3_data)) {
+      sum(ddm_ready, na.rm = TRUE)
+    } else {
+      sum(baseline_quality >= 0.50 & cog_quality >= 0.50 & 
+          !is.na(rt) & rt >= 0.2 & rt <= 3.0, na.rm = TRUE)
+    },
+    pct_ch3 = ifelse(n_total_ch3 > 0, 100 * n_ch3_ready / n_total_ch3, 0),
+    .groups = "drop"
+  )
+
+# Combine with join health for subject counts
+task_condition_summary <- gate_rates %>%
+  select(task, n_total, n_pass_050, n_pass_060) %>%
+  left_join(
+    join_health %>% 
+      group_by(task) %>%
+      summarise(
+        n_subjects = n_distinct(sub),
+        mean_trials_per_subject = mean(n_total, na.rm = TRUE),
+        .groups = "drop"
+      ),
+    by = "task"
+  ) %>%
+  left_join(task_summary_ch2, by = "task") %>%
+  left_join(task_summary_ch3, by = "task") %>%
+  mutate(across(where(is.numeric), ~ if_else(is.na(.x), 0, .x)))
+
+kable(task_condition_summary %>%
+      select(task, n_subjects, n_total, n_ch2_ready, pct_ch2, n_ch3_ready, pct_ch3, mean_trials_per_subject),
+      col.names = c("Task", "N Subjects", "Total Trials", 
+                    "Ch2 Ready", "Ch2 %", "Ch3 Ready", "Ch3 %", "Mean Trials/Subject"),
+      digits = c(0, 0, 0, 0, 1, 0, 1, 1),
+      caption = "Data Availability by Task (Chapters 2 & 3)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+```
+
+## 3. Data Quality and Threshold Analysis
+
+### 3.1 Quality Gates and Thresholds
+
+Data quality is assessed using **window validity** metrics, which measure the proportion of valid (non-missing) pupil samples within critical time windows. All times are **relative to squeeze onset (trial onset) = 0.0s**.
+
+**Quality Metrics Used:**
+
+The quality gates are based on two metrics computed by the MATLAB preprocessing pipeline:
+
+1. **`baseline_quality`**: Proportion of valid samples in the baseline period
+   - Window: Pre-trial baseline period (typically the last portion of the ITI baseline)
+   - Used to ensure sufficient data for baseline correction
+
+2. **`cog_quality`**: Proportion of valid samples in the cognitive period  
+   - Window: Post-target period (typically from target onset through the response window)
+   - Used to ensure sufficient data for cognitive pupil response measurement
+
+**Quality Thresholds:**
+
+Trials must meet minimum validity thresholds in both baseline and cognitive windows:
+- **Chapter 2 Primary**: `baseline_quality >= 0.60` AND `cog_quality >= 0.60` (60% valid samples required)
+- **Chapter 2 Sensitivity**: Thresholds at 50% and 70% for robustness checks
+- **Chapter 3 DDM**: `baseline_quality >= 0.50` AND `cog_quality >= 0.50` (50% valid samples required) plus RT filter (0.2-3.0s)
+
+**Key Timing Reference Points:**
+- **Squeeze onset (TrialST)**: 0.0s (reference point for all times)
+- **Target stimulus onset**: 4.35s (relative to squeeze onset)
+- **Response window start**: 4.70s (relative to squeeze onset)
+
+**Chapter 2 Requirements:**
+
+- Primary analysis: Baseline validity ≥ 60% AND Cognitive validity ≥ 60%
+  - Baseline window: -0.5s to 0.0s (relative to squeeze onset) for B0 baseline
+  - Cognitive window: Defined by MATLAB pipeline `cog_quality` metric
+- Sensitivity analyses: Thresholds at 50% and 70% for robustness checks
+
+**Chapter 3 Requirements:**
+
+- DDM with pupil: Baseline validity ≥ 50% AND Cognitive validity ≥ 50% AND RT 0.2-3.0s
+  - Baseline window: -0.5s to 0.0s (relative to squeeze onset) for B0 baseline
+  - Cognitive window: Defined by MATLAB pipeline `cog_quality` metric
+  - RT filter: 0.2s to 3.0s (excludes anticipatory and timeout responses)
+- Behavior-only DDM: No pupil quality requirements (uses all behavioral trials)
+
+### 3.2 Threshold Sensitivity Analysis
+
+```{r threshold-sensitivity}
+# Prepare data for plotting from gate_rates
+gate_plot_data <- gate_rates %>%
+  select(task, n_total, n_pass_050, n_pass_060, n_pass_070) %>%
+  pivot_longer(
+    cols = c(n_pass_050, n_pass_060, n_pass_070),
+    names_to = "threshold",
+    values_to = "n_pass"
+  ) %>%
+  mutate(
+    threshold = case_when(
+      threshold == "n_pass_050" ~ "0.50",
+      threshold == "n_pass_060" ~ "0.60",
+      threshold == "n_pass_070" ~ "0.70"
+    ),
+    pass_rate = n_pass / n_total
+  )
+
+threshold_plot <- gate_plot_data %>%
+  ggplot(aes(x = threshold, y = pass_rate, fill = task)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  scale_y_continuous(labels = percent_format(), limits = c(0, 1)) +
+  labs(
+    x = "Validity Threshold",
+    y = "Pass Rate",
+    fill = "Task",
+    title = "Data Retention Rates by Quality Threshold",
+    subtitle = "Shows proportion of trials that pass quality gates (baseline_quality AND cog_quality) at each threshold"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(size = 12, face = "bold"),
+    strip.text = element_text(face = "bold")
+  )
+
+print(threshold_plot)
+```
+
+### 3.3 AUC Availability and Missingness
+
+```{r auc-availability}
+# Show AUC availability by task
+auc_display <- auc_rates %>%
+  filter(task %in% c("ADT", "VDT")) %>%
+  select(task, n_total, total_auc_non_na, cog_auc_non_na, 
+         total_auc_pct, cog_auc_pct, auc_available_both_pct) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 1)))
+
+kable(auc_display,
+      col.names = c("Task", "Total Trials", "Total AUC N", "Cog AUC N",
+                    "Total AUC %", "Cog AUC %", "Both AUC %"),
+      caption = "AUC Availability by Task") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+
+# Show top missingness reasons if available
+if (nrow(auc_missing) > 0 && "auc_missing_reason" %in% names(auc_missing)) {
+  cat("\n**Top AUC Missingness Reasons:**\n\n")
+  missing_summary <- auc_missing %>%
+    group_by(auc_missing_reason) %>%
+    summarise(n_trials = sum(n_trials, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(n_trials)) %>%
+    head(5)
+  
+  kable(missing_summary,
+        col.names = c("Reason", "N Trials"),
+        caption = "Top 5 Reasons for Missing AUC") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                  full_width = FALSE)
+} else if (nrow(auc_missing) > 0) {
+  # If structure is different, just show the file
+  cat("\n**AUC Missingness Data Available:** See `quick_share_v7/qc/03_auc_missingness_reasons.csv`\n\n")
+}
+```
+
+## 4. Chapter 2: Data Readiness
+
+### 4.1 Chapter 2 Requirements
+
+**Primary Analysis:**
+
+- **Quality Gate**: Baseline validity ≥ 60% AND Cognitive validity ≥ 60%
+- **Pupil Metrics Needed**: 
+  - Total AUC (for effort manipulation check)
+  - Cognitive AUC (for psychometric coupling)
+- **Analysis Type**: Trial-level mixed-effects models with pupil tertiles
+
+**Sensitivity Analyses:**
+
+- Threshold at 50% (more lenient, larger sample)
+- Threshold at 70% (more conservative, higher quality)
+
+### 4.2 Chapter 2 Data Availability
+
+```{r ch2-availability}
+ch2_summary <- ch2_data %>%
+  group_by(task) %>%
+  summarise(
+    n_subjects = n_distinct(sub),
+    total_trials = n(),
+    total_ch2_ready = if ("gate_pupil_primary" %in% names(ch2_data)) {
+      sum(gate_pupil_primary, na.rm = TRUE)
+    } else if ("pass_primary_060" %in% names(ch2_data)) {
+      sum(pass_primary_060, na.rm = TRUE)
+    } else {
+      sum(baseline_quality >= 0.60 & cog_quality >= 0.60, na.rm = TRUE)
+    },
+    total_auc_available = sum(auc_available == TRUE, na.rm = TRUE),
+    subjects_with_ch2_data = if ("gate_pupil_primary" %in% names(ch2_data)) {
+      n_distinct(sub[gate_pupil_primary == TRUE])
+    } else if ("pass_primary_060" %in% names(ch2_data)) {
+      n_distinct(sub[pass_primary_060 == TRUE])
+    } else {
+      n_distinct(sub[baseline_quality >= 0.60 & cog_quality >= 0.60])
+    },
+    .groups = "drop"
+  ) %>%
+  mutate(
+    retention_rate = ifelse(total_trials > 0, 
+                            100 * total_ch2_ready / total_trials, 0),
+    auc_rate = ifelse(total_trials > 0,
+                     100 * total_auc_available / total_trials, 0),
+    subject_coverage = ifelse(n_subjects > 0,
+                             100 * subjects_with_ch2_data / n_subjects, 0)
+  )
+
+kable(ch2_summary,
+      col.names = c("Task", "N Subjects", "Total Trials", "Ch2 Ready Trials",
+                    "AUC Available", "Subjects with Data", "Retention %", "AUC %", "Coverage %"),
+      digits = c(0, 0, 0, 0, 0, 0, 1, 1, 1),
+      caption = "Chapter 2 Data Availability (60% Threshold)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+
+cat("\n**Summary:**\n")
+cat("- Total Chapter 2 ready trials: ", format(sum(ch2_summary$total_ch2_ready), big.mark = ","), "\n", sep = "")
+cat("- Overall retention rate: ", sprintf("%.1f", mean(ch2_summary$retention_rate)), "%\n", sep = "")
+cat("- Subjects with usable data: ", sum(ch2_summary$subjects_with_ch2_data), " / ", sum(ch2_summary$n_subjects), "\n", sep = "")
+cat("- Trials with AUC available: ", format(sum(ch2_summary$total_auc_available), big.mark = ","), "\n", sep = "")
+```
+
+### 4.3 Per-Participant Chapter 2 Readiness
+
+```{r ch2-participant}
+ch2_participant <- ch2_data %>%
+  group_by(sub) %>%
+  summarise(
+    total_trials = n(),
+    total_ch2_ready = if ("gate_pupil_primary" %in% names(ch2_data)) {
+      sum(gate_pupil_primary, na.rm = TRUE)
+    } else if ("pass_primary_060" %in% names(ch2_data)) {
+      sum(pass_primary_060, na.rm = TRUE)
+    } else {
+      sum(baseline_quality >= 0.60 & cog_quality >= 0.60, na.rm = TRUE)
+    },
+    .groups = "drop"
+  ) %>%
+  mutate(
+    ch2_rate = ifelse(total_trials > 0, 100 * total_ch2_ready / total_trials, 0),
+    has_data = total_ch2_ready > 0
+  ) %>%
+  arrange(desc(total_ch2_ready))
+
+# Show top participants
+cat("**Top 10 Participants by Chapter 2 Ready Trials:**\n\n")
+kable(head(ch2_participant, 10),
+      col.names = c("Subject", "Total Trials", "Ch2 Ready", "Retention %", "Has Data"),
+      digits = c(0, 0, 0, 1, 0),
+      caption = "Top Participants") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+
+cat("\n**Participants with Chapter 2 Data:** ", sum(ch2_participant$has_data), " / ", nrow(ch2_participant), "\n", sep = "")
+```
+
+## 5. Chapter 3: Data Readiness
+
+### 5.1 Chapter 3 Requirements
+
+**DDM with Pupil Predictors:**
+- **Quality Gate**: Baseline validity ≥ 50% AND Cognitive validity ≥ 50%
+- **Behavioral Filter**: RT between 0.2s and 3.0s (excludes anticipatory and timeout responses)
+- **Pupil Metrics**: Cognitive AUC as predictor of drift rate, boundary separation, etc.
+
+**Behavior-Only DDM:**
+
+- **No pupil requirements**: Uses all behavioral trials with valid RT
+- **Larger sample size**: Can include trials with poor or missing pupil data
+
+### 5.2 Chapter 3 Data Availability
+
+```{r ch3-availability}
+ch3_summary <- ch3_data %>%
+  group_by(task) %>%
+  summarise(
+    n_subjects = n_distinct(sub),
+    total_trials = n(),
+    total_ddm_ready = if ("ddm_ready" %in% names(ch3_data)) {
+      sum(ddm_ready, na.rm = TRUE)
+    } else {
+      sum(baseline_quality >= 0.50 & cog_quality >= 0.50 & 
+          !is.na(rt) & rt >= 0.2 & rt <= 3.0, na.rm = TRUE)
+    },
+    total_auc_available = sum(auc_available == TRUE, na.rm = TRUE),
+    subjects_with_ch3_data = if ("ddm_ready" %in% names(ch3_data)) {
+      n_distinct(sub[ddm_ready == TRUE])
+    } else {
+      n_distinct(sub[baseline_quality >= 0.50 & cog_quality >= 0.50 & 
+                     !is.na(rt) & rt >= 0.2 & rt <= 3.0])
+    },
+    .groups = "drop"
+  ) %>%
+  mutate(
+    ddm_retention = ifelse(total_trials > 0,
+                           100 * total_ddm_ready / total_trials, 0),
+    auc_rate = ifelse(total_trials > 0,
+                     100 * total_auc_available / total_trials, 0),
+    subject_coverage = ifelse(n_subjects > 0,
+                              100 * subjects_with_ch3_data / n_subjects, 0)
+  )
+
+kable(ch3_summary,
+      col.names = c("Task", "N Subjects", "Total Trials", "DDM Ready",
+                    "AUC Available", "Subjects with Data", "DDM %", "AUC %", "Coverage %"),
+      digits = c(0, 0, 0, 0, 0, 0, 1, 1, 1),
+      caption = "Chapter 3 Data Availability (50% Threshold + RT Filter)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+
+cat("\n**Summary:**\n")
+cat("- Total Chapter 3 ready trials (DDM-ready): ", format(sum(ch3_summary$total_ddm_ready), big.mark = ","), "\n", sep = "")
+cat("- Overall DDM retention rate: ", sprintf("%.1f", mean(ch3_summary$ddm_retention)), "%\n", sep = "")
+cat("- Subjects with usable data: ", sum(ch3_summary$subjects_with_ch3_data), " / ", sum(ch3_summary$n_subjects), "\n", sep = "")
+cat("- Trials with AUC available: ", format(sum(ch3_summary$total_auc_available), big.mark = ","), "\n", sep = "")
+```
+
+### 5.3 Behavior-Only vs Pupil-Enhanced DDM
+
+```{r ch3-comparison}
+# Estimate behavior-only from join health
+behavior_only_trials <- sum(join_health$n_behavioral, na.rm = TRUE)
+
+ch3_comparison <- data.frame(
+  Analysis_Type = c("Behavior-Only DDM", "DDM with Pupil Predictors"),
+  Total_Trials = c(
+    behavior_only_trials,
+    sum(ch3_summary$total_ddm_ready, na.rm = TRUE)
+  ),
+  N_Subjects = c(
+    length(unique(join_health$sub)),
+    sum(ch3_summary$subjects_with_ch3_data, na.rm = TRUE)
+  )
+) %>%
+  mutate(
+    Advantage = case_when(
+      Analysis_Type == "Behavior-Only DDM" ~ "Larger sample, no pupil quality requirements",
+      Analysis_Type == "DDM with Pupil Predictors" ~ "Can test arousal effects on decision-making"
+    )
+  )
+
+kable(ch3_comparison,
+      col.names = c("Analysis Type", "Total Trials", "N Subjects", "Advantage"),
+      caption = "Chapter 3 Analysis Options") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+```
+
+## 6. Data Quality Issues and Considerations
+
+### 6.1 Common Data Quality Challenges
+
+1. **Missing Samples**: Blinks, eye movements, or tracking loss result in missing pupil diameter measurements
+2. **Window Validity**: Critical windows (baseline, cognitive) must have sufficient valid samples for reliable metrics
+3. **Behavioral Alignment**: RT data must be properly aligned with pupil time series
+4. **Trial Exclusions**: Trials with window out-of-bounds or all-NaN data are excluded
+
+### 6.2 Quality Control Measures
+
+- **Pre-filtering**: Excludes trials with `window_oob==1` or `all_nan==1`
+- **Validity Thresholds**: Multiple thresholds (40%, 50%, 60%, 70%) allow sensitivity analyses
+- **Gate System**: Independent gates for different analysis types (baseline, cognitive, overall)
+
+### 6.3 Recommendations
+
+Based on the data availability:
+
+1. **For Chapter 2**: 
+
+   - Primary analysis at 60% threshold provides conservative, high-quality data
+   - Sensitivity analyses at 50% and 70% thresholds for robustness
+   - Consider per-participant inclusion based on minimum trial counts
+
+2. **For Chapter 3**:
+
+   - DDM with pupil predictors: Use 50% threshold to maximize sample size while maintaining data quality
+   - Behavior-only DDM: Can use all behavioral trials, providing largest possible sample
+   - Consider running both analyses to compare results with and without pupil predictors
+
+3. **General**:
+
+   - Monitor window validity distributions to identify systematic issues
+   - Consider task-specific thresholds if validity differs substantially between ADT and VDT
+   - Document all exclusion criteria and thresholds in methods sections
+
+## 7. Conclusion and Next Steps
+
+### 7.1 Data Readiness Summary
+
+- **Chapter 2**: `r format(ch2_primary_total, big.mark = ",")` trials ready for primary analysis (60% threshold)
+- **Chapter 3**: `r format(ch3_ready_total, big.mark = ",")` trials ready for DDM with pupil predictors (50% threshold + RT filter)
+- **Behavior-Only**: `r format(behavior_only_trials, big.mark = ",")` trials available for behavior-only DDM analyses
+- **AUC Availability**: `r sprintf("%.1f", auc_available_both)`% of trials have both Total AUC and Cognitive AUC
+
+### 7.2 Recommended Analyses
+
+1. **Chapter 2 Primary**: Psychometric coupling with 60% threshold (high quality)
+2. **Chapter 2 Sensitivity**: Repeat analyses at 50% and 70% thresholds
+3. **Chapter 3 Primary**: DDM with pupil predictors using 50% threshold
+4. **Chapter 3 Comparison**: Behavior-only DDM for comparison and robustness
+
+### 7.3 Data Files
+
+All detailed data files are available in:
+- `quick_share_v7/qc/` - Quality control summaries and gate pass rates
+- `quick_share_v7/analysis_ready/` - Analysis-ready datasets:
+  - `ch2_triallevel.csv` - Chapter 2 ready data (14,586 trials)
+  - `ch3_triallevel.csv` - Chapter 3 ready data (14,586 trials)
+- `quick_share_v7/merged/` - Full merged trial-level dataset
+
+---
+
+**Report Generated**: `r format(Sys.time(), '%B %d, %Y at %I:%M %p')`
+
+**Data Source**: BAP Pupillometry Analysis Pipeline  
+**For Questions**: Please refer to the pipeline documentation in `02_pupillometry_analysis/README.md`
+
