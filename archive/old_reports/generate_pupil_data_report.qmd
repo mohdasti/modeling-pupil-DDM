@@ -1,0 +1,140 @@
+---
+title: "Quick-Share Pupil QC Snapshot"
+author: "BAP Pupillometry Analysis Pipeline"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+format:
+  html:
+    toc: false
+    number-sections: false
+    code-fold: false
+    code-tools: false
+    embed-resources: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+)
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(readr)
+  library(tidyr)
+})
+
+qc_dir <- file.path("02_pupillometry_analysis", "quick_share")
+
+# Run the compact QC exporter (no heavy HTML work here)
+script_path <- file.path("02_pupillometry_analysis", "export_quick_share_tables.R")
+if (!file.exists(script_path)) {
+  stop("Cannot find 02_pupillometry_analysis/export_quick_share_tables.R")
+}
+
+system2("Rscript", script_path, stdout = TRUE, stderr = TRUE)
+
+files_expected <- c(
+  "01_file_provenance.csv",
+  "02_design_expected_vs_observed.csv",
+  "03_trials_per_subject_task_ses.csv",
+  "04_run_level_counts.csv",
+  "05_window_validity_summary.csv",
+  "06_gate_pass_rates_by_threshold.csv",
+  "07_bias_checks_key_gates.csv",
+  "08_prestim_dip_summary.csv"
+)
+
+missing <- files_expected[!file.exists(file.path(qc_dir, files_expected))]
+if (length(missing) > 0) {
+  stop("Missing expected quick-share CSVs:\n", paste(missing, collapse = "\n"))
+}
+
+trials_per_sub   <- readr::read_csv(file.path(qc_dir, "03_trials_per_subject_task_ses.csv"), show_col_types = FALSE)
+run_level_counts <- readr::read_csv(file.path(qc_dir, "04_run_level_counts.csv"), show_col_types = FALSE)
+prestim_dip      <- readr::read_csv(file.path(qc_dir, "08_prestim_dip_summary.csv"), show_col_types = FALSE)
+```
+
+## Overview
+
+```{r overview}
+n_subjects <- length(unique(trials_per_sub$subject_id))
+total_trials <- sum(trials_per_sub$n_trials_pupil_present, na.rm = TRUE)
+total_ch2 <- sum(trials_per_sub$n_trials_ch2_primary, na.rm = TRUE)
+total_ch3_behav <- sum(trials_per_sub$n_trials_ch3_behavior_ready, na.rm = TRUE)
+total_ch3_pupil <- sum(trials_per_sub$n_trials_ch3_pupil_ready, na.rm = TRUE)
+
+cat("- **N subjects**: ", n_subjects, "\n", sep = "")
+cat("- **Total pupil-present trials**: ", total_trials, "\n", sep = "")
+cat("- **CH2 primary usable trials**: ", total_ch2, "\n", sep = "")
+cat("- **CH3 behavior-ready trials**: ", total_ch3_behav, "\n", sep = "")
+cat("- **CH3 pupil+behavior-ready trials**: ", total_ch3_pupil, "\n\n", sep = "")
+```
+
+### CH2 / CH3 Feasibility by Task
+
+```{r by-task}
+task_summary <- trials_per_sub %>%
+  group_by(task) %>%
+  summarise(
+    n_subjects = n_distinct(subject_id),
+    n_trials_pupil_present = sum(n_trials_pupil_present, na.rm = TRUE),
+    n_trials_ch2_primary = sum(n_trials_ch2_primary, na.rm = TRUE),
+    n_trials_ch3_behavior_ready = sum(n_trials_ch3_behavior_ready, na.rm = TRUE),
+    n_trials_ch3_pupil_ready = sum(n_trials_ch3_pupil_ready, na.rm = TRUE),
+    ch2_rate = n_trials_ch2_primary / n_trials_pupil_present,
+    ch3_pupil_rate = n_trials_ch3_pupil_ready / n_trials_pupil_present,
+    .groups = "drop"
+  )
+
+knitr::kable(task_summary, format = "simple", digits = 3)
+```
+
+## Worst Timebase / Target-Marker Issues
+
+```{r worst-runs}
+worst_runs <- run_level_counts %>%
+  mutate(
+    timebase_issue = ifelse(is.na(timebase_issue), FALSE, timebase_issue),
+    issue_score = as.numeric(timebase_issue) + missing_target_marker_count
+  ) %>%
+  arrange(desc(issue_score)) %>%
+  slice_head(n = 10) %>%
+  select(
+    subject_id, task, session, run,
+    timebase_issue, missing_target_marker_count,
+    min_t_rel_trial_median, max_t_rel_trial_median
+  )
+
+if (nrow(worst_runs) == 0) {
+  cat("No timebase or target-marker issues detected.\n")
+} else {
+  knitr::kable(worst_runs, format = "simple", digits = 3)
+}
+```
+
+## Prestim Dip Summary
+
+```{r prestim}
+knitr::kable(prestim_dip, format = "simple", digits = 3)
+```
+
+## Quick-Share Outputs
+
+The following CSVs (and README) are written to `02_pupillometry_analysis/quick_share/`:
+
+- `01_file_provenance.csv`
+- `02_design_expected_vs_observed.csv`
+- `03_trials_per_subject_task_ses.csv`
+- `04_run_level_counts.csv`
+- `05_window_validity_summary.csv`
+- `06_gate_pass_rates_by_threshold.csv`
+- `07_bias_checks_key_gates.csv`
+- `08_prestim_dip_summary.csv`
+- `README_quick_share.md`
+
+

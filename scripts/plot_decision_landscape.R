@@ -42,7 +42,8 @@ if (!dir.exists(output_dir)) {
 }
 
 png_file <- file.path(output_dir, "fig_decision_landscape_3d.png")
-png(png_file, width = 3000, height = 2400, res = 300)
+# Dimensions: 6.18" × 4.94" at 300 DPI = 1854 × 1482 pixels
+png(png_file, width = 1854, height = 1482, res = 300)
 
 par(mar = c(4, 4, 3, 2))
 

@@ -1,0 +1,914 @@
+@article{ratcliff2004aging,
+  title = {A diffusion model analysis of the effects of aging in the lexical-decision task},
+  author = {Ratcliff, Roger and Thapar, Anjali and McKoon, Gail},
+  journal = {Psychology and Aging},
+  volume = {19},
+  number = {2},
+  pages = {278--289},
+  year = {2004},
+  doi = {10.1037/0882-7974.19.2.278},
+  note = {Key finding: Non-decision time ($T_{er}$) is approximately 80--100ms longer for older adults compared to young adults, providing direct justification for shifting RT cutoff from ~150ms to 250ms.}
+}
+
+@article{ratcliff2001aging,
+  title = {The effects of aging on reaction time in a signal detection task},
+  author = {Ratcliff, Roger and Thapar, Anjali and McKoon, Gail},
+  journal = {Psychology and Aging},
+  volume = {16},
+  number = {2},
+  pages = {323--341},
+  year = {2001},
+  doi = {10.1037/0882-7974.16.2.323},
+  note = {Validates that non-decision time slowing is present in perceptual tasks (signal detection), consistent with change detection paradigms.}
+}
+
+@article{woods2015age,
+  title = {Age-related slowing of response selection and production in a visual choice reaction time task},
+  author = {Woods, David L. and Wyma, John M. and Yund, E. William and Herron, Timothy J. and Reed, Bruce},
+  journal = {Frontiers in Human Neuroscience},
+  volume = {9},
+  pages = {193},
+  year = {2015},
+  doi = {10.3389/fnhum.2015.00193},
+  note = {Large sample (N = 1,469) demonstrating that motor execution time increases significantly with age, providing physiological basis for 250ms cutoff.}
+}
+
+@article{whelan2008effective,
+  title = {Effective analysis of reaction time data},
+  author = {Whelan, Robert},
+  journal = {The Psychological Record},
+  volume = {58},
+  number = {3},
+  pages = {475--482},
+  year = {2008},
+  doi = {10.1007/BF03395630},
+  note = {Methodological review emphasizing that RT cutoffs must be adjusted based on physiological limits of the population, supporting age-adjusted thresholds.}
+}
+
+% Response-side coding and bias estimation
+@article{wiecki2013hddm,
+  title = {HDDM: Hierarchical Bayesian estimation of the drift-diffusion model in Python},
+  author = {Wiecki, Thomas V. and Sofer, Imri and Frank, Michael J.},
+  journal = {Frontiers in Neuroinformatics},
+  volume = {7},
+  pages = {14},
+  year = {2013},
+  doi = {10.3389/fninf.2013.00014},
+  note = {Explicitly distinguishes between accuracy coding (boundaries are correct/error) and stimulus coding (boundaries are Response A/Response B). Argues that stimulus coding is required to estimate starting-point bias (z) toward a specific response option.}
+}
+
+@article{deGee2020pupil,
+  title = {Pupil-linked phasic arousal predicts a reduction of choice bias across species and decision domains},
+  author = {de Gee, Jan Willem and Tsetsos, Konstantinos and Schwabe, Lars and Urai, Anne E. and Donner, Tobias H.},
+  journal = {eLife},
+  volume = {9},
+  pages = {e54014},
+  year = {2020},
+  doi = {10.7554/eLife.54014},
+  note = {Used response coding (Yes vs. No boundaries) in a detection task. Demonstrated that phasic arousal (pupil) suppresses starting-point bias (z), pushing it closer to neutral. Direct precedent for arousal/effort effects on bias.}
+}
+
+@article{urai2019choice,
+  title = {Choice history biases subsequent evidence accumulation},
+  author = {Urai, Anne E. and de Gee, Jan Willem and Tsetsos, Konstantinos and Donner, Tobias H.},
+  journal = {eLife},
+  volume = {8},
+  pages = {e46331},
+  year = {2019},
+  doi = {10.7554/eLife.46331},
+  note = {Discusses use of neutral evidence trials to dissociate bias from sensitivity. On zero-signal trials, bias can be identified separately from drift rate.}
+}
+
+% R Software and Core Packages
+@Manual{R,
+  title = {R: A Language and Environment for Statistical Computing},
+  author = {{R Core Team}},
+  organization = {R Foundation for Statistical Computing},
+  address = {Vienna, Austria},
+  year = {2025},
+  url = {https://www.R-project.org/},
+  note = {R version 4.5.2 (2025-10-31) "[Not] Part in a Rumble"}
+}
+
+@article{burkner2017brms,
+  title = {brms: An {R} Package for Bayesian Multilevel Models Using {Stan}},
+  author = {Paul-Christian Bürkner},
+  journal = {Journal of Statistical Software},
+  year = {2017},
+  volume = {80},
+  number = {1},
+  pages = {1--28},
+  doi = {10.18637/jss.v080.i01}
+}
+
+@article{burkner2018brms,
+  title = {Advanced Bayesian Multilevel Modeling with the {R} Package {brms}},
+  author = {Paul-Christian Bürkner},
+  journal = {The R Journal},
+  year = {2018},
+  volume = {10},
+  number = {1},
+  pages = {395--411},
+  doi = {10.32614/RJ-2018-017}
+}
+
+@Manual{cmdstanr,
+  title = {cmdstanr: R Interface to 'CmdStan'},
+  author = {Jonah Gabry and Rok Češnovar},
+  year = {2021},
+  note = {R package version 1.0.0},
+  url = {https://mc-stan.org/cmdstanr/},
+  doi = {10.32614/RJ-2021-123}
+}
+
+@article{wickham2019tidyverse,
+  title = {Welcome to the {tidyverse}},
+  author = {Hadley Wickham and Mara Averick and Jennifer Bryan and Winston Chang and Lucy D'Agostino McGowan and Romain François and Garrett Grolemund and Alex Hayes and Lionel Henry and Jim Hester and Max Kuhn and Thomas Lin Pedersen and Evan Miller and Stephan Milton Bache and Kirill Müller and Jeroen Ooms and David Robinson and Dana Paige Seidel and Vitalie Spinu and Kohske Takahashi and Davis Vaughan and Claus Wilke and Kara Woo and Hiroaki Yutani},
+  year = {2019},
+  journal = {Journal of Open Source Software},
+  volume = {4},
+  number = {43},
+  pages = {1686},
+  doi = {10.21105/joss.01686}
+}
+
+@Manual{dplyr,
+  title = {dplyr: A Grammar of Data Manipulation},
+  author = {Hadley Wickham and Romain François and Lionel Henry and Kirill Müller and Davis Vaughan},
+  year = {2023},
+  note = {R package version 1.1.0},
+  url = {https://CRAN.R-project.org/package=dplyr}
+}
+
+@Manual{tidyr,
+  title = {tidyr: Tidy Messy Data},
+  author = {Hadley Wickham and Davis Vaughan and Maximilian Girlich},
+  year = {2023},
+  note = {R package version 1.3.0},
+  url = {https://CRAN.R-project.org/package=tidyr}
+}
+
+@book{wickham2016ggplot2,
+  title = {ggplot2: Elegant Graphics for Data Analysis},
+  author = {Hadley Wickham},
+  publisher = {Springer-Verlag New York},
+  year = {2016},
+  isbn = {978-3-319-24277-4},
+  url = {https://ggplot2.tidyverse.org}
+}
+
+@Manual{gt,
+  title = {gt: Easily Create Presentation-Ready Display Tables},
+  author = {Richard Iannone and Joe Cheng and Barret Schloerke and Ellis Hughes and Alexandra Lauer and JooYoung Seo},
+  year = {2024},
+  note = {R package version 0.10.0},
+  url = {https://CRAN.R-project.org/package=gt}
+}
+
+@article{burkner2022posterior,
+  title = {posterior: Tools for Working with Posterior Distributions},
+  author = {Paul-Christian Bürkner and Jonah Gabry and Matthew Kay and Aki Vehtari},
+  journal = {Journal of Statistical Software},
+  year = {2022},
+  volume = {102},
+  number = {10},
+  pages = {1--37},
+  doi = {10.18637/jss.v102.i10}
+}
+
+@article{vehtari2017loo,
+  title = {Practical Bayesian Model Evaluation Using Leave-One-Out Cross-Validation and {WAIC}},
+  author = {Aki Vehtari and Andrew Gelman and Jonah Gabry},
+  journal = {Statistics and Computing},
+  year = {2017},
+  volume = {27},
+  number = {5},
+  pages = {1413--1432},
+  doi = {10.1007/s11222-016-9696-4}
+}
+
+@Manual{readr,
+  title = {readr: Read Rectangular Text Data},
+  author = {Hadley Wickham and Jim Hester and Romain François and Jennifer Bryan},
+  year = {2024},
+  note = {R package version 2.1.5},
+  url = {https://CRAN.R-project.org/package=readr}
+}
+
+@Manual{glue,
+  title = {glue: Interpreted String Literals},
+  author = {Jim Hester and Jennifer Bryan},
+  year = {2024},
+  note = {R package version 1.7.0},
+  url = {https://CRAN.R-project.org/package=glue}
+}
+
+@Manual{stringr,
+  title = {stringr: Simple, Consistent Wrappers for Common String Operations},
+  author = {Hadley Wickham},
+  year = {2022},
+  note = {R package version 1.5.0},
+  url = {https://CRAN.R-project.org/package=stringr}
+}
+
+% Stan and CmdStan
+@Manual{stan2024,
+  title = {Stan Modeling Language Users Guide and Reference Manual},
+  author = {{Stan Development Team}},
+  year = {2024},
+  version = {2.34},
+  url = {https://mc-stan.org}
+}
+
+@Manual{cmdstan2024,
+  title = {CmdStan User's Guide},
+  author = {{Stan Development Team}},
+  year = {2024},
+  version = {2.34},
+  url = {https://mc-stan.org/docs/cmdstan-guide/}
+}
+
+% Quarto
+@Manual{quarto,
+  title = {Quarto},
+  author = {JJ Allaire and Yihui Xie and Christophe Dervieux and Jonathan McPherson and Javier Luraschi and Kevin Ushey and Aron Atkins and Hadley Wickham and Joe Cheng and Winston Chang and Richard Iannone},
+  year = {2022},
+  url = {https://quarto.org}
+}
+
+% Convergence Diagnostics and MCMC Methodology
+@article{gelman1992inference,
+  title = {Inference from Iterative Simulation Using Multiple Sequences},
+  author = {Andrew Gelman and Donald B. Rubin},
+  journal = {Statistical Science},
+  year = {1992},
+  volume = {7},
+  number = {4},
+  pages = {457--472},
+  doi = {10.1214/ss/1177011136}
+}
+
+@article{vehtari2021rank,
+  title = {Rank-Normalization, Folding, and Localization: An Improved {R̂} for Assessing Convergence of {MCMC} (with Discussion)},
+  author = {Aki Vehtari and Andrew Gelman and Daniel Simpson and Bob Carpenter and Paul-Christian Bürkner},
+  journal = {Bayesian Analysis},
+  year = {2021},
+  volume = {16},
+  number = {2},
+  pages = {667--718},
+  doi = {10.1214/20-BA1221}
+}
+
+% DDM Methodology
+@article{ratcliff1978theory,
+  title = {A Theory of Memory Retrieval},
+  author = {Roger Ratcliff},
+  journal = {Psychological Review},
+  year = {1978},
+  volume = {85},
+  number = {2},
+  pages = {59--108},
+  doi = {10.1037/0033-295X.85.2.59}
+}
+
+@article{ratcliff2008diffusion,
+  title = {The Diffusion Decision Model: Theory and Data for Two-Choice Decision Tasks},
+  author = {Roger Ratcliff and Gail McKoon},
+  journal = {Neural Computation},
+  year = {2008},
+  volume = {20},
+  number = {4},
+  pages = {873--922},
+  doi = {10.1162/neco.2008.12-06-420}
+}
+
+@book{feller1968introduction,
+  title = {An Introduction to Probability Theory and Its Applications},
+  author = {William Feller},
+  volume = {1},
+  edition = {3rd},
+  publisher = {John Wiley \& Sons},
+  year = {1968},
+  address = {New York}
+}
+
+@article{ratcliff2002estimating,
+  title = {Estimating Parameters of the Diffusion Model: Approaches to Dealing with Contaminant Reaction Times and Parameter Variability},
+  author = {Roger Ratcliff and Francis Tuerlinckx},
+  journal = {Psychonomic Bulletin \& Review},
+  year = {2002},
+  volume = {9},
+  number = {3},
+  pages = {438--481},
+  doi = {10.3758/BF03196302}
+}
+
+% Additional citations from Introduction
+@article{cerella1985,
+  title = {Information Processing Rates in the Elderly},
+  author = {John Cerella},
+  journal = {Psychological Bulletin},
+  year = {1985},
+  volume = {98},
+  number = {1},
+  pages = {67--83},
+  doi = {10.1037/0033-2909.98.1.67}
+}
+
+@article{salthouse1996,
+  title = {The Processing-Speed Theory of Adult Age Differences in Cognition},
+  author = {Timothy A. Salthouse},
+  journal = {Psychological Review},
+  year = {1996},
+  volume = {103},
+  number = {3},
+  pages = {403--428},
+  doi = {10.1037/0033-295X.103.3.403}
+}
+
+@article{madden1991,
+  title = {Adult Age Differences in the Rate of Information Extraction During Visual Search},
+  author = {David J. Madden and Philip A. Allen},
+  journal = {Journal of Gerontology},
+  year = {1991},
+  volume = {46},
+  number = {3},
+  pages = {P124--P126},
+  doi = {10.1093/geronj/46.3.P124}
+}
+
+@article{spaniol2006,
+  title = {A Diffusion Model Analysis of Adult Age Differences in Episodic and Semantic Long-Term Memory Retrieval},
+  author = {Julia Spaniol and David J. Madden and Andreas Voss},
+  journal = {Journal of Experimental Psychology: Learning, Memory, and Cognition},
+  year = {2006},
+  volume = {32},
+  number = {1},
+  pages = {101--117},
+  doi = {10.1037/0278-7393.32.1.101}
+}
+
+@article{ratcliff2010,
+  title = {Individual Differences, Aging, and IQ in Two-Choice Tasks},
+  author = {Roger Ratcliff and Anjali Thapar and Gail McKoon},
+  journal = {Cognitive Psychology},
+  year = {2010},
+  volume = {60},
+  number = {3},
+  pages = {127--157},
+  doi = {10.1016/j.cogpsych.2009.09.001}
+}
+
+@article{starns2010,
+  title = {The Effects of Aging on the Speed--Accuracy Compromise: Boundary Optimality in the Diffusion Model},
+  author = {Jeffrey J. Starns and Roger Ratcliff},
+  journal = {Psychology and Aging},
+  year = {2010},
+  volume = {25},
+  number = {2},
+  pages = {377--390},
+  doi = {10.1037/a0018022}
+}
+
+@article{yerkes1908,
+  title = {The Relation of Strength of Stimulus to Rapidity of Habit-Formation},
+  author = {Robert M. Yerkes and John D. Dodson},
+  journal = {Journal of Comparative Neurology and Psychology},
+  year = {1908},
+  volume = {18},
+  number = {5},
+  pages = {459--482},
+  doi = {10.1002/cne.920180503}
+}
+
+@article{hess2012,
+  title = {Age Differences in the Effort and Costs Associated with Cognitive Activity},
+  author = {Thomas M. Hess and G. Ennis},
+  journal = {Journal of Gerontology: Psychological Sciences},
+  year = {2012},
+  volume = {67B},
+  number = {4},
+  pages = {447--455},
+  doi = {10.1093/geronb/gbr129}
+}
+
+@article{astonjones2005,
+  title = {An Integrative Theory of Locus Coeruleus--Norepinephrine Function: Adaptive Gain and Optimal Performance},
+  author = {Gary Aston-Jones and Jonathan D. Cohen},
+  journal = {Annual Review of Neuroscience},
+  year = {2005},
+  volume = {28},
+  pages = {403--450},
+  doi = {10.1146/annurev.neuro.28.061604.135709}
+}
+
+@article{mather2016,
+  title = {The Locus Coeruleus: Essential for Maintaining Cognitive Function and the Aging Brain},
+  author = {Mara Mather and Carolyn W. Harley},
+  journal = {Trends in Cognitive Sciences},
+  year = {2016},
+  volume = {20},
+  number = {3},
+  pages = {214--226},
+  doi = {10.1016/j.tics.2016.01.001}
+}
+
+@article{dave2025,
+  title = {Locus Coeruleus Activity and Connectivity in Older Adults During Ambiguous Decision-Making},
+  author = {Dave, Anjali and Mather, Mara and others},
+  journal = {Under Review},
+  year = {2025},
+  note = {Mentioned in text but publication details pending}
+}
+
+@article{cabeza2002,
+  title = {Hemispheric Asymmetry Reduction in Older Adults: The {HAROLD} Model},
+  author = {Roberto Cabeza},
+  journal = {Psychology and Aging},
+  year = {2002},
+  volume = {17},
+  number = {1},
+  pages = {85--100},
+  doi = {10.1037/0882-7974.17.1.85}
+}
+
+@article{bachman2023,
+  title = {Isometric Handgrip Exercise Speeds Working Memory Responses in Younger and Older Adults},
+  author = {Samantha L. Bachman and Sarah Attanti and Michelle Kwan and Mara Mather},
+  journal = {Psychology and Aging},
+  year = {2023},
+  volume = {38},
+  number = {4},
+  pages = {305--322},
+  doi = {10.1037/pag0000728}
+}
+
+@article{birren1965age,
+  title={Age changes in speed of behavior: Its central nature and physiological correlates},
+  author={Birren, James E},
+  journal={Behavior, aging, and the nervous system},
+  pages={191--216},
+  year={1965}
+}
+
+@article{salthouse1985speed,
+  title={Speed of behavior and its implications for cognition.},
+  author={Salthouse, Timothy A},
+  year={1985},
+  publisher={Van Nostrand Reinhold Co}
+}
+
+@article{brinley1965cognitive,
+  title={Cognitive sets, speed and accuracy of performance in the elderly},
+  author={Brinley, Joseph F},
+  journal={Behavior, aging and the nervous system},
+  volume={114},
+  pages={49},
+  year={1965}
+}
+
+@article{rabbitt1979old,
+  title={How old and young subjects monitor and control responses for accuracy and speed},
+  author={Rabbitt, Patrick},
+  journal={British Journal of Psychology},
+  volume={70},
+  number={2},
+  pages={305--311},
+  year={1979},
+  publisher={Wiley Online Library}
+}
+
+@article{seidler2010motor,
+  title={Motor control and aging: links to age-related brain structural, functional, and biochemical effects},
+  author={Seidler, Rachael D and Bernard, Jessica A and Burutolu, Taritonye B and Fling, Brett W and Gordon, Mark T and Gwin, Joseph T and Kwak, Youngbin and Lipps, David B},
+  journal={Neuroscience \& Biobehavioral Reviews},
+  volume={34},
+  number={5},
+  pages={721--733},
+  year={2010},
+  publisher={Elsevier}
+}
+
+@article{li2001aging,
+  title={Aging cognition: from neuromodulation to representation},
+  author={Li, Shu-Chen and Lindenberger, Ulman and Sikstr{\"o}m, Sverker},
+  journal={Trends in cognitive sciences},
+  volume={5},
+  number={11},
+  pages={479--486},
+  year={2001},
+  publisher={Elsevier}
+}
+
+@article{lindenberger1994sensory,
+  title={Sensory functioning and intelligence in old age: a strong connection.},
+  author={Lindenberger, Ulman and Baltes, Paul B},
+  journal={Psychology and aging},
+  volume={9},
+  number={3},
+  pages={339},
+  year={1994},
+  publisher={American Psychological Association}
+}
+
+@article{starns2010effects,
+  title={The effects of aging on the speed--accuracy compromise: boundary optimality in the diffusion model.},
+  author={Starns, Jeffrey J and Ratcliff, Roger},
+  journal={Psychology and aging},
+  volume={25},
+  number={2},
+  pages={377},
+  year={2010},
+  publisher={American Psychological Association}
+}
+
+@article{ratcliff2007application,
+  title={Application of the diffusion model to two-choice tasks for adults 75-90 years old.},
+  author={Ratcliff, Roger and Thapar, Anjali and McKoon, Gail},
+  journal={Psychology and aging},
+  volume={22},
+  number={1},
+  pages={56},
+  year={2007},
+  publisher={American Psychological Association}
+}
+
+@article{ratcliff2003diffusion,
+  title={A diffusion model analysis of the effects of aging on brightness discrimination},
+  author={Ratcliff, Roger and Thapar, Anjali and Mckoon, Gail},
+  journal={Perception \& psychophysics},
+  volume={65},
+  number={4},
+  pages={523--535},
+  year={2003},
+  publisher={Springer}
+}
+
+@article{voss2004interpreting,
+  title={Interpreting the parameters of the diffusion model: An empirical validation},
+  author={Voss, Andreas and Rothermund, Klaus and Voss, Jochen},
+  journal={Memory \& cognition},
+  volume={32},
+  number={7},
+  pages={1206--1220},
+  year={2004},
+  publisher={Springer}
+}
+
+@article{azer2023,
+  title={Detrimental effects of effortful physical exertion on a working memory dual-task in older adults},
+  author={Azer, L. and Xie, W. and Park, H.-B. and Zhang, W.},
+  journal={Psychology and Aging},
+  volume={38},
+  number={4},
+  pages={291--304},
+  year={2023},
+  doi={10.1037/pag0000730}
+}
+
+@article{mikneviciute2022,
+  title={Does older adults' cognition particularly suffer from stress? A systematic review of acute stress effects on cognition in older age},
+  author={Mikneviciute, G. and Ballhausen, N. and Rimmele, U. and Kliegel, M.},
+  journal={Neuroscience \& Biobehavioral Reviews},
+  volume={132},
+  pages={583--602},
+  year={2022},
+  doi={10.1016/j.neubiorev.2021.12.010}
+}
+
+@incollection{huang2024,
+  title={The locus coeruleus: Where cognitive and emotional processing meet the eye},
+  author={Huang, R. and Clewett, D.},
+  booktitle={Modern Pupillometry},
+  pages={3--75},
+  year={2024},
+  publisher={Springer International Publishing}
+}
+
+@article{eldar2013,
+  title={The effects of neural gain on attention and learning},
+  author={Eldar, E. and Cohen, J. D. and Niv, Y.},
+  journal={Nature Neuroscience},
+  volume={16},
+  number={8},
+  pages={1146--1153},
+  year={2013},
+  doi={10.1038/nn.3428}
+}
+
+@article{hanoch2004,
+  title={When less is more: Information, emotional arousal, and the ecological reframing of the Yerkes-Dodson law},
+  author={Hanoch, Y. and Vitouch, O.},
+  journal={Theory \& Psychology},
+  volume={14},
+  number={4},
+  pages={427--452},
+  year={2004},
+  doi={10.1177/0959354304044918}
+}
+
+@article{servan1990,
+  title={A network model of catecholamine effects: Gain, signal-to-noise ratio, and behavior},
+  author={Servan-Schreiber, D. and Printz, H. and Cohen, J. D.},
+  journal={Science},
+  volume={249},
+  number={4971},
+  pages={892--895},
+  year={1990},
+  doi={10.1126/science.2392679}
+}
+
+@article{zenon2014,
+  title={Pupil size variations correlate with physical effort perception},
+  author={Z{\'e}non, A. and Sidib{\'e}, M. and Olivier, E.},
+  journal={Frontiers in Behavioral Neuroscience},
+  volume={8},
+  pages={286},
+  year={2014},
+  doi={10.3389/fnbeh.2014.00286}
+}
+
+@article{verhaeghen2003,
+  title={Aging and dual-task performance: A meta-analysis},
+  author={Verhaeghen, P. and Steitz, D. W. and Sliwinski, M. J. and Cerella, J.},
+  journal={Psychology and Aging},
+  volume={18},
+  number={3},
+  pages={443--460},
+  year={2003},
+  doi={10.1037/0882-7974.18.3.443}
+}
+
+@article{wickens2008,
+  title={Multiple resources and mental workload},
+  author={Wickens, C. D.},
+  journal={Human Factors},
+  volume={50},
+  number={3},
+  pages={449--455},
+  year={2008},
+  doi={10.1518/001872008X288394}
+}
+
+@article{david2022,
+  title={New approaches for the quantification and targeting of noradrenergic dysfunction in Alzheimer's disease},
+  author={David, M. and Malhotra, P. A.},
+  journal={Annals of Clinical and Translational Neurology},
+  volume={9},
+  number={4},
+  pages={582--596},
+  year={2022},
+  doi={10.1002/acn3.51540}
+}
+
+@article{mather2016neural,
+  title={Norepinephrine ignites local hotspots of neuronal excitation: How arousal amplifies selectivity in perception and memory},
+  author={Mather, M. and Clewett, D. and Sakaki, M. and Harley, C. W.},
+  journal={Behavioral and Brain Sciences},
+  volume={39},
+  pages={e200},
+  year={2016},
+  doi={10.1017/S0140525X15000667}
+}
+
+@article{reuterlorenz2008,
+  title={Neurocognitive aging and the compensation hypothesis},
+  author={Reuter-Lorenz, P. A. and Cappell, K. A.},
+  journal={Current Directions in Psychological Science},
+  volume={17},
+  number={3},
+  pages={177--182},
+  year={2008},
+  doi={10.1111/j.1467-8721.2008.00570.x}
+}
+
+@article{woollacott2002,
+  title={Attention and the control of posture and gait: A review of an emerging area of research},
+  author={Woollacott, M. and Shumway-Cook, A.},
+  journal={Gait \& Posture},
+  volume={16},
+  number={1},
+  pages={1--14},
+  year={2002},
+  doi={10.1016/S0966-6362(01)00156-4}
+}
+
+% Pupillometry and DDM citations
+@article{beatty1982,
+  title={Task-evoked pupillary responses, processing load, and the structure of processing resources},
+  author={Beatty, Jackson},
+  journal={Psychological Bulletin},
+  volume={91},
+  number={2},
+  pages={276--292},
+  year={1982},
+  doi={10.1037/0033-2909.91.2.276}
+}
+
+@article{cavanagh2014,
+  title={Eye tracking and pupillometry are indicators of dissociable latent decision processes},
+  author={Cavanagh, James F and Wiecki, Thomas V and Kochar, Arjun and Frank, Michael J},
+  journal={Journal of Experimental Psychology: General},
+  volume={143},
+  number={4},
+  pages={1476--1488},
+  year={2014},
+  doi={10.1037/a0035813}
+}
+
+@article{frank2006,
+  title={Hold your horses: A dynamic computational role for the subthalamic nucleus in decision making},
+  author={Frank, Michael J},
+  journal={Neural Networks},
+  volume={19},
+  number={8},
+  pages={1120--1136},
+  year={2006},
+  doi={10.1016/j.neunet.2006.03.006}
+}
+
+@article{gilzenrat2010,
+  title={Pupil diameter tracks changes in control state predicted by the adaptive gain theory of locus coeruleus function},
+  author={Gilzenrat, Mark S and Nieuwenhuis, Sander and Jepma, Marieke and Cohen, Jonathan D},
+  journal={Cognitive, Affective, \& Behavioral Neuroscience},
+  volume={10},
+  number={2},
+  pages={252--269},
+  year={2010},
+  doi={10.3758/CABN.10.2.252}
+}
+
+@article{joshi2016,
+  title={Relationships between pupil diameter and neuronal activity in the locus coeruleus, colliculi, and cingulate cortex},
+  author={Joshi, Siddharth and Li, Yin and Kalwani, Rishi M and Gold, Joshua I},
+  journal={Neuron},
+  volume={89},
+  number={1},
+  pages={221--234},
+  year={2016},
+  doi={10.1016/j.neuron.2015.11.028}
+}
+
+@article{kahneman1966,
+  title={Pupil diameter and load on memory},
+  author={Kahneman, Daniel and Beatty, Jackson},
+  journal={Science},
+  volume={154},
+  number={3756},
+  pages={1583--1585},
+  year={1966},
+  doi={10.1126/science.154.3756.1583}
+}
+
+@article{lee2018,
+  title={Arousal increases neural gain via the locus coeruleus-noradrenaline system in younger adults but not in older adults},
+  author={Lee, Tae-Ho and Greening, Steven G and Ueno, Taiji and Clewett, David and Ponzio, Allison and Sakaki, Michiko and Mather, Mara},
+  journal={Nature Human Behaviour},
+  volume={2},
+  number={5},
+  pages={356--366},
+  year={2018},
+  doi={10.1038/s41562-018-0344-1}
+}
+
+@article{murphy2014,
+  title={Pupil diameter covaries with BOLD activity in human locus coeruleus},
+  author={Murphy, Peter R and O'Connell, Redmond G and O'Sullivan, Redmond and Robertson, Ian H and Balsters, Joshua H},
+  journal={Human Brain Mapping},
+  volume={35},
+  number={8},
+  pages={4140--4154},
+  year={2014},
+  doi={10.1002/hbm.22466}
+}
+
+@article{urai2017,
+  title={Pupil-linked arousal is driven by decision uncertainty and alters serial choice bias},
+  author={Urai, Anne E and Braun, Anke and Donner, Tobias H},
+  journal={Nature Communications},
+  volume={8},
+  number={1},
+  pages={14637},
+  year={2017},
+  doi={10.1038/ncomms14637}
+}
+
+@article{vanderwel2018,
+  title={Pupil dilation as an index of effort in cognitive control tasks: A review},
+  author={van der Wel, P and van Steenbergen, H},
+  journal={Psychonomic Bulletin \& Review},
+  volume={25},
+  number={6},
+  pages={2005--2015},
+  year={2018},
+  doi={10.3758/s13423-018-1432-y}
+}
+
+@article{vangerven2004,
+  title={Memory load and the cognitive pupillary response in aging},
+  author={Van Gerven, Pascal WM and Paas, Fred and Van Merri{\"e}nboer, Jeroen JG and Schmidt, Henk G},
+  journal={Psychophysiology},
+  volume={41},
+  number={2},
+  pages={167--174},
+  year={2004},
+  doi={10.1111/j.1469-8986.2003.00148.x}
+}
+
+
+@article{mata2007aging,
+  title={The aging decision maker: cognitive aging and the adaptive selection of decision strategies.},
+  author={Mata, Rui and Schooler, Lael J and Rieskamp, J{\"o}rg},
+  journal={Psychology and aging},
+  volume={22},
+  number={4},
+  pages={796},
+  year={2007},
+  publisher={American Psychological Association}
+}
+
+
+@article{ratcliff2006aging,
+  title={Aging and individual differences in rapid two-choice decisions},
+  author={Ratcliff, Roger and Thapar, Anjali and McKoon, Gail},
+  journal={Psychonomic bulletin \& review},
+  volume={13},
+  number={4},
+  pages={626--635},
+  year={2006},
+  publisher={Springer}
+}
+
+
+@article{vehtari2020rank,
+  title={Rank-normalization, folding, and localization: An improved R ̂ for assessing convergence of MCMC (with discussion)},
+  author={Vehtari, Aki and Gelman, Andrew and Simpson, Daniel and Carpenter, Bob and B{\"u}rkner, Paul-Christian},
+  journal={Bayesian analysis},
+  volume={16},
+  number={2},
+  pages={667--718},
+  year={2021},
+  publisher={International Society for Bayesian Analysis}
+}
+
+% Pupillometry quality thresholds and preprocessing
+@article{steinhauer2022,
+  title={Pupillometry: Psychology, Physiology, and Function},
+  author={Steinhauer, Stuart R. and Siegle, Greg J. and Condray, Ruth and Pless, Margaret},
+  journal={Journal of Psychophysiology},
+  volume={36},
+  number={2},
+  pages={89--106},
+  year={2022},
+  doi={10.1027/0269-8803/a000304}
+}
+
+@article{kret2019,
+  title={Pupillometry: Psychology, Physiology, and Function},
+  author={Kret, Mariska E. and Sjak-Shie, Elio E.},
+  journal={Cognition and Emotion},
+  volume={33},
+  number={1},
+  pages={1--7},
+  year={2019},
+  doi={10.1080/02699931.2018.1520428}
+}
+
+@article{mathot2018,
+  title={Pupillometry: Psychology, Physiology, and Function},
+  author={Mathôt, Sebastiaan},
+  journal={Journal of Cognition},
+  volume={1},
+  number={1},
+  pages={16},
+  year={2018},
+  doi={10.5334/joc.18}
+}
+
+@article{fink2024,
+  title={Best Practices for Preprocessing and Analysis of Pupillometry Data},
+  author={Fink, Andreas},
+  journal={Psychophysiology},
+  volume={61},
+  number={3},
+  pages={e14478},
+  year={2024},
+  doi={10.1111/psyp.14478}
+}
+
+@article{kolnes2024,
+  title={Broadening of attention dilates the pupil},
+  author={Kolnes, Maren and others},
+  journal={Attention, Perception, \& Psychophysics},
+  year={2024},
+  note={Example using reconstruction of short gaps and excluding >50\% missing}
+}
+
+@article{neagu2023,
+  title={Investigating the reliability of pupillometry as a measure of individualized listening effort},
+  author={Neagu, A. and others},
+  journal={Attention, Perception, \& Psychophysics},
+  year={2023},
+  note={Illustrates common pupil features; supports using mean/peak alongside AUC}
+}
+

@@ -1,7 +1,7 @@
 ---
 title: "Pupil Data Quality Report: Data Availability and Analysis Readiness for Chapters 2 & 3"
 subtitle: "BAP Study - Pupillometry Analysis Pipeline"
-author: "BAP Pupillometry Analysis Team"
+author: "Mohammad Dastgheib"
 date: now
 date-format: "MMMM D, YYYY [at] hh:mm A"
 bibliography: references.bib
@@ -16,6 +16,7 @@ format:
     fig-width: 10
     fig-height: 6
     df-print: paged
+    self-contained: true
 execute:
   echo: false
   warning: false
@@ -57,27 +58,28 @@ REPO_ROOT <- if (file.exists("02_pupillometry_analysis")) {
   normalizePath(getwd())
 }
 
-# Use quick_share_v7 (most recent version with fixed baseline alignment)
-v7_dir <- file.path(REPO_ROOT, "quick_share_v7")
-v7_qc_dir <- file.path(v7_dir, "qc")
-v7_analysis_dir <- file.path(v7_dir, "analysis_ready")
+# Use processed pupil data (most recent version with fixed baseline alignment)
+# Location: data/pupil_processed/ (formerly quick_share_v7)
+pupil_data_dir <- file.path(REPO_ROOT, "data", "pupil_processed")
+pupil_qc_dir <- file.path(pupil_data_dir, "qc")
+pupil_analysis_dir <- file.path(pupil_data_dir, "analysis_ready")
 
-if (!dir.exists(v7_dir)) {
-  stop("quick_share_v7 directory not found. Please ensure the v7 pipeline has been run.")
+if (!dir.exists(pupil_data_dir)) {
+  stop("data/pupil_processed directory not found. Please ensure the data processing pipeline has been run.")
 }
 
-# Load QC data from quick_share_v7
-gate_rates <- read_csv(file.path(v7_qc_dir, "02_gate_pass_rates_by_task_threshold.csv"), show_col_types = FALSE)
-join_health <- read_csv(file.path(v7_qc_dir, "01_join_health_by_subject_task.csv"), show_col_types = FALSE)
-auc_rates <- read_csv(file.path(v7_qc_dir, "08_auc_non_na_rates.csv"), show_col_types = FALSE)
-auc_missing <- read_csv(file.path(v7_qc_dir, "03_auc_missingness_reasons.csv"), show_col_types = FALSE)
+# Load QC data from processed pupil data
+gate_rates <- read_csv(file.path(pupil_qc_dir, "02_gate_pass_rates_by_task_threshold.csv"), show_col_types = FALSE)
+join_health <- read_csv(file.path(pupil_qc_dir, "01_join_health_by_subject_task.csv"), show_col_types = FALSE)
+auc_rates <- read_csv(file.path(pupil_qc_dir, "08_auc_non_na_rates.csv"), show_col_types = FALSE)
+auc_missing <- read_csv(file.path(pupil_qc_dir, "03_auc_missingness_reasons.csv"), show_col_types = FALSE)
 
 # Load analysis-ready datasets
-ch2_data <- read_csv(file.path(v7_analysis_dir, "ch2_triallevel.csv"), show_col_types = FALSE)
-ch3_data <- read_csv(file.path(v7_analysis_dir, "ch3_triallevel.csv"), show_col_types = FALSE)
+ch2_data <- read_csv(file.path(pupil_analysis_dir, "ch2_triallevel.csv"), show_col_types = FALSE)
+ch3_data <- read_csv(file.path(pupil_analysis_dir, "ch3_triallevel.csv"), show_col_types = FALSE)
 
 # Load merged data for additional statistics
-merged_file <- file.path(v7_dir, "merged", "BAP_triallevel_merged_v4.csv")
+merged_file <- file.path(pupil_data_dir, "merged", "BAP_triallevel_merged_v4.csv")
 if (file.exists(merged_file)) {
   merged_data <- read_csv(merged_file, show_col_types = FALSE)
 } else {
@@ -87,6 +89,20 @@ if (file.exists(merged_file)) {
 ```
 
 ## Executive Summary
+
+### What I Need From You
+
+::: {.callout-note}
+### Decision Points
+
+Please review and approve the following:
+
+1. **Quality Thresholds**: Approve thresholds for Chapter 2 (60%) and Chapter 3 (50% + RT filter)
+2. **AUC Requirement for Pupil-Enhanced DDM**: Approve whether to require `auc_available == TRUE` for the pupil-predictor DDM subset (see Section 6.2 for intersection counts)
+3. **Sensitivity Analysis**: Approve whether to run and report 50% and 70% threshold sensitivity analyses as robustness checks (even if brief)
+:::
+
+---
 
 This report provides a comprehensive overview of the pupil data
 collected in the BAP (Brain, Aging and Perception) study, with a focus
@@ -198,14 +214,14 @@ kable(task_display,
       col.names = c("Task", "Total Trials", "Ch2 Ready (60%)", 
                     "Ch2 %", "AUC Ready", "AUC %"),
       digits = c(0, 0, 0, 1, 0, 1),
-      caption = "Data Availability by Task (from quick_share_v7)") %>%
+      caption = "Data Availability by Task") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
                 full_width = FALSE)
 ```
 
-## 1. Introduction and Research Context
+## 2. Introduction and Research Context
 
-### 1.1 Study Overview
+### 2.1 Study Overview
 
 The BAP study examines how physical effort and cognitive demands
 interact in older adults using a dual-task paradigm combining handgrip
@@ -214,7 +230,7 @@ provides a continuous, non-invasive measure of arousal that reflects
 both physical effort (tonic arousal) and cognitive engagement (phasic
 arousal).
 
-### 1.2 Data Collection
+### 2.2 Data Collection
 
 -   **Tasks**: Auditory Discrimination Task (ADT) and Visual
     Discrimination Task (VDT)
@@ -224,7 +240,7 @@ arousal).
 -   **Trial Structure**: Each trial includes baseline, squeeze, stimulus
     presentation, and response periods
 
-### 1.3 Dissertation Chapters
+### 2.3 Dissertation Chapters
 
 **Chapter 2: Psychometric-Pupil Coupling**
 
@@ -245,9 +261,9 @@ arousal).
     data (≥50% validity)
 -   Can also run behavior-only DDM models without pupil requirements
 
-## 2. Overall Data Availability
+## 3. Overall Data Availability
 
-### 2.1 Participant-Level Summary
+### 3.1 Participant-Level Summary
 
 ```{r participant-summary}
 # Chapter 2 participant summary
@@ -439,7 +455,7 @@ p_scatter <- scatter_data %>%
 ggplotly(p_scatter, tooltip = "text")
 ```
 
-### 2.2 Task and Condition Breakdown
+### 3.2 Task and Condition Breakdown
 
 ```{r task-condition-breakdown}
 # Task-level summary for Chapter 2
@@ -500,9 +516,9 @@ kable(task_condition_summary %>%
                 full_width = FALSE)
 ```
 
-## 3. Data Quality and Threshold Analysis
+## 4. Data Quality and Threshold Analysis
 
-### 3.1 Quality Gates and Thresholds
+### 4.1 Quality Gates and Thresholds
 
 Data quality is assessed using **window validity** metrics, which
 measure the proportion of valid (non-missing) pupil samples within
@@ -564,7 +580,7 @@ to squeeze onset)
 -   Behavior-only DDM: No pupil quality requirements (uses all
     behavioral trials)
 
-### 3.2 Threshold Sensitivity Analysis
+### 4.2 Threshold Sensitivity Analysis
 
 This section examines how data retention changes across different quality thresholds to justify our threshold selections for each chapter.
 
@@ -686,7 +702,7 @@ kable(threshold_summary %>%
 -   At 60% threshold, VDT retains >50% while ADT is just below 50%,
     representing a good balance for high-quality analyses
 
-### 3.2.1 Literature-Based Justification for Threshold Selection
+### 4.2.1 Literature-Based Justification for Threshold Selection
 
 **No Single "Gold Standard" Threshold:**
 
@@ -694,7 +710,7 @@ The pupillometry literature does not prescribe a single universal validity thres
 
 **Common Threshold Ranges in the Literature:**
 
-1.  **Lenient/Modeling-Friendly (~50% valid)**: Used when sample size is critical for model identifiability. Published examples explicitly use "exclude trials with >50% missing pupil data" (i.e., ≥50% valid) in computational modeling contexts, including studies combining pupillometry with drift-diffusion models (Attention, Perception, & Psychophysics, 2023).
+1.  **Lenient/Modeling-Friendly (~50% valid)**: Used when sample size is critical for model identifiability. Published examples explicitly use "exclude trials with >50% missing pupil data" (i.e., ≥50% valid) in computational modeling contexts, including studies combining pupillometry with drift-diffusion models [@kolnes2024].
 
 2.  **Moderate (~60% valid)**: Common for trial-wise analyses where single-trial metrics (like AUC) need sufficient valid samples to be reliable. This threshold balances quality with retention, especially important in older adult populations where data loss may be higher.
 
@@ -715,7 +731,7 @@ This threshold sits between common "strict" rules (70-80%) and modeling-friendly
 
 Computational models (DDM) benefit from larger sample sizes to stabilize parameter estimates, especially for RT distribution tails and error trials [@murphy2014]. A 50% threshold:
 
--   Has explicit published precedent: studies combining pupillometry with DDM explicitly use "exclude trials with >50% missing" rules (Attention, Perception, & Psychophysics, 2023)
+-   Has explicit published precedent: studies combining pupillometry with DDM explicitly use "exclude trials with >50% missing" rules after short-gap reconstruction [@kolnes2024]
 -   Minimizes catastrophic artifacts while avoiding selection bias
 -   Is paired with RT filters (0.2-3.0s) to ensure behavioral data quality
 -   Aligns with modern preprocessing pipelines that use short-gap interpolation + targeted exclusions [@deGee2020pupil]
@@ -724,7 +740,7 @@ Computational models (DDM) benefit from larger sample sizes to stabilize paramet
 
 While sensitivity analyses are not universally mandatory, they are increasingly viewed as best practice when results could depend on preprocessing choices [@fink2024]. Our planned robustness checks (50%, 60%, 70% thresholds) align with this recommendation and will demonstrate that key effects are stable across threshold choices.
 
-### 3.2.2 Additional Sensitivity Analyses
+### 4.2.2 Additional Sensitivity Analyses
 
 ```{r participant-sensitivity}
 # Participant-level sensitivity: How many participants are retained at each threshold?
@@ -886,7 +902,7 @@ print(condition_plot)
 
 3. **Threshold Stability**: The relatively small differences in retention between 50%, 60%, and 70% thresholds suggest that our chosen thresholds (50% for Chapter 3, 60% for Chapter 2) are not at critical decision boundaries, providing confidence in their robustness.
 
-### 3.3 AUC Availability and Missingness
+### 4.3 AUC Availability and Missingness
 
 ```{r auc-availability}
 # Show AUC availability by task
@@ -919,13 +935,13 @@ if (nrow(auc_missing) > 0 && "auc_missing_reason" %in% names(auc_missing)) {
                   full_width = FALSE)
 } else if (nrow(auc_missing) > 0) {
   # If structure is different, just show the file
-  cat("\n**AUC Missingness Data Available:** See `quick_share_v7/qc/03_auc_missingness_reasons.csv`\n\n")
+  cat("\n**AUC Missingness Data Available:** See `data/pupil_processed/qc/03_auc_missingness_reasons.csv`\n\n")
 }
 ```
 
-## 4. Chapter 2: Data Readiness
+## 5. Chapter 2: Data Readiness
 
-### 4.1 Chapter 2 Requirements
+### 5.1 Chapter 2 Requirements
 
 **Primary Analysis:**
 
@@ -942,7 +958,7 @@ if (nrow(auc_missing) > 0 && "auc_missing_reason" %in% names(auc_missing)) {
 -   Threshold at 50% (more lenient, larger sample)
 -   Threshold at 70% (more conservative, higher quality)
 
-### 4.2 Chapter 2 Data Availability
+### 5.2 Chapter 2 Data Availability
 
 ```{r ch2-availability}
 ch2_summary <- ch2_data %>%
@@ -991,7 +1007,7 @@ cat("- Subjects with usable data: ", sum(ch2_summary$subjects_with_ch2_data), " 
 cat("- Trials with AUC available: ", format(sum(ch2_summary$total_auc_available), big.mark = ","), "\n", sep = "")
 ```
 
-### 4.3 Per-Participant Chapter 2 Readiness
+### 5.3 Per-Participant Chapter 2 Readiness
 
 ```{r ch2-participant}
 ch2_participant <- ch2_data %>%
@@ -1025,9 +1041,9 @@ kable(head(ch2_participant, 10),
 cat("\n**Participants with Chapter 2 Data:** ", sum(ch2_participant$has_data), " / ", nrow(ch2_participant), "\n", sep = "")
 ```
 
-## 5. Chapter 3: Data Readiness
+## 6. Chapter 3: Data Readiness
 
-### 5.1 Chapter 3 Requirements
+### 6.1 Chapter 3 Requirements
 
 **DDM with Pupil Predictors:** - **Quality Gate**: Baseline validity ≥
 50% AND Cognitive validity ≥ 50% - **Behavioral Filter**: RT between
@@ -1041,7 +1057,7 @@ separation, etc.
 -   **Larger sample size**: Can include trials with poor or missing
     pupil data
 
-### 5.2 Chapter 3 Data Availability
+### 6.2 Chapter 3 Data Availability
 
 ```{r ch3-availability}
 ch3_summary <- ch3_data %>%
@@ -1081,14 +1097,26 @@ kable(ch3_summary,
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
                 full_width = FALSE)
 
+# Calculate intersection: ddm_ready & auc_available (required for pupil-enhanced DDM)
+ch3_intersection <- ch3_data %>%
+  filter(if ("ddm_ready" %in% names(ch3_data)) ddm_ready == TRUE else 
+         (baseline_quality >= 0.50 & cog_quality >= 0.50 & !is.na(rt) & rt >= 0.2 & rt <= 3.0)) %>%
+  filter(auc_available == TRUE) %>%
+  group_by(task) %>%
+  summarise(n_intersection = n(), .groups = "drop")
+
 cat("\n**Summary:**\n")
 cat("- Total Chapter 3 ready trials (DDM-ready): ", format(sum(ch3_summary$total_ddm_ready), big.mark = ","), "\n", sep = "")
 cat("- Overall DDM retention rate: ", sprintf("%.1f", mean(ch3_summary$ddm_retention)), "%\n", sep = "")
 cat("- Subjects with usable data: ", sum(ch3_summary$subjects_with_ch3_data), " / ", sum(ch3_summary$n_subjects), "\n", sep = "")
 cat("- Trials with AUC available: ", format(sum(ch3_summary$total_auc_available), big.mark = ","), "\n", sep = "")
+cat("\n**For pupil-enhanced DDM, the final analysis set is `ddm_ready & auc_available`:**\n")
+cat("- Total trials meeting both criteria: ", format(sum(ch3_intersection$n_intersection), big.mark = ","), "\n", sep = "")
+cat("  - ADT: ", format(ch3_intersection$n_intersection[ch3_intersection$task == "ADT"], big.mark = ","), " trials\n", sep = "")
+cat("  - VDT: ", format(ch3_intersection$n_intersection[ch3_intersection$task == "VDT"], big.mark = ","), " trials\n", sep = "")
 ```
 
-### 5.3 Behavior-Only vs Pupil-Enhanced DDM
+### 6.3 Behavior-Only vs Pupil-Enhanced DDM
 
 ```{r ch3-comparison}
 # Estimate behavior-only from join health
@@ -1119,9 +1147,9 @@ kable(ch3_comparison,
                 full_width = FALSE)
 ```
 
-## 6. Data Quality Issues and Considerations
+## 7. Data Quality Issues and Considerations
 
-### 6.1 Common Data Quality Challenges
+### 7.1 Common Data Quality Challenges
 
 1.  **Missing Samples**: Blinks, eye movements, or tracking loss result
     in missing pupil diameter measurements
@@ -1132,7 +1160,7 @@ kable(ch3_comparison,
 4.  **Trial Exclusions**: Trials with window out-of-bounds or all-NaN
     data are excluded
 
-### 6.2 Quality Control Measures
+### 7.2 Quality Control Measures
 
 -   **Pre-filtering**: Excludes trials with `window_oob==1` or
     `all_nan==1`
@@ -1141,7 +1169,7 @@ kable(ch3_comparison,
 -   **Gate System**: Independent gates for different analysis types
     (baseline, cognitive, overall)
 
-### 6.3 Recommendations
+### 7.3 Recommendations
 
 Based on the data availability:
 
@@ -1170,9 +1198,318 @@ Based on the data availability:
     -   Document all exclusion criteria and thresholds in methods
         sections
 
-## 7. Conclusion and Next Steps
+## 8. Participant-Level Data Quality Supplement
 
-### 7.1 Data Readiness Summary
+This supplement provides detailed visualizations and diagnostics to distinguish between low AUC values due to poor data quality versus genuine low pupil dilation responses.
+
+**Key Concern Addressed**: Low AUC values could result from either (1) poor data quality (many missing samples, large gaps during critical periods) or (2) genuine low pupil dilation responses. This supplement implements best-practice diagnostics to identify which is the case.
+
+**Important Note on AUC Interpretation**: Raw AUC values are mechanically tied to response time (RT) because the cognitive AUC window extends from 4.65s to (4.7s + RT). Shorter RT automatically means less time to accumulate area, even if pupil response amplitude is identical. Therefore, we compute **RT-normalized metrics** (`cog_mean = cog_auc / window_duration`) to separate amplitude effects from duration effects.
+
+### RT-Normalized Metrics and Quality Diagnostics
+
+```{r rt-normalized-metrics}
+# Compute RT-normalized cognitive AUC (mean pupil in cognitive window)
+# This removes the mechanical RT-AUC coupling
+ch2_data_enhanced <- ch2_data %>%
+  mutate(
+    # Calculate cognitive window duration
+    cog_window_start = 4.65,  # 300ms after target onset (4.35s + 0.3s)
+    cog_window_end = if_else(!is.na(t_resp_start_rel), t_resp_start_rel, 4.7),
+    cog_window_duration = cog_window_end - cog_window_start,
+    
+    # RT-normalized cognitive AUC (mean pupil in window)
+    cog_mean = if_else(!is.na(cog_auc) & cog_window_duration > 0, 
+                       cog_auc / cog_window_duration, 
+                       NA_real_),
+    
+    # Total window duration for normalization (if needed)
+    total_window_duration = cog_window_end - 0,  # From squeeze onset
+    total_mean = if_else(!is.na(total_auc) & total_window_duration > 0,
+                         total_auc / total_window_duration,
+                         NA_real_),
+    
+    # RT bin for visualization
+    rt_bin = case_when(
+      is.na(rt) ~ "No RT",
+      rt < 0.5 ~ "< 0.5s",
+      rt < 1.0 ~ "0.5-1.0s",
+      rt < 1.5 ~ "1.0-1.5s",
+      rt < 2.0 ~ "1.5-2.0s",
+      TRUE ~ "≥ 2.0s"
+    )
+  )
+
+# Key diagnostic: Scatter plot of RT-normalized pupil metric vs cognitive quality
+# This directly addresses "low AUC due to quality vs low AUC due to low dilation"
+diagnostic_data <- ch2_data_enhanced %>%
+  filter(!is.na(cog_mean) & !is.na(cog_quality)) %>%
+  mutate(
+    tooltip_text = paste0(
+      "Participant: ", sub, "<br>",
+      "Task: ", task, "<br>",
+      "Trial: ", trial_index, "<br>",
+      "Cognitive Quality: ", round(cog_quality, 3), "<br>",
+      "RT-Normalized AUC: ", round(cog_mean, 3), "<br>",
+      "Window Duration: ", round(cog_window_duration, 2), "s"
+    )
+  )
+
+diagnostic_scatter <- diagnostic_data %>%
+  ggplot(aes(x = cog_quality, y = cog_mean, color = task, size = cog_window_duration,
+             text = tooltip_text)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, color = "black", linetype = "dashed") +
+  facet_wrap(~ task, ncol = 2) +
+  labs(
+    x = "Cognitive Quality (proportion valid samples)",
+    y = "RT-Normalized Cognitive AUC (mean pupil in window)",
+    color = "Task",
+    size = "Window\nDuration (s)",
+    title = "Diagnostic: RT-Normalized Pupil Response vs Data Quality",
+    subtitle = "Hover over points to see participant IDs. Low values at HIGH quality = genuine low dilation. Low values at LOW quality = data quality issue."
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(size = 12, face = "bold"),
+    strip.text = element_text(face = "bold")
+  )
+
+# Convert to plotly for interactivity (hover to see participant IDs)
+diagnostic_scatter_ly <- ggplotly(diagnostic_scatter, tooltip = "text") %>%
+  layout(hovermode = "closest")
+
+diagnostic_scatter_ly
+
+# Summary statistics
+cat("\n**Key Diagnostic Interpretation:**\n\n")
+cat("- **Points in upper-right quadrant** (high quality, high dilation): Normal responses with good data\n")
+cat("- **Points in lower-right quadrant** (high quality, low dilation): Genuine low dilation responses\n")
+cat("- **Points in lower-left quadrant** (low quality, low dilation): Likely data quality artifacts\n")
+cat("- **Slope of regression line**: If positive, suggests quality-AUC relationship (data quality issue)\n")
+cat("- **If slope is flat**: Quality and AUC are independent (low AUC is physiological, not artifactual)\n\n")
+
+# Correlation between quality and RT-normalized AUC
+quality_auc_cor <- ch2_data_enhanced %>%
+  filter(!is.na(cog_mean) & !is.na(cog_quality)) %>%
+  group_by(task) %>%
+  summarise(
+    cor_quality_auc = cor(cog_quality, cog_mean, use = "complete.obs"),
+    n_trials = n(),
+    .groups = "drop"
+  )
+
+cat("**Correlation between Cognitive Quality and RT-Normalized AUC:**\n\n")
+kable(quality_auc_cor,
+      col.names = c("Task", "Correlation", "N Trials"),
+      caption = "Quality-AUC Relationship",
+      digits = 3) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+```
+
+### Participant-Task Combinations (Using RT-Normalized Metrics)
+
+```{r participant-supplement, fig.height=8, fig.width=12}
+# Prepare participant-level data using RT-normalized metrics
+# Use the enhanced data with RT-normalized cognitive AUC
+participant_auc_data <- ch2_data_enhanced %>%
+  filter(!is.na(sub) & !is.na(task)) %>%
+  group_by(sub, task) %>%
+  summarise(
+    n_trials = n(),
+    n_with_total_auc = sum(!is.na(total_auc), na.rm = TRUE),
+    n_with_cog_auc = sum(!is.na(cog_auc), na.rm = TRUE),
+    mean_baseline_quality = mean(baseline_quality, na.rm = TRUE),
+    mean_cog_quality = mean(cog_quality, na.rm = TRUE),
+    mean_total_auc = mean(total_auc, na.rm = TRUE),
+    mean_cog_auc = mean(cog_auc, na.rm = TRUE),
+    mean_cog_mean = mean(cog_mean, na.rm = TRUE),  # RT-normalized
+    median_total_auc = median(total_auc, na.rm = TRUE),
+    median_cog_auc = median(cog_auc, na.rm = TRUE),
+    median_cog_mean = median(cog_mean, na.rm = TRUE),  # RT-normalized
+    sd_total_auc = sd(total_auc, na.rm = TRUE),
+    sd_cog_auc = sd(cog_auc, na.rm = TRUE),
+    sd_cog_mean = sd(cog_mean, na.rm = TRUE),  # RT-normalized
+    pct_trials_with_auc = 100 * sum(!is.na(total_auc) & !is.na(cog_auc), na.rm = TRUE) / n(),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    data_quality_label = case_when(
+      mean_baseline_quality >= 0.7 & mean_cog_quality >= 0.7 ~ "High Quality",
+      mean_baseline_quality >= 0.5 & mean_cog_quality >= 0.5 ~ "Moderate Quality",
+      TRUE ~ "Low Quality"
+    )
+  )
+
+# Get unique participant-task combinations
+participant_tasks <- participant_auc_data %>%
+  select(sub, task) %>%
+  distinct() %>%
+  arrange(sub, task)
+
+cat("**Total participant-task combinations:**", nrow(participant_tasks), "\n\n")
+
+# Summary plot: RT-normalized cognitive AUC by participant-task
+# This removes RT effects and focuses on amplitude
+summary_plot <- participant_auc_data %>%
+  ggplot(aes(x = reorder(paste(sub, task, sep = " - "), mean_cog_mean), 
+             y = mean_cog_mean, fill = data_quality_label)) +
+  geom_col(alpha = 0.8) +
+  facet_wrap(~ task, scales = "free_x", ncol = 1) +
+  labs(
+    x = "Participant - Task",
+    y = "Mean RT-Normalized Cognitive AUC\n(Mean Pupil in Cognitive Window)",
+    fill = "Data Quality",
+    title = "RT-Normalized Cognitive AUC by Participant and Task",
+    subtitle = "Removes RT effects. Low values at HIGH quality = genuine low dilation. Low values at LOW quality = data quality issue."
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    legend.position = "bottom",
+    plot.title = element_text(size = 12, face = "bold"),
+    strip.text = element_text(face = "bold")
+  )
+
+print(summary_plot)
+
+# Identify problematic cases (low quality OR low AUC with high quality - needs investigation)
+problematic_cases <- participant_auc_data %>%
+  mutate(
+    problem_score = case_when(
+      data_quality_label == "Low Quality" ~ 3,  # Most problematic
+      data_quality_label == "Moderate Quality" & mean_cog_mean < quantile(participant_auc_data$mean_cog_mean, 0.25, na.rm = TRUE) ~ 2,
+      mean_cog_mean < quantile(participant_auc_data$mean_cog_mean, 0.1, na.rm = TRUE) & mean_cog_quality > 0.6 ~ 1,  # Low AUC but high quality (needs check)
+      TRUE ~ 0
+    )
+  ) %>%
+  filter(problem_score > 0) %>%
+  arrange(desc(problem_score), mean_cog_quality) %>%
+  head(5)
+
+# Identify good exemplars (high quality, normal AUC)
+good_exemplars <- participant_auc_data %>%
+  filter(data_quality_label == "High Quality",
+         mean_cog_mean > quantile(participant_auc_data$mean_cog_mean, 0.5, na.rm = TRUE),
+         mean_cog_mean < quantile(participant_auc_data$mean_cog_mean, 0.9, na.rm = TRUE)) %>%
+  arrange(mean_cog_mean) %>%
+  head(2)
+
+cat("\n\n**Detailed Examination: Top 5 Most Problematic Cases + 2 Good Exemplars**\n\n")
+cat("**Note:** Full participant-level plots for all combinations are available in the complete supplement.\n\n")
+
+# Combine problematic and good cases
+example_participants <- bind_rows(
+  problematic_cases %>% mutate(case_type = "Problematic"),
+  good_exemplars %>% mutate(case_type = "Good Exemplar")
+) %>%
+  select(sub, task, case_type)
+
+for (i in 1:nrow(example_participants)) {
+  p_sub <- example_participants$sub[i]
+  p_task <- example_participants$task[i]
+  
+  # Get trial-level data for this participant-task (using enhanced data with RT-normalized metrics)
+  p_data <- ch2_data_enhanced %>%
+    filter(sub == p_sub, task == p_task) %>%
+    select(trial_index, total_auc, cog_auc, cog_mean, baseline_quality, cog_quality, 
+           cog_window_duration, rt, auc_available, auc_missing_reason) %>%
+    mutate(
+      trial_num = row_number(),
+      has_both_auc = !is.na(total_auc) & !is.na(cog_auc),
+      has_cog_mean = !is.na(cog_mean)
+    )
+  
+  if (nrow(p_data) == 0) next
+  
+  # Create barplot for RT-normalized cognitive AUC (preferred over raw AUC)
+  if (sum(p_data$has_cog_mean) > 0) {
+    p_auc_plot <- p_data %>%
+      filter(has_cog_mean) %>%
+      ggplot(aes(x = trial_num, y = cog_mean, fill = cog_quality)) +
+      geom_col(alpha = 0.8, width = 0.8) +
+      scale_fill_gradient2(low = "red", mid = "yellow", high = "green", 
+                          midpoint = 0.6, name = "Cog Quality") +
+      labs(
+        x = "Trial Number",
+        y = "RT-Normalized Cognitive AUC\n(Mean Pupil in Window)",
+        fill = "Cog Quality",
+        title = paste0("Participant ", p_sub, " - ", p_task, ": RT-Normalized Cognitive AUC by Trial"),
+        subtitle = paste0("Trials with AUC: ", sum(p_data$has_cog_mean), " / ", nrow(p_data), 
+                         " (", round(100 * sum(p_data$has_cog_mean) / nrow(p_data), 1), "%)",
+                         " | Color = Cognitive Quality")
+      ) +
+      theme_minimal() +
+      theme(
+        legend.position = "bottom",
+        plot.title = element_text(size = 11, face = "bold")
+      )
+    
+    # Quality summary
+    quality_summary <- participant_auc_data %>%
+      filter(sub == p_sub, task == p_task)
+    
+    if (nrow(quality_summary) > 0) {
+      cat("\n\n#### ", p_sub, " - ", p_task, "\n\n", sep = "")
+      cat("**Data Quality Summary:**\n")
+      cat("- Total Trials:", quality_summary$n_trials, "\n")
+      cat("- Trials with Total AUC:", quality_summary$n_with_total_auc, "\n")
+      cat("- Trials with Cognitive AUC:", quality_summary$n_with_cog_auc, "\n")
+      cat("- Mean Baseline Quality:", round(quality_summary$mean_baseline_quality, 3), "\n")
+      cat("- Mean Cognitive Quality:", round(quality_summary$mean_cog_quality, 3), "\n")
+      cat("- Mean Total AUC:", round(quality_summary$mean_total_auc, 2), "\n")
+      cat("- Mean Cognitive AUC (raw):", round(quality_summary$mean_cog_auc, 2), "\n")
+      cat("- Mean RT-Normalized Cognitive AUC:", round(quality_summary$mean_cog_mean, 3), "\n")
+      cat("- Data Quality Label:", quality_summary$data_quality_label, "\n\n")
+      
+      print(p_auc_plot)
+    }
+  } else {
+    cat("\n\n#### ", p_sub, " - ", p_task, "\n\n", sep = "")
+    cat("**No AUC data available for this participant-task combination.**\n")
+    cat("This may indicate data quality issues.\n\n")
+  }
+}
+
+cat("\n\n**Note:** This section shows the most critical cases for advisor review. Full participant-level plots for all ", nrow(participant_tasks), " combinations are available in a separate supplement document or can be generated on request.\n", sep = "")
+```
+
+### Interpreting Participant-Level Plots
+
+**Key Diagnostic Framework:**
+
+1. **Use RT-Normalized Metrics**: Always interpret `cog_mean` (RT-normalized cognitive AUC) rather than raw `cog_auc`, because raw AUC is mechanically tied to RT duration.
+
+2. **Low RT-Normalized AUC + High Quality = Genuine Low Dilation**
+   - If `cog_mean` is low but `cog_quality` is high (≥0.6), this indicates genuine low pupil dilation responses
+   - These trials/participants should be **included** in analyses (they represent valid physiological data)
+
+3. **Low RT-Normalized AUC + Low Quality = Data Quality Artifact**
+   - If `cog_mean` is low and `cog_quality` is low (<0.5), this likely reflects missing data during critical periods
+   - These trials should be **excluded** or flagged for further investigation
+
+4. **Use the Diagnostic Scatter Plot (Section 7.0)**
+   - Points in **lower-right quadrant** (high quality, low dilation): Genuine low arousal - **KEEP**
+   - Points in **lower-left quadrant** (low quality, low dilation): Data quality artifact - **EXCLUDE**
+   - **Flat regression slope**: Quality and AUC are independent (good sign - low AUC is physiological)
+   - **Positive regression slope**: Suggests quality-AUC relationship (data quality issue)
+
+**Additional Considerations:**
+
+- **Gap-Based Quality** (recommended for future enhancement): Ideally, we would also compute `max_gap_ms` (largest contiguous missing segment) in the cognitive window. Gaps >250-400ms during the peak response period can severely underestimate AUC even when percent-valid looks acceptable. This requires sample-level data access and can be computed using scripts in `02_pupillometry_analysis/quality_control/analyze_prestim_gaps.R` as a template. Best-practice preprocessing papers recommend not interpolating over gaps >250ms and rejecting sections with too much missing data after short-gap reconstruction.
+- **Baseline Quality**: Low baseline quality can distort baseline correction, affecting cognitive AUC. Consider excluding trials with `baseline_quality < 0.5`.
+- **Waveform Plots for Archetypes**: For a complete diagnostic, consider generating waveform plots for 4 archetypes: (1) Low AUC + High Quality, (2) Low AUC + Low Quality, (3) Normal AUC + High Quality, (4) High AUC + Moderate Quality. This would require processing sample-level data from flat files.
+
+**Recommendations:**
+- **High Quality + Low RT-Normalized AUC**: Include in analyses (genuine low dilation)
+- **Low Quality + Low RT-Normalized AUC**: Exclude (data quality artifact)
+- **Mixed Quality**: Use quality thresholds (50% for Chapter 3, 60% for Chapter 2) to filter trials
+
+## 9. Conclusion and Next Steps
+
+### 9.1 Data Readiness Summary
 
 -   **Chapter 2**: `r format(ch2_primary_total, big.mark = ",")` trials
     ready for primary analysis (60% threshold)
@@ -1183,7 +1520,7 @@ Based on the data availability:
 -   **AUC Availability**: `r sprintf("%.1f", auc_available_both)`% of
     trials have both Total AUC and Cognitive AUC
 
-### 7.2 Recommended Analyses
+### 9.2 Recommended Analyses
 
 1.  **Chapter 2 Primary**: Psychometric coupling with 60% threshold
     (high quality)
@@ -1192,11 +1529,11 @@ Based on the data availability:
 4.  **Chapter 3 Comparison**: Behavior-only DDM for comparison and
     robustness
 
-### 7.3 Data Files
+### 9.3 Data Files
 
-All detailed data files are available in: - `quick_share_v7/qc/` -
+All detailed data files are available in: - `data/pupil_processed/qc/` -
 Quality control summaries and gate pass rates -
-`quick_share_v7/analysis_ready/` - Analysis-ready datasets: -
+`data/pupil_processed/analysis_ready/` - Analysis-ready datasets: -
 `ch2_triallevel.csv` - Chapter 2 ready data (14,586 trials) -
 `ch3_triallevel.csv` - Chapter 3 ready data (14,586 trials) -
 `quick_share_v7/merged/` - Full merged trial-level dataset

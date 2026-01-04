@@ -132,7 +132,7 @@ create_scatter_plot <- function(data, x_var, y_var, x_label, y_label,
              hjust = 1.1, vjust = 1.5,
              size = 3.5, color = "black")
   
-  ggsave(filename, plot = p, width = 6, height = 5, dpi = 300)
+  ggsave(filename, plot = p, width = 6.18, height = 5.15, units = "in", dpi = 300)
   return(TRUE)
 }
 
@@ -230,7 +230,7 @@ p2 <- ggplot(loo_plot_data, aes(x = label, ymin = r_mean_loo_min, ymax = r_mean_
 p_robust <- grid.arrange(p1, p2, ncol = 2, widths = c(1, 1))
 
 ggsave(file.path(OUTPUT_FIGS, "pupil_ddm_robustness.png"),
-       plot = p_robust, width = 10, height = 5, dpi = 300)
+       plot = p_robust, width = 6.18, height = 3.09, units = "in", dpi = 300)
 log_msg("  ✓ Saved: pupil_ddm_robustness.png")
 
 log_msg("")

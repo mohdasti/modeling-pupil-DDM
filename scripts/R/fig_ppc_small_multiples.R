@@ -55,8 +55,8 @@ p <- ggplot(pm, aes(x=rank, y=value, fill=rank)) +
     strip.text=element_text(face="bold")
   )
 
-ggsave("output/figures/fig_ppc_small_multiples.png", p, width=8, height=4.5, dpi=300)
-ggsave("output/figures/fig_ppc_small_multiples.pdf", p, width=8, height=4.5)
+ggsave("output/figures/fig_ppc_small_multiples.png", p, width = 6.18, height = 3.47, units = "in", dpi = 300)
+ggsave("output/figures/fig_ppc_small_multiples.pdf", p, width = 6.18, height = 3.47, units = "in")
 
 cat("✓ Wrote output/figures/fig_ppc_small_multiples.png\n")
 cat("✓ Wrote output/figures/fig_ppc_small_multiples.pdf\n")

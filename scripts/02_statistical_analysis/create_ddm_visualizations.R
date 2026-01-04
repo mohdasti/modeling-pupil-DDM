@@ -171,7 +171,7 @@ p1 <- ggplot(drift_data, aes(x = difficulty, y = mean)) +
 
 # Save plot
 plot1_file <- file.path(FIGURES_DIR, "plot1_drift_rate_by_difficulty.png")
-ggsave(plot1_file, p1, width = 10, height = 6, dpi = 300, bg = "white")
+ggsave(plot1_file, p1, width = 6.18, height = 3.70, units = "in", dpi = 300, bg = "white")
 log_msg("  ✓ Saved:", plot1_file)
 
 # =========================================================================
@@ -223,7 +223,7 @@ if (!is.null(bias_levels)) {
   
   # Save plot
   plot2_file <- file.path(FIGURES_DIR, "plot2_bias_by_task.png")
-  ggsave(plot2_file, p2, width = 8, height = 6, dpi = 300, bg = "white")
+  ggsave(plot2_file, p2, width = 6.18, height = 4.63, units = "in", dpi = 300, bg = "white")
   log_msg("  ✓ Saved:", plot2_file)
 } else {
   log_msg("  ⚠️  Skipping bias plot (bias levels not available)", level = "WARN")
@@ -322,7 +322,7 @@ tryCatch({
     
     # Save plot
     plot4_file <- file.path(FIGURES_DIR, "plot4_parameter_correlation.png")
-    ggsave(plot4_file, p4, width = 8, height = 6, dpi = 300, bg = "white")
+    ggsave(plot4_file, p4, width = 6.18, height = 4.63, units = "in", dpi = 300, bg = "white")
     log_msg("  ✓ Saved:", plot4_file)
     
   } else {

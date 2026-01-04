@@ -126,7 +126,7 @@ p1 <- ggplot(std_data, aes(x = rt, fill = response_label)) +
     legend.position = "bottom"
   )
 
-ggsave("output/figures/sanity_check1_rt_asymmetry.png", p1, width = 8, height = 6)
+ggsave("output/figures/sanity_check1_rt_asymmetry.png", p1, width = 6.18, height = 4.63, units = "in", dpi = 300)
 log_msg("  ✓ Saved plot: output/figures/sanity_check1_rt_asymmetry.png")
 
 # Save results
@@ -231,7 +231,7 @@ if (!file.exists(model_file)) {
     ) +
     theme_minimal()
   
-  ggsave("output/figures/sanity_check2_hard_drift.png", p2, width = 8, height = 6)
+  ggsave("output/figures/sanity_check2_hard_drift.png", p2, width = 6.18, height = 4.63, units = "in", dpi = 300)
   log_msg("  ✓ Saved plot: output/figures/sanity_check2_hard_drift.png")
 }
 
@@ -323,7 +323,7 @@ if (!file.exists(model_std_file)) {
         plot.subtitle = element_text(size = 11, color = "gray40")
       )
     
-    ggsave("output/figures/sanity_check3_subject_heterogeneity.png", p3, width = 8, height = 6)
+    ggsave("output/figures/sanity_check3_subject_heterogeneity.png", p3, width = 6.18, height = 4.63, units = "in", dpi = 300)
     log_msg("  ✓ Saved plot: output/figures/sanity_check3_subject_heterogeneity.png")
     
   } else {

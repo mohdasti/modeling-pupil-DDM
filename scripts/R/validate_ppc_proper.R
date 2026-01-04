@@ -177,7 +177,7 @@ p <- ggplot(ppc_data, aes(x = predicted)) +
     plot.subtitle = element_text(size = 11)
   )
 
-ggsave("output/ppc_primary_model_standard_trials.png", p, width = 10, height = 6, dpi = 300)
+ggsave("output/ppc_primary_model_standard_trials.png", p, width = 6.18, height = 3.70, units = "in", dpi = 300)
 cat("  ✓ Saved: output/ppc_primary_model_standard_trials.png\n\n")
 
 cat(strrep("=", 80), "\n")

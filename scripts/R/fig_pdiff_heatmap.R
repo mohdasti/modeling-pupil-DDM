@@ -106,8 +106,8 @@ p <- ggplot(hm_long, aes(x = effort_label, y = difficulty_label, fill = p)) +
     panel.grid = element_blank()
   )
 
-ggsave("output/figures/fig_pdiff_heatmap.png", p, width = 8, height = 6, dpi = 300)
-ggsave("output/figures/fig_pdiff_heatmap.pdf", p, width = 8, height = 6)
+ggsave("output/figures/fig_pdiff_heatmap.png", p, width = 6.18, height = 4.63, units = "in", dpi = 300)
+ggsave("output/figures/fig_pdiff_heatmap.pdf", p, width = 6.18, height = 4.63, units = "in")
 
 cat("✓ Wrote output/figures/fig_pdiff_heatmap.png\n")
 cat("✓ Wrote output/figures/fig_pdiff_heatmap.pdf\n")

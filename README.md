@@ -121,7 +121,6 @@ modeling-pupil-DDM/
 │   ├── test_models.R                   # Model fitting tests
 │   └── test_visualization.py           # Visualization tests
 │
-├── data/                               # Data directories
 │   ├── analysis_ready/                 # Processed data ready for analysis
 │   ├── derived/                        # Derived datasets
 │   ├── intermediate/                   # Intermediate processing files
@@ -134,10 +133,12 @@ modeling-pupil-DDM/
 ├── logs/                               # Log files and status reports
 │   └── [*.log, *.csv]                  # Pipeline logs and status files
 │
-├── quick_share_v7/                     # Active quick_share data (latest version)
-│   ├── analysis/                       # Analysis-ready datasets
-│   ├── analysis_ready/                 # Processed trial-level data
-│   └── qc/                             # Quality control reports
+├── data/                               # Data directories
+│   ├── pupil_processed/                # Processed pupil data (analysis-ready)
+│   │   ├── analysis/                   # Analysis-ready datasets
+│   │   ├── analysis_ready/             # Chapter-specific trial-level data
+│   │   ├── merged/                     # Full merged datasets
+│   │   └── qc/                         # Quality control reports
 │
 ├── quick_share_archive/                 # Archived quick_share versions (v2-v6)
 │   └── [quick_share_v2 through v6]     # Historical versions
@@ -350,7 +351,7 @@ The repository has been reorganized for better structure and maintainability:
 - **Consolidated Scripts**: All R scripts are in `scripts/R/` (previously in separate `R/` directory)
 - **Organized Documentation**: Development notes and audit reports in `docs/development_notes/`
 - **Log Management**: All log files and status CSVs in `logs/` directory
-- **Data Organization**: Clear separation between `data/`, `output/`, and `quick_share_v7/`
+- **Data Organization**: Clear separation between `data/`, `output/`, and processed data in `data/pupil_processed/`
 - **Version Archive**: Old quick_share versions (v2-v6) archived in `quick_share_archive/`
 
 ### Using the Makefile (Quick Targets)

@@ -40,7 +40,8 @@ if (file.exists(config_file)) {
 }
 
 V6_ROOT <- file.path(REPO_ROOT, "quick_share_v6")
-V7_ROOT <- file.path(REPO_ROOT, "quick_share_v7")
+# Output to data/pupil_processed (formerly quick_share_v7)
+V7_ROOT <- file.path(REPO_ROOT, "data", "pupil_processed")
 V7_MERGED <- file.path(V7_ROOT, "merged")
 V7_ANALYSIS <- file.path(V7_ROOT, "analysis")
 V7_ANALYSIS_READY <- file.path(V7_ROOT, "analysis_ready")
