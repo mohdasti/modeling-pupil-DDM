@@ -76,12 +76,21 @@ RESP_END_DEFAULT <- 7.70  # CH3 EXTENSION: End of Response 1 window (Resp1ET)
 COG_WIN_POST_TARGET <- c(0.3, 1.3)  # Cognitive window after target
 
 # ----------------------------------------------------------------------------
-# Helper: Compute trapezoidal AUC
+# Helper: Compute gap-aware trapezoidal AUC with QC metrics
 # ----------------------------------------------------------------------------
 
-compute_auc <- function(time, value) {
+compute_auc_with_qc <- function(time, value, gap_max_ms = 250, sampling_rate = 250) {
   valid <- !is.na(time) & !is.na(value) & is.finite(value)
-  if (sum(valid) < 2) return(NA_real_)
+  if (sum(valid) < 2) {
+    return(list(
+      auc = NA_real_,
+      n_valid = 0L,
+      window_duration = NA_real_,
+      prop_valid = 0.0,
+      max_gap_ms = NA_real_,
+      n_segments = 0L
+    ))
+  }
   
   time_clean <- time[valid]
   value_clean <- value[valid]
@@ -91,11 +100,77 @@ compute_auc <- function(time, value) {
   value_clean <- value_clean[ord]
   
   n <- length(time_clean)
-  if (n < 2) return(NA_real_)
+  if (n < 2) {
+    return(list(
+      auc = NA_real_,
+      n_valid = n,
+      window_duration = if (n > 0) max(time_clean) - min(time_clean) else NA_real_,
+      prop_valid = 0.0,
+      max_gap_ms = NA_real_,
+      n_segments = 0L
+    ))
+  }
   
+  # Window duration
+  window_duration <- max(time_clean) - min(time_clean)
+  n_expected <- as.integer(round(window_duration * sampling_rate))
+  prop_valid <- if (n_expected > 0) n / n_expected else 0.0
+  
+  # Compute time differences
   dt <- diff(time_clean)
-  means <- (value_clean[-n] + value_clean[-1]) / 2
-  sum(dt * means)
+  
+  # Convert gap threshold from ms to seconds
+  gap_max_sec <- gap_max_ms / 1000.0
+  
+  # Find gaps larger than threshold
+  large_gaps <- dt > gap_max_sec
+  
+  # If no large gaps, compute AUC normally
+  if (sum(large_gaps) == 0) {
+    means <- (value_clean[-n] + value_clean[-1]) / 2
+    auc_val <- sum(dt * means)
+    max_gap_ms <- max(dt, na.rm = TRUE) * 1000.0
+    n_segments <- 1L
+  } else {
+    # Split into contiguous segments (where dt <= gap_max)
+    segment_id <- cumsum(c(0, large_gaps)) + 1L
+    n_segments <- max(segment_id)
+    
+    # Compute AUC within each segment separately
+    auc_val <- 0.0
+    segment_gaps <- numeric(n_segments)
+    
+    for (seg in 1:n_segments) {
+      seg_mask <- segment_id == seg
+      if (sum(seg_mask) >= 2) {
+        t_seg <- time_clean[seg_mask]
+        y_seg <- value_clean[seg_mask]
+        dt_seg <- diff(t_seg)
+        means_seg <- (y_seg[-length(y_seg)] + y_seg[-1]) / 2
+        auc_seg <- sum(dt_seg * means_seg)
+        auc_val <- auc_val + auc_seg
+        segment_gaps[seg] <- if (length(dt_seg) > 0) max(dt_seg, na.rm = TRUE) else 0.0
+      }
+    }
+    
+    # Max gap is the maximum gap within any segment (or between segments)
+    max_gap_ms <- max(c(segment_gaps, dt[large_gaps]), na.rm = TRUE) * 1000.0
+  }
+  
+  return(list(
+    auc = auc_val,
+    n_valid = n,
+    window_duration = window_duration,
+    prop_valid = prop_valid,
+    max_gap_ms = max_gap_ms,
+    n_segments = n_segments
+  ))
+}
+
+# Backward-compatible wrapper (returns just AUC value)
+compute_auc <- function(time, value) {
+  result <- compute_auc_with_qc(time, value)
+  return(result$auc)
 }
 
 # ----------------------------------------------------------------------------
@@ -415,13 +490,25 @@ process_flat_file_v7 <- function(flat_path) {
       cog_win_end <- min(TARGET_ONSET_DEFAULT + COG_WIN_POST_TARGET[2], RESP_START_DEFAULT)
       
       cog_auc <- NA_real_
+      cog_auc_n_valid <- NA_integer_
+      cog_window_duration <- NA_real_
+      cog_auc_prop_valid <- NA_real_
+      cog_auc_max_gap_ms <- NA_real_
+      cog_auc_n_segments <- NA_integer_
+      
       if (cog_win_end > cog_win_start) {
         cog_mask <- t_rel >= cog_win_start & t_rel <= cog_win_end
         cog_time <- t_rel[cog_mask]
         cog_pupil_corrected <- pupil_partial_corrected[cog_mask]
         
         if (sum(!is.na(cog_pupil_corrected) & is.finite(cog_pupil_corrected)) >= 2) {
-          cog_auc <- compute_auc(cog_time, cog_pupil_corrected)
+          cog_auc_result <- compute_auc_with_qc(cog_time, cog_pupil_corrected)
+          cog_auc <- cog_auc_result$auc
+          cog_auc_n_valid <- cog_auc_result$n_valid
+          cog_window_duration <- cog_auc_result$window_duration
+          cog_auc_prop_valid <- cog_auc_result$prop_valid
+          cog_auc_max_gap_ms <- cog_auc_result$max_gap_ms
+          cog_auc_n_segments <- cog_auc_result$n_segments
         }
       }
       
@@ -510,6 +597,12 @@ process_flat_file_v7 <- function(flat_path) {
         total_auc = total_auc, cog_auc = cog_auc,
         cog_auc_w3 = cog_auc_w3, cog_auc_respwin = cog_auc_respwin,
         cog_auc_w1p3 = cog_auc_w1p3, cog_mean_w1p3 = cog_mean_w1p3,
+        # Gap-aware QC metrics for cognitive AUC (primary window)
+        cog_auc_n_valid = cog_auc_n_valid,
+        cog_window_duration = cog_window_duration,
+        cog_auc_prop_valid = cog_auc_prop_valid,
+        cog_auc_max_gap_ms = cog_auc_max_gap_ms,
+        cog_auc_n_segments = cog_auc_n_segments,
         n_valid_B0 = as.integer(n_valid_B0), n_valid_b0 = as.integer(n_valid_b0),
         baseline_B0_mean = baseline_B0_mean, baseline_b0_mean = baseline_b0_mean,
         auc_available_total = auc_available_total, 
@@ -864,6 +957,9 @@ auc_features_unique <- all_auc_features %>%
          any_of(c("time_unit_inferred", "dt_median", "squeeze_onset_time", "timing_anchor_found",
                   "t_target_onset_rel", "t_resp_start_rel",
                   "total_auc", "cog_auc", "cog_auc_w3", "cog_auc_respwin", "cog_auc_w1p3", "cog_mean_w1p3",
+                  # Gap-aware QC metrics for cognitive AUC
+                  "cog_auc_n_valid", "cog_window_duration", "cog_auc_prop_valid", 
+                  "cog_auc_max_gap_ms", "cog_auc_n_segments",
                   "n_valid_B0", "n_valid_b0",
                   "baseline_B0_mean", "baseline_b0_mean", 
                   "auc_available_total", "auc_available_cog", "auc_available_both",
@@ -886,6 +982,9 @@ merged_v4 <- merged_base %>%
 
 # COALESCE .x/.y columns BEFORE dropping them (CRITICAL FIX)
 coalesce_fields <- c("total_auc", "cog_auc", "cog_auc_w3", "cog_auc_respwin",
+                     # Gap-aware QC metrics for cognitive AUC
+                     "cog_auc_n_valid", "cog_window_duration", "cog_auc_prop_valid", 
+                     "cog_auc_max_gap_ms", "cog_auc_n_segments",
                      "n_valid_B0", "n_valid_b0",
                      "baseline_B0_mean", "baseline_b0_mean",
                      "auc_available_total", "auc_available_cog", "auc_available_both",
@@ -1311,6 +1410,9 @@ ch2_triallevel <- merged_v4_with_flags %>%
     # AUC columns/flags
     total_auc, cog_auc, auc_available_total, auc_available_cog, auc_available_both, 
     auc_available, auc_missing_reason,
+    # Gap-aware QC metrics for cognitive AUC
+    any_of(c("cog_auc_n_valid", "cog_window_duration", "cog_auc_prop_valid", 
+             "cog_auc_max_gap_ms", "cog_auc_n_segments")),
     n_valid_B0, n_valid_b0, baseline_B0_mean, baseline_b0_mean,
     # Timing
     t_target_onset_rel, t_resp_start_rel, timing_source,
@@ -1326,7 +1428,17 @@ if (n_dups_ch2 > 0) {
   stop("ERROR: Found ", n_dups_ch2, " duplicate trial_uid in ch2_triallevel.")
 }
 
-write_csv(ch2_triallevel, file.path(V7_ANALYSIS_READY, "ch2_triallevel.csv"))
+# Versioning: backup old file if it exists
+ch2_file <- file.path(V7_ANALYSIS_READY, "ch2_triallevel.csv")
+if (file.exists(ch2_file)) {
+  backup_file <- file.path(V7_ANALYSIS_READY, 
+                           paste0("ch2_triallevel_backup_", 
+                                  format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv"))
+  file.copy(ch2_file, backup_file)
+  cat("  ✓ Backed up old version to:", basename(backup_file), "\n")
+}
+
+write_csv(ch2_triallevel, ch2_file)
 n_ch2_pupil_primary <- sum(ch2_triallevel$gate_pupil_primary, na.rm = TRUE)
 cat("  ✓ Saved: analysis_ready/ch2_triallevel.csv (", nrow(ch2_triallevel), " trials, ", 
     sprintf("%.1f", 100*n_ch2_pupil_primary/nrow(ch2_triallevel)), "% gate_pupil_primary)\n", sep = "")
@@ -1349,6 +1461,9 @@ ch3_triallevel <- merged_v4_with_flags %>%
     any_of(c("baseline_quality", "cog_quality", "posttarget_quality", "overall_quality")),
     # AUC columns/flags (legacy + CH3 extension)
     total_auc, cog_auc, cog_auc_w3, cog_auc_respwin, cog_auc_w1p3, cog_mean_w1p3,
+    # Gap-aware QC metrics for cognitive AUC
+    any_of(c("cog_auc_n_valid", "cog_window_duration", "cog_auc_prop_valid", 
+             "cog_auc_max_gap_ms", "cog_auc_n_segments")),
     auc_available_total, auc_available_cog, auc_available_both,
     auc_available, auc_missing_reason,
     n_valid_B0, n_valid_b0, baseline_B0_mean, baseline_b0_mean,
@@ -1368,7 +1483,17 @@ if (n_dups_ch3 > 0) {
   stop("ERROR: Found ", n_dups_ch3, " duplicate trial_uid in ch3_triallevel.")
 }
 
-write_csv(ch3_triallevel, file.path(V7_ANALYSIS_READY, "ch3_triallevel.csv"))
+# Versioning: backup old file if it exists
+ch3_file <- file.path(V7_ANALYSIS_READY, "ch3_triallevel.csv")
+if (file.exists(ch3_file)) {
+  backup_file <- file.path(V7_ANALYSIS_READY, 
+                           paste0("ch3_triallevel_backup_", 
+                                  format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv"))
+  file.copy(ch3_file, backup_file)
+  cat("  ✓ Backed up old version to:", basename(backup_file), "\n")
+}
+
+write_csv(ch3_triallevel, ch3_file)
 n_ch3_ddm_ready <- sum(ch3_triallevel$ddm_ready, na.rm = TRUE)
 cat("  ✓ Saved: analysis_ready/ch3_triallevel.csv (", nrow(ch3_triallevel), " trials, ", 
     sprintf("%.1f", 100*n_ch3_ddm_ready/nrow(ch3_triallevel)), "% ddm_ready)\n\n", sep = "")
@@ -1572,10 +1697,34 @@ if (nrow(waveform_trials) > 0) {
         }
         
         # Interpolate to grids
-        pupil_full_ch2 <- approx(.x$t_rel[valid_full], .x$pupil_full[valid_full], xout = t_grid_ch2, method = "linear", rule = 2)$y
-        pupil_partial_ch2 <- approx(.x$t_rel[valid_partial], .x$pupil_partial[valid_partial], xout = t_grid_ch2, method = "linear", rule = 2)$y
-        pupil_full_ch3 <- approx(.x$t_rel[valid_full], .x$pupil_full[valid_full], xout = t_grid_ch3, method = "linear", rule = 2)$y
-        pupil_partial_ch3 <- approx(.x$t_rel[valid_partial], .x$pupil_partial[valid_partial], xout = t_grid_ch3, method = "linear", rule = 2)$y
+        # Deduplicate time values before interpolation to avoid warnings
+        # If duplicates exist, take mean of pupil values at duplicate times
+        t_full <- .x$t_rel[valid_full]
+        y_full <- .x$pupil_full[valid_full]
+        t_partial <- .x$t_rel[valid_partial]
+        y_partial <- .x$pupil_partial[valid_partial]
+        
+        # Deduplicate by taking mean at duplicate times
+        if (any(duplicated(t_full))) {
+          df_full <- tibble(t = t_full, y = y_full) %>%
+            group_by(t) %>%
+            summarise(y = mean(y, na.rm = TRUE), .groups = "drop")
+          t_full <- df_full$t
+          y_full <- df_full$y
+        }
+        if (any(duplicated(t_partial))) {
+          df_partial <- tibble(t = t_partial, y = y_partial) %>%
+            group_by(t) %>%
+            summarise(y = mean(y, na.rm = TRUE), .groups = "drop")
+          t_partial <- df_partial$t
+          y_partial <- df_partial$y
+        }
+        
+        # Now interpolate with deduplicated data
+        pupil_full_ch2 <- approx(t_full, y_full, xout = t_grid_ch2, method = "linear", rule = 2)$y
+        pupil_partial_ch2 <- approx(t_partial, y_partial, xout = t_grid_ch2, method = "linear", rule = 2)$y
+        pupil_full_ch3 <- approx(t_full, y_full, xout = t_grid_ch3, method = "linear", rule = 2)$y
+        pupil_partial_ch3 <- approx(t_partial, y_partial, xout = t_grid_ch3, method = "linear", rule = 2)$y
         
         bind_rows(
           tibble(

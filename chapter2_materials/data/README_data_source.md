@@ -112,13 +112,22 @@ data/pupil_processed/
 
 **Pupil:**
 - `total_auc`: Total AUC (B0-corrected, 0 to 4.70s)
-- `cog_auc`: Cognitive AUC (b0-corrected, 4.65 to 4.70s)
+- `cog_auc`: Cognitive AUC (b0-corrected, 4.65 to 4.70s) - **PRIMARY METRIC FOR ANALYSES**
 - `auc_available`: TRUE if both AUCs computed
 - `n_valid_B0`, `n_valid_b0`: Baseline valid sample counts
 
-**QC:**
+**QC (Standard):**
 - `baseline_quality`, `cog_quality`: Window validity metrics
 - `pass_primary_060`: Primary gate at threshold 0.60
+
+**QC (Gap-Aware - NEW as of January 2026):**
+- `cog_auc_n_valid`: Number of valid samples in cognitive window
+- `cog_window_duration`: Cognitive window duration (seconds, determined by RT)
+- `cog_auc_prop_valid`: Proportion of valid samples
+- `cog_auc_max_gap_ms`: Maximum contiguous missing segment (ms) - **KEY FOR FILTERING**
+- `cog_auc_n_segments`: Number of contiguous valid segments (1 = continuous, >1 = fragmented)
+
+**See `docs/FILTERING_GUIDE.md` for how to use gap-aware metrics to filter problematic trials.**
 
 ### Chapter 3 (DDM)
 

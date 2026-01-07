@@ -11,7 +11,8 @@ chapter2_materials/
 │   └── README_data_source.md       # Documentation of data source and structure
 ├── docs/
 │   ├── TIMESTAMP_DEFINITIONS.md    # Task timing definitions
-│   ├── AUC_CALCULATION_METHOD.md   # AUC calculation methodology
+│   ├── AUC_CALCULATION_METHOD.md   # AUC calculation methodology (gap-aware)
+│   ├── FILTERING_GUIDE.md          # Guide to filtering problematic trials (NEW)
 │   ├── PUPIL_DATA_REPORT_PROMPT.md # Data structure documentation
 │   ├── CHAPTER2_SETUP_PROMPT.md    # Detailed Chapter 2 setup guide
 │   └── CHAPTER2_SETUP_PROMPT_CONCISE.md  # Concise setup guide
@@ -45,9 +46,20 @@ chapter2_materials/
 
 ### Pupil Metrics
 - `total_auc`: Total AUC (raw pupil, 0s to response onset)
-- `cog_auc`: Cognitive AUC (baseline-corrected, 4.65s to response onset)
+- `cog_auc`: Cognitive AUC (baseline-corrected, 4.65s to response onset) - **PRIMARY METRIC FOR ANALYSES**
 - `baseline_quality`: Proportion valid in baseline window (-0.5s to 0s)
 - `cog_quality`: Proportion valid in cognitive window (4.65s to response onset)
+
+### Gap-Aware QC Metrics (NEW - Added January 2026)
+These metrics help identify trials with problematic missing data patterns, even when overall quality looks acceptable:
+
+- `cog_auc_n_valid`: Number of valid (non-NA) samples in cognitive window
+- `cog_window_duration`: Actual duration of cognitive window (seconds) - determined by RT
+- `cog_auc_prop_valid`: Proportion of valid samples (n_valid / expected at 250Hz)
+- `cog_auc_max_gap_ms`: Maximum contiguous missing segment (milliseconds) - **KEY FOR FILTERING**
+- `cog_auc_n_segments`: Number of contiguous valid segments (1 = continuous, >1 = fragmented)
+
+**Note**: `cog_auc` values are computed with gap-aware logic (doesn't bridge gaps >250ms), but values are identical to previous versions because your data has no large gaps. The gap-aware implementation is a safety net for future data.
 
 ### Quality Flags
 - `gate_pupil_primary`: Chapter 2 ready (baseline_quality ≥ 0.60 AND cog_quality ≥ 0.60)
@@ -64,6 +76,31 @@ Data comes from `data/pupil_processed/` (formerly `quick_share_v7/`, most recent
 - **Sensitivity checks**: 50% and 70% thresholds
 - **Pupil features**: Cognitive AUC (baseline-corrected) for trial-wise coupling
 - **Statistical approach**: GLMM with continuous stimulus intensity
+
+## Filtering Problematic Trials
+
+See `docs/FILTERING_GUIDE.md` for detailed guidance on using gap-aware QC metrics to filter problematic trials. Quick reference:
+
+**Primary (Strict) Exclusion Rule**:
+```r
+ch2_clean <- ch2_data %>%
+  filter(
+    gate_pupil_primary == TRUE,           # 60% quality threshold
+    cog_auc_max_gap_ms <= 250,            # No large gaps (Kret & Sjak-Shie)
+    cog_window_duration >= 0.5,           # Sufficient window duration
+    cog_auc_n_valid >= 100                # Enough valid samples
+  )
+```
+
+**Sensitivity (Moderate)**:
+```r
+ch2_clean <- ch2_data %>%
+  filter(
+    gate_pupil_primary == TRUE,
+    cog_auc_max_gap_ms <= 250,
+    cog_window_duration >= 0.3            # Allows faster RTs
+  )
+```
 
 ## Additional Resources
 

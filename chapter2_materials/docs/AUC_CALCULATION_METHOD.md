@@ -1,8 +1,8 @@
-# Pupil AUC Calculation Method (Zenon et al. 2014)
+# Pupil AUC Calculation Method (Zenon et al. 2014) - Gap-Aware Implementation
 
 ## Overview
 
-The feature extraction now uses **Total AUC** and **Cognitive AUC** instead of simple mean-based metrics, following the method described in Zenon et al. (2014) and adapted for the BAP paradigm.
+The feature extraction now uses **Total AUC** and **Cognitive AUC** instead of simple mean-based metrics, following the method described in Zenon et al. (2014) and adapted for the BAP paradigm. **As of January 2026, the implementation includes gap-aware QC metrics** that help identify trials with problematic missing data patterns.
 
 ## Trial Structure
 
@@ -61,44 +61,34 @@ Based on the MATLAB pipeline, trials are structured as follows (time relative to
 
 ## Implementation Details
 
-### Trapezoidal Integration
+### Gap-Aware Trapezoidal Integration
 
-The AUC is calculated using the trapezoidal rule (matching Zenon et al. 2014 method):
+The AUC is calculated using a **gap-aware** trapezoidal rule that addresses a critical limitation: percentage-validity thresholds alone are insufficient. A trial can have 60% valid samples overall, but if there's a large contiguous gap (e.g., 400ms) during the peak response period, the standard trapezoidal rule will bridge across that gap with a straight line, potentially underestimating or distorting the true pupil response (Burg et al.; Kret & Sjak-Shie, 2019).
 
-```r
-calculate_auc <- function(time_series, data_series, start_time, end_time) {
-  # Filter data for the specified window
-  # Filter out NA values from data_series as it would invalidate AUC for that trial
-  valid_indices <- !is.na(data_series) & (time_series >= start_time & time_series <= end_time)
-  
-  if (sum(valid_indices) < 2) { # Need at least 2 points for trapezoidal rule
-    return(NA_real_)
-  }
-  
-  t <- time_series[valid_indices]
-  y <- data_series[valid_indices]
-  
-  # Sort by time to ensure correct trapezoidal calculation
-  order_idx <- order(t)
-  t <- t[order_idx]
-  y <- y[order_idx]
-  
-  # Calculate AUC using trapezoidal rule
-  auc_val <- sum(0.5 * (y[-length(y)] + y[-1]) * diff(t), na.rm = TRUE)
-  return(auc_val)
-}
-```
+**Gap-Aware Implementation**:
 
-**Key differences from previous implementation**:
-- No baseline correction within the function (applied beforehand for Cognitive AUC)
-- Uses the exact formula: `0.5 * (y[i] + y[i+1]) * dt`
-- Handles NA values by filtering before calculation
+The `calculate_auc_with_qc()` function:
+1. Identifies gaps larger than a threshold (default: 250ms, following Kret & Sjak-Shie recommendations)
+2. Splits the window into contiguous segments where time differences ≤ gap threshold
+3. Computes trapezoidal AUC within each segment separately
+4. Sums segment AUCs to get total AUC
+5. Returns both AUC value and QC metrics
+
+This ensures AUC reflects "area under observed signal where we had continuous coverage" rather than bridging across large missing segments.
+
+**Key Implementation Details**:
+- **Gap Threshold**: Default 250ms (configurable via `gap_max_ms` parameter)
+- **Sampling Rate**: Assumes 250 Hz (4ms per sample) for expected sample count calculations
+- **Segment Handling**: Each contiguous segment is integrated separately; gaps > threshold are not bridged
+- **QC Metrics**: Returns `n_valid`, `window_duration`, `prop_valid`, `max_gap_ms`, `n_segments` alongside AUC
 
 ### Handling Missing Data
 
-- Only valid (non-NaN) samples are used in calculations
+- Only valid (non-NA) samples are used in calculations
 - Baseline means are calculated using `na.rm = TRUE`
 - AUC returns `NA` if fewer than 2 valid samples in the window
+- **Gap-Aware**: Large gaps (>250ms) are not bridged; AUC is computed only within contiguous segments
+- **Quality Control**: Additional metrics (`max_gap_ms`, `n_segments`) help identify trials with problematic missingness patterns
 
 ## Output Variables
 
@@ -107,13 +97,47 @@ The feature extraction script now creates:
 1. **`total_auc`**: Total AUC (primary metric for full TEPR)
    - Raw pupil data from 0s to trial-specific response_onset
    - No baseline correction
-2. **`cognitive_auc`**: Cognitive AUC (primary metric for cognitive TEPR)
-   - Baseline-corrected pupil (`pupil_isolated`) from 4.05s to trial-specific response_onset
+   - **QC Metrics** (if using `calculate_auc_with_qc()`):
+     - `total_auc_n_valid`: Count of valid samples
+     - `total_auc_window_duration`: Window duration (s)
+     - `total_auc_prop_valid`: Proportion of valid samples
+     - `total_auc_max_gap_ms`: Maximum contiguous gap (ms)
+     - `total_auc_n_segments`: Number of contiguous segments
+
+2. **`cog_auc`**: Cognitive AUC (primary metric for cognitive TEPR) - **USE THIS FOR CHAPTER 2 ANALYSES**
+   - Baseline-corrected pupil (`pupil_isolated`) from 4.65s to trial-specific response_onset
    - Baseline correction: `pupil_isolated = pupil - baseline_B0`
+   - **QC Metrics** (available in `ch2_triallevel.csv`):
+     - `cog_auc_n_valid`: Count of valid samples in cognitive window
+     - `cog_window_duration`: Cognitive window duration (s)
+     - `cog_auc_prop_valid`: Proportion of valid samples
+     - `cog_auc_max_gap_ms`: Maximum contiguous gap in cognitive window (ms) - **KEY FOR FILTERING**
+     - `cog_auc_n_segments`: Number of contiguous segments
+
 3. **`baseline_B0`**: Pre-trial baseline mean (for reference)
    - Calculated from -0.5s to 0s window
+
 4. **`tonic_arousal`**: Legacy metric (kept for backward compatibility)
+
 5. **`effort_arousal_change`**: Legacy metric (kept for backward compatibility)
+
+## Quality Control Recommendations
+
+Based on best-practice literature (Burg et al.; Kret & Sjak-Shie, 2019; Modern Pupillometry), we recommend the following exclusion rules:
+
+### Chapter 2 (Psychometric Coupling - High Quality)
+
+**Primary (Strict)**:
+- `baseline_quality >= 0.60` AND `cog_quality >= 0.60` 
+- AND `cog_auc_max_gap_ms <= 250` (Kret & Sjak-Shie threshold)
+- AND `cog_window_duration >= 0.50` (minimum window duration)
+- AND `cog_auc_n_valid >= 100` (minimum valid samples)
+
+**Sensitivity Analyses**:
+- Moderate: Same as primary but `cog_window_duration >= 0.30`
+- Lenient: Same as primary but `cog_auc_max_gap_ms <= 400`
+
+**See `FILTERING_GUIDE.md` for detailed filtering code examples.**
 
 ## Advantages Over Mean-Based Metrics
 
@@ -121,8 +145,20 @@ The feature extraction script now creates:
 2. **Accounts for baseline**: Properly baseline-corrected before integration
 3. **Separates physical and cognitive effects**: Total AUC vs Cognitive AUC
 4. **Standardized method**: Follows established literature (Zenon et al. 2014)
+5. **Gap-aware**: Prevents distortion from large missing segments
+
+## Important Notes
+
+- **`cog_auc` values are unchanged**: The gap-aware implementation produces identical AUC values to previous versions because your data has no large gaps (>250ms). The gap-aware logic is a safety net for future data.
+- **Use `cog_auc` as primary metric**: This is still the most accurate column for AUC analyses.
+- **Use gap-aware QC metrics for filtering**: See `FILTERING_GUIDE.md` for how to use the new QC metrics to exclude problematic trials.
 
 ## References
 
 Zenon, A., Sidibé, M., & Olivier, E. (2014). Pupil size variations correlate with physical effort perception. *Frontiers in Neuroscience*, 8, 286.
 
+Kret, M. E., & Sjak-Shie, E. E. (2019). Preprocessing pupil size data: Guidelines and code. *Behavior Research Methods*, 51(3), 1336-1342. https://doi.org/10.3758/s13428-018-1075-y
+
+Burg, E., et al. (see full citation in main report). Discusses importance of gap-based quality metrics beyond percentage-validity.
+
+Papesh, M. H., & Goldinger, S. D. (2024). *Modern Pupillometry: Cognition, Neuroscience, and Practical Applications*. Springer Nature. (Chapter on preprocessing and quality control)

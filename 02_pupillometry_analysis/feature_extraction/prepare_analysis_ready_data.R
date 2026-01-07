@@ -74,29 +74,95 @@ cat("  Loaded", nrow(pupil_data_raw), "total samples\n\n")
 
 cat("2. Creating trial-level pupil summary with AUC metrics...\n")
 
-# Helper function to calculate AUC using trapezoidal integration
-# Updated to match Zenon et al. (2014) method
-calculate_auc <- function(time_series, data_series, start_time, end_time) {
+# Helper function to calculate gap-aware AUC with QC metrics
+# Updated to match Zenon et al. (2014) method + gap-aware integration
+# Returns a list with: auc, n_valid, window_duration, prop_valid, max_gap_ms, n_segments
+calculate_auc_with_qc <- function(time_series, data_series, start_time, end_time, 
+                                   gap_max_ms = 250, sampling_rate = 250) {
   # Filter data for the specified window
-  # Ensure time_series and data_series are numeric and of equal length
-  # Filter out NA values from data_series as it would invalidate AUC for that trial
   valid_indices <- !is.na(data_series) & (time_series >= start_time & time_series <= end_time)
   
-  if (sum(valid_indices) < 2) { # Need at least 2 points for trapezoidal rule
-    return(NA_real_)
+  if (sum(valid_indices) < 2) {
+    return(list(
+      auc = NA_real_,
+      n_valid = 0L,
+      window_duration = end_time - start_time,
+      prop_valid = 0.0,
+      max_gap_ms = NA_real_,
+      n_segments = 0L
+    ))
   }
   
   t <- time_series[valid_indices]
   y <- data_series[valid_indices]
   
-  # Sort by time to ensure correct trapezoidal calculation
+  # Sort by time
   order_idx <- order(t)
   t <- t[order_idx]
   y <- y[order_idx]
   
-  # Calculate AUC using trapezoidal rule (matching provided code)
-  auc_val <- sum(0.5 * (y[-length(y)] + y[-1]) * diff(t), na.rm = TRUE)
-  return(auc_val)
+  # Window duration
+  window_duration <- end_time - start_time
+  
+  # Expected number of samples at full sampling rate
+  n_expected <- as.integer(round(window_duration * sampling_rate))
+  n_valid <- length(t)
+  prop_valid <- if (n_expected > 0) n_valid / n_expected else 0.0
+  
+  # Compute time differences between consecutive valid samples
+  dt <- diff(t)
+  
+  # Convert gap threshold from ms to seconds
+  gap_max_sec <- gap_max_ms / 1000.0
+  
+  # Find gaps larger than threshold
+  large_gaps <- dt > gap_max_sec
+  
+  # If no large gaps, compute AUC normally
+  if (sum(large_gaps) == 0) {
+    auc_val <- sum(0.5 * (y[-length(y)] + y[-1]) * dt, na.rm = TRUE)
+    max_gap_ms <- max(dt, na.rm = TRUE) * 1000.0
+    n_segments <- 1L
+  } else {
+    # Split into contiguous segments (where dt <= gap_max)
+    # Create segment IDs: each large gap starts a new segment
+    segment_id <- cumsum(c(0, large_gaps)) + 1L
+    n_segments <- max(segment_id)
+    
+    # Compute AUC within each segment separately
+    auc_val <- 0.0
+    segment_gaps <- numeric(n_segments)
+    
+    for (seg in 1:n_segments) {
+      seg_mask <- segment_id == seg
+      if (sum(seg_mask) >= 2) {
+        t_seg <- t[seg_mask]
+        y_seg <- y[seg_mask]
+        dt_seg <- diff(t_seg)
+        auc_seg <- sum(0.5 * (y_seg[-length(y_seg)] + y_seg[-1]) * dt_seg, na.rm = TRUE)
+        auc_val <- auc_val + auc_seg
+        segment_gaps[seg] <- if (length(dt_seg) > 0) max(dt_seg, na.rm = TRUE) else 0.0
+      }
+    }
+    
+    # Max gap is the maximum gap within any segment (or between segments if we want to be strict)
+    max_gap_ms <- max(c(segment_gaps, dt[large_gaps]), na.rm = TRUE) * 1000.0
+  }
+  
+  return(list(
+    auc = auc_val,
+    n_valid = n_valid,
+    window_duration = window_duration,
+    prop_valid = prop_valid,
+    max_gap_ms = max_gap_ms,
+    n_segments = n_segments
+  ))
+}
+
+# Backward-compatible wrapper (returns just AUC value)
+calculate_auc <- function(time_series, data_series, start_time, end_time) {
+  result <- calculate_auc_with_qc(time_series, data_series, start_time, end_time)
+  return(result$auc)
 }
 
 # UPDATED: Handle NaN values (zeros converted to NaN in MATLAB pipeline)
@@ -141,7 +207,7 @@ trial_response_onsets <- pupil_data_with_baseline %>%
     .groups = "drop"
   )
 
-# Calculate AUC metrics per trial
+# Calculate AUC metrics per trial with QC metrics
 pupil_summary_per_trial <- pupil_data_with_baseline %>%
   left_join(trial_response_onsets, by = c("sub", "task", "run", "trial_index")) %>%
   group_by(sub, task, run, trial_index) %>%
@@ -151,24 +217,24 @@ pupil_summary_per_trial <- pupil_data_with_baseline %>%
     
     # Total AUC: Raw pupil data from squeeze onset (0s) to trial-specific response onset
     # NO baseline correction (uses raw pupil data)
-    total_auc = calculate_auc(
+    total_auc_result = list(calculate_auc_with_qc(
       time_series = time,
       data_series = pupil,  # Raw pupil data
       start_time = 0.0,      # Trial onset (squeeze onset)
       end_time = first(response_onset)  # Trial-specific response onset
-    ),
+    )),
     
     # Cognitive AUC: Baseline-corrected pupil from 300ms after TARGET stimulus onset to trial-specific response onset
     # Target stimulus is the second stimulus: Standard (100ms) + ISI (500ms) + Target (100ms)
     # Target stimulus onset = 3.75s (stimulus phase start) + 0.1s (Standard) + 0.5s (ISI) = 4.35s
     # 300ms after target onset = 4.35 + 0.3 = 4.65s
     # Uses pupil_isolated (baseline-corrected trace)
-    cognitive_auc = calculate_auc(
+    cog_auc_result = list(calculate_auc_with_qc(
       time_series = time,
       data_series = pupil_isolated,  # Baseline-corrected pupil
       start_time = 4.35 + 0.3,  # 300ms after TARGET stimulus onset (4.65s)
       end_time = first(response_onset)  # Trial-specific response onset (4.7s + RT if available)
-    ),
+    )),
     
     # Keep old metrics for backward compatibility (but mark as deprecated)
     tonic_arousal = mean(pupil[trial_label == "ITI_Baseline" & !is.na(pupil)], na.rm = TRUE),
@@ -185,13 +251,30 @@ pupil_summary_per_trial <- pupil_data_with_baseline %>%
     .groups = "drop"
   ) %>%
   mutate(
+    # Extract AUC values and QC metrics from result lists
+    total_auc = map_dbl(total_auc_result, ~ .x$auc),
+    total_auc_n_valid = map_int(total_auc_result, ~ .x$n_valid),
+    total_auc_window_duration = map_dbl(total_auc_result, ~ .x$window_duration),
+    total_auc_prop_valid = map_dbl(total_auc_result, ~ .x$prop_valid),
+    total_auc_max_gap_ms = map_dbl(total_auc_result, ~ .x$max_gap_ms),
+    total_auc_n_segments = map_int(total_auc_result, ~ .x$n_segments),
+    
+    cognitive_auc = map_dbl(cog_auc_result, ~ .x$auc),
+    cog_auc_n_valid = map_int(cog_auc_result, ~ .x$n_valid),
+    cog_window_duration = map_dbl(cog_auc_result, ~ .x$window_duration),
+    cog_auc_prop_valid = map_dbl(cog_auc_result, ~ .x$prop_valid),
+    cog_auc_max_gap_ms = map_dbl(cog_auc_result, ~ .x$max_gap_ms),
+    cog_auc_n_segments = map_int(cog_auc_result, ~ .x$n_segments),
+    
     # Keep old metric for backward compatibility
     effort_arousal_change = effort_arousal_pupil - tonic_arousal,
     
     # Prefer MATLAB pipeline quality metrics if available
     quality_iti = ifelse(!is.na(baseline_quality), baseline_quality, quality_iti),
     quality_prestim = ifelse(!is.na(overall_quality), overall_quality, quality_prestim)
-  )
+  ) %>%
+  # Remove intermediate result columns
+  select(-total_auc_result, -cog_auc_result)
 
 cat("  Created", nrow(pupil_summary_per_trial), "trial-level summaries\n\n")
 

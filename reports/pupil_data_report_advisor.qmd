@@ -364,7 +364,8 @@ p1 <- p1_data %>%
   theme_minimal() +
   theme(plot.title = element_text(size = 12, face = "bold"))
 
-ggplotly(p1, tooltip = "text")
+p1_ly <- ggplotly(p1, tooltip = "text")
+print(p1_ly)
 ```
 
 ```{r participant-distribution-ch3-trials, fig.height=5}
@@ -385,7 +386,8 @@ p2 <- p2_data %>%
   theme_minimal() +
   theme(plot.title = element_text(size = 12, face = "bold"))
 
-ggplotly(p2, tooltip = "text")
+p2_ly <- ggplotly(p2, tooltip = "text")
+print(p2_ly)
 ```
 
 ```{r participant-distribution-ch2-rate, fig.height=5}
@@ -406,7 +408,8 @@ p3 <- p3_data %>%
   theme_minimal() +
   theme(plot.title = element_text(size = 12, face = "bold"))
 
-ggplotly(p3, tooltip = "text")
+p3_ly <- ggplotly(p3, tooltip = "text")
+print(p3_ly)
 ```
 
 ```{r participant-distribution-ch3-rate, fig.height=5}
@@ -427,7 +430,8 @@ p4 <- p4_data %>%
   theme_minimal() +
   theme(plot.title = element_text(size = 12, face = "bold"))
 
-ggplotly(p4, tooltip = "text")
+p4_ly <- ggplotly(p4, tooltip = "text")
+print(p4_ly)
 ```
 
 ```{r participant-scatter-ch2-vs-ch3, fig.height=6}
@@ -452,7 +456,8 @@ p_scatter <- scatter_data %>%
   theme_minimal() +
   theme(plot.title = element_text(size = 12, face = "bold"))
 
-ggplotly(p_scatter, tooltip = "text")
+p_scatter_ly <- ggplotly(p_scatter, tooltip = "text")
+print(p_scatter_ly)
 ```
 
 ### 3.2 Task and Condition Breakdown
@@ -658,12 +663,14 @@ threshold_plot <- gate_plot_data %>%
 print(threshold_plot)
 
 # Display summary table
-cat("\n**Retention Rates by Threshold:**\n\n")
+cat("\n**Retention Rates by Threshold:**\n")
+cat("**Note:** 'Total Trials' represents behavioral-eligible trials (trials with valid RT and choice data after behavioral filters).\n")
+cat("This differs from the AUC Availability table (Section 4.3) which uses all logged trials.\n\n")
 kable(threshold_summary %>%
       mutate(retention_rate = sprintf("%.1f%%", 100 * retention_rate)),
       col.names = c("Task", "Threshold", "Total Trials", "Trials Passing", "Retention Rate"),
       digits = 0,
-      caption = "Threshold Sensitivity: Trial Retention Rates") %>%
+      caption = "Threshold Sensitivity: Trial Retention Rates (Behavioral-Eligible Trials Only)") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
                 full_width = FALSE)
 ```
@@ -896,13 +903,17 @@ print(condition_plot)
 
 **Key Findings from Additional Sensitivity Analyses:**
 
-1. **Participant-Level Retention**: Most participants retain sufficient data (≥10 trials) across all thresholds, ensuring robust group-level analyses. The 60% threshold maintains >90% participant retention for both tasks.
+1. **Participant-Level Retention**: Most participants retain sufficient data (≥10 trials) across all thresholds, ensuring robust group-level analyses. The 60% threshold maintains ~67% participant retention for ADT and ~75% for VDT (with ≥10 trials per participant criterion).
 
 2. **Condition-Specific Patterns**: Retention rates are relatively stable across effort and difficulty conditions, indicating that threshold choices do not systematically bias results toward specific experimental conditions.
 
 3. **Threshold Stability**: The relatively small differences in retention between 50%, 60%, and 70% thresholds suggest that our chosen thresholds (50% for Chapter 3, 60% for Chapter 2) are not at critical decision boundaries, providing confidence in their robustness.
 
 ### 4.3 AUC Availability and Missingness
+
+**Note on Total Trial Denominators**: The tables in this report use different denominators depending on the analysis context:
+- **AUC Availability table** (below): Uses all trials logged in the merged dataset (`n_total` from `merged_v4`), including trials without behavioral data. This represents the full scope of pupil data collection.
+- **Threshold retention tables** (Section 4.1-4.2): Use only behavioral-eligible trials (trials with valid RT and choice data after behavioral filters). This represents the subset of trials available for analyses requiring both behavioral and pupil data.
 
 ```{r auc-availability}
 # Show AUC availability by task
@@ -912,10 +923,13 @@ auc_display <- auc_rates %>%
          total_auc_pct, cog_auc_pct, auc_available_both_pct) %>%
   mutate(across(where(is.numeric), ~ round(.x, 1)))
 
+cat("**Note:** The 'Total Trials' column below represents all trials in the merged dataset (including non-behavioral trials).\n")
+cat("For threshold retention rates, see Section 4.1 which uses behavioral-eligible trials only.\n\n")
+
 kable(auc_display,
       col.names = c("Task", "Total Trials", "Total AUC N", "Cog AUC N",
                     "Total AUC %", "Cog AUC %", "Both AUC %"),
-      caption = "AUC Availability by Task") %>%
+      caption = "AUC Availability by Task (All Logged Trials)") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
                 full_width = FALSE)
 
@@ -1280,7 +1294,7 @@ diagnostic_scatter <- diagnostic_data %>%
 diagnostic_scatter_ly <- ggplotly(diagnostic_scatter, tooltip = "text") %>%
   layout(hovermode = "closest")
 
-diagnostic_scatter_ly
+print(diagnostic_scatter_ly)
 
 # Summary statistics
 cat("\n**Key Diagnostic Interpretation:**\n\n")
@@ -1476,36 +1490,426 @@ for (i in 1:nrow(example_participants)) {
 cat("\n\n**Note:** This section shows the most critical cases for advisor review. Full participant-level plots for all ", nrow(participant_tasks), " combinations are available in a separate supplement document or can be generated on request.\n", sep = "")
 ```
 
+### Gap-Aware AUC Quality Control Metrics
+
+**Rationale**: Percentage-validity thresholds (50-60%) are necessary but not sufficient. A trial can have 60% valid samples overall, but if there's a **large contiguous gap** (e.g., 400ms) during the peak response period, the trapezoidal AUC will bridge across that gap with a straight line, potentially underestimating or distorting the true pupil response. This section implements gap-aware QC metrics recommended by Burg et al. and Kret & Sjak-Shie.
+
+**New QC Metrics Computed:**
+
+1. **`cog_auc_max_gap_ms`**: Maximum contiguous missing segment (in milliseconds) within the cognitive AUC window
+2. **`cog_auc_n_segments`**: Number of contiguous valid segments (more segments = more fragmented sampling)
+3. **`cog_auc_n_valid`**: Count of valid (non-NA) samples in the cognitive window
+4. **`cog_window_duration`**: Duration of the cognitive window (4.65s to response_onset)
+5. **`cog_auc_prop_valid`**: Proportion of valid samples (n_valid / expected_samples_at_250Hz)
+
+**Gap-Aware AUC Calculation**: The AUC function now **does not bridge across gaps larger than 250ms**. Instead, it:
+- Splits the window into contiguous segments where time differences ≤ 250ms
+- Computes trapezoidal AUC within each segment separately
+- Sums segment AUCs to get total AUC
+- This ensures AUC reflects "area under observed signal where we had continuous coverage"
+
+```{r gap-aware-prepare-data, warning=FALSE, message=FALSE}
+# Check if gap-aware metrics are available (they should be if data was processed with updated pipeline)
+has_gap_metrics <- all(c("cog_auc_max_gap_ms", "cog_auc_n_segments", "cog_auc_n_valid", 
+                          "cog_window_duration", "cog_auc_prop_valid") %in% names(ch2_data))
+
+if (has_gap_metrics) {
+  # Enhanced data with gap-aware metrics
+  ch2_data_gap_enhanced <- ch2_data %>%
+    mutate(
+      # RT-normalized cognitive AUC (if not already computed)
+      cog_mean = if_else(!is.na(cog_auc) & !is.na(cog_window_duration) & cog_window_duration > 0,
+                         cog_auc / cog_window_duration, NA_real_),
+      # Gap severity categories
+      gap_severity = case_when(
+        is.na(cog_auc_max_gap_ms) ~ "No Data",
+        cog_auc_max_gap_ms <= 150 ~ "Small Gap (≤150ms)",
+        cog_auc_max_gap_ms <= 250 ~ "Moderate Gap (150-250ms)",
+        cog_auc_max_gap_ms <= 400 ~ "Large Gap (250-400ms)",
+        TRUE ~ "Very Large Gap (>400ms)"
+      ),
+      # Segment fragmentation
+      fragmentation = case_when(
+        is.na(cog_auc_n_segments) ~ "No Data",
+        cog_auc_n_segments == 1 ~ "Continuous",
+        cog_auc_n_segments <= 3 ~ "Mildly Fragmented",
+        cog_auc_n_segments <= 5 ~ "Moderately Fragmented",
+        TRUE ~ "Highly Fragmented"
+      ),
+      # Window duration categories (for short RT concerns)
+      window_duration_cat = case_when(
+        is.na(cog_window_duration) ~ "No Data",
+        cog_window_duration < 0.3 ~ "Very Short (<0.3s)",
+        cog_window_duration < 0.5 ~ "Short (0.3-0.5s)",
+        cog_window_duration < 1.0 ~ "Moderate (0.5-1.0s)",
+        TRUE ~ "Long (≥1.0s)"
+      )
+    )
+} else {
+  cat("\n**Gap-aware QC metrics not yet available in current dataset.**\n")
+  cat("These metrics will be computed when the data pipeline is re-run with the updated `calculate_auc_with_qc()` function.\n")
+}
+```
+
+### Diagnostic 1: RT-Normalized AUC vs Quality, Colored by Maximum Gap
+
+```{r gap-aware-diagnostic-1, fig.height=8, fig.width=12, warning=FALSE, message=FALSE}
+if (exists("has_gap_metrics") && has_gap_metrics && exists("ch2_data_gap_enhanced")) {
+  diagnostic_gap_scatter <- ch2_data_gap_enhanced %>%
+    filter(!is.na(cog_mean) & !is.na(cog_quality) & !is.na(cog_auc_max_gap_ms)) %>%
+    ggplot(aes(x = cog_quality, y = cog_mean, color = gap_severity, 
+               size = cog_window_duration,
+               text = paste0("Participant: ", sub, "<br>",
+                            "Task: ", task, "<br>",
+                            "Cog Quality: ", round(cog_quality, 3), "<br>",
+                            "RT-Normalized AUC: ", round(cog_mean, 3), "<br>",
+                            "Max Gap: ", round(cog_auc_max_gap_ms, 1), "ms", "<br>",
+                            "Window Duration: ", round(cog_window_duration, 2), "s", "<br>",
+                            "N Segments: ", cog_auc_n_segments))) +
+    geom_point(alpha = 0.6) +
+    geom_smooth(method = "lm", se = TRUE, color = "black", linetype = "dashed", size = 0.5) +
+    facet_wrap(~ task, ncol = 2) +
+    scale_color_manual(values = c("Small Gap (≤150ms)" = "green", 
+                                   "Moderate Gap (150-250ms)" = "yellow",
+                                   "Large Gap (250-400ms)" = "orange",
+                                   "Very Large Gap (>400ms)" = "red",
+                                   "No Data" = "gray")) +
+    labs(
+      x = "Cognitive Quality (proportion valid samples)",
+      y = "RT-Normalized Cognitive AUC (mean pupil in window)",
+      color = "Max Gap",
+      size = "Window\nDuration (s)",
+      title = "Diagnostic: RT-Normalized AUC vs Quality, Colored by Maximum Gap",
+      subtitle = "Large gaps (>250ms) can distort AUC even when overall quality looks acceptable"
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(size = 12, face = "bold"),
+      strip.text = element_text(face = "bold")
+    )
+  
+  ggplotly(diagnostic_gap_scatter, tooltip = "text")
+}
+```
+
+### Diagnostic 2: Distribution of Maximum Gaps by Quality Tier
+
+```{r gap-aware-diagnostic-2, fig.height=8, fig.width=12, warning=FALSE, message=FALSE}
+if (exists("has_gap_metrics") && has_gap_metrics && exists("ch2_data_gap_enhanced")) {
+  gap_distribution <- ch2_data_gap_enhanced %>%
+    filter(!is.na(cog_auc_max_gap_ms) & !is.na(cog_quality)) %>%
+    mutate(
+      quality_tier = case_when(
+        cog_quality >= 0.70 ~ "High (≥70%)",
+        cog_quality >= 0.60 ~ "Moderate-High (60-70%)",
+        cog_quality >= 0.50 ~ "Moderate (50-60%)",
+        TRUE ~ "Low (<50%)"
+      )
+    ) %>%
+    ggplot(aes(x = cog_auc_max_gap_ms, fill = quality_tier)) +
+    geom_histogram(bins = 50, alpha = 0.7, position = "identity") +
+    geom_vline(xintercept = 250, linetype = "dashed", color = "red", size = 1) +
+    facet_wrap(~ task, ncol = 2) +
+    labs(
+      x = "Maximum Gap (ms)",
+      y = "Number of Trials",
+      fill = "Quality Tier",
+      title = "Distribution of Maximum Gaps by Quality Tier",
+      subtitle = "Red dashed line = 250ms threshold (Kret & Sjak-Shie recommendation)"
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(size = 12, face = "bold"),
+      strip.text = element_text(face = "bold")
+    )
+  
+  print(gap_distribution)
+}
+```
+
+### Diagnostic 3: RT-Normalized AUC vs Window Duration
+
+```{r gap-aware-diagnostic-3, fig.height=8, fig.width=12, warning=FALSE, message=FALSE}
+if (exists("has_gap_metrics") && has_gap_metrics && exists("ch2_data_gap_enhanced")) {
+  duration_scatter <- ch2_data_gap_enhanced %>%
+    filter(!is.na(cog_mean) & !is.na(cog_window_duration) & !is.na(cog_quality)) %>%
+    ggplot(aes(x = cog_window_duration, y = cog_mean, color = cog_quality,
+               text = paste0("Participant: ", sub, "<br>",
+                            "Task: ", task, "<br>",
+                            "Window Duration: ", round(cog_window_duration, 2), "s", "<br>",
+                            "RT-Normalized AUC: ", round(cog_mean, 3), "<br>",
+                            "Cog Quality: ", round(cog_quality, 3)))) +
+    geom_point(alpha = 0.6) +
+    geom_smooth(method = "lm", se = TRUE, color = "black", linetype = "dashed", size = 0.5) +
+    facet_wrap(~ task, ncol = 2) +
+    scale_color_gradient2(low = "red", mid = "yellow", high = "green", midpoint = 0.6) +
+    labs(
+      x = "Cognitive Window Duration (s)",
+      y = "RT-Normalized Cognitive AUC (mean pupil in window)",
+      color = "Cog Quality",
+      title = "Diagnostic: RT-Normalized AUC vs Window Duration",
+      subtitle = "Short windows (fast RTs) may yield less stable estimates even with high quality"
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(size = 12, face = "bold"),
+      strip.text = element_text(face = "bold")
+    )
+  
+  ggplotly(duration_scatter, tooltip = "text")
+}
+```
+
+```{r gap-aware-summary-table, warning=FALSE, message=FALSE}
+if (exists("has_gap_metrics") && has_gap_metrics && exists("ch2_data_gap_enhanced")) {
+  # Summary table: Retention rates with gap-aware exclusions
+  # Use trials that have gap metrics available (don't filter out NA gap metrics - they're valid "no data" cases)
+  gap_exclusion_summary <- ch2_data_gap_enhanced %>%
+    filter(!is.na(cog_quality)) %>%  # Only require quality to be non-NA
+    group_by(task) %>%
+    summarise(
+      n_total = n(),
+      # Standard 60% threshold
+      n_pass_60 = sum(baseline_quality >= 0.60 & cog_quality >= 0.60, na.rm = TRUE),
+      # 60% + max_gap <= 250ms (only count if gap metric exists)
+      n_pass_60_gap250 = sum(baseline_quality >= 0.60 & cog_quality >= 0.60 & 
+                             !is.na(cog_auc_max_gap_ms) & cog_auc_max_gap_ms <= 250, na.rm = TRUE),
+      # 60% + max_gap <= 250ms + min duration >= 0.5s (only count if both metrics exist)
+      n_pass_60_gap250_dur50 = sum(baseline_quality >= 0.60 & cog_quality >= 0.60 & 
+                                    !is.na(cog_auc_max_gap_ms) & cog_auc_max_gap_ms <= 250 &
+                                    !is.na(cog_window_duration) & cog_window_duration >= 0.5, na.rm = TRUE),
+      # 60% + max_gap <= 250ms + min duration >= 0.5s + n_valid >= 100 (only count if all metrics exist)
+      n_pass_60_gap250_dur50_n100 = sum(baseline_quality >= 0.60 & cog_quality >= 0.60 & 
+                                         !is.na(cog_auc_max_gap_ms) & cog_auc_max_gap_ms <= 250 &
+                                         !is.na(cog_window_duration) & cog_window_duration >= 0.5 &
+                                         !is.na(cog_auc_n_valid) & cog_auc_n_valid >= 100, na.rm = TRUE),
+      # Count how many trials have gap metrics available
+      n_with_gap_metrics = sum(!is.na(cog_auc_max_gap_ms), na.rm = TRUE),
+      n_with_duration = sum(!is.na(cog_window_duration), na.rm = TRUE),
+      n_with_n_valid = sum(!is.na(cog_auc_n_valid), na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      pct_pass_60 = 100 * n_pass_60 / n_total,
+      pct_pass_60_gap250 = 100 * n_pass_60_gap250 / n_total,
+      pct_pass_60_gap250_dur50 = 100 * n_pass_60_gap250_dur50 / n_total,
+      pct_pass_60_gap250_dur50_n100 = 100 * n_pass_60_gap250_dur50_n100 / n_total
+    )
+  
+  # Check if we have meaningful data
+  if (sum(gap_exclusion_summary$n_with_gap_metrics) == 0) {
+    cat("\n**Note:** Gap-aware metrics (`cog_auc_max_gap_ms`, `cog_window_duration`, `cog_auc_n_valid`) are not available in the current dataset.\n")
+    cat("The diagnostic plots above are shown for conceptual illustration. Once the pipeline is re-run with gap-aware AUC calculation,\n")
+    cat("these metrics will be computed and this table will show meaningful retention rates.\n\n")
+  } else {
+    cat("\n**Retention Rates with Gap-Aware Exclusions (Chapter 2, 60% Base Threshold):**\n")
+    cat("**Note:** Rows with duration and N-valid criteria only count trials where those metrics are available.\n")
+    cat("Trials with missing gap metrics are excluded from those specific criteria but included in the '60% Only' baseline.\n\n")
+    
+    kable(gap_exclusion_summary %>%
+          select(task, n_total, n_pass_60, pct_pass_60, 
+                 n_pass_60_gap250, pct_pass_60_gap250,
+                 n_pass_60_gap250_dur50, pct_pass_60_gap250_dur50,
+                 n_pass_60_gap250_dur50_n100, pct_pass_60_gap250_dur50_n100) %>%
+          mutate(across(where(is.numeric), ~ round(.x, 1))),
+          col.names = c("Task", "Total", "60% Only", "60% %", 
+                        "60%+Gap≤250", "60%+Gap %",
+                        "60%+Gap+Dur≥0.5s", "60%+Gap+Dur %",
+                        "60%+Gap+Dur+N≥100", "60%+Gap+Dur+N %"),
+          caption = "Sensitivity: How Gap-Aware Exclusions Affect Retention") %>%
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                    full_width = FALSE)
+    
+    # Diagnostic: Show how many trials have gap metrics
+    cat("\n**Gap Metric Availability:**\n")
+    cat("- Trials with `cog_auc_max_gap_ms`: ", sum(gap_exclusion_summary$n_with_gap_metrics), " / ", sum(gap_exclusion_summary$n_total), "\n", sep = "")
+    cat("- Trials with `cog_window_duration`: ", sum(gap_exclusion_summary$n_with_duration), " / ", sum(gap_exclusion_summary$n_total), "\n", sep = "")
+    cat("- Trials with `cog_auc_n_valid`: ", sum(gap_exclusion_summary$n_with_n_valid), " / ", sum(gap_exclusion_summary$n_total), "\n\n", sep = "")
+  }
+}
+```
+
+### Interpreting the Gap-Aware Diagnostic Plots
+
+**Purpose**: These diagnostic plots help distinguish between **genuine low pupil dilation** (valid physiological data) and **data quality artifacts** (missing data during critical periods). This is essential for making informed decisions about which trials to include in analyses.
+
+#### Diagnostic 1: RT-Normalized AUC vs Quality, Colored by Maximum Gap
+
+**What This Plot Shows:**
+- **X-axis**: Cognitive Quality (proportion of valid samples in the cognitive window)
+- **Y-axis**: RT-Normalized Cognitive AUC (mean pupil dilation, removing RT effects)
+- **Color**: Maximum gap size within the cognitive window
+- **Size**: Window duration (larger points = longer RTs)
+
+**How to Interpret:**
+
+1. **Lower-Right Quadrant (High Quality, Low Dilation, Small Gaps) = ✅ KEEP**
+   - **Pattern**: Points with `cog_quality ≥ 0.6`, low `cog_mean`, and green/yellow colors (gaps ≤ 250ms)
+   - **Meaning**: These represent genuine low arousal/dilation responses with good data coverage
+   - **Action**: **Include in analyses** - these are valid physiological data
+
+2. **Lower-Left Quadrant (Low Quality OR Large Gaps, Low Dilation) = ❌ EXCLUDE**
+   - **Pattern**: Points with low `cog_quality` (< 0.5) OR red/orange colors (gaps > 250ms), and low `cog_mean`
+   - **Meaning**: Low AUC is likely due to missing data during critical periods, not genuine low dilation
+   - **Action**: **Exclude from primary analyses** - these are data quality artifacts
+
+3. **Regression Slope Interpretation:**
+   - **Flat/Negative Slope**: Quality and AUC are independent → Good sign! Low AUC values are physiological, not artifactual
+   - **Positive Slope**: Suggests quality-AUC relationship → Data quality issue; consider stricter exclusions
+
+4. **Color Distribution:**
+   - **Mostly Green/Yellow**: Good data coverage with small gaps → High confidence in AUC estimates
+   - **Many Red/Orange Points**: Large gaps present → Consider gap-aware exclusions
+
+**Decision Rule**: If a trial has low RT-normalized AUC, check its color:
+- **Green/Yellow (small gap) + High Quality**: Keep (genuine low dilation)
+- **Red/Orange (large gap) OR Low Quality**: Exclude (data quality artifact)
+
+#### Diagnostic 2: Distribution of Maximum Gaps by Quality Tier
+
+**What This Plot Shows:**
+- **X-axis**: Maximum gap size (ms) within the cognitive window
+- **Y-axis**: Number of trials
+- **Color**: Quality tier (High ≥70%, Moderate-High 60-70%, Moderate 50-60%, Low <50%)
+- **Red dashed line**: 250ms threshold (Kret & Sjak-Shie recommendation)
+
+**How to Interpret:**
+
+1. **Gap Distribution Patterns:**
+   - **Left-skewed (most gaps < 250ms)**: Good data coverage → High confidence in AUC estimates
+   - **Right-skewed (many gaps > 250ms)**: Problematic → Large gaps can distort AUC even with acceptable %-valid
+
+2. **Quality Tier vs Gap Size:**
+   - **High Quality + Large Gaps**: These trials have good overall coverage but large contiguous missing segments → **Exclude** (gap-aware exclusion)
+   - **Low Quality + Large Gaps**: Multiple data quality issues → **Definitely exclude**
+
+3. **Threshold Assessment:**
+   - **Most trials < 250ms**: Gap-aware exclusions will have minimal impact on sample size
+   - **Many trials > 250ms**: Gap-aware exclusions will reduce sample size but improve data quality
+
+**Decision Rule**: 
+- **Trials with gaps > 250ms**: Exclude from primary analyses (following Kret & Sjak-Shie recommendation)
+- **Trials with gaps ≤ 250ms**: Include if they also meet quality thresholds
+
+#### Diagnostic 3: RT-Normalized AUC vs Window Duration
+
+**What This Plot Shows:**
+- **X-axis**: Cognitive window duration (seconds) - determined by RT
+- **Y-axis**: RT-Normalized Cognitive AUC (mean pupil dilation)
+- **Color**: Cognitive quality (red = low, green = high)
+- **Size**: Not used in this plot
+
+**How to Interpret:**
+
+1. **Window Duration Effects:**
+   - **Short Windows (< 0.5s)**: Fast RTs → Less stable AUC estimates even with high quality
+   - **Long Windows (≥ 1.0s)**: Slow RTs → More stable AUC estimates
+
+2. **Quality-Color Patterns:**
+   - **Green points (high quality) across all durations**: Good data regardless of RT
+   - **Red points (low quality) at short durations**: Data quality issues + unstable estimates → **Exclude**
+
+3. **Duration-AUC Relationship:**
+   - **Flat relationship**: Window duration doesn't affect RT-normalized AUC → Good (RT normalization working)
+   - **Positive relationship**: Suggests duration effects remain → May need stricter duration thresholds
+
+**Decision Rule**:
+- **Short windows (< 0.3s) + Low Quality**: Exclude (unstable estimates)
+- **Short windows (< 0.3s) + High Quality**: Consider excluding or flag for sensitivity analysis
+- **Windows ≥ 0.5s**: Include if they meet quality and gap thresholds
+
+#### Summary Table: Retention Rates with Gap-Aware Exclusions
+
+**What This Table Shows:**
+- How many trials pass each exclusion criterion
+- Impact of adding gap-aware exclusions on sample size
+
+**How to Interpret:**
+
+1. **60% Only**: Baseline exclusion (quality thresholds only)
+2. **60% + Gap ≤ 250ms**: Adds gap-aware exclusion → Shows how many trials have acceptable gaps
+3. **60% + Gap + Dur ≥ 0.5s**: Adds minimum window duration → Ensures stable estimates
+4. **60% + Gap + Dur + N ≥ 100**: Adds minimum valid samples → Ensures robust estimates
+
+**Decision Making:**
+- **Large drop from "60% Only" to "60% + Gap ≤ 250ms"**: Many trials have large gaps → Gap-aware exclusions are important
+- **Small drop**: Most trials have acceptable gaps → Gap-aware exclusions have minimal impact
+- **Final retention rate**: Use this to plan sample size for analyses
+
+**Recommended Approach:**
+1. **Primary Analysis**: Use "60% + Gap + Dur + N ≥ 100" (strictest, highest quality)
+2. **Sensitivity Analysis**: Compare with "60% + Gap ≤ 250ms" (moderate) to assess robustness
+3. **Report**: Present both retention rates and discuss impact on conclusions
+
+#### Overall Decision Framework
+
+**For Each Trial, Ask:**
+
+1. **Does it meet quality thresholds?** (`baseline_quality ≥ 0.60` AND `cog_quality ≥ 0.60`)
+   - ❌ No → Exclude
+   - ✅ Yes → Continue to step 2
+
+2. **Does it have acceptable gaps?** (`cog_auc_max_gap_ms ≤ 250`)
+   - ❌ No → Exclude (gap-aware exclusion)
+   - ✅ Yes → Continue to step 3
+
+3. **Does it have sufficient window duration?** (`cog_window_duration ≥ 0.5s`)
+   - ❌ No → Consider excluding or flag for sensitivity analysis
+   - ✅ Yes → Continue to step 4
+
+4. **Does it have enough valid samples?** (`cog_auc_n_valid ≥ 100`)
+   - ❌ No → Consider excluding or flag for sensitivity analysis
+   - ✅ Yes → **Include in primary analysis**
+
+**Key Takeaway**: Low RT-normalized AUC is not necessarily a problem. The diagnostic plots help distinguish:
+- **Genuine low dilation** (high quality, small gaps) → **Keep**
+- **Data quality artifacts** (low quality OR large gaps) → **Exclude**
+
+**Recommended Exclusion Rules (Based on Literature):**
+
+1. **Primary (Strict)**: `baseline_quality >= 0.60` AND `cog_quality >= 0.60` AND `cog_auc_max_gap_ms <= 250` AND `cog_window_duration >= 0.50` AND `cog_auc_n_valid >= 100`
+   - Rationale: Kret & Sjak-Shie recommend not interpolating gaps >250ms; Burg et al. show large gaps can distort AUC even with acceptable %-valid
+
+2. **Sensitivity (Moderate)**: `baseline_quality >= 0.60` AND `cog_quality >= 0.60` AND `cog_auc_max_gap_ms <= 250` AND `cog_window_duration >= 0.30`
+   - Rationale: Allows shorter windows (faster RTs) but still enforces gap threshold
+
+3. **Sensitivity (Lenient)**: `baseline_quality >= 0.60` AND `cog_quality >= 0.60` AND `cog_auc_max_gap_ms <= 400`
+   - Rationale: Allows larger gaps but still flags very problematic trials
+
 ### Interpreting Participant-Level Plots
 
 **Key Diagnostic Framework:**
 
 1. **Use RT-Normalized Metrics**: Always interpret `cog_mean` (RT-normalized cognitive AUC) rather than raw `cog_auc`, because raw AUC is mechanically tied to RT duration.
 
-2. **Low RT-Normalized AUC + High Quality = Genuine Low Dilation**
-   - If `cog_mean` is low but `cog_quality` is high (≥0.6), this indicates genuine low pupil dilation responses
+2. **Low RT-Normalized AUC + High Quality + Small Gap = Genuine Low Dilation**
+   - If `cog_mean` is low but `cog_quality` is high (≥0.6) AND `cog_auc_max_gap_ms` is small (≤150ms), this indicates genuine low pupil dilation responses
    - These trials/participants should be **included** in analyses (they represent valid physiological data)
 
-3. **Low RT-Normalized AUC + Low Quality = Data Quality Artifact**
-   - If `cog_mean` is low and `cog_quality` is low (<0.5), this likely reflects missing data during critical periods
+3. **Low RT-Normalized AUC + Low Quality OR Large Gap = Data Quality Artifact**
+   - If `cog_mean` is low and (`cog_quality` is low (<0.5) OR `cog_auc_max_gap_ms` is large (>250ms)), this likely reflects missing data during critical periods
    - These trials should be **excluded** or flagged for further investigation
 
-4. **Use the Diagnostic Scatter Plot (Section 7.0)**
-   - Points in **lower-right quadrant** (high quality, low dilation): Genuine low arousal - **KEEP**
-   - Points in **lower-left quadrant** (low quality, low dilation): Data quality artifact - **EXCLUDE**
+4. **Use the Diagnostic Scatter Plots**
+   - Points in **lower-right quadrant with small gaps** (high quality, low dilation, small gap): Genuine low arousal - **KEEP**
+   - Points in **lower-left quadrant or with large gaps** (low quality OR large gap, low dilation): Data quality artifact - **EXCLUDE**
    - **Flat regression slope**: Quality and AUC are independent (good sign - low AUC is physiological)
    - **Positive regression slope**: Suggests quality-AUC relationship (data quality issue)
 
 **Additional Considerations:**
 
-- **Gap-Based Quality** (recommended for future enhancement): Ideally, we would also compute `max_gap_ms` (largest contiguous missing segment) in the cognitive window. Gaps >250-400ms during the peak response period can severely underestimate AUC even when percent-valid looks acceptable. This requires sample-level data access and can be computed using scripts in `02_pupillometry_analysis/quality_control/analyze_prestim_gaps.R` as a template. Best-practice preprocessing papers recommend not interpolating over gaps >250ms and rejecting sections with too much missing data after short-gap reconstruction.
+- **Gap-Based Quality** (NOW IMPLEMENTED): We now compute `max_gap_ms` (largest contiguous missing segment) in the cognitive window. Gaps >250ms during the peak response period can severely underestimate AUC even when percent-valid looks acceptable. Following Kret & Sjak-Shie (2019) and Burg et al., we exclude trials with gaps >250ms in primary analyses.
+- **Window Duration**: Short windows (fast RTs) can yield less stable AUC estimates. We recommend minimum window duration of 0.5s for primary analyses, with sensitivity checks at 0.3s.
+- **Minimum Valid Samples**: At 250 Hz, a 0.5s window should have ~125 samples. With 60% validity, that's ~75 valid samples. We recommend `n_valid >= 100` for primary analyses to ensure robust estimates.
 - **Baseline Quality**: Low baseline quality can distort baseline correction, affecting cognitive AUC. Consider excluding trials with `baseline_quality < 0.5`.
-- **Waveform Plots for Archetypes**: For a complete diagnostic, consider generating waveform plots for 4 archetypes: (1) Low AUC + High Quality, (2) Low AUC + Low Quality, (3) Normal AUC + High Quality, (4) High AUC + Moderate Quality. This would require processing sample-level data from flat files.
 
 **Recommendations:**
-- **High Quality + Low RT-Normalized AUC**: Include in analyses (genuine low dilation)
-- **Low Quality + Low RT-Normalized AUC**: Exclude (data quality artifact)
-- **Mixed Quality**: Use quality thresholds (50% for Chapter 3, 60% for Chapter 2) to filter trials
+- **High Quality + Small Gap + Low RT-Normalized AUC**: Include in analyses (genuine low dilation)
+- **Low Quality OR Large Gap + Low RT-Normalized AUC**: Exclude (data quality artifact)
+- **Mixed Quality**: Use quality thresholds (50% for Chapter 3, 60% for Chapter 2) + gap-aware exclusions to filter trials
 
 ## 9. Conclusion and Next Steps
 
