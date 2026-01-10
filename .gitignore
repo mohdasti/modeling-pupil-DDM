@@ -1,4 +1,5 @@
 # Modeling Pupil-DDM - Git Ignore Rules
+# This file specifies files and directories to ignore in version control
 
 # Data files (too large for git)
 data/raw/

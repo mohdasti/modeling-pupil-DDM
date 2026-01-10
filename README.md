@@ -520,7 +520,8 @@ This project is licensed under the GNU General Public License v3.0 (GPL-3.0) –
 
 - **Lead Researcher**: [Mohammad Dastgheib](mailto:mdast003@ucr.edu)
 - **Institution**: UC Riverside
-- **Project Page**: [Project Website]
+- **Project Repository**: [GitHub](https://github.com/mohdasti/modeling-pupil-DDM)
+- **DOI**: [10.5281/zenodo.18205122](https://doi.org/10.5281/zenodo.18205122)
 
 ## 📊 Citation
 
@@ -532,6 +533,7 @@ If you use this code in your research, please cite:
   author={Dastgheib, Mohammad},
   year={2024},
   url={https://github.com/mohdasti/modeling-pupil-DDM},
+  doi={10.5281/zenodo.18205122},
   note={Computational modeling pipeline for pupillometry and behavioral analysis}
 }
 ```
