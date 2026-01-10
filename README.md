@@ -5,8 +5,7 @@
 [![R](https://img.shields.io/badge/R-4.0+-blue.svg)](https://www.r-project.org/)
 [![Python](https://img.shields.io/badge/Python-3.8+-green.svg)](https://www.python.org/)
 [![MATLAB](https://img.shields.io/badge/MATLAB-R2020a+-orange.svg)](https://www.mathworks.com/products/matlab.html)
-[![Quarto](https://img.shields.io/badge/Quarto-0F4C75?logo=quarto&logoColor=white)](https://quarto.org/)
-
+[![Quarto](https://img.shields.io/badge/Quarto-1.7.33-0F4C75?logo=quarto&logoColor=white)]
 A comprehensive computational modeling pipeline integrating pupillometry, behavioral data, and drift diffusion models (DDM) to understand the relationship between brain arousal and decision-making processes.
 
 ## 🧠 Overview
