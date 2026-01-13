@@ -1290,11 +1290,23 @@ merged_v4_with_flags <- merged_v4 %>%
 # Add gating booleans (do not drop rows)
 merged_v4_with_flags <- merged_v4_with_flags %>%
   mutate(
-    gate_baseline_60 = if_else(!is.na(baseline_quality), baseline_quality >= 0.60, FALSE),
+    # B0 baseline gates (for Total AUC)
+    gate_B0_60 = if_else(!is.na(baseline_quality), baseline_quality >= 0.60, FALSE),
+    gate_B0_50 = if_else(!is.na(baseline_quality), baseline_quality >= 0.50, FALSE),
+    # B1 baseline gates (for Cognitive AUC) - use B1_quality if available, fallback to baseline_quality for backward compat
+    gate_B1_60 = if_else(!is.na(B1_quality), B1_quality >= 0.60, 
+                        if_else(!is.na(baseline_quality), baseline_quality >= 0.60, FALSE)),
+    gate_B1_50 = if_else(!is.na(B1_quality), B1_quality >= 0.50,
+                        if_else(!is.na(baseline_quality), baseline_quality >= 0.50, FALSE)),
+    # Cognitive response window gates
     gate_cog_60 = if_else(!is.na(cog_quality), cog_quality >= 0.60, FALSE),
-    gate_baseline_50 = if_else(!is.na(baseline_quality), baseline_quality >= 0.50, FALSE),
+    gate_cog_50 = if_else(!is.na(cog_quality), cog_quality >= 0.50, FALSE),
     gate_auc_both = auc_available_both,
-    gate_pupil_primary = gate_baseline_60 & gate_cog_60 & gate_auc_both & found_in_flat_run
+    # Chapter 2 primary gate: B1 baseline 50% + cognitive window 60% (more lenient baseline, stricter response window)
+    gate_pupil_primary = gate_B1_50 & gate_cog_60 & gate_auc_both & found_in_flat_run,
+    # Backward compatibility aliases (for Total AUC analyses)
+    gate_baseline_60 = gate_B0_60,
+    gate_baseline_50 = gate_B0_50
   )
 
 # Ch2: Include both ADT/VDT; keep all trials but provide flags
@@ -1316,7 +1328,10 @@ ch2_triallevel <- merged_v4_with_flags %>%
     # Run-availability flags
     found_in_flat_run, found_in_auc_features_run, join_matched_any_run,
     # Gating flags
-    gate_baseline_60, gate_cog_60, gate_baseline_50, gate_auc_both, gate_pupil_primary
+    gate_B0_60, gate_B0_50, gate_B1_60, gate_B1_50, gate_cog_60, gate_cog_50,
+    gate_auc_both, gate_pupil_primary,
+    # Backward compatibility
+    gate_baseline_60, gate_baseline_50
   )
 
 # Check duplicates
@@ -1357,6 +1372,7 @@ ch3_triallevel <- merged_v4_with_flags %>%
     found_in_flat_run, found_in_auc_features_run, join_matched_any_run,
     # Gating flags
     gate_baseline_60, gate_cog_60, gate_baseline_50, gate_auc_both,
+    # Note: gate_baseline_* are aliases for gate_B0_* (for Total AUC)
     # DDM-ready flag
     ddm_ready
   )

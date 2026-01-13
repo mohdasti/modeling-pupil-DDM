@@ -1,7 +1,9 @@
 # Guide to Filtering Problematic Trials Using Gap-Aware QC Metrics
 
 **Last Updated**: January 2026  
-**Purpose**: This guide explains how to use the new gap-aware QC metrics to identify and exclude trials with problematic missing data patterns.
+**Purpose**: This guide explains how to use gap-aware QC metrics to identify and exclude trials with problematic missing data patterns, following best-practice recommendations from Kret & Sjak-Shie (2019) and Burg et al.
+
+**Key Principle**: Use RT-normalized metrics (`cog_mean`) and gap-aware quality checks to distinguish genuine low pupil dilation from data quality artifacts.
 
 ---
 
@@ -37,24 +39,28 @@ Percentage-validity thresholds (50-60%) are necessary but **not sufficient**. A 
 **Rationale**: Kret & Sjak-Shie (2019) recommend not interpolating gaps >250ms. Large gaps during the peak response period can severely distort AUC estimates even when percent-valid looks acceptable.
 
 ### 2. `cog_window_duration`
-**What it is**: Actual duration of the cognitive window (seconds), determined by RT.
+**What it is**: Actual duration of the cognitive window (seconds). 
 
-**How to use**:
+**IMPORTANT NOTE**: In the current implementation, the cognitive window is a fixed 1.0s window (4.65s to 4.70s, capped at response start default), so `cog_window_duration` values are ~0.05s. This metric reflects the actual sampled window duration after accounting for data availability.
+
+**How to use** (for future implementations with RT-dependent windows):
 - **≥ 0.5s**: Sufficient duration - **KEEP** (stable estimates)
 - **0.3-0.5s**: Short duration - **CONSIDER EXCLUDING** or flag for sensitivity analysis
 - **< 0.3s**: Very short duration - **EXCLUDE** (unstable estimates, fast RTs)
 
-**Rationale**: Short windows (fast RTs) yield less stable AUC estimates even with high quality. Minimum 0.5s recommended for primary analyses.
+**Rationale**: Short windows (fast RTs) yield less stable AUC estimates even with high quality. Minimum 0.5s recommended for primary analyses. **Current implementation uses fixed window, so this threshold may not be applicable.**
 
 ### 3. `cog_auc_n_valid`
 **What it is**: Count of valid (non-NA) samples in the cognitive window.
 
-**How to use**:
+**IMPORTANT NOTE**: In the current implementation, the cognitive window is a fixed short window (~0.05s), so `cog_auc_n_valid` values are typically ~10-15 samples. This metric reflects actual valid samples in the available window.
+
+**How to use** (for future implementations with RT-dependent windows):
 - **≥ 100**: Sufficient samples - **KEEP** (robust estimates)
 - **75-100**: Moderate samples - **CONSIDER EXCLUDING** or flag for sensitivity analysis
 - **< 75**: Insufficient samples - **EXCLUDE**
 
-**Rationale**: At 250 Hz, a 0.5s window should have ~125 samples. With 60% validity, that's ~75 valid samples. We recommend `n_valid >= 100` for primary analyses to ensure robust estimates.
+**Rationale**: At 250 Hz, a 0.5s window should have ~125 samples. With 60% validity, that's ~75 valid samples. We recommend `n_valid >= 100` for primary analyses to ensure robust estimates. **Current implementation uses fixed short window, so this threshold may not be applicable.**
 
 ### 4. `cog_auc_n_segments`
 **What it is**: Number of contiguous valid segments (1 = continuous, >1 = fragmented).
@@ -80,36 +86,54 @@ Percentage-validity thresholds (50-60%) are necessary but **not sufficient**. A 
 
 **Use for**: Main analyses where data quality is critical.
 
+**Recommended Exclusion Rule (Based on Literature):**
+
 ```r
+# Option A (Recommended): Only filter trials that have gap metrics
 ch2_primary <- ch2_data %>%
   filter(
-    # Standard quality threshold
-    gate_pupil_primary == TRUE,  # OR: baseline_quality >= 0.60 & cog_quality >= 0.60
+    # Standard quality threshold: B1_quality >= 0.50 AND cog_quality >= 0.60
+    gate_pupil_primary == TRUE,  # OR: B1_quality >= 0.50 & cog_quality >= 0.60
     
-    # Gap-aware exclusions
-    cog_auc_max_gap_ms <= 250,           # No large gaps (Kret & Sjak-Shie)
-    cog_window_duration >= 0.5,            # Sufficient window duration
-    cog_auc_n_valid >= 100,               # Enough valid samples
-    
-    # Ensure gap metrics exist (not all trials have them)
-    !is.na(cog_auc_max_gap_ms),
-    !is.na(cog_window_duration),
-    !is.na(cog_auc_n_valid)
+    # Gap-aware exclusions (only apply if metrics exist)
+    is.na(cog_auc_max_gap_ms) | cog_auc_max_gap_ms <= 250           # No large gaps (Kret & Sjak-Shie)
+    # Note: cog_window_duration and cog_auc_n_valid thresholds may not be applicable
+    # with current fixed-window implementation. These metrics are available for
+    # future use when RT-dependent windows are implemented.
   )
 ```
 
-**Expected retention**: ~45-50% of trials (depending on task)
+**Alternative (Option B - Strict)**: Only include trials with gap metrics:
+```r
+ch2_primary_strict <- ch2_data %>%
+  filter(
+    gate_pupil_primary == TRUE,
+    !is.na(cog_auc_max_gap_ms),      # Must have gap metrics
+    cog_auc_max_gap_ms <= 250
+    # Note: cog_window_duration and cog_auc_n_valid thresholds may not be applicable
+    # with current fixed-window implementation
+  )
+```
+
+**Rationale**: 
+- Kret & Sjak-Shie recommend not interpolating gaps >250ms
+- Burg et al. show large gaps can distort AUC even with acceptable %-valid
+- **Note**: Window duration and n_valid thresholds are for future RT-dependent window implementations. Current implementation uses fixed short window.
+
+**Expected retention**: Will depend on gap distribution. Primary filter is `gate_pupil_primary` (B1_50 & cog_60) + gap threshold (≤250ms).
 
 ### Sensitivity (Moderate)
 
 **Use for**: Robustness checks, allows faster RTs.
 
+**Rationale**: Allows shorter windows (faster RTs) but still enforces gap threshold.
+
 ```r
 ch2_moderate <- ch2_data %>%
   filter(
-    gate_pupil_primary == TRUE,
+    gate_pupil_primary == TRUE,          # B1_quality >= 0.50 & cog_quality >= 0.60
     cog_auc_max_gap_ms <= 250,           # Still enforce gap threshold
-    cog_window_duration >= 0.3,           # Allows faster RTs
+    cog_window_duration >= 0.3,         # Allows faster RTs
     !is.na(cog_auc_max_gap_ms),
     !is.na(cog_window_duration)
   )
@@ -121,10 +145,12 @@ ch2_moderate <- ch2_data %>%
 
 **Use for**: Maximum sample size, allows larger gaps.
 
+**Rationale**: Allows larger gaps but still flags very problematic trials.
+
 ```r
 ch2_lenient <- ch2_data %>%
   filter(
-    gate_pupil_primary == TRUE,
+    gate_pupil_primary == TRUE,          # B1_quality >= 0.50 & cog_quality >= 0.60
     cog_auc_max_gap_ms <= 400,           # Allows larger gaps
     !is.na(cog_auc_max_gap_ms)
   )
@@ -197,45 +223,59 @@ problematic_multiple_issues <- ch2_data %>%
 
 **Interpretation**: Multiple data quality issues - **DEFINITELY EXCLUDE**.
 
-### Pattern 3: High Quality + Small Gap + Low AUC = Genuine Low Dilation
+### Pattern 3: High Quality + Small Gap + Low RT-Normalized AUC = Genuine Low Dilation
 
 ```r
+# First compute RT-normalized metric
+ch2_data <- ch2_data %>%
+  mutate(
+    cog_mean = if_else(!is.na(cog_auc) & !is.na(cog_window_duration) & cog_window_duration > 0,
+                       cog_auc / cog_window_duration,
+                       NA_real_)
+  )
+
 genuine_low_dilation <- ch2_data %>%
   filter(
     cog_quality >= 0.60,                 # High quality
-    cog_auc_max_gap_ms <= 150,          # Small gaps
-    cog_auc < quantile(ch2_data$cog_auc, 0.25, na.rm = TRUE),  # Low AUC
-    !is.na(cog_auc_max_gap_ms)
+    cog_auc_max_gap_ms <= 150,            # Small gaps
+    cog_mean < quantile(ch2_data$cog_mean, 0.25, na.rm = TRUE),  # Low RT-normalized AUC
+    !is.na(cog_auc_max_gap_ms),
+    !is.na(cog_mean)
   )
 ```
 
-**Interpretation**: These represent genuine low arousal/dilation responses with good data coverage - **KEEP** (valid physiological data).
+**Interpretation**: These represent genuine low arousal/dilation responses with good data coverage - **KEEP** (valid physiological data). Use RT-normalized AUC (`cog_mean`) rather than raw AUC to avoid RT-duration confounds.
 
 ---
 
 ## Quick Reference: Decision Tree
 
+**Overall Decision Framework**
+
 For each trial, ask:
 
-1. **Does it meet quality thresholds?** (`gate_pupil_primary == TRUE`)
+1. **Does it meet quality thresholds?** (`gate_pupil_primary == TRUE`, which requires `B1_quality >= 0.50 AND cog_quality >= 0.60`)
    - ❌ No → Exclude
-   - ✅ Yes → Continue
+   - ✅ Yes → Continue to step 2
 
-2. **Does it have gap metrics?** (`!is.na(cog_auc_max_gap_ms)`)
-   - ❌ No → Include (if using Option A) OR Exclude (if using Option B)
-   - ✅ Yes → Continue
+2. **Does it have acceptable gaps?** (`cog_auc_max_gap_ms <= 250`)
+   - ❌ No → Exclude (gap-aware exclusion)
+   - ✅ Yes → Continue to step 3
+   - **Note**: If gap metrics are missing (`is.na(cog_auc_max_gap_ms)`), use Option A (include) or Option B (exclude) based on your strategy
 
-3. **Does it have acceptable gaps?** (`cog_auc_max_gap_ms <= 250`)
-   - ❌ No → Exclude
-   - ✅ Yes → Continue
+3. **Does it have sufficient window duration?** (`cog_window_duration >= 0.5s`)
+   - **Note**: Current implementation uses fixed short window (~0.05s), so this step may not be applicable
+   - ❌ No → Consider excluding or flag for sensitivity analysis (for future RT-dependent windows)
+   - ✅ Yes → Continue to step 4
 
-4. **Does it have sufficient window duration?** (`cog_window_duration >= 0.5`)
-   - ❌ No → Consider excluding or flag for sensitivity analysis
-   - ✅ Yes → Continue
-
-5. **Does it have enough valid samples?** (`cog_auc_n_valid >= 100`)
-   - ❌ No → Consider excluding or flag for sensitivity analysis
+4. **Does it have enough valid samples?** (`cog_auc_n_valid >= 100`)
+   - **Note**: Current implementation uses fixed short window, so n_valid is typically ~10-15 samples
+   - ❌ No → Consider excluding or flag for sensitivity analysis (for future RT-dependent windows)
    - ✅ Yes → **INCLUDE in primary analysis**
+
+**Key Takeaway**: Low RT-normalized AUC (`cog_mean`) is not necessarily a problem. The diagnostic plots help distinguish:
+- **Genuine low dilation** (high quality, small gaps) → **KEEP**
+- **Data quality artifacts** (low quality OR large gaps) → **EXCLUDE**
 
 ---
 
@@ -248,18 +288,26 @@ library(readr)
 # Load data
 ch2_data <- read_csv("data/ch2_triallevel.csv", show_col_types = FALSE)
 
+# Step 0: Compute RT-normalized metric (if not already in data)
+ch2_data <- ch2_data %>%
+  mutate(
+    cog_mean = if_else(!is.na(cog_auc) & !is.na(cog_window_duration) & cog_window_duration > 0,
+                       cog_auc / cog_window_duration,
+                       NA_real_)
+  )
+
 # Step 1: Check gap metric availability
 cat("Trials with gap metrics:", sum(!is.na(ch2_data$cog_auc_max_gap_ms)), "\n")
 cat("Trials without gap metrics:", sum(is.na(ch2_data$cog_auc_max_gap_ms)), "\n\n")
 
-# Step 2: Apply primary exclusion rule
+# Step 2: Apply primary exclusion rule (Option A - Recommended)
 ch2_primary <- ch2_data %>%
   filter(
-    gate_pupil_primary == TRUE,
+    gate_pupil_primary == TRUE,           # B1_quality >= 0.50 & cog_quality >= 0.60
     # Gap-aware filters (only apply if metrics exist)
-    is.na(cog_auc_max_gap_ms) | cog_auc_max_gap_ms <= 250,
-    is.na(cog_window_duration) | cog_window_duration >= 0.5,
-    is.na(cog_auc_n_valid) | cog_auc_n_valid >= 100
+    is.na(cog_auc_max_gap_ms) | cog_auc_max_gap_ms <= 250
+    # Note: cog_window_duration and cog_auc_n_valid thresholds may not be applicable
+    # with current fixed-window implementation
   )
 
 cat("Primary analysis set:", nrow(ch2_primary), "trials\n")
@@ -278,7 +326,28 @@ if (sum(!is.na(ch2_primary$cog_auc_max_gap_ms)) > 0) {
   print(gap_summary)
 }
 
-# Step 4: Save filtered dataset
+# Step 4: Diagnostic - identify genuine low dilation vs data quality artifacts
+genuine_low_dilation <- ch2_primary %>%
+  filter(
+    cog_quality >= 0.60,
+    cog_auc_max_gap_ms <= 150,
+    !is.na(cog_mean),
+    cog_mean < quantile(ch2_primary$cog_mean, 0.25, na.rm = TRUE)
+  )
+cat("Genuine low dilation trials (high quality, small gap, low RT-normalized AUC):", 
+    nrow(genuine_low_dilation), "\n")
+
+data_quality_artifacts <- ch2_data %>%
+  filter(
+    gate_pupil_primary == TRUE,
+    !is.na(cog_mean),
+    cog_mean < quantile(ch2_data$cog_mean, 0.25, na.rm = TRUE),
+    (cog_quality < 0.50 | (cog_auc_max_gap_ms > 250 & !is.na(cog_auc_max_gap_ms)))
+  )
+cat("Data quality artifacts (low quality OR large gap, low RT-normalized AUC):", 
+    nrow(data_quality_artifacts), "\n\n")
+
+# Step 5: Save filtered dataset
 write_csv(ch2_primary, "data/ch2_triallevel_primary.csv")
 ```
 

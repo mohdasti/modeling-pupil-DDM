@@ -118,7 +118,7 @@ data/pupil_processed/
 
 **QC (Standard):**
 - `baseline_quality`, `cog_quality`: Window validity metrics
-- `pass_primary_060`: Primary gate at threshold 0.60
+- `gate_pupil_primary`: Primary gate (B1_quality >= 0.50 AND cog_quality >= 0.60)
 
 **QC (Gap-Aware - NEW as of January 2026):**
 - `cog_auc_n_valid`: Number of valid samples in cognitive window

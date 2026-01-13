@@ -1497,14 +1497,15 @@ cat("\n\n**Note:** This section shows the most critical cases for advisor review
 
 **Additional Considerations:**
 
-- **Gap-Based Quality** (recommended for future enhancement): Ideally, we would also compute `max_gap_ms` (largest contiguous missing segment) in the cognitive window. Gaps >250-400ms during the peak response period can severely underestimate AUC even when percent-valid looks acceptable. This requires sample-level data access and can be computed using scripts in `02_pupillometry_analysis/quality_control/analyze_prestim_gaps.R` as a template. Best-practice preprocessing papers recommend not interpolating over gaps >250ms and rejecting sections with too much missing data after short-gap reconstruction.
-- **Baseline Quality**: Low baseline quality can distort baseline correction, affecting cognitive AUC. Consider excluding trials with `baseline_quality < 0.5`.
-- **Waveform Plots for Archetypes**: For a complete diagnostic, consider generating waveform plots for 4 archetypes: (1) Low AUC + High Quality, (2) Low AUC + Low Quality, (3) Normal AUC + High Quality, (4) High AUC + Moderate Quality. This would require processing sample-level data from flat files.
+- **Gap-Based Quality (NOW IMPLEMENTED)**: We now compute `cog_auc_max_gap_ms` (largest contiguous missing segment) in the cognitive window. Gaps >250ms during the peak response period can severely underestimate AUC even when percent-valid looks acceptable. Following Kret & Sjak-Shie (2019) and Burg et al., we exclude trials with gaps >250ms in primary analyses.
+- **Window Duration**: Short windows (fast RTs) can yield less stable AUC estimates. We recommend minimum window duration of 0.5s for primary analyses, with sensitivity checks at 0.3s.
+- **Minimum Valid Samples**: At 250 Hz, a 0.5s window should have ~125 samples. With 60% validity, that's ~75 valid samples. We recommend `n_valid >= 100` for primary analyses to ensure robust estimates.
+- **Baseline Quality**: Low baseline quality can distort baseline correction, affecting cognitive AUC. For Cognitive AUC analyses, we use `B1_quality >= 0.50` (not `baseline_quality`) because Cognitive AUC uses B1 baseline for correction.
 
 **Recommendations:**
-- **High Quality + Low RT-Normalized AUC**: Include in analyses (genuine low dilation)
-- **Low Quality + Low RT-Normalized AUC**: Exclude (data quality artifact)
-- **Mixed Quality**: Use quality thresholds (50% for Chapter 3, 60% for Chapter 2) to filter trials
+- **High Quality + Small Gap + Low RT-Normalized AUC**: Include in analyses (genuine low dilation)
+- **Low Quality OR Large Gap + Low RT-Normalized AUC**: Exclude (data quality artifact)
+- **Mixed Quality**: Use quality thresholds (B1 50% & Cog 60% for Chapter 2) + gap-aware exclusions to filter trials
 
 ## 9. Conclusion and Next Steps
 

@@ -134,7 +134,7 @@ Create `reports/chap2_psychometric_pupil.qmd` with:
 ### Pupil Features
 - **Total AUC**: Baseline-corrected area over global trial window
 - **Cognitive pupil metric**: Fixed post-target window (target+0.3s → target+1.3s)
-- **Quality tiers**: Primary (≥0.60), Lenient (≥0.50), Strict (≥0.70)
+- **Quality tiers**: Primary (B1 ≥0.50 & Cog ≥0.60), Lenient (B1 ≥0.50 & Cog ≥0.50), Strict (B1 ≥0.60 & Cog ≥0.60)
 
 ### Statistical Models
 - **Probit link** (natural for psychometric modeling)

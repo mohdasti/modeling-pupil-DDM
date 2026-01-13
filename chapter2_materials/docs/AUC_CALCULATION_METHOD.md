@@ -37,27 +37,40 @@ Based on the MATLAB pipeline, trials are structured as follows (time relative to
 
 **Interpretation**: Captures the full task-evoked pupil response (TEPR) including both physical (squeeze) and cognitive (stimulus) demands, measured from raw pupil data.
 
-### 2. Cognitive AUC
+### 2. Cognitive AUC (Expert-Recommended Implementation)
 
-**Definition**: Area under the curve from 300ms after **TARGET stimulus onset** until trial-specific response onset, using **baseline-corrected pupil data**.
+**Definition**: Area under the curve in a **stimulus-locked fixed window** after target stimulus onset, using **baseline-corrected pupil data**.
 
 **Calculation**:
-- **Baseline (B₀)**: Mean pupil diameter in 500ms window before trial onset
-  - Time window: -0.5s to 0s (last 500ms of ITI_Baseline)
-- **Baseline Correction**: Create `pupil_isolated = pupil - baseline_B0`
-  - Applied throughout the trial to converge all conditions at squeeze onset (time = 0)
-- **AUC Window**: From 300ms after **TARGET stimulus onset** until trial-specific response onset
+- **Baseline (B1)**: Mean pupil diameter in 500ms window before target onset (target-locked baseline)
+  - Time window: 3.85s to 4.35s (last 500ms before target stimulus)
+  - **Rationale**: Target-locked baseline isolates cognitive TEPR from pre-target state
+- **Baseline Correction**: Create `pupil_isolated = pupil - baseline_B1`
+  - Applied to cognitive window to isolate cognitive response from baseline
+- **AUC Window (PRIMARY - Expert-Recommended)**: Fixed stimulus-locked window
   - **Target stimulus onset**: 4.35s (3.75s stimulus phase start + 0.1s Standard + 0.5s ISI)
-  - Start: 4.65s (4.35s + 0.3s to account for physiological latency)
-  - End: `response_onset = 4.7s + RT` (trial-specific response onset)
-  - If RT is not available, uses fixed 4.7s
-  - **Note**: The target stimulus is the second stimulus (after Standard + ISI) and is the one that varies in intensity across trials
-- **Method**: Trapezoidal integration of baseline-corrected pupil diameter
-  - AUC = ∫(pupil_isolated) dt from 4.65s to response_onset
+  - **Start**: 4.85s (target + 0.50s to account for physiological latency and avoid early reflex components)
+  - **End**: 6.05s (target + 1.70s, fixed duration)
+  - **Duration**: Fixed **1.20 seconds** (RT-independent)
+  - **Expected samples**: ~300 samples at 250 Hz
+  - **Rationale**: 
+    - Captures TEPR peak (~1s post-stimulus) while avoiding early reflex/orienting components
+    - Fixed duration eliminates RT-AUC coupling confound
+    - Sufficient duration (~1.2s) ensures robust AUC estimates
+- **Method**: Gap-aware trapezoidal integration of baseline-corrected pupil diameter
+  - AUC = ∫(pupil_isolated) dt from 4.85s to 6.05s
+  - Uses gap-aware integration (see Implementation Details below)
 
-**Note**: The 300ms offset accounts for physiological latency in the pupil response. The baseline correction isolates cognitive effects by removing pre-trial baseline differences.
+**Mean Dilation (RT-Normalized Metric)**:
+- **`cog_mean`**: Mean dilation = `cog_auc / window_duration`
+- **Rationale**: Removes duration confounds; interpretable as average pupil dilation in window
+- **Recommendation**: Prefer `cog_mean` over raw `cog_auc` for analyses
 
-**Interpretation**: Isolates the TEPR to cognitive demands of the task, controlling for physical effort effects and baseline differences.
+**Note**: The 0.50s offset (instead of 0.30s) accounts for physiological latency and reduces contamination from earliest reflex/orienting components. The fixed duration window is RT-independent, avoiding mechanical RT-AUC coupling.
+
+**Interpretation**: Isolates the TEPR to cognitive demands of the task, controlling for physical effort effects and baseline differences. The fixed window ensures comparability across trials regardless of RT.
+
+**See**: `COGNITIVE_AUC_WINDOW_IMPLEMENTATION.md` for detailed rationale and expert recommendations.
 
 ## Implementation Details
 
@@ -105,14 +118,24 @@ The feature extraction script now creates:
      - `total_auc_n_segments`: Number of contiguous segments
 
 2. **`cog_auc`**: Cognitive AUC (primary metric for cognitive TEPR) - **USE THIS FOR CHAPTER 2 ANALYSES**
-   - Baseline-corrected pupil (`pupil_isolated`) from 4.65s to trial-specific response_onset
-   - Baseline correction: `pupil_isolated = pupil - baseline_B0`
+   - Baseline-corrected pupil (`pupil_isolated`) from 4.85s to 6.05s (fixed 1.20s window)
+   - Baseline correction: `pupil_isolated = pupil - baseline_B1` (target-locked baseline)
    - **QC Metrics** (available in `ch2_triallevel.csv`):
-     - `cog_auc_n_valid`: Count of valid samples in cognitive window
-     - `cog_window_duration`: Cognitive window duration (s)
+     - `cog_auc_n_valid`: Count of valid samples in cognitive window (expected ~300 at 250 Hz)
+     - `cog_window_duration`: Cognitive window duration (s) - should be ~1.20s
      - `cog_auc_prop_valid`: Proportion of valid samples
      - `cog_auc_max_gap_ms`: Maximum contiguous gap in cognitive window (ms) - **KEY FOR FILTERING**
      - `cog_auc_n_segments`: Number of contiguous segments
+   - **Mean Dilation**:
+     - `cog_mean`: Mean dilation = `cog_auc / cog_window_duration` - **PREFERRED METRIC**
+     - Removes duration confounds; interpretable as average pupil dilation
+
+3. **`cog_auc_resplocked`**: Response-locked Cognitive AUC (secondary metric, sensitivity analysis)
+   - Window: `max(target+0.50s, resp-0.50s)` to `resp` (trial-specific, RT-dependent)
+   - Duration: Variable, typically 0.45-0.60s for median RTs
+   - **Status**: Pending implementation (requires RT + flat file re-processing)
+   - **QC Metrics**: `cog_resplocked_n_valid`, `cog_resplocked_window_duration`, `cog_resplocked_max_gap_ms`
+   - **Mean Dilation**: `cog_mean_resplocked` = `cog_auc_resplocked / cog_resplocked_window_duration`
 
 3. **`baseline_B0`**: Pre-trial baseline mean (for reference)
    - Calculated from -0.5s to 0s window
@@ -127,15 +150,23 @@ Based on best-practice literature (Burg et al.; Kret & Sjak-Shie, 2019; Modern P
 
 ### Chapter 2 (Psychometric Coupling - High Quality)
 
-**Primary (Strict)**:
-- `baseline_quality >= 0.60` AND `cog_quality >= 0.60` 
+**Primary (Strict) - Expert-Recommended:**
+- `B1_quality >= 0.50` AND `cog_quality >= 0.60` (quality thresholds)
 - AND `cog_auc_max_gap_ms <= 250` (Kret & Sjak-Shie threshold)
-- AND `cog_window_duration >= 0.50` (minimum window duration)
-- AND `cog_auc_n_valid >= 100` (minimum valid samples)
+- AND `cog_window_duration >= 0.90` (minimum usable duration: 75% of 1.20s window)
+- AND `cog_auc_n_valid >= 240` (minimum valid samples: 80% of expected ~300 samples)
+
+**Rationale**: 
+- 1.20s window should have ~300 samples at 250 Hz
+- 80% coverage = 240 valid samples ensures robust estimates
+- 0.90s minimum duration ensures sufficient temporal coverage
+- 250ms max gap prevents large missing segments from distorting AUC
 
 **Sensitivity Analyses**:
-- Moderate: Same as primary but `cog_window_duration >= 0.30`
-- Lenient: Same as primary but `cog_auc_max_gap_ms <= 400`
+- **Moderate**: Same as primary but `cog_window_duration >= 0.75` (relaxed duration)
+- **Lenient**: Same as primary but `cog_auc_max_gap_ms <= 400` (allows larger gaps)
+
+**Note**: These thresholds are based on expert recommendations (Mathôt, 2022; Kret & Sjak-Shie, 2019) and are appropriate for the new 1.20s fixed window. Previous thresholds (n_valid ≥ 100, duration ≥ 0.50s) were for the old 50ms window and are no longer applicable.
 
 **See `FILTERING_GUIDE.md` for detailed filtering code examples.**
 

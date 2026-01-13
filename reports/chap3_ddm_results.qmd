@@ -106,10 +106,12 @@ fig_path <- function(fig_name) {
   
   png_name <- paste0(base_name, ".png")
   pdf_name <- paste0(base_name, ".pdf")
+  jpg_name <- paste0(base_name, ".jpg")
   
   # Find the actual file location
   png_abs <- NULL
   pdf_abs <- NULL
+  jpg_abs <- NULL
   
   candidates_png <- c(
     file.path(proj_root, "output/figures", png_name),
@@ -121,6 +123,12 @@ fig_path <- function(fig_name) {
     file.path(proj_root, "output/figures", pdf_name),
     file.path("output/figures", pdf_name),
     file.path("../output/figures", pdf_name)
+  )
+  
+  candidates_jpg <- c(
+    file.path(proj_root, "output/figures", jpg_name),
+    file.path("output/figures", jpg_name),
+    file.path("../output/figures", jpg_name)
   )
   
   for (path in candidates_png) {
@@ -137,21 +145,32 @@ fig_path <- function(fig_name) {
     }
   }
   
+  for (path in candidates_jpg) {
+    if (file.exists(path)) {
+      jpg_abs <- normalizePath(path)
+      break
+    }
+  }
+  
   # Choose format based on output type
   # DOCX: prefer PDF (vector graphics work better in Word)
-  # HTML: prefer PNG (better browser compatibility)
+  # HTML: prefer PNG/JPG (better browser compatibility)
   if (!is.null(output_format) && grepl("docx|word", output_format, ignore.case = TRUE)) {
     if (!is.null(pdf_abs)) {
       # For DOCX, return relative path (Word handles it)
       return(file.path("../output/figures", pdf_name))
     } else if (!is.null(png_abs)) {
       return(file.path("../output/figures", png_name))
+    } else if (!is.null(jpg_abs)) {
+      return(file.path("../output/figures", jpg_name))
     }
   } else {
     # HTML: use relative path from reports/ directory
     # Quarto will handle copying if needed
     if (!is.null(png_abs)) {
       return(file.path("../output/figures", png_name))
+    } else if (!is.null(jpg_abs)) {
+      return(file.path("../output/figures", jpg_name))
     } else if (!is.null(pdf_abs)) {
       return(file.path("../output/figures", pdf_name))
     }
@@ -159,7 +178,7 @@ fig_path <- function(fig_name) {
   
   # Fallback
   warning("Figure not found: ", fig_name)
-  return(file.path("../output/figures", if (!is.null(png_abs)) png_name else pdf_name))
+  return(file.path("../output/figures", if (!is.null(png_abs)) png_name else if (!is.null(jpg_abs)) jpg_name else pdf_name))
 }
 
 # Helper: safe read
@@ -470,8 +489,17 @@ Grounded in the behavioral and physiological frameworks above, we test four prer
 
 ## Conclusion and Overview of the Present Study
 
-In this chapter, we investigate how effort-induced arousal modulates decision-making in older adults at a computational level. By applying hierarchical Bayesian drift-diffusion modeling (HDDM) to behavioral data from older participants under low-effort vs. high-effort conditions, we test whether heightened arousal degrades evidence accumulation, triggers compensatory increases in boundary separation, alters bias, or slows non-decision processes. By decomposing older adults’ performance with the DDM, we can pinpoint the locus of the arousal effect: is it degrading the evidence itself, shifting the strategic criterion, resetting biases, or altering peripheral processing speeds? This approach allows us to move beyond simple outcome measures (mean reaction time or accuracy) to visualize the mechanism of how a physiologically loaded aging brain arrives at a choice. The broader significance of this work lies in understanding whether the characteristic cautiousness and processing inefficiencies of older decision-makers are fixed traits or dynamic features modulated by physiological state. If arousal can “tune” decision parameters in predictable ways, it suggests that decision performance in aging is not static but state-dependent. If excessive effort proves detrimental as hypothesized, it highlights the critical importance of effort regulation and stress management for older individuals in demanding environments. Ultimately, by mathematically decomposing these effects, we seek to clarify whether boosting arousal in older adults helps “overclock” their decision processes or instead exacerbates underlying capacity limits. This knowledge contributes to a more comprehensive theory of cognitive aging—one that accounts for both the baseline architectural changes of the brain and the dynamic, moment-to-moment influence of internal physiological states.
+In this chapter, we investigate how effort-induced arousal modulates decision-making in older adults at a computational level. By applying hierarchical Bayesian drift-diffusion modeling (HDDM) to behavioral data from older participants under low-effort vs. high-effort conditions, we test whether heightened arousal degrades evidence accumulation, triggers compensatory increases in boundary separation, alters bias, or slows non-decision processes. By decomposing older adults' performance with the DDM, we can pinpoint the locus of the arousal effect: is it degrading the evidence itself, shifting the strategic criterion, resetting biases, or altering peripheral processing speeds? This approach allows us to move beyond simple outcome measures (mean reaction time or accuracy) to visualize the mechanism of how a physiologically loaded aging brain arrives at a choice. The broader significance of this work lies in understanding whether the characteristic cautiousness and processing inefficiencies of older decision-makers are fixed traits or dynamic features modulated by physiological state. If arousal can "tune" decision parameters in predictable ways, it suggests that decision performance in aging is not static but state-dependent. If excessive effort proves detrimental as hypothesized, it highlights the critical importance of effort regulation and stress management for older individuals in demanding environments. Ultimately, by mathematically decomposing these effects, we seek to clarify whether boosting arousal in older adults helps "overclock" their decision processes or instead exacerbates underlying capacity limits. This knowledge contributes to a more comprehensive theory of cognitive aging—one that accounts for both the baseline architectural changes of the brain and the dynamic, moment-to-moment influence of internal physiological states.
 
+@fig-ddm-pipeline provides a conceptual overview of the cross-level mechanistic framework that guides this investigation, illustrating how experimental manipulations (physical effort, task modality, stimulus difficulty) engage the Locus Coeruleus–Norepinephrine (LC–NE) arousal system, which is observable through pupillometry, and how these physiological states map onto latent DDM parameters that ultimately determine behavioral outcomes (accuracy and reaction time).
+
+```{r}
+#| label: fig-ddm-pipeline
+#| fig-cap: "Cross-Level Mechanism: Effort, Arousal (LC–NE), Pupillometry, and DDM Parameters. Conceptual diagram illustrating the mechanistic framework connecting experimental manipulations (Level 1: physical effort, task modality, stimulus difficulty) to the Locus Coeruleus–Norepinephrine (LC–NE) arousal control system (Level 2), observable through pupillometry signals (Level 3: baseline pupil diameter for tonic arousal, task-evoked pupil response/TEPR for phasic arousal), and their mapping onto latent DDM parameters (Level 4: drift rate v, boundary separation a, starting-point bias z, non-decision time t₀) that determine behavioral outcomes (Level 5: accuracy and reaction time). Solid arrows indicate supported relationships; dashed arrows indicate hypothesized or weakly supported relationships. The diagram highlights how physical effort increases physiological demand on the LC–NE system, which is captured by pupillometry as a non-invasive proxy, and how these arousal states modulate decision-making parameters—particularly the negative effect of high effort on drift rate (v) through resource competition or supra-optimal arousal, and the minimal effects on boundary separation (a) and non-decision time (t₀)."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("ddm_pipeline"))
+```
 
 # Methods
 
@@ -560,9 +588,27 @@ The cognitive AUC was calculated from **300ms after target stimulus onset until 
 
 **Interpretation**: This cognitive AUC should be interpreted as **TEPR magnitude during the decision/response period**, rather than a pure pre-response predictor. For robustness, we also computed an early window (W1.3: target+0.3 to target+1.3s) that minimizes post-response contamination and serves as a sensitivity check.
 
-### Sensitivity Analysis
+@fig-auc-timeline illustrates the response-signal trial timeline, showing the relationship between key events (squeeze onset, target stimulus onset, response-screen onset), the RT measurement point (response-signal design), and the two pupillometry AUC windows (W3.0 and W1.3). The figure highlights three critical methodological points: (1) RT is measured from response-screen onset (4.70s), not stimulus onset, reflecting the response-signal design; (2) both AUC windows begin at target+0.3s (4.65s) to account for the ~300ms physiological latency of the pupil response; and (3) W3.0 extends into the response period to capture the full TEPR peak (~7.30s), while W1.3 provides a conservative sensitivity check that minimizes post-response contamination.
 
-To address potential concerns about post-response contamination, we computed an early cognitive window (W1.3: target+0.3 to target+1.3s; 4.65s to 5.65s relative to squeeze onset) that extends only 0.95s into the response period. This window yields two complementary metrics: `cog_auc_w1p3` (area under the curve in the W1.3 window) and `cog_mean_w1p3` (mean pupil diameter in the W1.3 window). These early-window features provide a more conservative estimate of pre-response cognitive processing, as they capture the initial phase of the TEPR with minimal contamination from post-response processes. While our primary analyses focus on the full TEPR magnitude (W3.0 window), the W1.3 features serve as robustness checks to ensure that observed relationships between cognitive arousal and DDM parameters are not solely driven by post-response contamination. Both `cog_auc_w1p3` and `cog_mean_w1p3` will be included in exploratory analyses and sensitivity checks alongside the primary W3.0 metric.
+```{r}
+#| label: fig-auc-timeline
+#| fig-cap: "Response-Signal Trial Timeline: RT Definition and Pupillometry AUC Windows (W3.0 vs W1.3). Two-panel timeline showing the relationship between key trial events and pupillometry analysis windows. Panel A (overview): Full trial timeline from baseline (-0.5s) to response window end (7.70s), with labeled event markers for squeeze onset (t=0), target/comparison stimulus onset (4.35s), response-screen onset (4.70s, where RT=0 in the response-signal design), and response window end (7.70s). Shaded regions indicate the baseline window (used for baseline correction) and the 3-second response window. Panel B (zoomed): Detailed view of the target-to-response period (4.2s to 7.8s) showing the two pupillometry AUC windows overlaid as colored bars: W1.3 (4.65s to 5.65s, conservative window minimizing post-response contamination) and W3.0 (4.65s to 7.65s, full TEPR window capturing the peak response at ~7.30s). Both windows begin at target+0.3s to account for the ~300ms physiological latency of the pupil response. The figure emphasizes that RT is measured from response-screen onset (response-signal design), not stimulus onset, and that W3.0 necessarily overlaps the response period because the TEPR peak occurs during active responding, reflecting ongoing cognitive processing during the decision/response period."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("AUC_timeline.jpg"))
+```
+
+### Sensitivity Analysis and Confound Mitigation
+
+To address potential concerns about post-response contamination and motor execution confounds, we implemented multiple mitigation strategies:
+
+1. **Early Window (W1.3)**: We computed an early cognitive window (W1.3: target+0.3 to target+1.3s; 4.65s to 5.65s relative to squeeze onset) that extends only 0.95s into the response period. This window yields two complementary metrics: `cog_auc_w1p3` (area under the curve in the W1.3 window) and `cog_mean_w1p3` (mean pupil diameter in the W1.3 window). These early-window features provide a more conservative estimate of pre-response cognitive processing, as they capture the initial phase of the TEPR with minimal contamination from post-response processes.
+
+2. **RT as Covariate**: In all DDM-pupil coupling models, we include RT as a covariate to control for decision state and prevent RT from confounding pupil-DDM relationships. This is critical because RT correlates with both decision processes and pupil dynamics during the response period.
+
+3. **Motor Buffer Truncation** (available for future analyses): Window definitions are computed to truncate W3.0 at 150ms before button press (`t_resp - 0.15s`) to minimize motor execution/blink contamination. Full AUC computation for motor-buffered windows requires re-processing flat files with RT information.
+
+While our primary analyses focus on the full TEPR magnitude (W3.0 window), the W1.3 features serve as robustness checks to ensure that observed relationships between cognitive arousal and DDM parameters are not solely driven by post-response contamination. Both `cog_auc_w1p3` and `cog_mean_w1p3` are included in exploratory analyses and sensitivity checks alongside the primary W3.0 metric.
 
 ## Trial Timeline (Response-Signal Design)
 
@@ -603,7 +649,6 @@ trial_exclusions_summary <- tibble(
 trial_exclusions_summary %>%
   select(Filter_Type, Trials_Remaining, Trials_Removed, Percentage_Remaining, Percentage_Removed) %>%
   gt() %>%
-  tab_header(title = md("**Trial Exclusions Summary**")) %>%
   cols_label(
     Filter_Type = "Filter Applied",
     Trials_Remaining = "Trials Remaining",
@@ -733,7 +778,6 @@ if (!is.null(acc_glmm)) {
     select(term_clean, estimate_fmt, std.error, statistic, p_value_fmt, ci_fmt) %>%
     rename(term = term_clean) %>%
     gt() %>%
-    tab_header(title = md("**Accuracy GLMM Results**")) %>%
     cols_label(
       term = "Term",
       estimate_fmt = "β",
@@ -823,7 +867,6 @@ if (!is.null(rt_lmm)) {
     select(term_clean, estimate_fmt, std.error, statistic, ci_fmt) %>%
     rename(term = term_clean) %>%
     gt() %>%
-    tab_header(title = md("**RT LMM Results**")) %>%
     cols_label(
       term = "Term",
       estimate_fmt = "β (seconds)",
@@ -873,6 +916,16 @@ The primary model is a **single hierarchical Wiener DDM** that includes difficul
 *Note*: These formulas are all part of **one model** fitted simultaneously. The `bf()` function in `brms` allows specification of separate formulas for each DDM parameter (drift, boundary, non-decision time, bias) within a single hierarchical model. The `dec_upper` variable (1 = "different", 0 = "same") is directly extracted from the raw data `resp_is_diff` column, ensuring accurate response-side coding for boundary assignments.
 
 **Rationale for ndt formula**: In the response-signal design, t₀ primarily reflects motor execution. To avoid identifiability issues and maintain model stability, we modeled t₀ with group-level task and effort effects only, omitting subject-level random effects. The response-signal task design and its implications for DDM parameter interpretation are described in the LC behavioral report manuscript (see References).
+
+@fig-model-matrix provides a visual summary of how experimental predictors map onto each DDM parameter in the primary model, highlighting the key constraint that starting-point bias (z) does not vary by difficulty because trial difficulty is randomized and unknown before evidence accumulation begins.
+
+```{r}
+#| label: fig-model-matrix
+#| fig-cap: "Model-to-Design Mapping Matrix: Predictors → DDM Parameters (Primary Model). Matrix showing which experimental predictors (rows: Difficulty, Task, Effort) are included in each DDM parameter's formula (columns: drift rate v, boundary separation a, non-decision time t₀, starting-point bias z). Checkmarks (✓) indicate included predictors; dashes (—) indicate excluded predictors. The critical constraint is highlighted: Difficulty is excluded from the bias (z) formula because trial difficulty is randomized and unknown before the decision process begins, making it causally impossible for participants to adjust their starting point based on difficulty. Task and Effort are included in the bias formula because these are known pre-stimulus settings. The figure also includes the complete parameter-specific formulas for the primary model, showing the exact brms syntax used for each parameter."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("matrix.png"))
+```
 
 ### Priors
 
@@ -966,7 +1019,6 @@ if (!is.null(loo_primary)) {
     select(model_clean, elpd, se, p_loo) %>%
     rename(model = model_clean) %>%
     gt() %>%
-    tab_header(title = md("**Model Comparison: LOO-CV Results**")) %>%
     cols_label(
       model = "Model",
       elpd = "ELPD",
@@ -1015,71 +1067,9 @@ knitr::include_graphics(fig_path("fig_loo.pdf"))
 #| label: tbl-convergence-ppc-gate
 #| tbl-cap: "Convergence & PPC Gate (Primary Model)"
 if (!is.null(publish_gate)) {
-  # Create a clean, readable table with proper column names
-  gate_clean <- publish_gate %>%
-    # Select and rename convergence metrics
-    transmute(
-      `Max R̂` = if("conv_max_rhat" %in% names(.)) conv_max_rhat else NA_real_,
-      `Min Bulk ESS` = if("conv_min_bulk_ess" %in% names(.)) conv_min_bulk_ess else NA_real_,
-      `Min Tail ESS` = if("conv_min_tail_ess" %in% names(.)) conv_min_tail_ess else NA_real_,
-      `Divergent Transitions` = if("conv_divergences" %in% names(.)) conv_divergences else NA_real_,
-      `Max QP RMSE (s)` = if("ppc_subj_max_qp" %in% names(.)) ppc_subj_max_qp else NA_real_,
-      `Max KS Statistic` = if("ppc_subj_max_ks" %in% names(.)) ppc_subj_max_ks else NA_real_,
-      `% Cells Flagged` = if("ppc_subj_pct_flagged_any" %in% names(.)) ppc_subj_pct_flagged_any else NA_real_,
-      `N Flagged / Total` = if("ppc_subj_n_flagged_any" %in% names(.) && "ppc_subj_n_cells" %in% names(.)) {
-        paste0(ppc_subj_n_flagged_any, " / ", ppc_subj_n_cells)
-      } else NA_character_
-    ) %>%
-    # Remove columns that are all NA
-    select(where(~!all(is.na(.))))
-  
-  # Create table with spanner headers
-  convergence_cols <- intersect(c("Max R̂", "Min Bulk ESS", "Min Tail ESS", "Divergent Transitions"), names(gate_clean))
-  ppc_cols <- intersect(c("Max QP RMSE (s)", "Max KS Statistic", "% Cells Flagged", "N Flagged / Total"), names(gate_clean))
-  
-  gt_table <- gate_clean %>%
-    select(all_of(c(convergence_cols, ppc_cols))) %>%
-    gt() %>%
-    tab_header(title = md("**Convergence & PPC Gate (Primary Model)**"))
-  
-  # Add spanner headers if we have both sections
-  if (length(convergence_cols) > 0 && length(ppc_cols) > 0) {
-    gt_table <- gt_table %>%
-      tab_spanner(
-        label = "MCMC Convergence",
-        columns = all_of(convergence_cols),
-        level = 1
-      ) %>%
-      tab_spanner(
-        label = "Posterior Predictive Checks",
-        columns = all_of(ppc_cols),
-        level = 1
-      )
-  }
-  
-  # Format numbers appropriately
-  gt_table <- gt_table %>%
-    fmt_number(
-      columns = where(is.numeric) & !matches("Divergent"),
-      decimals = 3
-    ) %>%
-    fmt_number(
-      columns = matches("Divergent"),
-      decimals = 0
-    ) %>%
-    fmt_number(
-      columns = matches("% Cells"),
-      decimals = 1,
-      pattern = "{x}%"
-    ) %>%
-    tab_style(
-      style = cell_text(weight = "bold"),
-      locations = cells_column_labels()
-    ) %>%
-    tab_style(
-      style = cell_text(weight = "bold"),
-      locations = cells_column_spanners()
-    )
+  # Simpler, more robust table: show the convergence/PPC gate values as-is
+  publish_gate %>%
+    gt()
 } else {
   cat("Publish gate data not available.")
 }
@@ -1206,7 +1196,6 @@ if (!is.null(demographics) && "age" %in% names(demographics)) {
   demo_table %>%
     select(all_of(demo_cols)) %>%
     gt() %>%
-    tab_header(title = md("**Sample Demographics**")) %>%
     cols_label(.list = label_list) %>%
     fmt_number(columns = where(is.numeric) & !matches("n$"), decimals = 1) %>%
     fmt_number(columns = matches("n$"), decimals = 0)
@@ -1224,7 +1213,6 @@ if (!is.null(demographics) && "age" %in% names(demographics)) {
     )
   ) %>%
     gt() %>%
-    tab_header(title = md("**Sample Demographics**")) %>%
     cols_label(
       Characteristic = "Characteristic",
       Value = "Value"
@@ -1318,7 +1306,6 @@ if (!is.null(behavioral_data)) {
       
       trial_counts %>%
         gt(groupname_col = "Task_Group") %>%
-        tab_header(title = md("**Trial Counts by Condition**")) %>%
         fmt_number(columns = c(`Total Trials`, `N Subjects`), decimals = 0) %>%
         fmt_number(columns = `Mean/Subject`, decimals = 1) %>%
         tab_style(
@@ -1340,11 +1327,8 @@ if (!is.null(behavioral_data)) {
         summarise(
           n_trials = n(),
           .groups = "drop"
-        )
-      
-      trial_counts %>%
-        gt() %>%
-        tab_header(title = md("**Trial Counts by Condition**"))
+        ) %>%
+        gt()
     }
   } else {
     # Summary table if columns not found
@@ -1357,8 +1341,7 @@ if (!is.null(behavioral_data)) {
         "To be computed"
       )
     ) %>%
-      gt() %>%
-      tab_header(title = md("**Sample Size Summary**"))
+      gt()
   }
 } else {
   # Placeholder
@@ -1371,7 +1354,6 @@ if (!is.null(behavioral_data)) {
     )
   ) %>%
     gt() %>%
-    tab_header(title = md("**Sample Size Summary**")) %>%
     tab_footnote(
       footnote = "Behavioral data file not found. Please ensure BAP_analysis_ready_BEHAVIORAL.csv is in data/analysis_ready/",
       locations = cells_body()
@@ -1472,7 +1454,6 @@ if (!is.null(behavioral_data)) {
     # Create gt table with row groups using groupname_col
     acc_table_data %>%
       gt(groupname_col = "Task_Group") %>%
-      tab_header(title = md("**Accuracy by Condition (Subject-Level Means)**")) %>%
       fmt_number(columns = where(is.numeric) & !matches("^N$"), decimals = 1) %>%
       fmt_number(columns = matches("^N$"), decimals = 0) %>%
       tab_style(
@@ -1531,7 +1512,6 @@ if (!is.null(behavioral_data)) {
   
   acc_placeholder %>%
     gt(groupname_col = "Task_Group") %>%
-    tab_header(title = md("**Accuracy by Condition (Placeholder)**")) %>%
     tab_style(
       style = cell_text(weight = "bold"),
       locations = cells_column_labels()
@@ -1585,7 +1565,6 @@ if (!is.null(behavioral_data) && !is.null(acc_col)) {
     
     overall_summary %>%
       gt() %>%
-      tab_header(title = md("**Overall Accuracy Summary**")) %>%
       cols_label(
         n_subjects = "N Subjects",
         mean_acc = "Mean %",
@@ -1609,8 +1588,7 @@ if (!is.null(behavioral_data) && !is.null(acc_col)) {
         "To be computed"
       )
     ) %>%
-      gt() %>%
-      tab_header(title = md("**Overall Accuracy Summary (Placeholder)**"))
+      gt()
   }
 } else {
   # Placeholder
@@ -1624,8 +1602,7 @@ if (!is.null(behavioral_data) && !is.null(acc_col)) {
       "To be computed"
     )
   ) %>%
-    gt() %>%
-    tab_header(title = md("**Overall Accuracy Summary (Placeholder)**"))
+    gt()
 }
 ```
 
@@ -1726,7 +1703,6 @@ if (!is.null(behavioral_data)) {
           `Max (s)` = max_rt
         ) %>%
         gt() %>%
-        tab_header(title = md("**Global RT Characteristics (All Trials)**")) %>%
         fmt_number(columns = where(is.numeric) & !matches("N Trials"), decimals = 3) %>%
         fmt_number(columns = matches("N Trials"), decimals = 0)
     } else {
@@ -1750,8 +1726,7 @@ if (!is.null(behavioral_data)) {
       "To be computed"
     )
   ) %>%
-    gt() %>%
-    tab_header(title = md("**Global RT Characteristics (Placeholder)**"))
+    gt()
 }
 ```
 
@@ -1781,7 +1756,6 @@ if (!is.null(behavioral_data) && !is.null(rt_col) && !is.null(task_col) && !is.n
   # Create gt table with row groups using groupname_col
   rt_table_data %>%
     gt(groupname_col = "Task_Group") %>%
-    tab_header(title = md("**RT by Condition (Subject-Level Medians)**")) %>%
     fmt_number(columns = where(is.numeric) & !matches("^N$"), decimals = 3) %>%
     fmt_number(columns = matches("^N$"), decimals = 0) %>%
     tab_style(
@@ -1828,7 +1802,6 @@ if (!is.null(behavioral_data) && !is.null(rt_col) && !is.null(task_col) && !is.n
     arrange(Task_Group, Difficulty, Effort) %>%
     select(Task_Group, Difficulty, Effort, `Mean Median (s)`, `SD (s)`, `Median (s)`, `IQR (s)`) %>%
     gt(groupname_col = "Task_Group") %>%
-    tab_header(title = md("**RT by Condition (Placeholder)**")) %>%
     tab_style(
       style = cell_text(weight = "bold"),
       locations = cells_column_labels()
@@ -1885,7 +1858,7 @@ if (!is.null(behavioral_data) && !is.null(rt_col) && !is.null(task_col) && !is.n
                                                   "Hard, Low", "Hard, High"))
       )
     
-    p <- ggplot(rt_plot_data, aes(x = !!sym(rt_col))) +
+    rt_plot <- ggplot(rt_plot_data, aes(x = !!sym(rt_col))) +
       geom_density(color = "black", linewidth = 0.8, fill = "gray80", alpha = 0.3) +
       facet_grid(Condition ~ Task, labeller = labeller(Condition = label_wrap_gen(width = 20))) +
       labs(x = "Reaction Time (s)", y = "Density") +
@@ -1905,7 +1878,7 @@ if (!is.null(behavioral_data) && !is.null(rt_col) && !is.null(task_col) && !is.n
       scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
     
     # Return the plot (last expression in chunk)
-    p
+    rt_plot
   } else {
     # Create a placeholder plot if no data
     ggplot() + 
@@ -1996,7 +1969,6 @@ if (!is.null(pupil_data)) {
   
   pupil_quality_table %>%
     gt() %>%
-    tab_header(title = md("**Pupillometry Data Quality Summary**")) %>%
     cols_label(
       Metric = "Metric",
       Value = "Value"
@@ -2024,7 +1996,6 @@ if (!is.null(pupil_data)) {
   
   pupil_quality_placeholder %>%
     gt() %>%
-    tab_header(title = md("**Pupillometry Data Quality Summary**")) %>%
     cols_label(
       Metric = "Metric",
       Value = "Value"
@@ -2081,7 +2052,6 @@ if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% 
   
   baseline_pupil_summary %>%
     gt(groupname_col = "Task_Group") %>%
-    tab_header(title = md("**Baseline Pupil Diameter by Condition**")) %>%
     fmt_number(columns = c(`Mean (mm)`, `SD (mm)`, `Median (mm)`), decimals = 2) %>%
     fmt_number(columns = `N Subjects`, decimals = 0) %>%
     tab_style(
@@ -2127,7 +2097,6 @@ if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% 
   
   baseline_pupil_placeholder %>%
     gt(groupname_col = "Task_Group") %>%
-    tab_header(title = md("**Baseline Pupil Diameter by Condition (Placeholder)**")) %>%
     tab_style(
       style = cell_text(weight = "bold"),
       locations = cells_column_labels()
@@ -2198,7 +2167,6 @@ if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in
   # For now, we report AUC as the primary TEPR metric
   tepr_summary %>%
     gt(groupname_col = "Task_Group") %>%
-    tab_header(title = md("**Task-Evoked Pupil Response (TEPR) by Condition**")) %>%
     fmt_number(columns = c(`Mean AUC`, `SD AUC`), decimals = 3) %>%
     fmt_number(columns = `N Subjects`, decimals = 0) %>%
     tab_style(
@@ -2250,7 +2218,6 @@ if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in
   
   tepr_placeholder %>%
     gt(groupname_col = "Task_Group") %>%
-    tab_header(title = md("**Task-Evoked Pupil Response (TEPR) by Condition (Placeholder)**")) %>%
     tab_style(
       style = cell_text(weight = "bold"),
       locations = cells_column_labels()
@@ -2540,7 +2507,6 @@ if (!is.null(trial_sens) && nrow(trial_sens) > 0) {
   
   tbl <- tbl_data %>%
     gt::gt() %>%
-    gt::tab_header(title = gt::md("**Trial-count sensitivity**")) %>%
     gt::cols_label(
       relationship = "Relationship",
       min_trials = "Min trials",
@@ -2574,7 +2540,6 @@ if (!is.null(trial_sens) && nrow(trial_sens) > 0) {
   )
   placeholder %>%
     gt::gt() %>%
-    gt::tab_header(title = gt::md("**Trial-count sensitivity**")) %>%
     gt::tab_footnote(
       footnote = "Trial-count sensitivity data not available. Please ensure the file output/pupil_ddm/qc/pupil_ddm_trialcount_sensitivity.csv exists.",
       locations = cells_body()
@@ -2609,7 +2574,6 @@ if (!is.null(task_strat) && nrow(task_strat) > 0) {
   
   tbl <- tbl_data %>%
     gt::gt() %>%
-    gt::tab_header(title = gt::md("**Task-stratified correlations**")) %>%
     gt::cols_label(
       relationship = "Relationship",
       task = "Task",
@@ -2643,7 +2607,6 @@ if (!is.null(task_strat) && nrow(task_strat) > 0) {
   )
   placeholder %>%
     gt::gt() %>%
-    gt::tab_header(title = gt::md("**Task-stratified correlations**")) %>%
     gt::tab_footnote(
       footnote = "Task-stratified correlations data not available. Please ensure the file output/pupil_ddm/qc/pupil_ddm_task_stratified.csv exists.",
       locations = cells_body()
@@ -2678,7 +2641,6 @@ if (!is.null(bias_levels_std)) {
     ) %>%
     select(param_label, mean, q2.5, q97.5) %>%
     gt() %>%
-    tab_header(title = md("**Bias Levels (z parameter, natural scale)**")) %>%
     cols_label(
       param_label = "Condition",
       mean = "Mean",
@@ -2730,7 +2692,6 @@ if (!is.null(bias_contr_std)) {
     select(contrast_clean, mean, q2.5, q97.5, Pr_gt_0) %>%
     rename(contrast = contrast_clean) %>%
     gt() %>%
-    tab_header(title = md("**Bias Contrasts (Standard-Only Model)**")) %>%
     cols_label(
       contrast = "Contrast",
       mean = "Mean Δ (logit)",
@@ -2914,7 +2875,6 @@ if (!is.null(fx_table)) {
     select(parameter_clean, estimate, conf.low, conf.high, rhat, ess) %>%
     rename(parameter = parameter_clean) %>%
     gt() %>%
-    tab_header(title = md("**Table: Fixed Effects Summary (Link Scale)**")) %>%
     cols_label(
       parameter = "Parameter",
       estimate = "Mean",
@@ -2956,7 +2916,6 @@ if (!is.null(param_natural)) {
       select(condition, parameter, mean, q2.5, q97.5) %>%
       pivot_wider(names_from = parameter, values_from = c(mean, q2.5, q97.5)) %>%
       gt() %>%
-      tab_header(title = md("**DDM Parameters on Natural Scale by Condition**")) %>%
       fmt_number(columns = where(is.numeric), decimals = 3)
   } else {
     # Try to create summary by parameter type
@@ -2972,7 +2931,6 @@ if (!is.null(param_natural)) {
     
     param_summary %>%
       gt() %>%
-      tab_header(title = md("**DDM Parameters on Natural Scale (Overall Summary)**")) %>%
       cols_label(
         parameter = "Parameter",
         mean_overall = "Mean",
@@ -3024,7 +2982,6 @@ if (!is.null(param_natural)) {
       arrange(Task_Group, Difficulty, Effort) %>%
       select(Task_Group, Difficulty, Effort, `Drift (v)`, `Boundary (a)`, `Non-decision (t₀)`, `Bias (z)`) %>%
       gt(groupname_col = "Task_Group") %>%
-      tab_header(title = md("**DDM Parameters on Natural Scale by Condition (Placeholder)**")) %>%
       tab_style(
         style = cell_text(weight = "bold"),
         locations = cells_column_labels()
@@ -3224,7 +3181,6 @@ if (!is.null(contrasts_table)) {
     select(contrast_clean, parameter_clean, mean, q2.5, q97.5, p_gt0, p_lt0, p_in_rope) %>%
     rename(contrast = contrast_clean, parameter = parameter_clean) %>%
     gt() %>%
-    tab_header(title = md("**Table: Posterior Contrasts (Directional Probabilities)**")) %>%
     cols_label(
       contrast = "Contrast",
       parameter = "Parameter",
@@ -3498,8 +3454,7 @@ Our **primary gate** for model acceptance is the subject-wise mid-body PPC (cond
 if (!is.null(ppc_subj_cens)) {
   ppc_subj_cens %>%
     mutate(across(where(is.numeric), ~round(.x, 3))) %>%
-    gt() %>%
-    tab_header(title = md("**Subject-Wise Mid-Body PPC (30/50/70% quantiles; censored 2%)**"))
+    gt()
 } else {
   cat("Subject-wise PPC data not available.")
 }
@@ -3517,8 +3472,7 @@ if (!is.null(pf_subj) && !is.na(pf_subj$n_cells)) {
       sprintf("%.1f%%", pf_subj$pct_flagged)
     )
   ) %>%
-    gt() %>%
-    tab_header(title = md("**Subject-Wise PPC Summary**"))
+    gt()
 }
 ```
 
@@ -3696,7 +3650,6 @@ if (!is.null(heatmap_wide)) {
     clean_factor_levels() %>%
     mutate(across(where(is.numeric), ~round(.x, 3))) %>%
     gt() %>%
-    tab_header(title = md("**PPC Residual Heatmap (Wide Format)**")) %>%
     cols_label(
       task = "Task",
       effort_condition = "Effort",
@@ -3720,7 +3673,6 @@ if (!is.null(ppc_gate)) {
   ppc_gate %>%
     mutate(across(where(is.numeric), ~round(.x, 3))) %>%
     gt() %>%
-    tab_header(title = md("**Pooled PPC Gate Summary (Strict Test)**")) %>%
     cols_label(
       n_cells = "N Cells",
       pct_flagged = "% Flagged",
@@ -3914,7 +3866,6 @@ if (!is.null(sensitivity_summary)) {
   if (nrow(sens_subchance) > 0) {
     sens_subchance %>%
       gt() %>%
-      tab_header(title = md("**Sensitivity Analysis: Excluding Sub-Chance Participants**")) %>%
       cols_label(
         model = "Model",
         parameter = "Parameter",

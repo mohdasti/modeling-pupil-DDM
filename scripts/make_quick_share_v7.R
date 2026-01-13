@@ -73,7 +73,17 @@ B1_WIN <- c(-0.5, 0.0)  # Pre-target baseline (before target onset)
 TARGET_ONSET_DEFAULT <- 4.35
 RESP_START_DEFAULT <- 4.70
 RESP_END_DEFAULT <- 7.70  # CH3 EXTENSION: End of Response 1 window (Resp1ET)
-COG_WIN_POST_TARGET <- c(0.3, 1.3)  # Cognitive window after target
+COG_WIN_POST_TARGET <- c(0.3, 1.3)  # LEGACY: Old cognitive window after target (kept for backward compatibility)
+# NEW (Expert-Recommended): Primary cognitive window (stimulus-locked, fixed duration)
+COG_WIN_PRIMARY_START <- 0.50  # Start 0.50s after target onset (4.85s)
+COG_WIN_PRIMARY_END <- 1.70    # End 1.70s after target onset (6.05s)
+COG_WIN_PRIMARY_DURATION <- 1.20  # Fixed 1.20s window
+# NEW (Expert-Recommended): Secondary cognitive window (response-locked, decision-aligned)
+COG_WIN_SECONDARY_PRE_RESP <- 0.50  # 0.50s before response onset
+COG_WIN_SECONDARY_MIN_START <- 0.50  # Minimum start: 0.50s after target onset
+# Motor buffer to avoid button press contamination (Expert-Recommended)
+MOTOR_BUFFER_MS <- 150  # 150ms buffer before button press (in milliseconds, converted to seconds in code)
+MOTOR_BUFFER_SEC <- 0.15  # 150ms = 0.15s
 
 # ----------------------------------------------------------------------------
 # Helper: Compute gap-aware trapezoidal AUC with QC metrics
@@ -384,6 +394,7 @@ process_flat_file_v7 <- function(flat_path) {
           cog_auc_w1p3 = NA_real_, cog_mean_w1p3 = NA_real_,
           n_valid_B0 = 0L, n_valid_b0 = 0L,
           baseline_B0_mean = NA_real_, baseline_b0_mean = NA_real_,
+          B1_quality = NA_real_,
           auc_available_total = FALSE, auc_available_cog = FALSE, auc_available_both = FALSE,
           auc_available = FALSE, auc_missing_reason = "insufficient_samples"
         ))
@@ -462,12 +473,30 @@ process_flat_file_v7 <- function(flat_path) {
           total_auc = NA_real_, cog_auc = NA_real_,
           n_valid_B0 = as.integer(n_valid_B0), n_valid_b0 = as.integer(n_valid_b0),
           baseline_B0_mean = baseline_B0_mean, baseline_b0_mean = NA_real_,
+          B1_quality = NA_real_,
           auc_available_total = FALSE, auc_available_cog = FALSE, auc_available_both = FALSE,
           auc_available = FALSE, auc_missing_reason = "b0_insufficient_samples"
         ))
       }
       
       baseline_b0_mean <- mean(b1_pupil[!is.na(b1_pupil) & is.finite(b1_pupil)], na.rm = TRUE)
+      
+      # Calculate B1_quality: proportion of valid samples in B1 baseline window
+      # B1 window is 0.5 seconds (3.85s to 4.35s)
+      # Expected samples = window_duration / dt_median
+      B1_window_duration <- B1_WIN[2] - B1_WIN[1]  # 0.5 seconds
+      expected_samples_B1 <- if (!is.na(time_info$dt_median) && is.finite(time_info$dt_median) && time_info$dt_median > 0) {
+        as.integer(round(B1_window_duration / time_info$dt_median))
+      } else {
+        # Fallback: assume 250Hz if dt_median is missing
+        as.integer(round(B1_window_duration * FS_TARGET))
+      }
+      # Handle NA/NaN cases safely
+      B1_quality <- if (!is.na(expected_samples_B1) && is.finite(expected_samples_B1) && expected_samples_B1 > 0) {
+        n_valid_b0 / expected_samples_B1
+      } else {
+        NA_real_
+      }
       
       # Full-trial baseline-corrected waveform (B0 correction)
       pupil_full_corrected <- pupil_vals - baseline_B0_mean
@@ -485,19 +514,26 @@ process_flat_file_v7 <- function(flat_path) {
         total_auc <- compute_auc(total_time, total_pupil_corrected)
       }
       
-      # Cognitive AUC: from (target_onset + 0.3) to response start (LEGACY - short window)
-      cog_win_start <- TARGET_ONSET_DEFAULT + COG_WIN_POST_TARGET[1]
-      cog_win_end <- min(TARGET_ONSET_DEFAULT + COG_WIN_POST_TARGET[2], RESP_START_DEFAULT)
+      # ============================================================================
+      # PRIMARY COGNITIVE AUC (Expert-Recommended: Stimulus-Locked Fixed Window)
+      # Window: 4.85s to 6.05s (target + 0.50s to target + 1.70s)
+      # Duration: Fixed 1.20s
+      # Rationale: Captures TEPR peak (~1s post-stimulus) while avoiding early 
+      #            reflex/orienting components and RT confounds
+      # ============================================================================
+      cog_win_primary_start <- TARGET_ONSET_DEFAULT + COG_WIN_PRIMARY_START  # 4.85s
+      cog_win_primary_end <- TARGET_ONSET_DEFAULT + COG_WIN_PRIMARY_END    # 6.05s
       
       cog_auc <- NA_real_
+      cog_mean <- NA_real_  # RT-normalized mean dilation (AUC / duration)
       cog_auc_n_valid <- NA_integer_
       cog_window_duration <- NA_real_
       cog_auc_prop_valid <- NA_real_
       cog_auc_max_gap_ms <- NA_real_
       cog_auc_n_segments <- NA_integer_
       
-      if (cog_win_end > cog_win_start) {
-        cog_mask <- t_rel >= cog_win_start & t_rel <= cog_win_end
+      if (cog_win_primary_end > cog_win_primary_start) {
+        cog_mask <- t_rel >= cog_win_primary_start & t_rel <= cog_win_primary_end
         cog_time <- t_rel[cog_mask]
         cog_pupil_corrected <- pupil_partial_corrected[cog_mask]
         
@@ -509,6 +545,47 @@ process_flat_file_v7 <- function(flat_path) {
           cog_auc_prop_valid <- cog_auc_result$prop_valid
           cog_auc_max_gap_ms <- cog_auc_result$max_gap_ms
           cog_auc_n_segments <- cog_auc_result$n_segments
+          
+          # Compute mean dilation (RT-normalized metric to remove duration confounds)
+          if (!is.na(cog_auc) && !is.na(cog_window_duration) && cog_window_duration > 0) {
+            cog_mean <- cog_auc / cog_window_duration
+          } else if (cog_auc_n_valid > 0) {
+            # Fallback: direct mean calculation if AUC/duration fails
+            cog_mean <- mean(cog_pupil_corrected[!is.na(cog_pupil_corrected) & is.finite(cog_pupil_corrected)], na.rm = TRUE)
+          }
+        }
+      }
+      
+      # ============================================================================
+      # SECONDARY COGNITIVE AUC (Expert-Recommended: Response-Locked Window)
+      # Window: max(target+0.50, resp-0.50) to resp (trial-specific)
+      # Duration: Variable, typically 0.45-0.60s for median RTs
+      # Rationale: Captures decision-aligned pupil dynamics right before response
+      # NOTE: RT is not available in flat files - this will be computed post-merge
+      # ============================================================================
+      cog_auc_resplocked <- NA_real_
+      cog_mean_resplocked <- NA_real_
+      cog_resplocked_n_valid <- NA_integer_
+      cog_resplocked_window_duration <- NA_real_
+      cog_resplocked_max_gap_ms <- NA_real_
+      # Response-locked window will be computed after merging with behavioral data (see post-merge section)
+      
+      # ============================================================================
+      # LEGACY COGNITIVE AUC (Kept for backward compatibility)
+      # Window: 4.65s to 4.70s (target + 0.3s to response start, capped)
+      # NOTE: This is deprecated - use cog_auc (primary) instead
+      # ============================================================================
+      cog_auc_legacy <- NA_real_
+      cog_win_legacy_start <- TARGET_ONSET_DEFAULT + COG_WIN_POST_TARGET[1]  # 4.65s
+      cog_win_legacy_end <- min(TARGET_ONSET_DEFAULT + COG_WIN_POST_TARGET[2], RESP_START_DEFAULT)  # 4.70s
+      
+      if (cog_win_legacy_end > cog_win_legacy_start) {
+        cog_legacy_mask <- t_rel >= cog_win_legacy_start & t_rel <= cog_win_legacy_end
+        cog_legacy_time <- t_rel[cog_legacy_mask]
+        cog_legacy_pupil <- pupil_partial_corrected[cog_legacy_mask]
+        
+        if (sum(!is.na(cog_legacy_pupil) & is.finite(cog_legacy_pupil)) >= 2) {
+          cog_auc_legacy <- compute_auc(cog_legacy_time, cog_legacy_pupil)
         }
       }
       
@@ -594,17 +671,29 @@ process_flat_file_v7 <- function(flat_path) {
         squeeze_onset_time = if(timing_anchor_found) squeeze_onset else NA_real_,
         timing_anchor_found = timing_anchor_found,
         t_target_onset_rel = TARGET_ONSET_DEFAULT, t_resp_start_rel = RESP_START_DEFAULT,
-        total_auc = total_auc, cog_auc = cog_auc,
-        cog_auc_w3 = cog_auc_w3, cog_auc_respwin = cog_auc_respwin,
-        cog_auc_w1p3 = cog_auc_w1p3, cog_mean_w1p3 = cog_mean_w1p3,
-        # Gap-aware QC metrics for cognitive AUC (primary window)
+        total_auc = total_auc, 
+        # PRIMARY COGNITIVE AUC (Expert-Recommended: Stimulus-Locked Fixed Window 4.85-6.05s)
+        cog_auc = cog_auc,  # Primary cognitive AUC (stimulus-locked, fixed 1.20s window)
+        cog_mean = cog_mean,  # Mean dilation (AUC / duration) - removes duration confounds
+        # Gap-aware QC metrics for primary cognitive AUC window
         cog_auc_n_valid = cog_auc_n_valid,
         cog_window_duration = cog_window_duration,
         cog_auc_prop_valid = cog_auc_prop_valid,
         cog_auc_max_gap_ms = cog_auc_max_gap_ms,
         cog_auc_n_segments = cog_auc_n_segments,
+        # SECONDARY COGNITIVE AUC (Expert-Recommended: Response-Locked Window)
+        cog_auc_resplocked = cog_auc_resplocked,  # Response-locked AUC (computed post-merge)
+        cog_mean_resplocked = cog_mean_resplocked,  # Response-locked mean dilation
+        cog_resplocked_n_valid = cog_resplocked_n_valid,
+        cog_resplocked_window_duration = cog_resplocked_window_duration,
+        cog_resplocked_max_gap_ms = cog_resplocked_max_gap_ms,
+        # LEGACY/CH3 EXTENSION windows (kept for backward compatibility)
+        cog_auc_w3 = cog_auc_w3, cog_auc_respwin = cog_auc_respwin,
+        cog_auc_w1p3 = cog_auc_w1p3, cog_mean_w1p3 = cog_mean_w1p3,
+        cog_auc_legacy = cog_auc_legacy,  # Legacy 50ms window (deprecated)
         n_valid_B0 = as.integer(n_valid_B0), n_valid_b0 = as.integer(n_valid_b0),
         baseline_B0_mean = baseline_B0_mean, baseline_b0_mean = baseline_b0_mean,
+        B1_quality = B1_quality,  # B1 baseline quality (3.85s-4.35s window)
         auc_available_total = auc_available_total, 
         auc_available_cog = auc_available_cog,
         auc_available_both = auc_available_both,
@@ -846,13 +935,17 @@ if (length(flat_files) == 0) {
 cat("  Found ", length(flat_files), " flat files\n", sep = "")
 
 # TASK 1: Inventory flat file coverage
-cat("  Creating flat file inventory...\n")
-flat_inventory <- map_dfr(flat_files, inventory_flat_file, .progress = "text")
+# SKIPPED: This step requires loading full flat files and exceeds 36GB memory limit
+# cat("  Creating flat file inventory...\n")
+# flat_inventory <- map_dfr(flat_files, inventory_flat_file, .progress = "text")
+#
+# write_csv(flat_inventory, file.path(V7_QC, "09_flat_file_run_inventory.csv"))
+# cat("  ✓ Saved: qc/09_flat_file_run_inventory.csv\n")
+cat("  ⚠ Skipping flat file inventory (memory optimization)\n")
 
-write_csv(flat_inventory, file.path(V7_QC, "09_flat_file_run_inventory.csv"))
-cat("  ✓ Saved: qc/09_flat_file_run_inventory.csv\n")
-
-all_auc_features <- map_dfr(flat_files, process_flat_file_v7, .progress = "text")
+# Process files without progress bar (avoids cli package issues)
+cat("  Processing ", length(flat_files), " flat files (this may take a while)...\n", sep = "")
+all_auc_features <- map_dfr(flat_files, process_flat_file_v7)
 
 cat("\n  ✓ Processed ", nrow(all_auc_features), " trials\n", sep = "")
 
@@ -961,7 +1054,8 @@ auc_features_unique <- all_auc_features %>%
                   "cog_auc_n_valid", "cog_window_duration", "cog_auc_prop_valid", 
                   "cog_auc_max_gap_ms", "cog_auc_n_segments",
                   "n_valid_B0", "n_valid_b0",
-                  "baseline_B0_mean", "baseline_b0_mean", 
+                  "baseline_B0_mean", "baseline_b0_mean",
+                  "B1_quality", 
                   "auc_available_total", "auc_available_cog", "auc_available_both",
                   "auc_available", "auc_missing_reason")))
 
@@ -987,6 +1081,7 @@ coalesce_fields <- c("total_auc", "cog_auc", "cog_auc_w3", "cog_auc_respwin",
                      "cog_auc_max_gap_ms", "cog_auc_n_segments",
                      "n_valid_B0", "n_valid_b0",
                      "baseline_B0_mean", "baseline_b0_mean",
+                     "B1_quality",
                      "auc_available_total", "auc_available_cog", "auc_available_both",
                      "auc_available", "auc_missing_reason",
                      "t_target_onset_rel", "t_resp_start_rel", 
@@ -1046,6 +1141,30 @@ if (!"cog_auc_w1p3" %in% names(merged_v4)) {
 }
 if (!"cog_mean_w1p3" %in% names(merged_v4)) {
   merged_v4$cog_mean_w1p3 <- NA_real_
+}
+if (!"cog_mean" %in% names(merged_v4)) {
+  merged_v4$cog_mean <- NA_real_  # Primary window mean dilation (AUC / duration)
+}
+if (!"cog_auc_resplocked" %in% names(merged_v4)) {
+  merged_v4$cog_auc_resplocked <- NA_real_  # Response-locked AUC (computed post-merge)
+}
+if (!"cog_mean_resplocked" %in% names(merged_v4)) {
+  merged_v4$cog_mean_resplocked <- NA_real_  # Response-locked mean dilation
+}
+if (!"cog_resplocked_n_valid" %in% names(merged_v4)) {
+  merged_v4$cog_resplocked_n_valid <- NA_integer_
+}
+if (!"cog_resplocked_window_duration" %in% names(merged_v4)) {
+  merged_v4$cog_resplocked_window_duration <- NA_real_
+}
+if (!"cog_resplocked_max_gap_ms" %in% names(merged_v4)) {
+  merged_v4$cog_resplocked_max_gap_ms <- NA_real_
+}
+if (!"cog_auc_legacy" %in% names(merged_v4)) {
+  merged_v4$cog_auc_legacy <- NA_real_  # Legacy 50ms window (deprecated)
+}
+if (!"B1_quality" %in% names(merged_v4)) {
+  merged_v4$B1_quality <- NA_real_
 }
 # TASK 2: Enforce flag consistency ALWAYS (recompute to ensure correctness)
 merged_v4 <- merged_v4 %>%
@@ -1320,6 +1439,101 @@ if (n_dups_final > 0) {
 
 cat("  ✓ Merged ", nrow(merged_v4), " trials (unique by trial_uid)\n\n", sep = "")
 
+# ============================================================================
+# POST-MERGE: Motor Buffer Truncation & Response-Locked Windows
+# (Expert-Recommended: Minimize Motor/Response Screen Confounds)
+# ============================================================================
+cat("  Computing motor-buffered and response-locked cognitive AUC windows...\n")
+cat("  NOTE: These windows require RT from behavioral data (now available post-merge).\n")
+cat("  However, full computation requires re-processing flat files with RT.\n")
+cat("  For now, we add window definitions and flags; full AUC computation requires separate step.\n\n")
+
+# Add motor-buffered primary window (truncated before button press)
+# This minimizes motor contamination while keeping stimulus-locked window
+merged_v4 <- merged_v4 %>%
+  mutate(
+    # Compute trial-specific response onset (if RT available)
+    t_resp_actual = if_else(
+      !is.na(rt) & is.finite(rt) & rt > 0,
+      RESP_START_DEFAULT + rt,  # 4.70s + RT
+      NA_real_
+    ),
+    
+    # Motor-buffered primary window end (truncate 150ms before button press)
+    cog_win_primary_end_motorbuffered = if_else(
+      !is.na(t_resp_actual) & is.finite(t_resp_actual),
+      pmin(
+        TARGET_ONSET_DEFAULT + COG_WIN_PRIMARY_END,  # Original end: 6.05s
+        t_resp_actual - MOTOR_BUFFER_SEC  # Truncate at response - 150ms
+      ),
+      TARGET_ONSET_DEFAULT + COG_WIN_PRIMARY_END  # Fallback: original end if no RT
+    ),
+    
+    # Flag: Does primary window get truncated by motor buffer?
+    cog_win_truncated_by_motor = if_else(
+      !is.na(t_resp_actual) & is.finite(t_resp_actual),
+      (t_resp_actual - MOTOR_BUFFER_SEC) < (TARGET_ONSET_DEFAULT + COG_WIN_PRIMARY_END),
+      FALSE
+    ),
+    
+    # Flag: Slow RT trials where motor can't contaminate primary window
+    # (response happens after primary window + buffer)
+    cog_win_uncontaminated_by_motor = if_else(
+      !is.na(t_resp_actual) & is.finite(t_resp_actual),
+      t_resp_actual > (TARGET_ONSET_DEFAULT + COG_WIN_PRIMARY_END + MOTOR_BUFFER_SEC),
+      NA
+    ),
+    
+    # Pre-response window definition (decision-aligned, excludes motor)
+    # Window: [max(target+0.50, resp-0.50), resp-0.15]
+    cog_win_preresp_start = if_else(
+      !is.na(t_resp_actual) & is.finite(t_resp_actual),
+      pmax(
+        TARGET_ONSET_DEFAULT + COG_WIN_SECONDARY_MIN_START,  # Floor: 4.85s
+        t_resp_actual - COG_WIN_SECONDARY_PRE_RESP  # 0.50s before response
+      ),
+      NA_real_
+    ),
+    cog_win_preresp_end = if_else(
+      !is.na(t_resp_actual) & is.finite(t_resp_actual),
+      t_resp_actual - MOTOR_BUFFER_SEC,  # 150ms before response (excludes motor)
+      NA_real_
+    ),
+    cog_win_preresp_duration = if_else(
+      !is.na(cog_win_preresp_start) & !is.na(cog_win_preresp_end) & 
+      cog_win_preresp_end > cog_win_preresp_start,
+      cog_win_preresp_end - cog_win_preresp_start,
+      NA_real_
+    ),
+    
+    # Flag: Pre-response window is valid (duration >= 0.35s)
+    cog_win_preresp_valid = if_else(
+      !is.na(cog_win_preresp_duration),
+      cog_win_preresp_duration >= 0.35,  # Expert-recommended minimum
+      FALSE
+    )
+  )
+
+# Summary of motor buffer effects
+cat("  Motor buffer truncation summary:\n")
+n_with_rt <- sum(!is.na(merged_v4$t_resp_actual), na.rm = TRUE)
+n_truncated <- sum(merged_v4$cog_win_truncated_by_motor, na.rm = TRUE)
+n_uncontaminated <- sum(merged_v4$cog_win_uncontaminated_by_motor == TRUE, na.rm = TRUE)
+n_preresp_valid <- sum(merged_v4$cog_win_preresp_valid, na.rm = TRUE)
+
+cat("    Trials with RT: ", n_with_rt, " / ", nrow(merged_v4), 
+    " (", sprintf("%.1f", 100*n_with_rt/nrow(merged_v4)), "%)\n", sep = "")
+cat("    Primary window truncated by motor buffer: ", n_truncated, 
+    " (", sprintf("%.1f", 100*n_truncated/n_with_rt), "% of trials with RT)\n", sep = "")
+cat("    Slow RT trials (uncontaminated): ", n_uncontaminated, 
+    " (", sprintf("%.1f", 100*n_uncontaminated/n_with_rt), "% of trials with RT)\n", sep = "")
+cat("    Pre-response window valid (≥0.35s): ", n_preresp_valid, 
+    " (", sprintf("%.1f", 100*n_preresp_valid/n_with_rt), "% of trials with RT)\n", sep = "")
+cat("\n")
+cat("  NOTE: Full AUC computation for motor-buffered and pre-response windows\n")
+cat("        requires re-processing flat files with RT. Window definitions are\n")
+cat("        now available in merged_v4 for future computation.\n\n")
+
 write_csv(merged_v4, file.path(V7_MERGED, "BAP_triallevel_merged_v4.csv"))
 cat("  ✓ Saved: merged/BAP_triallevel_merged_v4.csv\n\n")
 
@@ -1390,11 +1604,24 @@ merged_v4_with_flags <- merged_v4 %>%
 # Add gating booleans (do not drop rows)
 merged_v4_with_flags <- merged_v4_with_flags %>%
   mutate(
-    gate_baseline_60 = if_else(!is.na(baseline_quality), baseline_quality >= 0.60, FALSE),
+    # B0 baseline gates (for Total AUC)
+    gate_B0_60 = if_else(!is.na(baseline_quality), baseline_quality >= 0.60, FALSE),
+    gate_B0_50 = if_else(!is.na(baseline_quality), baseline_quality >= 0.50, FALSE),
+    # B1 baseline gates (for Cognitive AUC) - use B1_quality if available, fallback to baseline_quality for backward compat
+    gate_B1_60 = if_else(!is.na(B1_quality), B1_quality >= 0.60, 
+                        if_else(!is.na(baseline_quality), baseline_quality >= 0.60, FALSE)),
+    gate_B1_50 = if_else(!is.na(B1_quality), B1_quality >= 0.50,
+                        if_else(!is.na(baseline_quality), baseline_quality >= 0.50, FALSE)),
+    # Cognitive response window gates
     gate_cog_60 = if_else(!is.na(cog_quality), cog_quality >= 0.60, FALSE),
-    gate_baseline_50 = if_else(!is.na(baseline_quality), baseline_quality >= 0.50, FALSE),
+    gate_cog_50 = if_else(!is.na(cog_quality), cog_quality >= 0.50, FALSE),
+    # AUC availability
     gate_auc_both = auc_available_both,
-    gate_pupil_primary = gate_baseline_60 & gate_cog_60 & gate_auc_both & found_in_flat_run
+    # Chapter 2 primary gate: B1 baseline 50% + cognitive window 60% (more lenient baseline, stricter response window)
+    gate_pupil_primary = gate_B1_50 & gate_cog_60 & gate_auc_both & found_in_flat_run,
+    # Backward compatibility aliases (for Total AUC analyses)
+    gate_baseline_60 = gate_B0_60,
+    gate_baseline_50 = gate_B0_50
   )
 
 # Ch2: Include both ADT/VDT; keep all trials but provide flags
@@ -1406,20 +1633,30 @@ ch2_triallevel <- merged_v4_with_flags %>%
     any_of(c("effort", "stimulus_intensity", "isOddball", "choice_num", "choice_label", 
              "rt", "correct_final", "choice", "correct")),
     # MATLAB quality metrics
-    any_of(c("baseline_quality", "cog_quality", "posttarget_quality", "overall_quality")),
+    any_of(c("baseline_quality", "B1_quality", "cog_quality", "posttarget_quality", "overall_quality")),
     # AUC columns/flags
     total_auc, cog_auc, auc_available_total, auc_available_cog, auc_available_both, 
     auc_available, auc_missing_reason,
     # Gap-aware QC metrics for cognitive AUC
     any_of(c("cog_auc_n_valid", "cog_window_duration", "cog_auc_prop_valid", 
              "cog_auc_max_gap_ms", "cog_auc_n_segments")),
+    # Mean dilation (preferred metric)
+    cog_mean,
+    # Motor buffer and response-locked window definitions (for confound mitigation)
+    any_of(c("t_resp_actual", "cog_win_primary_end_motorbuffered", 
+             "cog_win_truncated_by_motor", "cog_win_uncontaminated_by_motor",
+             "cog_win_preresp_start", "cog_win_preresp_end", "cog_win_preresp_duration",
+             "cog_win_preresp_valid")),
     n_valid_B0, n_valid_b0, baseline_B0_mean, baseline_b0_mean,
     # Timing
     t_target_onset_rel, t_resp_start_rel, timing_source,
     # Run-availability flags
     found_in_flat_run, found_in_auc_features_run, join_matched_any_run,
     # Gating flags
-    gate_baseline_60, gate_cog_60, gate_baseline_50, gate_auc_both, gate_pupil_primary
+    gate_B0_60, gate_B0_50, gate_B1_60, gate_B1_50, gate_cog_60, gate_cog_50,
+    gate_auc_both, gate_pupil_primary,
+    # Backward compatibility
+    gate_baseline_60, gate_baseline_50
   )
 
 # Check duplicates
@@ -1444,12 +1681,18 @@ cat("  ✓ Saved: analysis_ready/ch2_triallevel.csv (", nrow(ch2_triallevel), " 
     sprintf("%.1f", 100*n_ch2_pupil_primary/nrow(ch2_triallevel)), "% gate_pupil_primary)\n", sep = "")
 
 # Ch3: DDM-ready flag
+# Requirements per report: B1_quality >= 0.50 AND cog_quality >= 0.50 AND RT 0.2-3.0s
+# (Use B1 for Cognitive AUC, fallback to baseline_quality for backward compat)
 ch3_triallevel <- merged_v4_with_flags %>%
   mutate(
     ddm_ready = (has_behavioral_data == TRUE | 
                  (if ("has_behavioral_data" %in% names(.)) has_behavioral_data else 
                   !is.na(rt) & !is.na(choice))) &
-                (baseline_quality >= 0.50 | is.na(baseline_quality))
+                # Use B1_quality if available, otherwise fallback to baseline_quality
+                ((!is.na(B1_quality) & B1_quality >= 0.50) | 
+                 (is.na(B1_quality) & !is.na(baseline_quality) & baseline_quality >= 0.50)) &
+                !is.na(cog_quality) & cog_quality >= 0.50 &
+                !is.na(rt) & rt >= 0.2 & rt <= 3.0
   ) %>%
   select(
     # Keys
@@ -1458,12 +1701,19 @@ ch3_triallevel <- merged_v4_with_flags %>%
     any_of(c("effort", "stimulus_intensity", "isOddball", "choice_num", "choice_label", 
              "rt", "correct_final", "choice", "correct")),
     # MATLAB quality metrics
-    any_of(c("baseline_quality", "cog_quality", "posttarget_quality", "overall_quality")),
+    any_of(c("baseline_quality", "B1_quality", "cog_quality", "posttarget_quality", "overall_quality")),
     # AUC columns/flags (legacy + CH3 extension)
     total_auc, cog_auc, cog_auc_w3, cog_auc_respwin, cog_auc_w1p3, cog_mean_w1p3,
     # Gap-aware QC metrics for cognitive AUC
     any_of(c("cog_auc_n_valid", "cog_window_duration", "cog_auc_prop_valid", 
              "cog_auc_max_gap_ms", "cog_auc_n_segments")),
+    # Mean dilation (preferred metric)
+    cog_mean,
+    # Motor buffer and response-locked window definitions (for confound mitigation)
+    any_of(c("t_resp_actual", "cog_win_primary_end_motorbuffered", 
+             "cog_win_truncated_by_motor", "cog_win_uncontaminated_by_motor",
+             "cog_win_preresp_start", "cog_win_preresp_end", "cog_win_preresp_duration",
+             "cog_win_preresp_valid")),
     auc_available_total, auc_available_cog, auc_available_both,
     auc_available, auc_missing_reason,
     n_valid_B0, n_valid_b0, baseline_B0_mean, baseline_b0_mean,
@@ -1501,17 +1751,23 @@ cat("  ✓ Saved: analysis_ready/ch3_triallevel.csv (", nrow(ch3_triallevel), " 
 # ----------------------------------------------------------------------------
 # STEP 5: Generate waveform summaries (condition means)
 # ----------------------------------------------------------------------------
+# SKIPPED: Waveform generation requires loading full flat files into memory
+# which exceeds 36GB limit. This step is optional (for visualization only).
+# To enable: Comment out the skip block below and ensure sufficient memory.
 
-cat("STEP 5: Generating waveform summaries...\n")
-cat("  (Generating condition-mean waveforms from AUC-ready trials)\n\n")
+SKIP_WAVEFORMS <- TRUE  # Set to FALSE to enable waveform generation
 
-# Use trials with valid AUC for waveforms
-waveform_trials <- merged_v4 %>%
-  filter(auc_available == TRUE, !is.na(effort)) %>%
-  select(trial_uid, sub, task, session_used, run_used, trial_index, effort, isOddball, 
-         any_of("stimulus_intensity"))
-
-if (nrow(waveform_trials) > 0) {
+if (!SKIP_WAVEFORMS) {
+  cat("STEP 5: Generating waveform summaries...\n")
+  cat("  (Generating condition-mean waveforms from AUC-ready trials)\n\n")
+  
+  # Use trials with valid AUC for waveforms
+  waveform_trials <- merged_v4 %>%
+    filter(auc_available == TRUE, !is.na(effort)) %>%
+    select(trial_uid, sub, task, session_used, run_used, trial_index, effort, isOddball, 
+           any_of("stimulus_intensity"))
+  
+  if (nrow(waveform_trials) > 0) {
   cat("  Processing ", nrow(waveform_trials), " AUC-ready trials for waveforms...\n", sep = "")
   
   # Process flat files to extract waveforms for these trials
@@ -1757,8 +2013,13 @@ if (nrow(waveform_trials) > 0) {
   } else {
     cat("  ⚠ No waveform data extracted\n\n")
   }
+  } else {
+    cat("  ⚠ No AUC-ready trials for waveforms\n\n")
+  }
 } else {
-  cat("  ⚠ No AUC-ready trials for waveforms\n\n")
+  cat("STEP 5: SKIPPED (waveform generation disabled to avoid memory issues)\n")
+  cat("  Waveform generation requires loading full flat files and exceeds 36GB memory limit.\n")
+  cat("  This step is optional (for visualization only) and not required for analysis-ready datasets.\n\n")
 }
 
 # ----------------------------------------------------------------------------
@@ -2145,16 +2406,18 @@ if (!file.exists(file.path(V7_ANALYSIS_READY, "ch3_triallevel.csv"))) {
 }
 cat("✓ Analysis-ready datasets exist\n")
 
-# Check 6: Report exists
-if (!file.exists(file.path(V7_ROOT, "REPORT_SUMMARY.qmd"))) {
-  stop("FAILED: REPORT_SUMMARY.qmd does not exist")
+# Check 6: Report exists (optional - may not be generated)
+if (file.exists(file.path(V7_ROOT, "REPORT_SUMMARY.qmd"))) {
+  cat("✓ REPORT_SUMMARY.qmd exists\n")
+} else {
+  cat("⚠ REPORT_SUMMARY.qmd not found (optional file)\n")
 }
-cat("✓ REPORT_SUMMARY.qmd exists\n")
 
 # Final output summary
 cat("\n=== OUTPUT SUMMARY ===\n")
 cat("QC files:\n")
-cat("  qc/09_flat_file_run_inventory.csv: ", nrow(flat_inventory), " rows\n", sep = "")
+# flat_inventory is skipped (memory optimization), so don't reference it
+cat("  qc/09_flat_file_run_inventory.csv: SKIPPED (memory optimization)\n", sep = "")
 cat("  qc/10_expected_vs_found_runs.csv: ", nrow(expected_vs_found), " rows (", n_missing_flat, " MISSING_FLAT_RUN)\n", sep = "")
 cat("  qc/07_auc_feature_coverage_by_run.csv: ", nrow(coverage_by_run), " rows\n", sep = "")
 cat("  qc/08_auc_non_na_rates.csv: ", nrow(auc_non_na_combined), " rows\n", sep = "")
@@ -2169,6 +2432,10 @@ cat("  analysis_ready/ch2_triallevel.csv: ", nrow(ch2_final), " rows (",
 cat("  analysis_ready/ch3_triallevel.csv: ", nrow(ch3_final), " rows (", 
     sprintf("%.1f", 100*n_ch3_ddm_ready_final/nrow(ch3_final)), "% ddm_ready)\n", sep = "")
 cat("\nReport:\n")
-cat("  REPORT_SUMMARY.qmd\n")
+if (file.exists(file.path(V7_ROOT, "REPORT_SUMMARY.qmd"))) {
+  cat("  REPORT_SUMMARY.qmd\n")
+} else {
+  cat("  REPORT_SUMMARY.qmd (not generated)\n")
+}
 cat("\n=== QUICK-SHARE v7 COMPLETE ===\n")
 

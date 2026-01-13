@@ -312,7 +312,8 @@ trial_coverage_list <- map(flat_files, function(f) {
       valid_response  = prop_valid_window(time, pupil,  4.70, 7.70),
 
       # ---- Analysis windows ----
-      valid_baseline500        = prop_valid_window(time, pupil, -0.5, 0.0),
+      valid_baseline500        = prop_valid_window(time, pupil, -0.5, 0.0),  # B0 baseline (for Total AUC)
+      valid_baseline_B1        = prop_valid_window(time, pupil, 3.85, 4.35), # B1 baseline (for Cognitive AUC)
       valid_total_auc_window   = prop_valid_window(time, pupil,  0.0, response_onset),
       valid_cognitive_window   = prop_valid_window(time, pupil,  4.65, response_onset),
 
@@ -415,9 +416,9 @@ add_analysis_gates <- function(df, threshold, config = NULL) {
       # Gate for total AUC analyses (includes baseline for correction)
       gate_total_auc = !is.na(valid_baseline500) & !is.na(valid_total_auc_window) &
         valid_baseline500 >= threshold & valid_total_auc_window >= threshold,
-      # Gate for cognitive AUC analyses (includes baseline for correction)
-      gate_cog_auc = !is.na(valid_cognitive_window) & !is.na(valid_baseline500) &
-        valid_cognitive_window >= threshold & valid_baseline500 >= threshold,
+      # Gate for cognitive AUC analyses (uses B1 baseline, not B0)
+      gate_cog_auc = !is.na(valid_cognitive_window) & !is.na(valid_baseline_B1) &
+        valid_cognitive_window >= threshold & valid_baseline_B1 >= threshold,
       # Threshold used
       gate_threshold = threshold
     )

@@ -56,7 +56,7 @@ You are setting up Chapter 2 of a PhD dissertation: "Pupil-Indexed Arousal and P
 **Target**: Create `data/analysis_ready/ch2_triallevel_merged.csv`
 - Merge behavioral + pupil data on: `subject_id`, `task`, `trial_number` (or equivalent)
 - Include quality tiers:
-  - Primary: baseline validity ≥ 0.60 AND cognitive window validity ≥ 0.60
+  - Primary: B1 baseline validity ≥ 0.50 AND cognitive window validity ≥ 0.60
   - Sensitivity tier 1: ≥ 0.50 (lenient)
   - Sensitivity tier 2: ≥ 0.70 (stricter)
 - Compute within-subject centered pupil metrics:
@@ -136,7 +136,7 @@ You are setting up Chapter 2 of a PhD dissertation: "Pupil-Indexed Arousal and P
 - Models:
   - `Total AUC ~ effort + task + (1|subject_id)`
   - `Cognitive pupil ~ effort + task + (1|subject_id)`
-- Use primary quality tier (≥0.60)
+- Use primary quality tier (B1 ≥0.50 & Cog ≥0.60)
 - Report effect sizes, credible intervals, and p-values
 - Generate figures: effort × pupil scatter plots, boxplots
 

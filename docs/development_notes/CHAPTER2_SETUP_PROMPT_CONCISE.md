@@ -175,3 +175,6 @@ Create `reports/chap2_psychometric_pupil.qmd` with:
 
 **Full detailed prompt**: See `docs/development_notes/CHAPTER2_SETUP_PROMPT.md` for complete specifications.
 
+
+
+
