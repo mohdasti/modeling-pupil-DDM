@@ -279,8 +279,11 @@ for (path in pupil_data_paths) {
             TRUE ~ "Standard"
           ))
       }
-      # Map cognitive_auc column name (cog_auc or cognitive_auc)
-      if ("cog_auc" %in% names(pupil_data) && !"cognitive_auc" %in% names(pupil_data)) {
+      # Map cognitive_auc column name (cog_auc_w3 for Chapter 3 primary, or cog_auc, or cognitive_auc)
+      if ("cog_auc_w3" %in% names(pupil_data) && !"cognitive_auc" %in% names(pupil_data)) {
+        # Chapter 3 uses W3.0 window (cog_auc_w3) as primary TEPR metric
+        pupil_data <- pupil_data %>% mutate(cognitive_auc = cog_auc_w3)
+      } else if ("cog_auc" %in% names(pupil_data) && !"cognitive_auc" %in% names(pupil_data)) {
         pupil_data <- pupil_data %>% mutate(cognitive_auc = cog_auc)
       }
       # Map baseline_B0 column name
@@ -2182,7 +2185,7 @@ if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in
       row_group.padding = px(8)
     ) %>%
     tab_footnote(
-      footnote = "TEPR (phasic arousal) quantified as Cognitive AUC (Area Under the Curve) from baseline-corrected pupil data (4.65s to response onset). AUC in units of mm·s.",
+      footnote = "TEPR (phasic arousal) quantified as Cognitive AUC (Area Under the Curve) from baseline-corrected pupil data using W3.0 window (4.65s to 7.65s, target+0.3s to target+3.3s). AUC in units of mm·s.",
       locations = cells_column_labels(columns = `Mean AUC`)
     )
 } else {
