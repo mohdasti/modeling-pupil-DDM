@@ -242,9 +242,11 @@ sensitivity_summary <- sread("output/checks/sensitivity_summary.csv") %||%
 # Load pupil data for descriptives (if available)
 # Try multiple possible locations for chapter 3 pupil data
 pupil_data_paths <- c(
+  file.path(proj_root, "data/pupil_processed/analysis_ready/ch3_triallevel.csv"),  # Primary location (from make_quick_share_v7.R)
   file.path(proj_root, "quick_share_v7/analysis_ready/ch3_triallevel.csv"),
   file.path(proj_root, "quick_share_v7/analysis/ch3_ddm_ready_with_auc.csv"),
   file.path(proj_root, "data/analysis_ready/BAP_analysis_ready_PUPIL.csv"),
+  "data/pupil_processed/analysis_ready/ch3_triallevel.csv",  # Relative path
   "quick_share_v7/analysis_ready/ch3_triallevel.csv",
   "quick_share_v7/analysis/ch3_ddm_ready_with_auc.csv",
   "data/analysis_ready/BAP_analysis_ready_PUPIL.csv"
@@ -290,12 +292,27 @@ for (path in pupil_data_paths) {
       if ("baseline_B0_mean" %in% names(pupil_data) && !"baseline_B0" %in% names(pupil_data)) {
         pupil_data <- pupil_data %>% mutate(baseline_B0 = baseline_B0_mean)
       }
+      cat("✓ Loaded pupil data from:", path, "\n")
+      cat("  Rows:", nrow(pupil_data), "\n")
+      cat("  Columns:", length(names(pupil_data)), "\n")
       break
     }, error = function(e) {
       cat("Error loading pupil data from", path, ":", e$message, "\n")
       NULL
     })
   }
+}
+
+# Debug: Check if pupil_data was loaded successfully
+if (is.null(pupil_data)) {
+  cat("⚠ WARNING: pupil_data is NULL. Tables 12, 13, and 14 will show placeholders.\n")
+  cat("  Checked paths:\n")
+  for (path in pupil_data_paths) {
+    cat("    ", path, ":", file.exists(path), "\n")
+  }
+} else {
+  cat("✓ pupil_data loaded successfully with", nrow(pupil_data), "rows\n")
+  cat("  Available columns:", paste(head(names(pupil_data), 10), collapse=", "), "...\n")
 }
 
 # Load behavioral data for descriptives (if available)
