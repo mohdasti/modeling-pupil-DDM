@@ -1,7 +1,8 @@
 # Decision Framework Verification
 
-**Date**: January 2026  
-**Purpose**: Verify that the decision framework and exclusion rules are properly implemented in `chapter2_materials/`
+**Date**: January 2026 (Updated)  
+**Purpose**: Verify that the decision framework and exclusion rules are properly implemented in `chapter2_materials/`  
+**Note**: This document has been updated to reflect the new 1.20s fixed window (4.85-6.05s) implementation
 
 ---
 
@@ -32,57 +33,61 @@
   - `cog_auc_n_segments`: 7,366 trials have this metric
   - `cog_auc_prop_valid`: 7,366 trials have this metric
 
-### 4. RT-Normalized Metrics
-- **Status**: ⚠️ **Computed in Report, Not in CSV**
-- **Current**: `cog_mean` is computed in `pupil_data_report_advisor.qmd` R chunks
-- **Recommendation**: Compute `cog_mean = cog_auc / cog_window_duration` in your analysis scripts
-- **Note**: Current implementation uses fixed short window (~0.05s), so RT-normalization may have limited utility until RT-dependent windows are implemented
+### 4. Mean Dilation Metric (cog_mean)
+- **Status**: ✅ **Fully Implemented in CSV**
+- **Current**: `cog_mean = cog_auc / cog_window_duration` is computed in `make_quick_share_v7.R`
+- **Location**: `ch2_triallevel.csv` column `cog_mean`
+- **Rationale**: Removes duration confounds; preferred over raw AUC
+- **Note**: Current implementation uses fixed 1.20s window (4.85-6.05s), so `cog_mean` is the preferred metric
 
 ---
 
 ## ⚠️ **PARTIALLY IMPLEMENTED / NOT APPLICABLE**
 
-### 1. Window Duration Threshold (cog_window_duration >= 0.5s)
-- **Status**: ⚠️ **Not Applicable with Current Implementation**
-- **Reason**: Current implementation uses fixed short window (4.65s to 4.70s = ~0.05s)
-- **Actual Values**: All `gate_pupil_primary` trials have `cog_window_duration` ~0.05s (median: 0.049s)
-- **Framework Expectation**: RT-dependent window (4.65s to 4.70s + RT), which would yield 0.5s+ for most trials
-- **Recommendation**: This threshold is documented for future use when RT-dependent windows are implemented
+### 1. Window Duration Threshold (cog_window_duration >= 0.90s)
+- **Status**: ✅ **Applicable with Current Implementation**
+- **Current Implementation**: Fixed 1.20s window (4.85s to 6.05s, stimulus-locked)
+- **Actual Values**: Mean `cog_window_duration` ~1.09s (some truncation due to missing data)
+- **Expert-Recommended Threshold**: `cog_window_duration >= 0.90s` (75% of 1.20s window)
+- **Rationale**: Ensures sufficient window coverage for stable AUC estimates
 
-### 2. Valid Samples Threshold (cog_auc_n_valid >= 100)
-- **Status**: ⚠️ **Not Applicable with Current Implementation**
-- **Reason**: Current implementation uses fixed short window (~0.05s)
-- **Actual Values**: All `gate_pupil_primary` trials have `cog_auc_n_valid` ~10-15 samples (median: 15)
-- **Framework Expectation**: RT-dependent window would yield 100+ samples for most trials
-- **Recommendation**: This threshold is documented for future use when RT-dependent windows are implemented
+### 2. Valid Samples Threshold (cog_auc_n_valid >= 240)
+- **Status**: ✅ **Applicable with Current Implementation**
+- **Current Implementation**: Fixed 1.20s window (4.85s to 6.05s) at 250 Hz
+- **Expected Samples**: ~300 samples at 250 Hz for 1.20s window
+- **Actual Values**: Mean `cog_auc_n_valid` ~237 samples (80% of expected)
+- **Expert-Recommended Threshold**: `cog_auc_n_valid >= 240` (80% of expected ~300 samples)
+- **Rationale**: Ensures sufficient valid samples for stable AUC estimates
 
 ---
 
 ## 📋 **DECISION FRAMEWORK SUMMARY**
 
-### Current Implementation (What Works Now):
+### Current Implementation (Fixed 1.20s Window: 4.85-6.05s):
 
-**Primary Exclusion Rule**:
+**Primary Exclusion Rule (Expert-Recommended)**:
 ```r
 ch2_primary <- ch2_data %>%
   filter(
     gate_pupil_primary == TRUE,           # B1_quality >= 0.50 & cog_quality >= 0.60
-    is.na(cog_auc_max_gap_ms) | cog_auc_max_gap_ms <= 250  # Gap-aware exclusion
+    is.na(cog_auc_max_gap_ms) | cog_auc_max_gap_ms <= 250,  # Gap-aware exclusion
+    is.na(cog_window_duration) | cog_window_duration >= 0.90,  # 75% of 1.20s window
+    is.na(cog_auc_n_valid) | cog_auc_n_valid >= 240          # 80% of expected ~300 samples
   )
 ```
 
-**Result**: 4,448 trials (30.5% of all trials)
+**Result**: Number of trials depends on gap-aware and duration/n_valid filters
 
-### Framework (For Future RT-Dependent Windows):
+### Sensitivity Tiers:
 
-**Primary (Strict)**:
+**Primary (Strict - Expert-Recommended)**:
 ```r
 ch2_primary <- ch2_data %>%
   filter(
     gate_pupil_primary == TRUE,           # B1_quality >= 0.50 & cog_quality >= 0.60
     is.na(cog_auc_max_gap_ms) | cog_auc_max_gap_ms <= 250,
-    is.na(cog_window_duration) | cog_window_duration >= 0.5,  # Future use
-    is.na(cog_auc_n_valid) | cog_auc_n_valid >= 100          # Future use
+    is.na(cog_window_duration) | cog_window_duration >= 0.90,  # 75% of 1.20s
+    is.na(cog_auc_n_valid) | cog_auc_n_valid >= 240          # 80% of expected
   )
 ```
 
@@ -92,7 +97,7 @@ ch2_moderate <- ch2_data %>%
   filter(
     gate_pupil_primary == TRUE,
     is.na(cog_auc_max_gap_ms) | cog_auc_max_gap_ms <= 250,
-    is.na(cog_window_duration) | cog_window_duration >= 0.3    # Future use
+    is.na(cog_window_duration) | cog_window_duration >= 0.60    # 50% of 1.20s
   )
 ```
 
@@ -125,7 +130,7 @@ ch2_lenient <- ch2_data %>%
 
 1. **For Current Analyses**: Use `gate_pupil_primary == TRUE` + gap filter (`cog_auc_max_gap_ms <= 250`)
 2. **For RT-Normalized Metrics**: Compute `cog_mean` in your analysis scripts
-3. **For Window Duration/n_valid Thresholds**: These are documented for future use when RT-dependent windows are implemented
+3. **For Window Duration/n_valid Thresholds**: These are now applicable with the fixed 1.20s window (4.85-6.05s) implementation
 4. **All Gap-Aware Metrics**: Available in CSV and ready to use
 
 ---
@@ -144,4 +149,4 @@ ch2_lenient <- ch2_data %>%
 
 ---
 
-**Conclusion**: The decision framework is **properly documented and implemented** for the metrics that are applicable with the current fixed-window implementation. Window duration and n_valid thresholds are documented for future use when RT-dependent windows are implemented.
+**Conclusion**: The decision framework is **properly documented and implemented** with the new fixed 1.20s window (4.85-6.05s). All gap-aware metrics, window duration thresholds, and valid sample thresholds are now applicable and recommended for use.
