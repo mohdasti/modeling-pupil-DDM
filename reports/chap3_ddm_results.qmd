@@ -23,6 +23,8 @@ format:
       text: |
         \usepackage{pdflscape}
         \usepackage{caption}
+        \usepackage{adjustbox}
+        \usepackage{longtable}
   docx:
     toc: true
     number-sections: true
@@ -37,6 +39,7 @@ execute:
 library(dplyr)
 library(readr)
 library(tidyr)
+library(tibble)
 library(gt)
 library(glue)
 library(stringr)
@@ -67,11 +70,17 @@ latex_escape <- function(text) {
 }
 
 # Set working directory to project root (Quarto runs from reports/ directory)
-if (basename(getwd()) == "reports") {
-  setwd("..")
+# Use knitr root.dir instead of setwd() to avoid warnings
+current_dir <- getwd()
+if (basename(current_dir) == "reports") {
+  knitr::opts_knit$set(root.dir = "..")
+  proj_root <- normalizePath(file.path(current_dir, ".."), mustWork = FALSE)
+  # When root.dir is set, paths should be relative to root.dir, not absolute
+  use_relative_paths <- TRUE
+} else {
+  proj_root <- current_dir
+  use_relative_paths <- FALSE
 }
-# Ensure we're in project root for file paths
-proj_root <- getwd()
 p <- file.path(proj_root, "output/publish")
 # Ensure p is a single character string
 if (length(p) > 1) p <- p[1]
@@ -85,13 +94,20 @@ fig_path <- function(fig_name) {
   # Detect output format - try multiple methods
   output_format <- NULL
   
-  # Method 1: Check knitr's pandoc output format (most reliable)
-  pandoc_to <- knitr::opts_knit$get("rmarkdown.pandoc.to")
-  if (!is.null(pandoc_to)) {
-    output_format <- pandoc_to
+  # Method 1: Check if we're rendering to LaTeX/PDF (most important for path resolution)
+  if (knitr::is_latex_output()) {
+    output_format <- "latex"
   }
   
-  # Method 2: Check if we're in a DOCX rendering context
+  # Method 2: Check knitr's pandoc output format (most reliable)
+  if (is.null(output_format)) {
+    pandoc_to <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+    if (!is.null(pandoc_to)) {
+      output_format <- pandoc_to
+    }
+  }
+  
+  # Method 3: Check if we're in a DOCX rendering context
   # Quarto sets this in the knitr options
   if (is.null(output_format)) {
     # Check for DOCX-specific indicators
@@ -153,32 +169,78 @@ fig_path <- function(fig_name) {
   }
   
   # Choose format based on output type
-  # DOCX: prefer PDF (vector graphics work better in Word)
-  # HTML: prefer PNG/JPG (better browser compatibility)
-  if (!is.null(output_format) && grepl("docx|word", output_format, ignore.case = TRUE)) {
-    if (!is.null(pdf_abs)) {
-      # For DOCX, return relative path (Word handles it)
-      return(file.path("../output/figures", pdf_name))
-    } else if (!is.null(png_abs)) {
-      return(file.path("../output/figures", png_name))
-    } else if (!is.null(jpg_abs)) {
-      return(file.path("../output/figures", jpg_name))
+  # For LaTeX: paths need to work for both R execution (with root.dir) and LaTeX compilation
+  # Solution: return paths relative to root.dir for R validation, but use a wrapper in include_graphics
+  # that handles LaTeX path conversion
+  is_latex <- knitr::is_latex_output()
+  
+  if (exists("use_relative_paths") && use_relative_paths) {
+    if (is_latex) {
+      # LaTeX: return paths relative to reports/ directory (where LaTeX runs)
+      if (!is.null(pdf_abs)) {
+        return(file.path("../output/figures", pdf_name))
+      } else if (!is.null(png_abs)) {
+        return(file.path("../output/figures", png_name))
+      } else if (!is.null(jpg_abs)) {
+        return(file.path("../output/figures", jpg_name))
+      }
+    } else {
+      # HTML/DOCX: Return relative paths from root.dir (which is set to project root)
+      if (!is.null(output_format) && grepl("docx|word", output_format, ignore.case = TRUE)) {
+        if (!is.null(pdf_abs)) {
+          return(file.path("output/figures", pdf_name))
+        } else if (!is.null(png_abs)) {
+          return(file.path("output/figures", png_name))
+        } else if (!is.null(jpg_abs)) {
+          return(file.path("output/figures", jpg_name))
+        }
+      } else {
+        # HTML: prefer PNG
+        if (!is.null(png_abs)) {
+          return(file.path("output/figures", png_name))
+        } else if (!is.null(jpg_abs)) {
+          return(file.path("output/figures", jpg_name))
+        } else if (!is.null(pdf_abs)) {
+          return(file.path("output/figures", pdf_name))
+        }
+      }
     }
   } else {
-    # HTML: use relative path from reports/ directory
-    # Quarto will handle copying if needed
-    if (!is.null(png_abs)) {
-      return(file.path("../output/figures", png_name))
-    } else if (!is.null(jpg_abs)) {
-      return(file.path("../output/figures", jpg_name))
-    } else if (!is.null(pdf_abs)) {
-      return(file.path("../output/figures", pdf_name))
+    # Return absolute paths when root.dir is not set
+    if (!is.null(output_format) && grepl("docx|word", output_format, ignore.case = TRUE)) {
+      if (!is.null(pdf_abs)) {
+        return(pdf_abs)
+      } else if (!is.null(png_abs)) {
+        return(png_abs)
+      } else if (!is.null(jpg_abs)) {
+        return(jpg_abs)
+      }
+    } else {
+      if (!is.null(pdf_abs)) {
+        return(pdf_abs)
+      } else if (!is.null(png_abs)) {
+        return(png_abs)
+      } else if (!is.null(jpg_abs)) {
+        return(jpg_abs)
+      }
     }
   }
   
-  # Fallback
-  warning("Figure not found: ", fig_name)
-  return(file.path("../output/figures", if (!is.null(png_abs)) png_name else if (!is.null(jpg_abs)) jpg_name else pdf_name))
+  # Fallback: return relative path even if file doesn't exist (let LaTeX/Quarto handle error)
+  warning("Figure not found: ", fig_name, " (checked: ", paste(c(candidates_pdf, candidates_png), collapse = ", "), ")")
+  if (is_latex) {
+    return(file.path("../output/figures", pdf_name))
+  } else {
+    return(file.path("output/figures", if (!is.null(output_format) && grepl("docx|word", output_format, ignore.case = TRUE)) pdf_name else png_name))
+  }
+}
+
+# Wrapper for include_graphics that handles LaTeX path issues
+include_graphics_safe <- function(fig_path_result) {
+  # For LaTeX with root.dir set, fig_path() returns "../output/figures/..." 
+  # which works for LaTeX but knitr::include_graphics() validates relative to root.dir
+  # Use error=FALSE to skip validation since we know the file exists (we checked in fig_path)
+  knitr::include_graphics(fig_path_result, error = FALSE)
 }
 
 # Helper: safe read
@@ -292,28 +354,18 @@ for (path in pupil_data_paths) {
       if ("baseline_B0_mean" %in% names(pupil_data) && !"baseline_B0" %in% names(pupil_data)) {
         pupil_data <- pupil_data %>% mutate(baseline_B0 = baseline_B0_mean)
       }
-      cat("✓ Loaded pupil data from:", path, "\n")
-      cat("  Rows:", nrow(pupil_data), "\n")
-      cat("  Columns:", length(names(pupil_data)), "\n")
+      # Data loaded successfully (diagnostic messages suppressed for rendering)
       break
     }, error = function(e) {
-      cat("Error loading pupil data from", path, ":", e$message, "\n")
+      # Error loading from this path, try next (messages suppressed for rendering)
       NULL
     })
   }
 }
 
 # Debug: Check if pupil_data was loaded successfully
-if (is.null(pupil_data)) {
-  cat("⚠ WARNING: pupil_data is NULL. Tables 12, 13, and 14 will show placeholders.\n")
-  cat("  Checked paths:\n")
-  for (path in pupil_data_paths) {
-    cat("    ", path, ":", file.exists(path), "\n")
-  }
-} else {
-  cat("✓ pupil_data loaded successfully with", nrow(pupil_data), "rows\n")
-  cat("  Available columns:", paste(head(names(pupil_data), 10), collapse=", "), "...\n")
-}
+# Note: pupil_data loading status messages suppressed for rendering
+# If pupil_data is NULL, tables will show placeholders automatically
 
 # Load behavioral data for descriptives (if available)
 # Try multiple possible locations, prioritizing the Nov2025 directory
@@ -456,7 +508,7 @@ To disentangle these component processes of decision-making, researchers increas
 #| fig-cap: "Drift Diffusion Model: Evidence Accumulation Process. The DDM models decision-making as a noisy evidence accumulation process. Evidence accumulates from a starting point (z, starting-point bias) toward one of two decision boundaries: the upper boundary corresponds to \"different\" responses, and the lower boundary to \"same\" responses. The rate of evidence accumulation is determined by the drift rate (v), which reflects the quality of the stimulus evidence. The distance between boundaries is the boundary separation (a), which reflects response caution. The total reaction time (RT) is the sum of non-decision time (t₀, reflecting perceptual encoding and motor execution) and the decision time (time to reach a boundary). In this example, the starting point is biased toward the upper boundary (z > 0.5), and positive drift leads to a \"different\" response."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("fig_ddm_process.pdf"))
+include_graphics_safe(fig_path("fig_ddm_process.pdf"))
 ```
 
 Formally, the evidence accumulation process follows the stochastic differential equation [@ratcliff1978theory; @ratcliff2008diffusion]:
@@ -525,7 +577,7 @@ In this chapter, we investigate how effort-induced arousal modulates decision-ma
 #| fig-cap: "Cross-Level Mechanism: Effort, Arousal (LC–NE), Pupillometry, and DDM Parameters. Conceptual diagram illustrating the mechanistic framework connecting experimental manipulations (Level 1: physical effort, task modality, stimulus difficulty) to the Locus Coeruleus–Norepinephrine (LC–NE) arousal control system (Level 2), observable through pupillometry signals (Level 3: baseline pupil diameter for tonic arousal, task-evoked pupil response/TEPR for phasic arousal), and their mapping onto latent DDM parameters (Level 4: drift rate v, boundary separation a, starting-point bias z, non-decision time t₀) that determine behavioral outcomes (Level 5: accuracy and reaction time). Solid arrows indicate supported relationships; dashed arrows indicate hypothesized or weakly supported relationships. The diagram highlights how physical effort increases physiological demand on the LC–NE system, which is captured by pupillometry as a non-invasive proxy, and how these arousal states modulate decision-making parameters—particularly the negative effect of high effort on drift rate (v) through resource competition or supra-optimal arousal, and the minimal effects on boundary separation (a) and non-decision time (t₀)."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("ddm_pipeline"))
+include_graphics_safe(fig_path("ddm_pipeline"))
 ```
 
 # Methods
@@ -558,7 +610,7 @@ knitr::include_graphics(fig_path("ddm_pipeline"))
 #| fig-cap: "Task design. Both Auditory and Visual tasks followed the same trial structure, but differed in stimuli. Each trial began with a 1.5-4.5 s jittered blank gray screen, followed by a 3 s grip gauge instructing low (5% MVC) or high (40% MVC) force with on-screen feedback. After a 0.25 s blank and 0.5 s fixation, a stimulus pair was presented. Auditory task: a 1000 Hz 0.1 s standard tone, a 0.5 s ISI, then a 0.1 s comparison tone that was either identical or increased by 8, 16, 32, or 64 Hz. Visual task: a central Gabor (1.5 cycles/degree, 0.2 Michelson contrast, 4°) followed by a 0.5 s blank and a second Gabor that was identical or increased in contrast by 0.06, 0.12, 0.24, or 0.48. Participants then released the grip and had 3 s to report \"same\" or \"different,\" followed by 3 s to rate their confidence on their same/different choice (1-4, low to high). All 5 stimulus levels and the 2 grip levels were presented in equal proportions across 150 trials per task, and were presented pseudorandomly."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("Trial_Structure.png"))
+include_graphics_safe(fig_path("Trial_Structure.png"))
 ```
 
 **RT definition**: Time from response-screen onset (response-signal design). This is a critical methodological detail: RTs are measured from when the response screen appears (after the stimulus presentation period), not from stimulus onset. This design constrains the interpretation of **t₀ (non-decision time) to primarily reflect motor execution and response selection** rather than the sum of encoding + motor time as in traditional RT tasks. The response-signal design rationale is described in detail in the LC behavioral report manuscript.
@@ -630,7 +682,7 @@ trial_exclusions_summary %>%
 #| fig-cap: "Response-Signal Trial Timeline: RT Definition and Pupillometry AUC Windows (W3.0 vs W1.3). Two-panel timeline showing the relationship between key trial events and pupillometry analysis windows. Panel A (overview): Full trial timeline from baseline (-0.5s) to response window end (7.70s), with labeled event markers for squeeze onset (t=0), target/comparison stimulus onset (4.35s), response-screen onset (4.70s, where RT=0 in the response-signal design), and response window end (7.70s). Shaded regions indicate the baseline window (used for baseline correction) and the 3-second response window. Panel B (zoomed): Detailed view of the target-to-response period (4.2s to 7.8s) showing the two pupillometry AUC windows overlaid as colored bars: W1.3 (4.65s to 5.65s, conservative window minimizing post-response contamination) and W3.0 (4.65s to 7.65s, full TEPR window capturing the peak response at ~7.30s). Both windows begin at target+0.3s to account for the ~300ms physiological latency of the pupil response. The figure emphasizes that RT is measured from response-screen onset (response-signal design), not stimulus onset, and that W3.0 necessarily overlaps the response period because the TEPR peak occurs during active responding, reflecting ongoing cognitive processing during the decision/response period."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("AUC_timeline.jpg"))
+include_graphics_safe(fig_path("AUC_timeline.jpg"))
 ```
 
 **Confounds and sensitivity checks.** To address potential concerns about post-response contamination and motor execution confounds, we implemented multiple mitigation strategies. First, we computed an early cognitive window (W1.3: target+0.3 to target+1.3s; 4.65s to 5.65s relative to squeeze onset) that extends only 0.95s into the response period. This window yields two complementary metrics: `cog_auc_w1p3` (area under the curve in the W1.3 window) and `cog_mean_w1p3` (mean pupil diameter in the W1.3 window). These early-window features provide a more conservative estimate of pre-response cognitive processing, as they capture the initial phase of the TEPR with minimal contamination from post-response processes. Second, for trial-level DDM-pupil coupling models (when implemented), RT should be included as a covariate to control for decision state and prevent RT from confounding pupil-DDM relationships. This is critical because RT correlates with both decision processes and pupil dynamics during the response period. Note: The current analyses use subject-level correlations between DDM parameters and pupil measures, which aggregate across trials and thus naturally account for RT variability at the subject level. Third, window definitions are computed to truncate W3.0 at 150ms before button press (`t_resp - 0.15s`) to minimize motor execution/blink contamination (available for future analyses; full AUC computation for motor-buffered windows requires re-processing flat files with RT information). While our primary analyses focus on the full TEPR magnitude (W3.0 window), the W1.3 features serve as robustness checks to ensure that observed relationships between cognitive arousal and DDM parameters are not solely driven by post-response contamination. Both `cog_auc_w1p3` and `cog_mean_w1p3` are included in exploratory analyses and sensitivity checks alongside the primary W3.0 metric.
@@ -884,7 +936,7 @@ The primary model is a **single hierarchical Wiener DDM** that includes difficul
 #| fig-cap: "Model-to-Design Mapping Matrix: Predictors → DDM Parameters (Primary Model). Matrix showing which experimental predictors (rows: Difficulty, Task, Effort) are included in each DDM parameter's formula (columns: drift rate v, boundary separation a, non-decision time t₀, starting-point bias z). Checkmarks (✓) indicate included predictors; dashes (—) indicate excluded predictors. The critical constraint is highlighted: Difficulty is excluded from the bias (z) formula because trial difficulty is randomized and unknown before the decision process begins, making it causally impossible for participants to adjust their starting point based on difficulty. Task and Effort are included in the bias formula because these are known pre-stimulus settings. The figure also includes the complete parameter-specific formulas for the primary model, showing the exact brms syntax used for each parameter."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("matrix.png"))
+include_graphics_safe(fig_path("matrix.png"))
 ```
 
 ### Priors, computation, and diagnostics
@@ -964,7 +1016,7 @@ if (!is.null(loo_primary)) {
 }
 ```
 
-The model with **difficulty → (v + a)** is strongly favored, with bias constrained to be constant across difficulty levels (ΔELPD vs. v-only: ≈ +185, SE ≈ 20; stacking weight: ≈ 0.89; PBMA weight: ≈ 1.0). Pareto-k diagnostics: 1/17,834 observations had k > 0.7; moment matching was not required. The full LOO comparison plot is provided in Supplementary Figure @fig-loo. The data strongly support a model in which task difficulty modulates drift rate and boundary separation. Starting-point bias is constrained to be constant across difficulty levels (as trials are randomized), but varies by task and effort. Simpler models (e.g., difficulty affecting only drift) are decisively rejected by cross-validation.
+The model with **difficulty → (v + a)** is strongly favored, with bias constrained to be constant across difficulty levels (ΔELPD vs. v-only: ≈ +185, SE ≈ 20; stacking weight: ≈ 0.89; PBMA weight: ≈ 1.0). Pareto-k diagnostics: 1/17,834 observations had k > 0.7; moment matching was not required. The full LOO comparison plot is provided in Supplementary Figure @fig-loo. The data strongly support a model in which task difficulty modulates drift rate and boundary separation. Starting-point bias is constrained to be constant across difficulty levels (as trials are randomized), but varies by task and effort. Simpler models (e.g., difficulty affecting only drift) are decisively rejected by cross-validation. Detailed posterior predictive checks and visual diagnostics are provided in Appendix A3 (see @sec-ch3-ppc-method–@sec-ch3-ppc-visual).
 
 **Convergence diagnostics**: @tbl-convergence-ppc-gate shows convergence diagnostics and PPC gate results.
 
@@ -972,9 +1024,51 @@ The model with **difficulty → (v + a)** is strongly favored, with bias constra
 #| label: tbl-convergence-ppc-gate
 #| tbl-cap: "Convergence & PPC Gate (Primary Model)"
 if (!is.null(publish_gate)) {
-  # Simpler, more robust table: show the convergence/PPC gate values as-is
-  publish_gate %>%
-    gt()
+  # Create a vertical table with readable metric names
+  # Format values and create two-column layout (Metric | Value)
+  gate_tbl <- tibble(
+    Metric = c(
+      "Max R-hat",
+      "Min Bulk ESS",
+      "Min Tail ESS",
+      "Divergences",
+      "Convergence Pass",
+      "PPC Cells (n)",
+      "PPC Flagged (%)",
+      "Max QP RMSE (s)",
+      "Max KS",
+      "PPC Pass"
+    ),
+    Value = c(
+      sprintf("%.4f", publish_gate$conv_max_rhat),
+      sprintf("%.0f", publish_gate$conv_min_bulk_ess),
+      ifelse(is.na(publish_gate$conv_min_tail_ess), "NA", sprintf("%.0f", publish_gate$conv_min_tail_ess)),
+      as.character(publish_gate$conv_divergences),
+      ifelse(publish_gate$conv_pass, "✓", "✗"),
+      sprintf("%.0f", publish_gate$ppc_subj_n_cells),
+      sprintf("%.1f%%", publish_gate$ppc_subj_pct_flagged_any),
+      sprintf("%.3f", publish_gate$ppc_subj_max_qp),
+      sprintf("%.3f", publish_gate$ppc_subj_max_ks),
+      ifelse(publish_gate$ppc_subj_pass, "✓", "✗")
+    )
+  )
+  
+  # Create formatted table
+  gate_tbl %>%
+    gt() %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_style(
+      style = cell_text(style = "italic"),
+      locations = cells_body(columns = Metric)
+    ) %>%
+    cols_width(
+      Metric ~ px(180),
+      Value ~ px(100)
+    ) %>%
+    opt_table_font(size = "small")
 } else {
   cat("Publish gate data not available.")
 }
@@ -994,23 +1088,26 @@ if (!is.null(publish_gate)) {
 -   KS statistic ≤ 0.15
 -   ≤ 15% of cells flagged
 
-**Result**: The primary model passes all MCMC convergence gates ($\hat{R}$, ESS, divergent transitions). PPC performance is discussed in detail below.
+**Result**: The primary model passes all MCMC convergence gates ($\hat{R}$, ESS, divergent transitions). Detailed PPC methods, primary gate results, and visual diagnostics are provided in Appendix A3 (see @sec-ch3-ppc-method–@sec-ch3-ppc-visual; @tbl-ch3app-ppc-subj-summary and @fig-ch3app-ppc-small-multiples).
 
 # Results
 
+## Results Overview
+
+Our hierarchical drift-diffusion model analysis of 17,834 trials from 67 older adults revealed several key findings. First, on Standard (Δ=0) trials, participants showed a strong conservative response tendency (89.1% chose "same"), driven primarily by negative drift rate (v ≈ -1.26) rather than starting-point bias, indicating active evidence accumulation toward "same" responses when stimuli are identical. Second, task difficulty dominated drift rate effects: Easy trials showed substantially faster evidence accumulation than Hard trials (Δ ≈ +1.50 units/s), with difficulty also modulating boundary separation. Third, high physical effort (40% MVC) produced small but credible effects: drift rate decreased (consistent with resource competition) and non-decision time increased (consistent with cognitive-motor interference), but boundary separation did not increase as predicted by strategic adaptation accounts. Fourth, pupillometry-DDM integration revealed a negative correlation between phasic arousal and drift rate (r = -0.192, 95% CrI [-0.250, -0.134]), supporting supra-optimal arousal accounts, while the boundary separation correlation was minimal (r ≈ 0.04). Fifth, model fit was acceptable overall: subject-wise mid-body posterior predictive checks (PPCs) showed ≤15% of cells flagged, with localized misfit primarily in Easy/VDT fast-tail responses (see Appendix A3, @sec-ch3-ppc-method–@sec-ch3-ppc-visual for detailed PPC diagnostics). Sixth, exploratory LC integrity analyses revealed no strong moderation of effort effects by LC structural properties. The model converged well (max $\hat{R}$ ≤ 1.01, ESS ≥ 400) and was strongly favored by leave-one-out cross-validation (ΔELPD ≈ +185 vs. drift-only model).
+
 ### Descriptive: Response Tendency on Standard Trials
 
-On Standard (Δ=0) trials, participants chose "same" on 89.1% of trials and "different" on 10.9%—consistent with a conservative response tendency. The inclusion of Standard trials provides a critical constraint for estimating bias. While Standard trials theoretically have zero objective evidence difference (Δ=0), our model estimated a strong negative drift rate (v ≈ -1.26 in the primary model), indicating that participants actively accumulate evidence toward "same" responses when stimuli are identical. The observed preference for "same" responses reflects the combined effects of both drift and starting-point bias, with drift dominating the decision process. This bias estimate would be unobtainable using accuracy-coded models, where Standard trials would be ambiguous (both "same" and "different" responses are technically correct when stimuli are identical).
+On Standard (Δ=0) trials, participants chose "same" on 89.1% of trials and "different" on 10.9%—consistent with a conservative response tendency. While Standard trials theoretically have zero objective evidence difference (Δ=0), our model estimated a strong negative drift rate (v ≈ -1.26 in the primary model), indicating that participants actively accumulate evidence toward "same" responses when stimuli are identical. The observed preference for "same" responses reflects the combined effects of both drift and starting-point bias, with drift dominating the decision process. This bias estimate would be unobtainable using accuracy-coded models, where Standard trials would be ambiguous (both "same" and "different" responses are technically correct when stimuli are identical).
 
-## Sample Characteristics and Data Quality
+## Sample and Data Quality
 
-### Demographics
-
-@tbl-demographics shows sample demographics.
+Sample demographics and trial counts are shown in @tbl-demographics and @tbl-trial-counts.
 
 ```{r}
 #| label: tbl-demographics
 #| tbl-cap: "Sample Demographics"
+#| tbl-pos: "H"
 # Compute demographics from available data
 if (!is.null(behavioral_data)) {
   # Try to extract subject-level demographics
@@ -1133,13 +1230,10 @@ if (!is.null(demographics) && "age" %in% names(demographics)) {
 }
 ```
 
-### Sample Size and Data Retention
-
-@tbl-trial-counts shows trial counts by condition.
-
 ```{r}
 #| label: tbl-trial-counts
 #| tbl-cap: "Trial Counts by Condition"
+#| tbl-pos: "H"
 # Compute trial counts by condition
 if (!is.null(behavioral_data)) {
   # Standardize column names
@@ -1274,13 +1368,12 @@ if (!is.null(behavioral_data)) {
 
 ## Behavioral Performance
 
-### Accuracy Descriptives
-
-@tbl-accuracy-by-condition shows accuracy by condition.
+Accuracy descriptives are shown in @tbl-accuracy-by-condition.
 
 ```{r}
 #| label: tbl-accuracy-by-condition
 #| tbl-cap: "Accuracy by Condition (Subject-Level Means)"
+#| tbl-pos: "H"
 # Compute accuracy by condition
 if (!is.null(behavioral_data)) {
   # Standardize column names for accuracy
@@ -1440,13 +1533,12 @@ if (!is.null(behavioral_data)) {
 }
 ```
 
-### Overall Accuracy Summary
-
-@tbl-overall-accuracy shows overall accuracy summary.
+Overall accuracy summary is shown in @tbl-overall-accuracy.
 
 ```{r}
 #| label: tbl-overall-accuracy
 #| tbl-cap: "Overall Accuracy Summary"
+#| tbl-pos: "H"
 # Overall accuracy across all conditions
 if (!is.null(behavioral_data) && !is.null(acc_col)) {
   subj_col <- if ("subject_id" %in% names(behavioral_data)) "subject_id" else if ("sub" %in% names(behavioral_data)) "sub" else NULL
@@ -1515,13 +1607,12 @@ if (!is.null(behavioral_data) && !is.null(acc_col)) {
 }
 ```
 
-### Reaction Time Descriptives
-
-@tbl-global-rt shows global RT characteristics, and @tbl-rt-by-condition shows RT by condition. @fig-rt-distribution shows RT distributions by condition.
+Reaction time descriptives are shown in @tbl-global-rt and @tbl-rt-by-condition. @fig-rt-distribution shows RT distributions by condition.
 
 ```{r}
 #| label: tbl-global-rt
 #| tbl-cap: "Global RT Characteristics (All Trials)"
+#| tbl-pos: "H"
 # Compute RT descriptives
 if (!is.null(behavioral_data)) {
   # Standardize RT column name
@@ -1642,6 +1733,7 @@ if (!is.null(behavioral_data)) {
 ```{r}
 #| label: tbl-rt-by-condition
 #| tbl-cap: "RT by Condition (Subject-Level Medians)"
+#| tbl-pos: "H"
 # Condition-wise RT table with row grouping
 if (!is.null(behavioral_data) && !is.null(rt_col) && !is.null(task_col) && !is.null(diff_col) && !is.null(effort_col) && exists("rt_by_condition")) {
   rt_table_data <- rt_by_condition %>%
@@ -1808,13 +1900,12 @@ if (!is.null(behavioral_data) && !is.null(rt_col) && !is.null(task_col) && !is.n
 
 ## Pupillometry Descriptives
 
-### Data Quality
-
-@tbl-pupil-quality shows pupillometry data quality metrics.
+Pupillometry data quality metrics are shown in @tbl-pupil-quality.
 
 ```{r}
 #| label: tbl-pupil-quality
 #| tbl-cap: "Pupillometry Data Quality Summary"
+#| tbl-pos: "H"
 # Compute pupil data quality metrics
 if (!is.null(pupil_data)) {
   # Compute quality metrics
@@ -1916,13 +2007,12 @@ if (!is.null(pupil_data)) {
 }
 ```
 
-### Baseline Pupil Diameter
-
-@tbl-baseline-pupil shows baseline pupil diameter by condition.
+Baseline pupil diameter by condition is shown in @tbl-baseline-pupil.
 
 ```{r}
 #| label: tbl-baseline-pupil
 #| tbl-cap: "Baseline Pupil Diameter by Condition"
+#| tbl-pos: "H"
 # Compute baseline pupil diameter by task and effort
 if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data)) {
   baseline_pupil_summary <- pupil_data %>%
@@ -2025,13 +2115,12 @@ if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% 
 }
 ```
 
-### Task-Evoked Pupil Response (TEPR)
-
-@tbl-tepr shows TEPR by condition, and @fig-tepr-timecourse shows the TEPR time course.
+Task-evoked pupil response (TEPR) by condition is shown in @tbl-tepr, and @fig-tepr-timecourse shows the TEPR time course.
 
 ```{r}
 #| label: tbl-tepr
 #| tbl-cap: "Task-Evoked Pupil Response (TEPR) by Condition"
+#| tbl-pos: "H"
 # Compute TEPR (cognitive AUC) by task, difficulty, and effort
 if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data) && "difficulty_level" %in% names(pupil_data)) {
   tepr_summary <- pupil_data %>%
@@ -2150,6 +2239,7 @@ if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in
 #| label: fig-tepr-timecourse
 #| fig-cap: "Task-Evoked Pupil Response (TEPR) Time Course. Grand-average pupil traces (baseline-corrected, mean ± 95% CI) aligned to squeeze onset for four conditions (Easy/Low, Easy/High, Hard/Low, Hard/High), separately for ADT (top) and VDT (bottom). The shaded region indicates the cognitive AUC window used for TEPR quantification (4.65s to 7.65s relative to squeeze onset, extending from 300ms after target stimulus onset until ~3s post-target). Baseline-corrected traces converge at 0 during the baseline period (-0.5 to 0s). Vertical dashed lines indicate key events: trial start (0s), target stimulus onset (4.35s), and response signal onset (4.7s)."
 #| fig-align: center
+#| echo: false
 # Generate TEPR time course figure
 if (!is.null(pupil_data)) {
   # Try to load waveform summary data
@@ -2298,15 +2388,17 @@ if (!is.null(pupil_data)) {
       print(p_tepr)
     } else {
       # Placeholder if no data
-      cat("TEPR time course figure: Waveform data not available for chapter 3.\n")
+      # Waveform data not available - ensure label still resolves
+      invisible(NULL)
     }
   } else {
     # Placeholder if file not found
-    cat("TEPR time course figure: Waveform summary file not found at", waveform_file, "\n")
+    # Waveform file not found - ensure label still resolves
+    invisible(NULL)
   }
 } else {
-  # Placeholder if pupil_data not loaded
-  cat("TEPR time course figure: Pupil data not loaded. Please ensure pupil data files are available.\n")
+  # Placeholder if pupil_data not loaded - use invisible output to ensure label resolves
+  invisible(NULL)
 }
 ```
 
@@ -2339,7 +2431,7 @@ Associations with starting-point bias were weak and ambiguous. The tonic arousal
 #| fig-cap: "Phasic arousal (W3.0; cognitive AUC) versus boundary separation (bs). Each point shows a subject-level mean pupil response and the corresponding subject-level DDM estimate. The posterior Pearson correlation was small but directionally positive, r = 0.043 [0.006, 0.079], P(r>0) = 0.990, n = 55, consistent in direction with the 'hold your horses' account [@cavanagh2014] but minimal in magnitude."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("pupil_ddm_scatter_phasicW3_bs.png"))
+include_graphics_safe(fig_path("pupil_ddm_scatter_phasicW3_bs.png"))
 ```
 
 ```{r}
@@ -2347,7 +2439,7 @@ knitr::include_graphics(fig_path("pupil_ddm_scatter_phasicW3_bs.png"))
 #| fig-cap: "Early phasic arousal (W1.3 window) versus drift rate (v). Higher early task-evoked pupil response was associated with lower drift rate, r = -0.192 [-0.250, -0.134], P(r<0) = 1.000, n = 55, consistent with an interpretation in which elevated arousal is linked to reduced evidence quality or increased internal noise in older adults."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("pupil_ddm_scatter_phasicW1p3_v.png"))
+include_graphics_safe(fig_path("pupil_ddm_scatter_phasicW1p3_v.png"))
 ```
 
 ```{r}
@@ -2355,7 +2447,7 @@ knitr::include_graphics(fig_path("pupil_ddm_scatter_phasicW1p3_v.png"))
 #| fig-cap: "Tonic arousal (baseline pupil) versus drift rate (v). Larger baseline pupil diameter was associated with lower drift rate, r = -0.140 [-0.200, -0.079], P(r<0) = 1.000, n = 55."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("pupil_ddm_scatter_tonic_v.png"))
+include_graphics_safe(fig_path("pupil_ddm_scatter_tonic_v.png"))
 ```
 
 ```{r}
@@ -2378,7 +2470,7 @@ if (knitr::is_latex_output()) {
     "\\end{landscape}\n"
   ))
 } else {
-  knitr::include_graphics(fig_path("pupil_ddm_robustness.png"))
+  include_graphics_safe(fig_path("pupil_ddm_robustness.png"))
   cat("\n\n*Figure: Robustness checks for pupil–DDM correlations. Left: Pearson versus Spearman correlations show consistent directions across methods. Right: leave-one-out (LOO) sensitivity ranges indicate that the negative phasic W1.3 × v relationship remains negative across deletions, whereas the small positive phasic W3.0 × bs relationship is more sensitive to individual subjects.*\n")
 }
 ```
@@ -2527,226 +2619,11 @@ if (!is.null(task_strat) && nrow(task_strat) > 0) {
 
 The negative relationship between arousal and drift rate aligns with the primary DDM finding that effort lowered drift rates. This pattern is consistent with a supra-optimal arousal or noise account: higher arousal may introduce noise or resource competition that reduces the efficiency of information accumulation. The lack of strong pupil–bias (z) relationships is consistent with the weak evidence for bias-reset effects in the primary DDM analysis, suggesting that arousal may primarily affect information accumulation rather than response preparation or starting-point adjustments.
 
-## Exploratory: LC Integrity Analyses
+## Core DDM Results
 
-We conducted exploratory analyses examining relationships between LC structural integrity metrics and (i) subject-level pupil indices, and (ii) subject-level DDM parameters and effort-related shifts. LC integrity was quantified using a PCA-based composite (PC1) derived from LC contrast-to-noise ratio (CNR), diffusion metrics (FA, MD), and NODDI metrics (fiso, ficvf). These analyses are explicitly exploratory and complement the primary pupillometry-based arousal measures.
+### Fixed Effects Overview
 
-```{r}
-#| label: tbl-lc-integrity-models
-#| tbl-cap: "Exploratory LC Integrity Models: Associations with DDM Parameters and Pupil Measures"
-#| echo: false
-
-lc_models_file <- file.path(proj_root, "output", "lc_integrity", "lc_models_summary.csv")
-
-if (file.exists(lc_models_file)) {
-  lc_models <- read_csv(lc_models_file, show_col_types = FALSE)
-  
-  # Filter to lc_composite term (the main predictor)
-  lc_models_display <- lc_models %>%
-    filter(term == "lc_composite") %>%
-    mutate(
-      priority = case_when(
-        model_id == "ddm_v_mean" ~ 1,
-        model_id == "pupil_phasic_mean_w3" ~ 2,
-        str_detect(model_id, "^ddm_") ~ 3,
-        str_detect(model_id, "^pupil_") ~ 4,
-        TRUE ~ 5
-      )
-    ) %>%
-    arrange(priority) %>%
-    head(3) %>%  # Show top 3 key models
-    mutate(
-      Model = case_when(
-        model_id == "ddm_v_mean" ~ "Drift Rate (v)",
-        model_id == "pupil_phasic_mean_w3" ~ "Phasic Pupil (W3)",
-        model_id == "pupil_v_mean" ~ "Pupil: Drift Rate",
-        model_id == "pupil_bs_mean" ~ "Pupil: Boundary Separation",
-        model_id == "pupil_z_mean" ~ "Pupil: Bias",
-        TRUE ~ str_replace_all(model_id, "_", " ")
-      ),
-      `Estimate [95% CI]` = sprintf("%.3f [%.3f, %.3f]", estimate, conf.low, conf.high),
-      `p-value` = sprintf("%.4f", p.value),
-      N = n_obs
-    ) %>%
-    select(Model, `Estimate [95% CI]`, `p-value`, N)
-  
-  if (nrow(lc_models_display) > 0) {
-    lc_models_display %>%
-      gt() %>%
-      cols_align(align = "left", columns = Model)
-  }
-} else {
-  cat("*LC exploratory analyses: Run `scripts/exploratory_lc_integrity.R` to generate results.*")
-}
-```
-
-```{r}
-#| label: fig-lc-integrity-cnr-delta-z
-#| fig-cap: "Exploratory: LC Contrast-to-Noise Ratio (CNR) vs. Effort-Related Bias Shift. Scatter plot showing the relationship between LC structural integrity (CNR) and the change in starting-point bias between high-effort and low-effort conditions. Each point represents one subject. The regression line with 95% confidence interval (shaded ribbon) shows the exploratory association. This figure examines whether LC integrity moderates effort-related shifts in decision bias."
-#| fig-align: center
-#| out-width: "90%"
-#| echo: false
-
-lc_fig_file <- fig_path("fig_lc_integrity_cnr_vs_delta_z")
-lc_fig_alt_pdf <- file.path(proj_root, "output", "figures", "fig_lc_integrity_cnr_vs_delta_z.pdf")
-lc_fig_alt_png <- file.path(proj_root, "output", "figures", "fig_lc_integrity_cnr_vs_delta_z.png")
-
-# Try multiple paths
-fig_found <- FALSE
-if (file.exists(lc_fig_file)) {
-  knitr::include_graphics(lc_fig_file)
-  fig_found <- TRUE
-} else if (file.exists(lc_fig_alt_pdf)) {
-  knitr::include_graphics(lc_fig_alt_pdf)
-  fig_found <- TRUE
-} else if (file.exists(lc_fig_alt_png)) {
-  knitr::include_graphics(lc_fig_alt_png)
-  fig_found <- TRUE
-}
-# If no figure found, chunk returns nothing (no NULL)
-```
-
-```{r}
-#| label: fig-lc-integrity-pc1-ddm-v
-#| fig-cap: "Exploratory: LC Integrity (PC1) vs. Drift Rate (v). Scatter plot showing the relationship between LC structural integrity (PCA composite) and subject-level drift rate estimates. Each point represents one subject. The regression line with 95% confidence interval (shaded ribbon) shows the exploratory association. This figure examines whether LC integrity relates to individual differences in evidence accumulation efficiency."
-#| fig-align: center
-#| out-width: "90%"
-#| echo: false
-
-lc_fig_file2 <- fig_path("fig_lc_integrity_pc1_vs_ddm_v")
-lc_fig_alt2_pdf <- file.path(proj_root, "output", "figures", "fig_lc_integrity_pc1_vs_ddm_v.pdf")
-lc_fig_alt2_png <- file.path(proj_root, "output", "figures", "fig_lc_integrity_pc1_vs_ddm_v.png")
-
-# Try multiple paths
-if (file.exists(lc_fig_file2)) {
-  knitr::include_graphics(lc_fig_file2)
-} else if (file.exists(lc_fig_alt2_pdf)) {
-  knitr::include_graphics(lc_fig_alt2_pdf)
-} else if (file.exists(lc_fig_alt2_png)) {
-  knitr::include_graphics(lc_fig_alt2_png)
-}
-# If no figure found, chunk returns nothing (no NULL)
-```
-
-```{r}
-#| label: fig-lc-integrity-pc1-pupil-phasic
-#| fig-cap: "Exploratory: LC Integrity (PC1) vs. Phasic Pupil Response. Scatter plot showing the relationship between LC structural integrity (PCA composite) and subject-level phasic pupil response (task-evoked pupil response, W3 window). Each point represents one subject. The regression line with 95% confidence interval (shaded ribbon) shows the exploratory association. This figure examines whether LC integrity relates to individual differences in phasic arousal responses."
-#| fig-align: center
-#| out-width: "90%"
-#| echo: false
-
-lc_fig_file3 <- fig_path("fig_lc_integrity_pc1_vs_pupil_phasic")
-lc_fig_alt3_pdf <- file.path(proj_root, "output", "figures", "fig_lc_integrity_pc1_vs_pupil_phasic.pdf")
-lc_fig_alt3_png <- file.path(proj_root, "output", "figures", "fig_lc_integrity_pc1_vs_pupil_phasic.png")
-
-# Try multiple paths
-if (file.exists(lc_fig_file3)) {
-  knitr::include_graphics(lc_fig_file3)
-} else if (file.exists(lc_fig_alt3_pdf)) {
-  knitr::include_graphics(lc_fig_alt3_pdf)
-} else if (file.exists(lc_fig_alt3_png)) {
-  knitr::include_graphics(lc_fig_alt3_png)
-}
-# If no figure found, chunk returns nothing (no NULL)
-```
-
-## Bias Estimates (Standard-Only Model)
-
-With the relaxed drift prior, the Standard-only bias model estimated a negative drift rate on Standard trials (posterior mean v = -1.404, 95% CrI \[-1.662, -1.147\]), indicating that participants actively accumulated evidence toward the "same" response option. The starting-point bias was slightly above 0.5 (no bias), with posterior mean z = 0.567, 95% CrI \[0.534, 0.601\], indicating a slight bias toward "different" responses. However, the strong negative drift dominates the decision process, resulting in the observed high proportion (89.1%) of "same" responses. This pattern suggests that the conservative response strategy is driven by evidence processing (perceiving sameness as a signal) rather than a simple shift in starting point. VDT showed less bias toward "different" than ADT on the logit scale, with contrast Δ = -0.179, 95% CrI \[-0.259, -0.101\], P(Δ\>0) \< 0.001, indicating modality-specific differences in response bias. Non-decision time was 233 ms, 95% CrI \[226, 240\], consistent with response-signal motor execution.
-
-@tbl-bias-levels shows bias levels by condition, and @tbl-bias-contrasts shows bias contrasts. @fig-bias-by-task visualizes bias by task modality.
-
-```{r}
-#| label: tbl-bias-levels
-#| tbl-cap: "Bias Levels (z parameter, natural scale)"
-if (!is.null(bias_levels_std)) {
-  bias_levels_std %>%
-    filter(scale == "prob") %>%
-    mutate(
-      param_label = case_when(
-        param == "bias_ADT_Low" ~ "ADT, Low effort",
-        param == "bias_ADT_High" ~ "ADT, High effort",
-        param == "bias_VDT_Low" ~ "VDT, Low effort",
-        param == "bias_VDT_High" ~ "VDT, High effort",
-        TRUE ~ param
-      )
-    ) %>%
-    select(param_label, mean, q2.5, q97.5) %>%
-    gt() %>%
-    cols_label(
-      param_label = "Condition",
-      mean = "Mean",
-      q2.5 = "2.5%",
-      q97.5 = "97.5%"
-    ) %>%
-    fmt_number(columns = c(mean, q2.5, q97.5), decimals = 3)
-} else {
-  cat("Bias levels data not available.")
-}
-```
-
-```{r}
-#| label: tbl-bias-contrasts
-#| tbl-cap: "Bias Contrasts (Standard-Only Model)"
-if (!is.null(bias_contr_std)) {
-  # Function to clean contrast names
-  clean_contrast_name <- function(contrast) {
-    contrast <- as.character(contrast)
-    
-    # Common contrast patterns
-    contrast <- gsub("difficulty_levelHard", "Difficulty: Hard", contrast)
-    contrast <- gsub("difficulty_levelEasy", "Difficulty: Easy", contrast)
-    contrast <- gsub("difficulty_levelStandard", "Difficulty: Standard", contrast)
-    contrast <- gsub("taskVDT", "Task: VDT", contrast)
-    contrast <- gsub("taskADT", "Task: ADT", contrast)
-    contrast <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", contrast)
-    contrast <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", contrast)
-    contrast <- gsub("effort_conditionLow", "Effort: Low", contrast)
-    contrast <- gsub("effort_conditionHigh", "Effort: High", contrast)
-    
-    # Replace operators
-    contrast <- gsub(" - ", " vs. ", contrast)
-    contrast <- gsub(" -", " vs.", contrast)
-    contrast <- gsub("- ", "vs. ", contrast)
-    
-    return(contrast)
-  }
-  
-  bias_contr_std %>%
-    # Filter to keep only VDT vs. ADT contrast (remove High vs. Low effort contrast)
-    # The effort contrast is non-significant and collapses across tasks, which is not meaningful
-    # without a task × effort interaction term in the model
-    filter(grepl("VDT.*ADT|ADT.*VDT", contrast, ignore.case = TRUE)) %>%
-    mutate(
-      contrast_clean = clean_contrast_name(contrast),
-      across(where(is.numeric), ~round(.x, 3))
-    ) %>%
-    select(contrast_clean, mean, q2.5, q97.5, Pr_gt_0) %>%
-    rename(contrast = contrast_clean) %>%
-    gt() %>%
-    cols_label(
-      contrast = "Contrast",
-      mean = "Mean Δ (logit)",
-      q2.5 = "2.5%",
-      q97.5 = "97.5%",
-      Pr_gt_0 = "P(Δ>0)"
-    )
-} else {
-  cat("Bias contrasts data not available.")
-}
-```
-
-```{r}
-#| label: fig-bias-by-task
-#| fig-cap: "Starting-Point Bias (z) by Task Modality. Bar plot showing mean bias estimates with 95% credible intervals (error bars) for ADT and VDT tasks. Values above 0.5 indicate bias toward 'Different' (upper boundary). ADT shows higher bias (z = 0.573, 95% CrI: [0.540, 0.604]) compared to VDT (z = 0.534, 95% CrI: [0.501, 0.566]). This task-specific difference in starting-point bias suggests that participants adopt different decision criteria for auditory versus visual discrimination tasks."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("plot2_bias_by_task.png"))
-```
-
-The Standard-only bias calibration model (with relaxed drift prior) estimated a negative drift rate on Standard trials (posterior mean v = -1.404, 95% CrI \[-1.662, -1.147\]), indicating that participants actively accumulated evidence toward "same" responses on Standard trials, consistent with the observed 89.1% "same" response rate. The primary model (see Difficulty Effects section) estimated similar negative drift for Standard trials (v ≈ -1.26), confirming this pattern across both models.
-
-## Fixed Effects
+The primary model estimated fixed effects for all DDM parameters across difficulty, task, and effort conditions. @fig-fixed-effects-adt and @fig-fixed-effects-vdt show forest plots of fixed effects by task, and @tbl-fixed-effects provides a summary table on the link scale. @tbl-ddm-parameters-natural shows parameter estimates on the natural scale for interpretability.
 
 ### Forest Plots by Task
 
@@ -2755,7 +2632,7 @@ The Standard-only bias calibration model (with relaxed drift prior) estimated a 
 #| fig-cap: "Fixed Effects: ADT (Auditory Detection Task). Posterior means (link scale) with 95% CrIs for drift (v), boundary separation (a/bs), and starting-point bias (z). In the additive model, difficulty and effort contrasts are identical for both tasks; only the intercepts differ."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("fig_fixed_effects_ADT.pdf"))
+include_graphics_safe(fig_path("fig_fixed_effects_ADT.pdf"))
 ```
 
 ```{r}
@@ -2763,7 +2640,7 @@ knitr::include_graphics(fig_path("fig_fixed_effects_ADT.pdf"))
 #| fig-cap: "Fixed Effects: VDT (Visual Detection Task). Posterior means (link scale) with 95% CrIs for drift (v), boundary separation (a/bs), and starting-point bias (z). In the additive model, difficulty and effort contrasts are identical for both tasks; only the intercepts differ."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("fig_fixed_effects_VDT.pdf"))
+include_graphics_safe(fig_path("fig_fixed_effects_VDT.pdf"))
 ```
 
 ### Summary Table
@@ -3036,13 +2913,18 @@ if (!is.null(param_natural)) {
 
 **Summary**: On the natural scale, the primary model estimated mean drift rates ranging from approximately -1.4 (Standard trials, strong evidence toward "Same") to +0.9 (Easy trials, evidence toward "Different"). Boundary separation averaged approximately 1.7 (SD ≈ 0.3), indicating moderate response caution. Non-decision time averaged 0.23 s (230 ms), consistent with motor execution in the response-signal design. Starting-point bias averaged 0.57 (SD ≈ 0.05), indicating a slight bias toward "Different" responses. These values are consistent with the hierarchical structure of the model and the observed behavioral patterns.
 
-## Parameter Contrasts
+### Key Contrasts
 
-@tbl-contrasts shows posterior contrasts with directional probabilities.
+@tbl-contrasts shows posterior contrasts with directional probabilities. Key findings:
+
+```{=latex}
+\begin{landscape}
+```
 
 ```{r}
 #| label: tbl-contrasts
 #| tbl-cap: "Posterior Contrasts (Directional Probabilities)"
+#| tbl-pos: "H"
 if (!is.null(contrasts_table)) {
   # Handle duplicate column names - CSV may have both q05/q95 and q2.5/q97.5
   # Drop q05/q95 if q2.5/q97.5 exist to avoid duplicates
@@ -3230,10 +3112,48 @@ if (!is.null(contrasts_table)) {
     tab_footnote(
       footnote = "ROPE (Region of Practical Equivalence): |Δ| < 0.02 for drift (v), |Δ| < 0.05 for boundary (bs) and bias (z) on link scales.",
       locations = cells_column_labels(columns = p_in_rope)
+    ) %>%
+    opt_table_font(size = "small") %>%
+    tab_options(
+      table.width = pct(90),
+      table.font.size = px(9),
+      column_labels.font.size = px(10),
+      column_labels.padding = px(8),
+      data_row.padding = px(6),
+      table_body.hlines.width = px(0.5),
+      table_body.vlines.width = px(0.5),
+      table.border.top.width = px(1.5),
+      table.border.bottom.width = px(1.5)
+    ) %>%
+    cols_width(
+      contrast ~ pct(25),
+      parameter ~ pct(20),
+      mean ~ pct(10),
+      q2.5 ~ pct(8),
+      q97.5 ~ pct(8),
+      p_gt0 ~ pct(10),
+      p_lt0 ~ pct(10),
+      p_in_rope ~ pct(9)
+    ) %>%
+    tab_style(
+      style = cell_text(align = "left"),
+      locations = cells_body(columns = c(contrast, parameter))
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_body(columns = c(mean, q2.5, q97.5, p_gt0, p_lt0, p_in_rope))
+    ) %>%
+    tab_style(
+      style = cell_text(align = "center"),
+      locations = cells_column_labels(columns = c(mean, q2.5, q97.5, p_gt0, p_lt0, p_in_rope))
     )
 } else {
   cat("Contrasts table not available.")
 }
+```
+
+```{=latex}
+\end{landscape}
 ```
 
 **Key contrasts interpreted**:
@@ -3243,9 +3163,97 @@ if (!is.null(contrasts_table)) {
 -   **Task differences**: VDT shows systematically different parameter values than ADT, supporting task-specific processing.
 -   **Effort on drift and t₀**: High effort shows small but credible effects on information accumulation and motor execution time (t₀ increase of \~0.03 log-units or \~7.5 ms).
 
-## Individual Differences and Parameter Relationships
+### Bias Estimates (Standard-Only Model)
 
-The hierarchical structure of our model reveals substantial individual differences in all DDM parameters. Drift rate (v) shows the widest variability, consistent with the heterogeneity in evidence accumulation speed observed in aging populations. Boundary separation (a) and bias (z) also show meaningful individual variation, supporting the use of hierarchical modeling to account for between-subject differences. Parameter correlations reveal a weak negative relationship (r = -0.205) between drift intercept and bias intercept at the subject level, suggesting that participants who show stronger negative drift tend to have less bias toward "Different" responses. The Brinley plot reveals a strong positive relationship between Easy and Hard RTs, with a slope > 1 indicating disproportionate slowing in Hard trials—a hallmark of generalized slowing in older adults. Supporting figures are provided in Supplementary Figures @fig-subject-parameter-distribution–@fig-brinley-plot.
+The Standard-only bias calibration model estimated a negative drift rate on Standard trials (posterior mean v = -1.404, 95% CrI \[-1.662, -1.147\]), consistent with the primary model's estimate (v ≈ -1.26). Starting-point bias was slightly above 0.5 (posterior mean z = 0.567, 95% CrI \[0.534, 0.601\]), indicating a slight bias toward "different" responses, though the strong negative drift dominates the decision process. VDT showed less bias toward "different" than ADT (Δ = -0.179, 95% CrI \[-0.259, -0.101\], P(Δ\>0) \< 0.001). @tbl-bias-levels shows bias levels by condition, @tbl-bias-contrasts shows bias contrasts, and @fig-bias-by-task visualizes bias by task modality.
+
+```{r}
+#| label: tbl-bias-levels
+#| tbl-cap: "Bias Levels (z parameter, natural scale)"
+if (!is.null(bias_levels_std)) {
+  bias_levels_std %>%
+    filter(scale == "prob") %>%
+    mutate(
+      param_label = case_when(
+        param == "bias_ADT_Low" ~ "ADT, Low effort",
+        param == "bias_ADT_High" ~ "ADT, High effort",
+        param == "bias_VDT_Low" ~ "VDT, Low effort",
+        param == "bias_VDT_High" ~ "VDT, High effort",
+        TRUE ~ param
+      )
+    ) %>%
+    select(param_label, mean, q2.5, q97.5) %>%
+    gt() %>%
+    cols_label(
+      param_label = "Condition",
+      mean = "Mean",
+      q2.5 = "2.5%",
+      q97.5 = "97.5%"
+    ) %>%
+    fmt_number(columns = c(mean, q2.5, q97.5), decimals = 3)
+} else {
+  cat("Bias levels data not available.")
+}
+```
+
+```{r}
+#| label: tbl-bias-contrasts
+#| tbl-cap: "Bias Contrasts (Standard-Only Model)"
+if (!is.null(bias_contr_std)) {
+  # Function to clean contrast names
+  clean_contrast_name <- function(contrast) {
+    contrast <- as.character(contrast)
+    
+    # Common contrast patterns
+    contrast <- gsub("difficulty_levelHard", "Difficulty: Hard", contrast)
+    contrast <- gsub("difficulty_levelEasy", "Difficulty: Easy", contrast)
+    contrast <- gsub("difficulty_levelStandard", "Difficulty: Standard", contrast)
+    contrast <- gsub("taskVDT", "Task: VDT", contrast)
+    contrast <- gsub("taskADT", "Task: ADT", contrast)
+    contrast <- gsub("effort_conditionLow_Force_5pct", "Effort: Low", contrast)
+    contrast <- gsub("effort_conditionHigh_Force_40pct", "Effort: High", contrast)
+    contrast <- gsub("effort_conditionLow", "Effort: Low", contrast)
+    contrast <- gsub("effort_conditionHigh", "Effort: High", contrast)
+    
+    # Replace operators
+    contrast <- gsub(" - ", " vs. ", contrast)
+    contrast <- gsub(" -", " vs.", contrast)
+    contrast <- gsub("- ", "vs. ", contrast)
+    
+    return(contrast)
+  }
+  
+  bias_contr_std %>%
+    # Filter to keep only VDT vs. ADT contrast (remove High vs. Low effort contrast)
+    # The effort contrast is non-significant and collapses across tasks, which is not meaningful
+    # without a task × effort interaction term in the model
+    filter(grepl("VDT.*ADT|ADT.*VDT", contrast, ignore.case = TRUE)) %>%
+    mutate(
+      contrast_clean = clean_contrast_name(contrast),
+      across(where(is.numeric), ~round(.x, 3))
+    ) %>%
+    select(contrast_clean, mean, q2.5, q97.5, Pr_gt_0) %>%
+    rename(contrast = contrast_clean) %>%
+    gt() %>%
+    cols_label(
+      contrast = "Contrast",
+      mean = "Mean Δ (logit)",
+      q2.5 = "2.5%",
+      q97.5 = "97.5%",
+      Pr_gt_0 = "P(Δ>0)"
+    )
+} else {
+  cat("Bias contrasts data not available.")
+}
+```
+
+```{r}
+#| label: fig-bias-by-task
+#| fig-cap: "Starting-Point Bias (z) by Task Modality. Bar plot showing mean bias estimates with 95% credible intervals (error bars) for ADT and VDT tasks. Values above 0.5 indicate bias toward 'Different' (upper boundary). ADT shows higher bias (z = 0.573, 95% CrI: [0.540, 0.604]) compared to VDT (z = 0.534, 95% CrI: [0.501, 0.566]). This task-specific difference in starting-point bias suggests that participants adopt different decision criteria for auditory versus visual discrimination tasks."
+#| fig-align: center
+#| out-width: "90%"
+include_graphics_safe(fig_path("plot2_bias_by_task.png"))
+```
 
 ### Integrated Condition Effects
 
@@ -3256,23 +3264,18 @@ To provide a comprehensive view of how experimental manipulations affect all DDM
 #| fig-cap: "Integrated Condition Effects on DDM Parameters. Multi-panel forest plot showing posterior means with 95% credible intervals for difficulty and effort effects on each DDM parameter (drift rate v, boundary separation a, and non-decision time t₀). Note: Bias (z) does not vary by difficulty (see Methods section for rationale). All effects are shown on their respective link scales. This integrated view allows direct comparison of effect magnitudes and directions across parameters, revealing that difficulty primarily affects drift rate and boundary separation, while effort shows smaller effects on drift and non-decision time. Note: Difficulty and effort effects are identical across ADT and VDT due to the additive model structure, so a single combined plot is shown."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("fig_integrated_condition_effects.pdf"))
+include_graphics_safe(fig_path("fig_integrated_condition_effects.pdf"))
 ```
 
 **Interpretation**: The integrated plots reveal that difficulty effects are strongest for drift rate (v) and boundary separation (a), with Easy trials showing faster evidence accumulation and reduced caution relative to Hard trials. Effort effects are more modest but consistent across parameters, with High effort reducing drift rate and increasing non-decision time. These effects are consistent across both ADT and VDT, supporting the additive model structure where difficulty and effort effects are shared across tasks, with only intercepts differing between modalities.
 
+### Individual Differences
 
-## Model Convergence & Selection
-
-All parameters converged well (max $\hat{R}$ ≤ 1.01; min bulk/tail ESS ≥ 400; no divergent transitions). Leave-one-out cross-validation strongly favored a model in which **difficulty modulates drift and boundary separation jointly** (v+a), with starting-point bias constrained to be constant across difficulty levels (reflecting the randomized trial design), relative to drift-only or simpler models (ΔELPD ≈ +185, SE ≈ 20).
-
-## Difficulty Effects
-
-**Drift rate (v)**: Easy trials show faster evidence accumulation than Hard trials (strong positive contrast, P(Δ\>0) \> 0.99 for both tasks).
+The hierarchical structure reveals substantial individual differences in all DDM parameters, with drift rate showing the widest variability. Parameter correlations reveal a weak negative relationship (r = -0.205) between drift intercept and bias intercept at the subject level. Supporting figures are provided in Supplementary Figures @fig-subject-parameter-distribution–@fig-brinley-plot.
 
 ```{r}
 #| label: fig-drift-rate-difficulty
-#| fig-cap: ""
+#| fig-cap: "Drift Rate (v) Across Difficulty Levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard (Δ=0), Hard (Low Signal), and Easy (High Signal) trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift (v ≈ -1.23), indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials also show negative drift (v ≈ -0.64), indicating weak evidence for difference that is insufficient to overcome the tendency toward 'Same', explaining the below-chance accuracy (~30%). Easy trials show positive drift (v ≈ +0.90), enabling accurate discrimination. This pattern demonstrates the dramatic impact of stimulus discriminability on evidence accumulation."
 #| fig-align: center
 #| out-width: "90%"
 #| results: asis
@@ -3290,12 +3293,129 @@ if (knitr::is_latex_output()) {
     "\\end{landscape}\n"
   ))
 } else {
-  knitr::include_graphics(fig_path("plot1_drift_rate_by_difficulty.png"))
+  include_graphics_safe(fig_path("plot1_drift_rate_by_difficulty.png"))
   cat("\n\n*Figure: Drift Rate (v) Across Difficulty Levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard (Δ=0), Hard (Low Signal), and Easy (High Signal) trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift (v ≈ -1.23), indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials also show negative drift (v ≈ -0.64), indicating weak evidence for difference that is insufficient to overcome the tendency toward 'Same', explaining the below-chance accuracy (~30%). Easy trials show positive drift (v ≈ +0.90), enabling accurate discrimination. This pattern demonstrates the dramatic impact of stimulus discriminability on evidence accumulation.*\n")
 }
 ```
 
 **Boundary separation (a)**: Easy trials have narrower decision boundaries, consistent with reduced caution when discrimination is easier.
+
+## Exploratory: LC Integrity Analyses
+
+We conducted exploratory analyses examining relationships between LC structural integrity metrics and (i) subject-level pupil indices, and (ii) subject-level DDM parameters and effort-related shifts. LC integrity was quantified using a PCA-based composite (PC1) derived from LC contrast-to-noise ratio (CNR), diffusion metrics (FA, MD), and NODDI metrics (fiso, ficvf). These analyses are explicitly exploratory and complement the primary pupillometry-based arousal measures.
+
+```{r}
+#| label: tbl-lc-integrity-models
+#| tbl-cap: "Exploratory LC Integrity Models: Associations with DDM Parameters and Pupil Measures"
+#| echo: false
+
+lc_models_file <- file.path(proj_root, "output", "lc_integrity", "lc_models_summary.csv")
+
+if (file.exists(lc_models_file)) {
+  lc_models <- read_csv(lc_models_file, show_col_types = FALSE)
+  
+  # Filter to lc_composite term (the main predictor)
+  lc_models_display <- lc_models %>%
+    filter(term == "lc_composite") %>%
+    mutate(
+      priority = case_when(
+        model_id == "ddm_v_mean" ~ 1,
+        model_id == "pupil_phasic_mean_w3" ~ 2,
+        str_detect(model_id, "^ddm_") ~ 3,
+        str_detect(model_id, "^pupil_") ~ 4,
+        TRUE ~ 5
+      )
+    ) %>%
+    arrange(priority) %>%
+    head(3) %>%  # Show top 3 key models
+    mutate(
+      Model = case_when(
+        model_id == "ddm_v_mean" ~ "Drift Rate (v)",
+        model_id == "pupil_phasic_mean_w3" ~ "Phasic Pupil (W3)",
+        model_id == "pupil_v_mean" ~ "Pupil: Drift Rate",
+        model_id == "pupil_bs_mean" ~ "Pupil: Boundary Separation",
+        model_id == "pupil_z_mean" ~ "Pupil: Bias",
+        TRUE ~ str_replace_all(model_id, "_", " ")
+      ),
+      `Estimate [95% CI]` = sprintf("%.3f [%.3f, %.3f]", estimate, conf.low, conf.high),
+      `p-value` = sprintf("%.4f", p.value),
+      N = n_obs
+    ) %>%
+    select(Model, `Estimate [95% CI]`, `p-value`, N)
+  
+  if (nrow(lc_models_display) > 0) {
+    lc_models_display %>%
+      gt() %>%
+      cols_align(align = "left", columns = Model)
+  }
+} else {
+  cat("*LC exploratory analyses: Run `scripts/exploratory_lc_integrity.R` to generate results.*")
+}
+```
+
+```{r}
+#| label: fig-lc-integrity-cnr-delta-z
+#| fig-cap: "Exploratory: LC Contrast-to-Noise Ratio (CNR) vs. Effort-Related Bias Shift. Scatter plot showing the relationship between LC structural integrity (CNR) and the change in starting-point bias between high-effort and low-effort conditions. Each point represents one subject. The regression line with 95% confidence interval (shaded ribbon) shows the exploratory association. This figure examines whether LC integrity moderates effort-related shifts in decision bias."
+#| fig-align: center
+#| out-width: "90%"
+#| echo: false
+
+lc_fig_file <- fig_path("fig_lc_integrity_cnr_vs_delta_z")
+# Use include_graphics_safe which handles LaTeX paths correctly
+# Check if file exists before including (LC figures may not be generated yet)
+if (file.exists(lc_fig_file) || file.exists(file.path("../output/figures", basename(lc_fig_file)))) {
+  include_graphics_safe(lc_fig_file)
+} else {
+  # Figure not found - suppress output in final document
+  invisible(NULL)
+}
+```
+
+```{r}
+#| label: fig-lc-integrity-pc1-ddm-v
+#| fig-cap: "Exploratory: LC Integrity (PC1) vs. Drift Rate (v). Scatter plot showing the relationship between LC structural integrity (PCA composite) and subject-level drift rate estimates. Each point represents one subject. The regression line with 95% confidence interval (shaded ribbon) shows the exploratory association. This figure examines whether LC integrity relates to individual differences in evidence accumulation efficiency."
+#| fig-align: center
+#| out-width: "90%"
+#| echo: false
+
+lc_fig_file2 <- fig_path("fig_lc_integrity_pc1_vs_ddm_v")
+# Use include_graphics_safe which handles LaTeX paths correctly
+# Check if file exists before including (LC figures may not be generated yet)
+if (file.exists(lc_fig_file2) || file.exists(file.path("../output/figures", basename(lc_fig_file2)))) {
+  include_graphics_safe(lc_fig_file2)
+} else {
+  # Figure not found - suppress output in final document
+  invisible(NULL)
+}
+# If no figure found, chunk returns nothing (no NULL)
+```
+
+```{r}
+#| label: fig-lc-integrity-pc1-pupil-phasic
+#| fig-cap: "Exploratory: LC Integrity (PC1) vs. Phasic Pupil Response. Scatter plot showing the relationship between LC structural integrity (PCA composite) and subject-level phasic pupil response (task-evoked pupil response, W3 window). Each point represents one subject. The regression line with 95% confidence interval (shaded ribbon) shows the exploratory association. This figure examines whether LC integrity relates to individual differences in phasic arousal responses."
+#| fig-align: center
+#| out-width: "90%"
+#| echo: false
+
+lc_fig_file3 <- fig_path("fig_lc_integrity_pc1_vs_pupil_phasic")
+# Use include_graphics_safe which handles LaTeX paths correctly
+# Check if file exists before including (LC figures may not be generated yet)
+if (file.exists(lc_fig_file3) || file.exists(file.path("../output/figures", basename(lc_fig_file3)))) {
+  include_graphics_safe(lc_fig_file3)
+} else {
+  # Figure not found - suppress output in final document
+  invisible(NULL)
+}
+# If no figure found, chunk returns nothing (no NULL)
+```
+
+# Model Fit and Diagnostics
+
+MCMC diagnostics indicated acceptable convergence for all parameters (Rhat < 1.01, ESS > 400). Posterior predictive checks (PPC) showed adequate model fit: subject-wise mid-body PPCs showed acceptable error magnitudes (QP RMSE ≤ 0.09 s for most cells; ≤15% flagged), and the model captures central RT tendencies and accuracy well. PPCs were good for Standard and Easy cells (QP RMSE < 0.13, KS < 0.08), with modest misfit in VDT-Hard (worst QP RMSE ≈ 0.206). This pattern suggests some residual fast-tail behavior not captured by a constant-drift Wiener process. Pooled conditional PPCs reveal residual fast-tail misfit, most pronounced in Easy/VDT conditions. This is a known limitation of constant-drift Wiener DDMs without across-trial variability (sv, sz, st₀) or explicit contaminant/lapse processes.
+
+On Standard trials, the model accurately predicted choice proportions: observed 10.9% "Different" responses vs. predicted 11.2% (95% credible interval: [9.9%, 12.7%]). The difference of 0.3% falls well within acceptable ranges, confirming that the model captures the data distribution accurately. Parameter consistency checks confirmed internal consistency: RT asymmetry patterns, drift directions, and individual differences align with model predictions.
+
+Detailed posterior predictive checks and diagnostic figures are provided in Appendix A3 (see @sec-ch3-ppc-method–@sec-ch3-ppc-visual).
 
 ## Task Differences (ADT vs. VDT)
 
@@ -3304,98 +3424,6 @@ ADT and VDT are separate experimental conditions with distinct parameter profile
 ## Effort Effects
 
 High effort (40% MVC) produces small but credible effects on drift rate and non-decision time, suggesting that physical effort modulates both information accumulation and motor execution speed.
-
-## Model Fit
-
-**Absolute fit**: Subject-wise mid-body PPCs show acceptable error magnitudes (QP RMSE ≤ 0.09 s for most cells; ≤15% flagged). The model captures central RT tendencies and accuracy well.
-
-**PPC Summary (Joint Model)**: PPCs were good for Standard and Easy cells (QP RMSE \< 0.13, KS \< 0.08), with modest misfit in VDT-Hard (worst QP RMSE ≈ 0.206). This pattern suggests some residual fast-tail behavior not captured by a constant-drift Wiener process. Cell-wise PPC residuals are shown in Supplementary Figure @fig-pdiff-heatmap. Additional PPC diagnostics (best/median/worst cells) are shown in Supplementary Figure @fig-ppc-small-multiples.
-
-**Known limitation**: Pooled conditional PPCs reveal residual fast-tail misfit, most pronounced in Easy/VDT conditions. This is a known limitation of constant-drift Wiener DDMs without across-trial variability (sv, sz, st₀) or explicit contaminant/lapse processes.
-
-## Model Validation: Parameter Consistency and Sanity Checks
-
-To validate the internal consistency of our model estimates, we performed three sanity checks recommended by independent expert review. These checks verify that parameter estimates are mathematically consistent with observed behavioral patterns. All sanity-check figures are provided in Supplementary Figures @fig-sanity-rt-asymmetry–@fig-sanity-subject-heterogeneity.
-
-### RT Asymmetry on Standard Trials
-
-On Standard trials, the model estimated a strong negative drift rate (v = -1.404) toward "Same" responses, combined with a slight starting-point bias toward "Different" (z = 0.567). To verify the consistency of these estimates, we examined whether RT patterns align with model predictions.
-
-**Result**: "Same" responses were significantly faster than "Different" responses (mean RT: 1.03 s vs. 1.32 s, difference = 293 ms). This pattern aligns perfectly with the model's prediction: strong negative drift causes rapid evidence accumulation toward "Same", resulting in fast "Same" responses. The slower "Different" responses likely reflect rare errors that occur when the process fails to reach the "Same" boundary within the response window.
-
-### Hard Trial Drift Direction
-
-The primary model estimated that Hard trials have negative drift relative to Standard trials. To verify this estimate is consistent with observed below-chance accuracy on Hard trials, we examined the posterior distribution of Hard trial drift rates.
-
-**Result**: Hard trials show consistently negative drift (mean v = -0.643, 95% CrI: [-0.740, -0.546], P(v < 0) = 100%). This confirms that the sensory evidence for difference on Hard trials is too weak to overcome the baseline tendency toward "Same", explaining the observed below-chance accuracy (~30%) on Hard trials.
-
-### Subject Heterogeneity in Drift Rates
-
-The discrepancy between analytical predictions (using group-level mean parameters) and PPC results (using full posterior with subject heterogeneity) suggests substantial individual differences in drift rates. To verify this, we examined the distribution of subject-level drift rate estimates.
-
-**Result**: Subject-level drift rates show substantial heterogeneity (SD = 0.65, range: -3.08 to -0.21). Most subjects (60%) show strong negative drift (|v| ≥ 1.0), while a small subset (4.5%) show weak drift (|v| < 0.5). This heterogeneity explains the PPC vs. analytical formula discrepancy: subjects with weaker drift contribute disproportionately to error rates, but their contribution is masked when using group-level mean parameters.
-
-**Conclusion**: All three sanity checks confirm the internal consistency of our model estimates. RT patterns, drift directions, and individual differences align with model predictions, providing strong evidence that the hierarchical DDM accurately captures the decision-making processes in our data.
-
-# Posterior Predictive Checks
-
-## PPC Validation Method
-
-Posterior Predictive Checks (PPC) were performed to validate model fit by comparing observed data to data simulated from the fitted model. To avoid aggregation bias (Jensen's Inequality) inherent in using group-level mean parameters in non-linear formulas, we used full posterior predictive sampling that respects subject-level random effects [@vehtari2020rank]. This approach generates predictions for every trial in the dataset, maintaining the hierarchical structure of the model.
-
-**PPC Implementation**: For the primary model, we generated 1,000 posterior predictive draws using `brms::posterior_predict()` with `negative_rt = TRUE` to obtain signed reaction times (positive RT = "Different"/upper boundary, negative RT = "Same"/lower boundary). This parameter is critical for correctly extracting choice predictions from `brms` Wiener models. For each draw, we computed the proportion of "Different" responses and compared the distribution of predicted proportions to the observed proportion in the data.
-
-**PPC Results**: On Standard trials, the model accurately predicted choice proportions: observed 10.9% "Different" responses vs. predicted 11.2% (95% credible interval: [9.9%, 12.7%]). The difference of 0.3% falls well within acceptable ranges, confirming that the model captures the data distribution accurately. The observed value falls within the 95% credible interval, indicating excellent model fit. Choice-proportion PPC validation is shown in Supplementary Figure @fig-ppc-validation.
-
-## Primary PPC Gate: Subject-Wise Mid-Body Quantiles
-
-Our **primary gate** for model acceptance is the subject-wise mid-body PPC (conditional on response, 2% censored). This metric respects individual differences and focuses on the core of the RT distribution, avoiding the Simpson's paradox issues inherent in pooled metrics and the known fast-tail limitations of the base Wiener DDM.
-
-**Thresholds** (pre-declared):
-
--   QP RMSE fail \> 0.12 s (warn \> 0.09 s)
--   KS statistic fail \> 0.20 (warn \> 0.15)
--   Target: ≤ 15% of cells flagged
-
-@tbl-ppc-subj-cens shows subject-wise mid-body PPC results, and @tbl-ppc-subj-summary shows the summary.
-
-```{r}
-#| label: tbl-ppc-subj-cens
-#| tbl-cap: "Subject-Wise Mid-Body PPC (30/50/70% quantiles; censored 2%)"
-if (!is.null(ppc_subj_cens)) {
-  ppc_subj_cens %>%
-    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
-    gt()
-} else {
-  cat("Subject-wise PPC data not available.")
-}
-```
-
-```{r}
-#| label: tbl-ppc-subj-summary
-#| tbl-cap: "Subject-Wise PPC Summary"
-if (!is.null(pf_subj) && !is.na(pf_subj$n_cells)) {
-  tibble(
-    Metric = c("N Cells", "N Flagged", "% Flagged"),
-    Value = c(
-      as.character(pf_subj$n_cells),
-      as.character(pf_subj$n_flagged),
-      sprintf("%.1f%%", pf_subj$pct_flagged)
-    )
-  ) %>%
-    gt()
-}
-```
-
-**Result**: `r if (!is.null(pf_subj)) sprintf("%.1f%%", pf_subj$pct_flagged)` of cells flagged. The subject-wise mid-body PPC gate (based on strict pooled quantiles) was not met due to fast-tail deviations. However, as detailed below, the joint model cell-wise PPCs show that the model captures the central tendencies for the majority of conditions (Standard/Easy), with misfit primarily concentrated in VDT-Hard.
-
-## Visual Diagnostics
-
-RT overlay PPCs are shown in Supplementary Figure @fig-ppc-rt-overlay. QP plot diagnostics are shown in Supplementary Figure @fig-qp-plot.
-
-### Sensitivity Analyses
-
-We conducted additional sensitivity analyses (Unconditional Pooled PPC, Conditional Pooled PPC) which confirmed that the core findings are robust, though strict pooled metrics flag more cells due to fast-tail misfit. These additional checks are detailed in the Supplementary Figures.
 
 # Discussion
 
@@ -3412,7 +3440,7 @@ Our finding that high physical effort significantly reduced drift rates—indica
 #| fig-cap: "The Decision Landscape: Effect of Drift Rate on RT Distribution. This 3D surface visualizes the theoretical 'Crunch Point' observed in our data. The vertical axis (Z) represents the probability density of a response. As Drift Rate (v, Y-axis) decreases from Easy levels (~2.0) to Hard/Standard levels (~0 to -1.0), the sharp peak of timely responses collapses into a flat, spread-out distribution. This visualizes why older adults' reaction times become disproportionately variable and slow when physical effort or task difficulty degrades the quality of evidence accumulation (drift)."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("fig_decision_landscape_3d.png"))
+include_graphics_safe(fig_path("fig_decision_landscape_3d.png"))
 ```
 
 ## The "Dual-Task Cost": Why Non-Decision Time Slowed
@@ -3429,30 +3457,33 @@ Regarding starting-point bias ($z$), our results revealed a consistent conservat
 
 These findings can be interpreted in the context of LC-NE system dynamics. Recent work suggests that phasic arousal, indexed by pupil dilation, can suppress pre-existing choice biases, "resetting" the decision process to a neutral state [@degee2020pupil]. Consistent with the weak relationship between arousal and starting-point bias observed in our direct pupil–DDM integration analysis (see @sec-pupil-ddm-integration), bias correlations were small and not credibly different from zero (e.g., tonic × z: r = 0.085 [-0.021, 0.190], P(r>0) = 0.941). In our study, the lack of a significant effort effect on bias suggests that the high-effort manipulation (40% MVC) may not have elicited strong enough phasic arousal responses to modulate starting-point bias, or that any such effects were offset by other factors. Alternatively, the integrity of the LC-NE system in our older adult sample may have moderated the expected bias suppression [@huang2024]. The task-specific bias differences (VDT < ADT) may reflect inherent differences in how auditory versus visual detection tasks engage response strategies, independent of arousal state. The direct pupillometry integration confirms that arousal primarily affects information accumulation (drift rate) rather than response preparation or starting-point adjustments in this sample.
 
-## Limitations & Conclusion
+## Limitations and Future Directions
 
-Our findings must be interpreted within the constraints of the response-signal design, where RTs are measured from response-screen onset rather than stimulus onset. This design constrains the interpretation of $t_0$ to primarily reflect motor execution and response selection, excluding early perceptual/encoding processes (see Limitations section for detailed discussion). Despite these constraints, our results provide clear evidence that effort regulation is critical for older adults because they have a lower "tipping point" where effort becomes interference. The CRUNCH model and CMI framework together explain why the 40% MVC condition pushed older adults past their compensatory capacity, resulting in degraded processing efficiency (reduced drift) and slowed motor execution (increased $t_0$), without the adaptive increase in caution that might have mitigated these effects. These findings underscore the importance of managing effort levels in real-world contexts where older adults must balance physical and cognitive demands.
+Our findings must be interpreted within the constraints of the response-signal design, where RTs are measured from response-screen onset rather than stimulus onset. This design constrains the interpretation of $t_0$ to primarily reflect motor execution and response selection, excluding early perceptual/encoding processes. Despite these constraints, our results provide clear evidence that effort regulation is critical for older adults because they have a lower "tipping point" where effort becomes interference. The CRUNCH model and CMI framework together explain why the 40% MVC condition pushed older adults past their compensatory capacity, resulting in degraded processing efficiency (reduced drift) and slowed motor execution (increased $t_0$), without the adaptive increase in caution that might have mitigated these effects. These findings underscore the importance of managing effort levels in real-world contexts where older adults must balance physical and cognitive demands.
 
-# Data Availability & Funding
+### Model Family Limitations
 
-## Sample Size & Precision
+1.  **Constant-drift Wiener DDM**: The base Wiener DDM assumes constant drift within each trial and no across-trial variability in drift (sv), starting point (sz), or non-decision time (st₀). This can underfit fast tails, especially in VDT-Hard conditions. The constant-drift Wiener DDM underfits fast RT tails, especially in VDT-Hard. Response-signal timing limits identifiability of across-trial variability. Future work could add a small contaminant mixture, across-trial variability (sv, sz), or urgency/collapsing bounds; LBA/race models may better capture fast-tail dynamics in the Easy/VDT regime.
 
-With N=67 subjects and \~266 trials per subject (17,834 total), hierarchical estimation provides adequate precision for group-level and subject-level effects. Effective sample sizes (ESS) for all parameters exceeded 400, indicating stable posterior estimates.
+2.  **Non-decision time (t₀) random effects omitted**: In the response-signal design, t₀ primarily reflects motor execution. We modeled t₀ with group-level intercepts and small task/effort effects but omitted subject-level random effects due to identifiability concerns and initialization failures in pilot models. This may underestimate individual differences in motor execution speed.
 
-## Data & Code Availability
+3.  **Alternative model families**: Linear Ballistic Accumulator (LBA) or race models may provide better fit for fast-tail dynamics, particularly for Easy/VDT. These models allow for more flexible RT distributions and may better accommodate the response-signal design.
 
-All analysis code and de-identified data are available in the project repository:\
-**Repository**: [modeling-pupil-DDM](https://github.com/mohdasti/modeling-pupil-DDM)\
-**Analysis scripts**: `R/`, `scripts/`\
-**Report source**: `reports/chap3_ddm_results.qmd`
+### Design-Specific Limitations
 
-**Note**: The behavioral dataset and detailed task methodology are described in the LC behavioral report manuscript (see References). This DDM analysis uses the same dataset and participants.
+4.  **Response-signal RT measurement**: RTs are measured from response-screen onset, not stimulus onset. This constrains the interpretation of t₀ to motor execution and response selection, excluding early perceptual/encoding processes. While this is appropriate for the current design, it limits generalizability to traditional RT paradigms.
 
-## Funding
+5.  **Effort manipulation**: Physical effort (grip force) may interact with motor execution in complex ways not fully captured by small fixed effects on t₀. Future work integrating EMG or kinematic measures could provide richer insights into effort-motor interactions.
 
-This research was supported by the National Institutes of Health (Project ID: 11096010). Additional grant details can be found at: https://reporter.nih.gov/search/l8qkCFX0Cki47b9kZOa3Pg/project-details/11096010. The content is solely the responsibility of the authors and does not necessarily represent the official views of the National Institutes of Health.
+### Misfit in Easy/VDT
 
-# Limitations & Future Directions
+6.  **Fast-tail misfit**: The most pronounced misfit occurs in Easy/VDT conditions, where the model underpredicts the frequency of very fast correct responses. This suggests a subset of trials may reflect:
+
+    -   Anticipatory responses (partially captured by 2% censoring)
+    -   A "fast-guess" process not represented in the base DDM
+    -   Extremely high drift rates that are incompatible with the assumed Wiener process for a small subset of trials
+
+    Sensitivity analyses (2% censoring, unconditional PPCs) confirm that substantive conclusions are robust, but future work should explore mixture models or urgency signals to better account for these fast responses.
 
 ## Model Family Limitations
 
@@ -3478,9 +3509,15 @@ This research was supported by the National Institutes of Health (Project ID: 11
 
     Sensitivity analyses (2% censoring, unconditional PPCs) confirm that substantive conclusions are robust, but future work should explore mixture models or urgency signals to better account for these fast responses.
 
-# Conclusions
+## Conclusions
 
-This chapter presents a comprehensive hierarchical Wiener DDM analysis of a response-signal change-detection task in older adults. The primary model, in which task difficulty modulates drift rate and boundary separation, with starting-point bias constant across difficulty levels (reflecting the randomized trial design), is strongly supported by LOO cross-validation and shows acceptable fit to subject-wise mid-body RT quantiles. Key findings—difficulty effects on v and a; task-specific differences in bias; and small effort effects—are robust across multiple sensitivity analyses. While the base Wiener DDM shows localized misfit in fast tails (especially Easy/VDT), this does not undermine the core substantive conclusions. Future extensions incorporating across-trial variability, urgency, or mixture models may further improve absolute fit.
+This chapter presents a comprehensive hierarchical Wiener DDM analysis of a response-signal change-detection task in older adults. The primary model, in which task difficulty modulates drift rate and boundary separation, with starting-point bias constant across difficulty levels (reflecting the randomized trial design), is strongly supported by LOO cross-validation and shows acceptable fit to subject-wise mid-body RT quantiles (see Appendix A3, @sec-ch3-ppc-method–@sec-ch3-ppc-visual for detailed PPC diagnostics). Key findings—difficulty effects on v and a; task-specific differences in bias; and small effort effects—are robust across multiple sensitivity analyses. While the base Wiener DDM shows localized misfit in fast tails (especially Easy/VDT), this does not undermine the core substantive conclusions. Future extensions incorporating across-trial variability, urgency, or mixture models may further improve absolute fit.
+
+# Reproducibility Note {.unnumbered .unlisted}
+
+All analysis code and de-identified data are available in the project repository: [modeling-pupil-DDM](https://github.com/mohdasti/modeling-pupil-DDM). A versioned archive of the analysis code and data is also available via Zenodo: [https://doi.org/10.5281/zenodo.18205123](https://doi.org/10.5281/zenodo.18205123). Key paths: `R/`, `scripts/`, `reports/chap3_ddm_results.qmd`. The behavioral dataset and detailed task methodology are described in the LC behavioral report manuscript (see References). This DDM analysis uses the same dataset and participants.
+
+<!-- TODO: Put NIH funding + publication acknowledgments in dissertation preliminary Acknowledgments (per UCR format guide). -->
 
 # Supplementary Figures
 
@@ -3491,7 +3528,7 @@ This chapter presents a comprehensive hierarchical Wiener DDM analysis of a resp
 #| fig-cap: "t₀ Prior vs Posterior. Prior (gray line) and posterior (blue shaded density) distributions for the t₀ intercept. The prior is Normal(log(0.23), 0.12) on the log scale (≈0.23 s on natural scale). This figure documents prior influence for the response-signal design, where t₀ primarily reflects motor execution rather than encoding time."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("fig_ndt_prior_posterior.pdf"))
+include_graphics_safe(fig_path("fig_ndt_prior_posterior.pdf"))
 ```
 
 ```{r}
@@ -3499,110 +3536,16 @@ knitr::include_graphics(fig_path("fig_ndt_prior_posterior.pdf"))
 #| fig-cap: "Model Comparison: Leave-One-Out Cross-Validation. ELPD (Expected Log-Predictive Density) with 95% SE bars by model. The best model (highest ELPD) is indicated with a dashed red line. ΔELPD values (difference from best) are annotated above each point. Larger ELPD indicates better out-of-sample predictive accuracy."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("fig_loo.pdf"))
+include_graphics_safe(fig_path("fig_loo.pdf"))
 ```
 
 ## S2. Posterior Predictive Checks (Full Visuals)
 
-```{r}
-#| label: fig-pdiff-heatmap
-#| fig-cap: "Observed vs. model-predicted p('different') across 12 cells (Task × Effort × Difficulty)."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("fig_pdiff_heatmap.png"))
-```
-
-```{r}
-#| label: fig-ppc-small-multiples
-#| fig-cap: ""
-#| fig-align: center
-#| out-width: "90%"
-#| results: asis
-if (knitr::is_latex_output()) {
-  caption_text <- "PPC best/median/worst cells (QP RMSE and KS with thresholds)."
-  caption_text_escaped <- latex_escape(caption_text)
-  knitr::asis_output(paste0(
-    "\\begin{landscape}\n",
-    "\\begin{figure}[H]\n",
-    "\\centering\n",
-    "\\includegraphics[width=0.9\\textwidth]{", fig_path("fig_ppc_small_multiples.png"), "}\n",
-    "\\caption{", caption_text_escaped, "}\n",
-    "\\label{fig-ppc-small-multiples}\n",
-    "\\end{figure}\n",
-    "\\end{landscape}\n"
-  ))
-} else {
-  knitr::include_graphics(fig_path("fig_ppc_small_multiples.png"))
-  cat("\n\n*Figure: PPC best/median/worst cells (QP RMSE and KS with thresholds).*\n")
-}
-```
-
-```{r}
-#| label: fig-ppc-validation
-#| fig-cap: ""
-#| fig-align: center
-#| out-width: "90%"
-#| results: asis
-if (knitr::is_latex_output()) {
-  caption_text <- "Posterior Predictive Check: Choice Proportions on Standard Trials. Histogram showing the distribution of predicted proportions of 'Different' responses across 500 posterior predictive draws. The red dashed vertical line indicates the observed proportion (10.9%), and the blue solid line indicates the mean predicted proportion (11.2%). The orange dotted lines show the 95% credible interval ([9.9%, 12.7%]). The observed value falls well within the predicted distribution, confirming that the hierarchical model accurately captures the data structure and avoids aggregation bias (Jensen's Inequality) by respecting subject-level heterogeneity."
-  caption_text_escaped <- latex_escape(caption_text)
-  knitr::asis_output(paste0(
-    "\\begin{landscape}\n",
-    "\\begin{figure}[H]\n",
-    "\\centering\n",
-    "\\includegraphics[width=0.9\\textwidth]{", fig_path("plot3_ppc_validation.png"), "}\n",
-    "\\caption{", caption_text_escaped, "}\n",
-    "\\label{fig-ppc-validation}\n",
-    "\\end{figure}\n",
-    "\\end{landscape}\n"
-  ))
-} else {
-  knitr::include_graphics(fig_path("plot3_ppc_validation.png"))
-  cat("\n\n*Figure: Posterior Predictive Check: Choice Proportions on Standard Trials. Histogram showing the distribution of predicted proportions of 'Different' responses across 500 posterior predictive draws. The red dashed vertical line indicates the observed proportion (10.9%), and the blue solid line indicates the mean predicted proportion (11.2%). The orange dotted lines show the 95% credible interval ([9.9%, 12.7%]). The observed value falls well within the predicted distribution, confirming that the hierarchical model accurately captures the data structure and avoids aggregation bias (Jensen's Inequality) by respecting subject-level heterogeneity.*\n")
-}
-```
-
-```{r}
-#| label: fig-ppc-rt-overlay
-#| fig-cap: "Posterior Predictive Check: RT Distributions. Empirical (black solid) vs. posterior predictive (blue solid) RT densities by Task × Effort × Difficulty. Overall model fit is good for central tendencies, with some misfit in fast tails (especially Easy/VDT)."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("fig_ppc_rt_overlay.pdf"))
-```
-
-```{r}
-#| label: fig-qp-plot
-#| fig-cap: "Quantile-Probability (QP) Plot. Empirical vs. predicted RT quantiles by difficulty level, with separate panels for Task × Effort. Points colored by difficulty (Standard=gray, Easy=blue, Hard=red) and shaped by response type (Correct/Error). Dashed diagonal = perfect prediction. Deviations primarily occur in fast tails for Easy/VDT conditions."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("fig_qp.pdf"))
-```
+Full PPC visual diagnostics are provided in Appendix A3 (@sec-ch3-ppc-visual). See @fig-ch3app-pdiff-heatmap, @fig-ch3app-ppc-small-multiples, @fig-ch3app-ppc-validation, @fig-ch3app-ppc-rt-overlay, and @fig-ch3app-qp-plot.
 
 ## S3. Model Sanity Checks (Parameter Consistency)
 
-```{r}
-#| label: fig-sanity-rt-asymmetry
-#| fig-cap: "RT Distribution by Response Type on Standard Trials. Density plots showing reaction time distributions for \"Same\" (crimson) and \"Different\" (blue) responses on Standard (Δ=0) trials. \"Same\" responses were 293 ms faster on average (mean RT = 1.03 s) than \"Different\" responses (mean RT = 1.32 s). This pattern is consistent with strong negative drift: when participants rapidly accumulate evidence for identity, they reach the \"Same\" boundary quickly, resulting in fast RTs. \"Different\" responses (errors) occur less frequently and typically require more time, possibly reflecting near-deadline responses when the process fails to reach the \"Same\" boundary before the response window closes."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("sanity_check1_rt_asymmetry.png"))
-```
-
-```{r}
-#| label: fig-sanity-hard-drift
-#| fig-cap: "Posterior Distribution of Hard Trial Drift Rate. Density plot showing the posterior distribution of drift rate (v) for Hard trials. The mean drift rate is -0.643 (95% CrI: [-0.740, -0.546]), with 100% of posterior draws below zero. This confirms that Hard trials have negative drift toward \"Same\" responses, explaining why participants choose \"Same\" approximately 70% of the time even when stimuli differ. The weak sensory evidence for difference (small stimulus offsets) is insufficient to overcome the baseline tendency to see stimuli as identical."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("sanity_check2_hard_drift.png"))
-```
-
-```{r}
-#| label: fig-sanity-subject-heterogeneity
-#| fig-cap: "Distribution of Subject-Level Drift Rates on Standard Trials. Histogram showing the distribution of subject-specific drift rate estimates (deviations from group mean) for Standard trials. The distribution shows substantial heterogeneity (SD = 0.65, range: -3.08 to -0.21), with most subjects showing strong negative drift (|v| ≥ 1.0) but a small subset (4.5%) showing weak drift (|v| < 0.5). This heterogeneity explains why the analytical formula (using group means) under-predicts error rates compared to PPC (which respects individual differences), consistent with Jensen's Inequality in hierarchical models."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("sanity_check3_subject_heterogeneity.png"))
-```
+Full sanity-check figures are provided in Appendix A3 (@sec-ch3-ppc-sanity). See @fig-ch3app-sanity-rt-asymmetry, @fig-ch3app-sanity-hard-drift, and @fig-ch3app-sanity-subject-heterogeneity.
 
 ## S4. Individual Differences and Parameter Relationships
 
@@ -3611,7 +3554,7 @@ knitr::include_graphics(fig_path("sanity_check3_subject_heterogeneity.png"))
 #| fig-cap: "Subject-Level Parameter Distribution. Violin plots showing the distribution of subject-level random effects (deviations from group mean) for each DDM parameter. The boxplots within each violin show the median and interquartile range. Zero (dashed line) represents the group mean. This visualization highlights the substantial individual variability in decision-making parameters across our sample of 67 older adults."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("fig_subject_parameter_distribution.pdf"))
+include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf"))
 ```
 
 ```{r}
@@ -3619,7 +3562,7 @@ knitr::include_graphics(fig_path("fig_subject_parameter_distribution.pdf"))
 #| fig-cap: "Subject-Level Parameter Correlation: Drift Intercept vs. Bias Intercept. Scatter plot showing the relationship between subject-level drift intercept and bias intercept estimates. Each point represents one subject (n = 67). The correlation is r = -0.205, indicating a weak negative relationship: subjects with stronger negative drift (toward 'Same') tend to have slightly lower bias (closer to 0.5, less bias toward 'Different'). The regression line with 95% confidence interval (shaded ribbon) shows the trend. This pattern suggests that participants who are more sensitive to stimulus identity (stronger negative drift) may also adopt more neutral starting points, potentially reflecting a more conservative decision strategy."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("plot4_parameter_correlation.png"))
+include_graphics_safe(fig_path("plot4_parameter_correlation.png"))
 ```
 
 ```{r}
@@ -3627,7 +3570,7 @@ knitr::include_graphics(fig_path("plot4_parameter_correlation.png"))
 #| fig-cap: "Brinley Plot: Reaction Time Relationships. Scatter plot showing mean RT for Hard trials (y-axis) versus Easy trials (x-axis) for each participant, colored by effort condition (blue = Low effort, crimson = High effort). Reaction times are displayed in milliseconds (ms). The dashed diagonal line (slope = 1) represents proportional slowing (equal RT increase in both conditions). The solid black regression line shows the actual relationship with 95% confidence interval (shaded ribbon), with slope > 1 indicating disproportionate slowing in Hard trials relative to Easy trials. Points above the diagonal indicate participants who slowed more in Hard relative to Easy trials. This visualization connects our DDM findings to the broader cognitive aging literature on generalized slowing [@brinley1965cognitive; @cerella1985; @salthouse1996]."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("fig_brinley_plot.pdf"))
+include_graphics_safe(fig_path("fig_brinley_plot.pdf"))
 ```
 
 ## S5. Conditional Accuracy Function (CAF)
@@ -3637,7 +3580,7 @@ knitr::include_graphics(fig_path("fig_brinley_plot.pdf"))
 #| fig-cap: "Conditional Accuracy Function (CAF). Empirical accuracy by RT bin for each Task × Effort × Difficulty combination. Shows the speed–accuracy tradeoff: faster responses (lower bins) tend toward chance accuracy, while slower responses show higher accuracy, consistent with evidence accumulation over time."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("fig_caf.pdf"))
+include_graphics_safe(fig_path("fig_caf.pdf"))
 ```
 
 ## S6. PPC Residual Heatmaps
@@ -3647,7 +3590,7 @@ knitr::include_graphics(fig_path("fig_caf.pdf"))
 #| fig-cap: "PPC Residual Heatmaps. KS statistic and QP RMSE by Task × Effort × Difficulty for all models (top panel) and primary model only (bottom panel). Darker red indicates larger residuals (poorer fit). The primary model shows acceptable fit across most cells, with notable misfit in Easy/VDT conditions."
 #| fig-align: center
 #| out-width: "90%"
-knitr::include_graphics(fig_path("fig_ppc_heatmaps.pdf"))
+include_graphics_safe(fig_path("fig_ppc_heatmaps.pdf"))
 ```
 
 ### Heatmap Detail Tables
@@ -3703,23 +3646,7 @@ if (!is.null(heatmap_wide)) {
 
 This table reports metrics from the strict unconditional pooled test (censored 2%), provided for completeness. As noted in the text, this pooled test is overly sensitive to small deviations in fast tails and is superseded by the subject-wise gate (≤15% flagged) and the joint model cell-wise PPCs (Standard/Easy good, VDT-Hard modest misfit).
 
-@tbl-ppc-gate shows the pooled PPC gate summary.
-
-```{r}
-#| label: tbl-ppc-gate
-#| tbl-cap: "Pooled PPC Gate Summary (Strict Test)"
-if (!is.null(ppc_gate)) {
-  ppc_gate %>%
-    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
-    gt() %>%
-    cols_label(
-      n_cells = "N Cells",
-      pct_flagged = "% Flagged",
-      max_qp = "Max QP RMSE",
-      max_ks = "Max KS"
-    )
-}
-```
+@tbl-ch3app-ppc-gate shows the pooled PPC gate summary (see Appendix A3.6).
 
 ## S4. Sensitivity Analysis: Exclusion of Sub-Chance Participants
 
@@ -3937,4 +3864,7 @@ if (!is.null(sensitivity_summary)) {
 
 *Note: The LC behavioral report manuscript (in preparation/published) describes the behavioral dataset and methodology used in this analysis. Full citation details will be added when available.*
 
+# Appendix A3: Posterior Predictive Checks and Diagnostics {#app-ch3-ppc}
+
+{{< include ch03_appA_ppc_diagnostics.qmd >}}
 

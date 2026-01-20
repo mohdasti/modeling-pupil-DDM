@@ -1,0 +1,9 @@
+dplyr
+readr
+tidyr
+gt
+glue
+stringr
+knitr
+ggplot2
+rlang
