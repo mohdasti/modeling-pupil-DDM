@@ -1,5 +1,5 @@
 ---
-title: "Chapter 3 — Diffusion Modeling with Pupil-Linked Arousal (Response-Signal Design)"
+title: "Effort-Induced Arousal Shapes Evidence Accumulation in Older Adults: A Pupil-Informed Diffusion Model"
 author: "Mohammad Dastgheib"
 bibliography: references.bib
 csl: apa-7th-edition.csl
@@ -432,7 +432,7 @@ pf_uncond <- if (!is.null(ppc_uncond_cens)) {
 
 # Abstract {.unnumbered}
 
-This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a response-signal change-detection task in older adults. The primary model maps task difficulty to drift rate (v) and boundary separation (a), with starting-point bias (z) varying by task and effort but constant across difficulty levels (reflecting the randomized trial design), and small condition effects on non-decision time (t₀). We report comprehensive quality assurance checks, manipulation checks independent of the DDM, model comparison via LOO cross-validation, and extensive posterior predictive checks with emphasis on subject-wise mid-body RT quantiles.
+This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a response-signal change-detection task in older adults. The primary model maps task difficulty to drift rate ($v$) and boundary separation ($a$), with starting-point bias ($z$) varying by task and effort but constant across difficulty levels (reflecting the randomized trial design), and small condition effects on non-decision time ($t_0$). We report comprehensive quality assurance checks, manipulation checks independent of the DDM, model comparison via LOO cross-validation, and extensive posterior predictive checks with emphasis on subject-wise mid-body RT quantiles.
 
 # Introduction
 
@@ -479,14 +479,17 @@ Having established the baseline DDM profile of older adults, we turn to an impor
 
 Beyond baseline aging effects, cognitive performance is strongly influenced by the organism's arousal state—the level of alertness or activation of physiological and neural systems. Classic theory, dating back to the Yerkes–Dodson law [@yerkes1908], holds that the relationship between arousal and performance follows an inverted-U function: increasing arousal enhances performance up to an optimal point, after which further arousal (especially if reaching stress or anxiety levels) impairs performance. In the context of aging, this dynamic takes on special significance. **Adaptive Gain Theory (AGT)** [@astonjones2005] provides a neural mechanism for this relationship, linking phasic and tonic Locus Coeruleus activity to optimal task performance. When this framework is extended to aging, researchers posit that the arousal--performance curve is altered, often manifesting as a leftward shift or compression of the inverted-U function [@mather2016; @mikneviciute2022]. This implies that older adults may reach their "optimal" arousal peak at lower levels of objective demand than younger adults. Consequently, levels of effort or stress that might be engaging or beneficial for a younger adult (placing them at the peak of the curve) can push an older adult onto the "descending limb," leading to supra-optimal arousal and performance decrements [@huang2024; @mather2016].
 
-Older adults typically have a reduced physiological capacity to sustain high arousal yet often need to exert greater mental effort to perform a given task at the same level as a younger person. Recent studies support the idea that effortful engagement is more taxing for older adults in measurable ways. For example, Hess and Ennis [@hess2012] demonstrated that when older adults performed continuous arithmetic tasks (e.g., subtraction), they exhibited significantly larger increases in systolic blood pressure (SBP)—a physiological index of effortful arousal—than young adults, and this elevated physiological cost predicted greater fatigue on subsequent tasks. Furthermore, research directly relevant to the current paradigm has shown that concurrent physical effort can be detrimental to cognition in aging. Azer et al. [@azer2023] found that while maintaining a concurrent moderate isometric handgrip (30% MVC), older adults showed significantly reduced accuracy in a visual working memory task with distractors, whereas younger adults remained unaffected. This supports the **limited-capacity framework**, suggesting that shared processing resources [@wickens2008] are more easily depleted in older adults, or that the combined demand drives arousal into a dysregulated state [@verhaeghen2003].
-What are the expected effects of arousal fluctuations on the decision-making mechanisms of older adults? By applying the drift-diffusion model (DDM), we can make specific hypotheses about how effort-induced arousal will modulate latent decision parameters. The present study manipulates arousal via physical effort (5% vs. 40% MVC), providing a controlled way to "push" older participants along the arousal curve. Behavioral theories such as Resource Competition and Limited Capacity predict that excessive effort will siphon processing resources away from the decision process, degrading evidence quality, whereas Adaptive Gain Theory predicts that older adults will more quickly slide down the descending limb of the inverted-U curve when demands are high. These frameworks collectively motivate the computational predictions outlined after we review the relevant physiological mechanisms.
+Older adults typically have a reduced physiological capacity to sustain high arousal yet often need to exert greater mental effort to perform a given task at the same level as a younger person. Recent studies support the idea that effortful engagement is more taxing for older adults in measurable ways. For example, Hess and Ennis [@hess2012] demonstrated that when older adults performed continuous arithmetic tasks (e.g., subtraction), they exhibited significantly larger increases in systolic blood pressure (SBP)—a physiological index of effortful arousal—than young adults, and this elevated physiological cost predicted greater fatigue on subsequent tasks. Furthermore, research directly relevant to the current paradigm has shown that concurrent physical effort can be detrimental to cognition in aging. Azer et al. [@azer2023] found that while maintaining a concurrent moderate isometric handgrip (30% MVC), older adults showed significantly reduced accuracy in a visual working memory task with distractors, whereas younger adults remained unaffected. This supports the **limited-capacity framework**, suggesting that shared processing resources [@wickens2008] are more easily depleted in older adults, or that the combined demand drives arousal into a dysregulated state [@verhaeghen2003]. However, it remains unclear how these effort- and arousal-related costs translate into the latent mechanisms of decision formation in older adults. Prior work has established that arousal and effort can alter observed performance (accuracy/RT) in aging, but has not directly tested *which computational components* of the decision process are affected (e.g., evidence quality vs. response caution vs. non-decision processes), particularly using a framework that jointly links physiological arousal (pupillometry) to diffusion-model parameters. The present chapter addresses this gap by combining pupillometry with hierarchical drift-diffusion modeling to identify how effort-induced arousal maps onto latent decision parameters in older adults.
+
+What are the expected effects of arousal fluctuations on the decision-making mechanisms of older adults? By applying the drift-diffusion model (DDM), we can make specific hypotheses about how effort-induced arousal will modulate latent decision parameters. The present study manipulates arousal via physical effort (5% vs. 40% MVC), providing a controlled way to "push" older participants along the arousal curve. Behavioral theories such as Resource Competition and Limited Capacity predict that excessive effort will siphon processing resources away from the decision process, degrading evidence quality, whereas Adaptive Gain Theory predicts that older adults will more quickly slide down the descending limb of the inverted-U curve when demands are high. These frameworks collectively motivate the computational predictions outlined after we review the relevant physiological mechanisms. Together, these accounts make distinct, parameter-level predictions about *how* performance should change under effort. If high effort pushes older adults into supra-optimal arousal or resource competition, evidence quality should degrade (lower drift rate, $v$). If pupil-linked arousal functions as a control/conflict signal, older adults may respond more cautiously (higher boundary separation, $a$). If concurrent grip maintenance interferes with encoding or motor output, peripheral processes may slow (higher non-decision time, $t_0$). Finally, if phasic arousal reduces pre-existing response tendencies, starting-point bias may move toward neutrality ($z \rightarrow 0.5$). We test these predictions using hierarchical Bayesian diffusion modeling, and we use pupillometry to index the arousal state that is hypothesized to drive these shifts.
+
+
 
 ## Arousal Dynamics and the Locus Coeruleus-Norepinephrine System
 
-Beyond the structural decision parameters captured by the DDM, cognitive performance is dynamically modulated by the brain's arousal state. A central regulator of this arousal is the Locus Coeruleus-Norepinephrine (LC-NE) system, a small brainstem nucleus that serves as the primary source of norepinephrine to the forebrain [@astonjones2005]. The LC-NE system modulates the "neural gain" of cortical circuits—essentially the signal-to-noise ratio of information processing. According to Adaptive Gain Theory (AGT), optimal performance relies on a balance between two modes of LC activity: a moderate tonic (baseline) firing rate that promotes focused attention, and robust phasic (event-related) bursts that facilitate rapid behavioral responses to task-relevant stimuli [@astonjones2005; @gilzenrat2010].
+To ground these parameter-level predictions in physiology, we next focus on the Locus Coeruleus–Norepinephrine (LC–NE) system, a central regulator of arousal and neural gain [@astonjones2005]. Because LC–NE dynamics are observable via pupillometry, this framework provides a mechanistic bridge between effort-induced arousal and diffusion-model parameters. The LC-NE system modulates the "neural gain" of cortical circuits—essentially the signal-to-noise ratio of information processing. According to Adaptive Gain Theory (AGT), optimal performance relies on a balance between two modes of LC activity: a moderate tonic (baseline) firing rate that promotes focused attention, and robust phasic (event-related) bursts that facilitate rapid behavioral responses to task-relevant stimuli [@astonjones2005; @gilzenrat2010].
 
-In the context of aging, this system undergoes significant changes. While structural degradation of the LC is common in older adults [@mather2016], functional compensatory mechanisms often emerge. Older adults may exhibit chronically elevated tonic arousal or hyper-responsivity to challenge, potentially as a strategy to offset neural inefficiency [@lee2018; @mather2016neural]. However, this compensation has limits; Adaptive Gain Theory suggests that the relationship between arousal and performance follows an inverted-U function [@yerkes1908], which in older adults may be shifted or compressed [@mather2016]. Consequently, levels of physical or cognitive effort that would optimize arousal in younger adults might push older adults into a supra-optimal state (the "descending limb" of the curve), where excessive norepinephrine release leads to distractibility, indiscriminate processing, and performance decrements [@astonjones2005; @eldar2013].
+In aging, LC structure and NE regulation change in ways that can compress the arousal–performance function described above, increasing susceptibility to supra-optimal arousal under demanding conditions [@mather2016; @huang2024]. The LC–NE system provides a mechanistic pathway through which effort-induced arousal can perturb decision computations.”
 
 **Pupillometry** provides a powerful, non-invasive window into these LC-NE dynamics. Because pupil diameter tracks LC firing activity with high temporal precision [@joshi2016; @murphy2014], it serves as a proxy for both tonic and phasic arousal states.
 
@@ -496,16 +499,20 @@ In the context of aging, this system undergoes significant changes. While struct
 
 Crucially, recent computational work has begun to bridge the gap between these physiological arousal signals and the latent cognitive processes of decision-making. In a seminal study, Cavanagh et al. [-@cavanagh2014] demonstrated that eye tracking and pupillometry serve as indicators of dissociable latent decision processes. By applying hierarchical Bayesian DDM to a probabilistic learning task, they found that while gaze dwell time predicted the rate of evidence accumulation (drift rate), **pupil dilation specifically predicted an increase in the decision threshold ($a$)** during high-conflict choices. This finding fundamentally reframed the role of phasic arousal in decision-making: rather than merely "energizing" the system generally, the pupil-linked arousal response can act as a specific signal for cognitive control, prompting a "hold your horses" mechanism [@frank2006] that raises the decision boundary to prevent impulsive errors. This link between pupil dilation and threshold adjustment ($a$) has since been corroborated by others, suggesting it may be a general marker of decision uncertainty and conflict monitoring [@urai2017; @vanderwel2018].
 
-This connection is vital for the present study. By integrating pupillometry with DDM, we can move beyond simple behavioral outcomes to ask mechanistic questions about how physical effort impacts the aging brain. Does the physical arousal from a high-effort handgrip act as a beneficial boost that sharpens neural gain (increasing drift rate, $v$), as Adaptive Gain Theory might predict for moderate arousal? Or, does it trigger a conflict signal that prompts older adults to become more conservative (increasing threshold, $a$), as suggested by the work of Cavanagh et al. [-@cavanagh2014]? Alternatively, if the effort pushes older adults into a supra-optimal state, does the pupil signal reflect internal noise that degrades evidence quality (decreasing $v$)? This combined pupil-DDM approach allows us to directly test these competing hypotheses by linking observable physiological states to the latent computational components of the decision process.
+This connection is vital for the present study. By integrating pupillometry with DDM, we can move beyond simple behavioral outcomes to ask mechanistic questions about how physical effort impacts the aging brain. Does the physical arousal from a high-effort handgrip act as a beneficial boost that sharpens neural gain (increasing drift rate, $v$), as Adaptive Gain Theory might predict for moderate arousal? Or, does it trigger a conflict signal that prompts older adults to become more conservative (increasing threshold, $a$), as suggested by the work of Cavanagh et al. [-@cavanagh2014]? Alternatively, if the effort pushes older adults into a supra-optimal state, does the pupil signal reflect internal noise that degrades evidence quality (decreasing $v$)? This combined pupil-DDM approach allows us to directly test these competing accounts by linking observable physiological states to the latent computational components of the decision process. Critically, these frameworks generate separable predictions at the level of diffusion parameters. Resource competition / limited-capacity accounts predict reduced evidence quality under high effort (**$v \downarrow$**). Conflict-control or “hold your horses” accounts predict increased response caution (**$a \uparrow$**) and, potentially, modest slowing outside the decision process due to concurrent motor demands (**$t_0 \uparrow$**). Finally, if phasic LC–NE responses reduce pre-existing response tendencies, starting-point bias may shift toward neutrality (**$z \rightarrow 0.5$**). This parameter-level separability is exactly what motivates the pupil-informed hierarchical Bayesian DDM approach used here and leads directly to the predictions formalized below.
+
 
 ### Hypotheses and Predictions
 
-Grounded in the behavioral and physiological frameworks above, we test four preregistered predictions:
+Grounded in the behavioral and physiological frameworks above, we test four primary predictions; additionally, we conduct an exploratory analysis examining whether LC structural integrity moderates the predicted bias shift.
 
 1. **Drift rate ($v$)** will decrease under high effort (40% MVC) relative to low effort, reflecting degraded evidence accumulation from resource competition or supra-optimal arousal.
 2. **Boundary separation ($a$)** will increase under high effort, reflecting the conflict-control signal suggested by phasic pupil-linked arousal and older adults’ strategic caution.
 3. **Non-decision time ($t_0$)** may increase modestly under high effort, reflecting cognitive-motor interference during concurrent grip maintenance.
-4. **Starting bias ($z$)** may move toward 0.5 if high-effort trials evoke strong phasic LC-NE responses that “reset” pre-existing response tendencies [@deGee2020pupil], with the magnitude of any shift moderated by LC integrity [@huang2024].
+4. **Starting bias ($z$)** may shift toward 0.5 under high effort if strong phasic LC–NE responses reduce pre-existing response tendencies (i.e., a bias “reset”) [@degee2020pupil]. 
+
+   **Exploratory:** If LC structural integrity is available, we will explore whether individual differences in LC integrity moderate the magnitude of any effort-related shift in $z$ (higher integrity → stronger/cleaner bias reset), consistent with accounts linking LC integrity to arousal regulation in aging [@huang2024; @mather2016].
+
 
 ## Conclusion and Overview of the Present Study
 
@@ -560,7 +567,7 @@ where the Wiener distribution gives the probability density of the first-passage
 
 We employed **response-side coding** (also called "stimulus coding" or "response coding") where the upper boundary corresponds to "different" responses and the lower boundary corresponds to "same" responses (see @fig-ddm-process), rather than accuracy-based coding where boundaries represent correct/incorrect responses. This specification is necessary to disentangle *response bias* (a preference for one response alternative regardless of stimulus truth) from *discriminability* (drift rate) [@wiecki2013hddm; @ratcliff2008diffusion].
 
-In accuracy-based coding, bias would imply a preference for being correct (which is conceptually trivial), whereas response-side coding allows us to model the meaningful preference for the "same" response option observed in detection tasks. This is particularly important for same/different discrimination tasks where participants often exhibit specific response biases (e.g., a conservative "same" bias) rather than general accuracy biases. Previous work linking arousal to decision-making has demonstrated that phasic arousal reduces response biases in detection tasks [@deGee2020pupil], and capturing this effect requires mapping boundaries to response alternatives.
+In accuracy-based coding, bias would imply a preference for being correct (which is conceptually trivial), whereas response-side coding allows us to model the meaningful preference for the "same" response option observed in detection tasks. This is particularly important for same/different discrimination tasks where participants often exhibit specific response biases (e.g., a conservative "same" bias) rather than general accuracy biases. Previous work linking arousal to decision-making has demonstrated that phasic arousal reduces response biases in detection tasks [@degee2020pupil], and capturing this effect requires mapping boundaries to response alternatives.
 
 On Standard (Δ=0) trials, participants chose "same" on 89.1% of trials and "different" on 10.9%—consistent with a conservative response tendency. The inclusion of Standard trials provides a critical constraint for estimating bias. While Standard trials theoretically have zero objective evidence difference (Δ=0), our model estimated a strong negative drift rate (v ≈ -1.26 in the primary model), indicating that participants actively accumulate evidence toward "same" responses when stimuli are identical. The observed preference for "same" responses reflects the combined effects of both drift and starting-point bias, with drift dominating the decision process. This bias estimate would be unobtainable using accuracy-coded models, where Standard trials would be ambiguous (both "same" and "different" responses are technically correct when stimuli are identical). Response-side coding was implemented directly from the raw data using the `resp_is_diff` column, which explicitly records whether each trial was a "different" response (TRUE) or "same" response (FALSE), ensuring accurate mapping to DDM boundary assignments.
 
@@ -629,6 +636,19 @@ To address potential concerns about post-response contamination and motor execut
 3. **Motor Buffer Truncation** (available for future analyses): Window definitions are computed to truncate W3.0 at 150ms before button press (`t_resp - 0.15s`) to minimize motor execution/blink contamination. Full AUC computation for motor-buffered windows requires re-processing flat files with RT information.
 
 While our primary analyses focus on the full TEPR magnitude (W3.0 window), the W1.3 features serve as robustness checks to ensure that observed relationships between cognitive arousal and DDM parameters are not solely driven by post-response contamination. Both `cog_auc_w1p3` and `cog_mean_w1p3` are included in exploratory analyses and sensitivity checks alongside the primary W3.0 metric.
+
+## Exploratory: Locus Coeruleus (LC) Integrity Metrics
+
+LC MRI metrics were computed by colleagues in our research group; I did not compute them for this dissertation chapter. The methodological approach follows [@bennett2024lc], who describe a pipeline for deriving LC contrast from magnetization transfer (MT) imaging and extracting diffusion metrics within LC regions of interest (ROIs). Specifically, [@bennett2024lc] compute an MTC (magnetization transfer contrast) map relative to a pontine reference region and extract LC ROI summary values (average/maximum contrast). Diffusion metrics (DTI/NODDI-style metrics) were extracted within the LC ROI following the diffusion preprocessing approach described in [@bennett2024lc].
+
+The available columns from the LC metrics dataset (`LC_Grant_Updated_LC_values.2026.csv`) include:
+
+- **LC CNR** (LC contrast-to-noise ratio): Treated as an LC contrast proxy, reflecting MT-weighted signal intensity within the LC ROI relative to background noise
+- **LC Vol** (LC volume): Structural volume measure of the LC ROI
+- **DTI metrics**: Fractional anisotropy (FA) and mean diffusivity (MD), reflecting white matter microstructural properties within the LC ROI
+- **NODDI metrics**: Free water fraction (fiso) and intracellular volume fraction (ficvf), providing complementary microstructural indices of LC tissue organization
+
+These LC integrity metrics are used in exploratory individual-differences analyses to examine whether LC structural properties relate to (i) subject-level pupil indices (baseline diameter, TEPR magnitude), and (ii) subject-level DDM parameters and effort-related shifts (especially bias shift), as exploratory moderation/association analyses. These analyses are explicitly exploratory and are not part of the primary confirmatory hypothesis testing framework.
 
 ## Trial Timeline (Response-Signal Design)
 
@@ -973,13 +993,7 @@ All priors are weakly informative and set on the link scale:
 
 #### Prior vs. Posterior for Non-Decision Time
 
-```{r}
-#| label: fig-ndt-prior-posterior
-#| fig-cap: "t₀ Prior vs Posterior. Prior (gray line) and posterior (blue shaded density) distributions for the t₀ intercept. The prior is Normal(log(0.23), 0.12) on the log scale (≈0.23 s on natural scale). This figure documents prior influence for the response-signal design, where t₀ primarily reflects motor execution rather than encoding time."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("fig_ndt_prior_posterior.pdf"))
-```
+Prior vs. posterior for t0 is shown in Supplementary Figure @fig-ndt-prior-posterior.
 
 **Interpretation**: The posterior for t₀ is well-informed by the data while remaining compatible with the weakly informative prior, confirming adequate identifiability for the group-level intercept despite the response-signal design.
 
@@ -1069,13 +1083,7 @@ if (!is.null(loo_primary)) {
 
 **Pareto-k diagnostics**: 1/17,834 observations had k \> 0.7; moment matching was not required.
 
-```{r}
-#| label: fig-loo
-#| fig-cap: "Model Comparison: Leave-One-Out Cross-Validation. ELPD (Expected Log-Predictive Density) with 95% SE bars by model. The best model (highest ELPD) is indicated with a dashed red line. ΔELPD values (difference from best) are annotated above each point. Larger ELPD indicates better out-of-sample predictive accuracy."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("fig_loo.pdf"))
-```
+The full LOO comparison plot is provided in Supplementary Figure @fig-loo.
 
 **Interpretation**: The data strongly support a model in which task difficulty modulates drift rate and boundary separation. Starting-point bias is constrained to be constant across difficulty levels (as trials are randomized), but varies by task and effort. Simpler models (e.g., difficulty affecting only drift) are decisively rejected by cross-validation.
 
@@ -2427,7 +2435,7 @@ if (!is.null(pupil_data)) {
 
 ### Background and Hypotheses
 
-Pupillometry provides a non-invasive proxy for Locus Coeruleus-Norepinephrine (LC-NE) system activity, with baseline pupil diameter reflecting tonic arousal and task-evoked pupil responses (TEPR) reflecting phasic arousal. We examined relationships between these pupillometry measures and individual differences in DDM parameters to test mechanistic hypotheses: (1) higher phasic arousal may relate to increased boundary separation, reflecting increased caution under arousal (the "hold your horses" account; [@cavanagh2014]); (2) higher arousal (both tonic and phasic) may relate to reduced drift rates, consistent with supra-optimal arousal or resource competition accounts in older adults; (3) phasic arousal may suppress pre-existing choice biases, resetting the decision process toward neutrality [@deGee2020pupil].
+Pupillometry provides a non-invasive proxy for Locus Coeruleus-Norepinephrine (LC-NE) system activity, with baseline pupil diameter reflecting tonic arousal and task-evoked pupil responses (TEPR) reflecting phasic arousal. We examined relationships between these pupillometry measures and individual differences in DDM parameters to test mechanistic hypotheses: (1) higher phasic arousal may relate to increased boundary separation, reflecting increased caution under arousal (the "hold your horses" account; [@cavanagh2014]); (2) higher arousal (both tonic and phasic) may relate to reduced drift rates, consistent with supra-optimal arousal or resource competition accounts in older adults; (3) phasic arousal may suppress pre-existing choice biases, resetting the decision process toward neutrality [@degee2020pupil].
 
 For these analyses, we computed subject-level DDM parameter estimates as the posterior mean of subject-specific coefficients (fixed intercept + subject random effect) from the primary model. Subject-level pupil measures were aggregated as means across trials for each subject, with quality filters applied (see Methods). Correlations were computed using posterior draws: for each draw, we computed Pearson correlations between subject-level DDM parameters and subject-level pupil measures, then summarized the posterior distribution of correlation coefficients.
 
@@ -2637,6 +2645,129 @@ if (!is.null(task_strat) && nrow(task_strat) > 0) {
 ### Interpretation and Integration with Primary DDM Findings
 
 The negative relationship between arousal and drift rate aligns with the primary DDM finding that effort lowered drift rates. This pattern is consistent with a supra-optimal arousal or noise account: higher arousal may introduce noise or resource competition that reduces the efficiency of information accumulation. The lack of strong pupil–bias (z) relationships is consistent with the weak evidence for bias-reset effects in the primary DDM analysis, suggesting that arousal may primarily affect information accumulation rather than response preparation or starting-point adjustments.
+
+## Exploratory: LC Integrity Analyses
+
+We conducted exploratory analyses examining relationships between LC structural integrity metrics and (i) subject-level pupil indices, and (ii) subject-level DDM parameters and effort-related shifts. LC integrity was quantified using a PCA-based composite (PC1) derived from LC contrast-to-noise ratio (CNR), diffusion metrics (FA, MD), and NODDI metrics (fiso, ficvf). These analyses are explicitly exploratory and complement the primary pupillometry-based arousal measures.
+
+```{r}
+#| label: tbl-lc-integrity-models
+#| tbl-cap: "Exploratory LC Integrity Models: Associations with DDM Parameters and Pupil Measures"
+#| echo: false
+
+lc_models_file <- file.path(proj_root, "output", "lc_integrity", "lc_models_summary.csv")
+
+if (file.exists(lc_models_file)) {
+  lc_models <- read_csv(lc_models_file, show_col_types = FALSE)
+  
+  # Filter to lc_composite term (the main predictor)
+  lc_models_display <- lc_models %>%
+    filter(term == "lc_composite") %>%
+    mutate(
+      priority = case_when(
+        model_id == "ddm_v_mean" ~ 1,
+        model_id == "pupil_phasic_mean_w3" ~ 2,
+        str_detect(model_id, "^ddm_") ~ 3,
+        str_detect(model_id, "^pupil_") ~ 4,
+        TRUE ~ 5
+      )
+    ) %>%
+    arrange(priority) %>%
+    head(3) %>%  # Show top 3 key models
+    mutate(
+      Model = case_when(
+        model_id == "ddm_v_mean" ~ "Drift Rate (v)",
+        model_id == "pupil_phasic_mean_w3" ~ "Phasic Pupil (W3)",
+        model_id == "pupil_v_mean" ~ "Pupil: Drift Rate",
+        model_id == "pupil_bs_mean" ~ "Pupil: Boundary Separation",
+        model_id == "pupil_z_mean" ~ "Pupil: Bias",
+        TRUE ~ str_replace_all(model_id, "_", " ")
+      ),
+      `Estimate [95% CI]` = sprintf("%.3f [%.3f, %.3f]", estimate, conf.low, conf.high),
+      `p-value` = sprintf("%.4f", p.value),
+      N = n_obs
+    ) %>%
+    select(Model, `Estimate [95% CI]`, `p-value`, N)
+  
+  if (nrow(lc_models_display) > 0) {
+    lc_models_display %>%
+      gt() %>%
+      cols_align(align = "left", columns = Model)
+  }
+} else {
+  cat("*LC exploratory analyses: Run `scripts/exploratory_lc_integrity.R` to generate results.*")
+}
+```
+
+```{r}
+#| label: fig-lc-integrity-cnr-delta-z
+#| fig-cap: "Exploratory: LC Contrast-to-Noise Ratio (CNR) vs. Effort-Related Bias Shift. Scatter plot showing the relationship between LC structural integrity (CNR) and the change in starting-point bias between high-effort and low-effort conditions. Each point represents one subject. The regression line with 95% confidence interval (shaded ribbon) shows the exploratory association. This figure examines whether LC integrity moderates effort-related shifts in decision bias."
+#| fig-align: center
+#| out-width: "90%"
+#| echo: false
+
+lc_fig_file <- fig_path("fig_lc_integrity_cnr_vs_delta_z")
+lc_fig_alt_pdf <- file.path(proj_root, "output", "figures", "fig_lc_integrity_cnr_vs_delta_z.pdf")
+lc_fig_alt_png <- file.path(proj_root, "output", "figures", "fig_lc_integrity_cnr_vs_delta_z.png")
+
+# Try multiple paths
+fig_found <- FALSE
+if (file.exists(lc_fig_file)) {
+  knitr::include_graphics(lc_fig_file)
+  fig_found <- TRUE
+} else if (file.exists(lc_fig_alt_pdf)) {
+  knitr::include_graphics(lc_fig_alt_pdf)
+  fig_found <- TRUE
+} else if (file.exists(lc_fig_alt_png)) {
+  knitr::include_graphics(lc_fig_alt_png)
+  fig_found <- TRUE
+}
+# If no figure found, chunk returns nothing (no NULL)
+```
+
+```{r}
+#| label: fig-lc-integrity-pc1-ddm-v
+#| fig-cap: "Exploratory: LC Integrity (PC1) vs. Drift Rate (v). Scatter plot showing the relationship between LC structural integrity (PCA composite) and subject-level drift rate estimates. Each point represents one subject. The regression line with 95% confidence interval (shaded ribbon) shows the exploratory association. This figure examines whether LC integrity relates to individual differences in evidence accumulation efficiency."
+#| fig-align: center
+#| out-width: "90%"
+#| echo: false
+
+lc_fig_file2 <- fig_path("fig_lc_integrity_pc1_vs_ddm_v")
+lc_fig_alt2_pdf <- file.path(proj_root, "output", "figures", "fig_lc_integrity_pc1_vs_ddm_v.pdf")
+lc_fig_alt2_png <- file.path(proj_root, "output", "figures", "fig_lc_integrity_pc1_vs_ddm_v.png")
+
+# Try multiple paths
+if (file.exists(lc_fig_file2)) {
+  knitr::include_graphics(lc_fig_file2)
+} else if (file.exists(lc_fig_alt2_pdf)) {
+  knitr::include_graphics(lc_fig_alt2_pdf)
+} else if (file.exists(lc_fig_alt2_png)) {
+  knitr::include_graphics(lc_fig_alt2_png)
+}
+# If no figure found, chunk returns nothing (no NULL)
+```
+
+```{r}
+#| label: fig-lc-integrity-pc1-pupil-phasic
+#| fig-cap: "Exploratory: LC Integrity (PC1) vs. Phasic Pupil Response. Scatter plot showing the relationship between LC structural integrity (PCA composite) and subject-level phasic pupil response (task-evoked pupil response, W3 window). Each point represents one subject. The regression line with 95% confidence interval (shaded ribbon) shows the exploratory association. This figure examines whether LC integrity relates to individual differences in phasic arousal responses."
+#| fig-align: center
+#| out-width: "90%"
+#| echo: false
+
+lc_fig_file3 <- fig_path("fig_lc_integrity_pc1_vs_pupil_phasic")
+lc_fig_alt3_pdf <- file.path(proj_root, "output", "figures", "fig_lc_integrity_pc1_vs_pupil_phasic.pdf")
+lc_fig_alt3_png <- file.path(proj_root, "output", "figures", "fig_lc_integrity_pc1_vs_pupil_phasic.png")
+
+# Try multiple paths
+if (file.exists(lc_fig_file3)) {
+  knitr::include_graphics(lc_fig_file3)
+} else if (file.exists(lc_fig_alt3_pdf)) {
+  knitr::include_graphics(lc_fig_alt3_pdf)
+} else if (file.exists(lc_fig_alt3_png)) {
+  knitr::include_graphics(lc_fig_alt3_png)
+}
+# If no figure found, chunk returns nothing (no NULL)
+```
 
 ## Bias Estimates (Standard-Only Model)
 
@@ -3233,33 +3364,7 @@ if (!is.null(contrasts_table)) {
 
 ## Individual Differences and Parameter Relationships
 
-### Subject-Level Parameter Distribution
-
-The hierarchical structure of our model allows us to examine individual differences in DDM parameters across participants. Subject-level random effects capture how each participant deviates from the group-level mean for each parameter.
-
-```{r}
-#| label: fig-subject-parameter-distribution
-#| fig-cap: "Subject-Level Parameter Distribution. Violin plots showing the distribution of subject-level random effects (deviations from group mean) for each DDM parameter. The boxplots within each violin show the median and interquartile range. Zero (dashed line) represents the group mean. This visualization highlights the substantial individual variability in decision-making parameters across our sample of 67 older adults."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("fig_subject_parameter_distribution.pdf"))
-```
-
-**Interpretation**: The distributions reveal substantial individual differences in all DDM parameters. Drift rate (v) shows the widest variability, consistent with the heterogeneity in evidence accumulation speed observed in aging populations. Boundary separation (a) and bias (z) also show meaningful individual variation, supporting the use of hierarchical modeling to account for between-subject differences.
-
-### Parameter Correlations
-
-Understanding the relationships between DDM parameters is crucial for interpreting how decision-making components covary. Parameter correlations reveal trade-offs and dependencies that may reflect underlying cognitive strategies.
-
-```{r}
-#| label: fig-parameter-correlation
-#| fig-cap: "Subject-Level Parameter Correlation: Drift Intercept vs. Bias Intercept. Scatter plot showing the relationship between subject-level drift intercept and bias intercept estimates. Each point represents one subject (n = 67). The correlation is r = -0.205, indicating a weak negative relationship: subjects with stronger negative drift (toward 'Same') tend to have slightly lower bias (closer to 0.5, less bias toward 'Different'). The regression line with 95% confidence interval (shaded ribbon) shows the trend. This pattern suggests that participants who are more sensitive to stimulus identity (stronger negative drift) may also adopt more neutral starting points, potentially reflecting a more conservative decision strategy."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("plot4_parameter_correlation.png"))
-```
-
-**Interpretation**: The scatter plot reveals a weak negative correlation (r = -0.205) between drift intercept and bias intercept at the subject level. This suggests that participants who show stronger negative drift (better at detecting "sameness") tend to have less bias toward "Different" responses. While the relationship is modest, it indicates that individual differences in evidence accumulation may be related to differences in starting-point bias, potentially reflecting strategic adaptations in decision criteria across participants.
+The hierarchical structure of our model reveals substantial individual differences in all DDM parameters. Drift rate (v) shows the widest variability, consistent with the heterogeneity in evidence accumulation speed observed in aging populations. Boundary separation (a) and bias (z) also show meaningful individual variation, supporting the use of hierarchical modeling to account for between-subject differences. Parameter correlations reveal a weak negative relationship (r = -0.205) between drift intercept and bias intercept at the subject level, suggesting that participants who show stronger negative drift tend to have less bias toward "Different" responses. The Brinley plot reveals a strong positive relationship between Easy and Hard RTs, with a slope > 1 indicating disproportionate slowing in Hard trials—a hallmark of generalized slowing in older adults. Supporting figures are provided in Supplementary Figures @fig-subject-parameter-distribution–@fig-brinley-plot.
 
 ### Integrated Condition Effects
 
@@ -3275,19 +3380,6 @@ knitr::include_graphics(fig_path("fig_integrated_condition_effects.pdf"))
 
 **Interpretation**: The integrated plots reveal that difficulty effects are strongest for drift rate (v) and boundary separation (a), with Easy trials showing faster evidence accumulation and reduced caution relative to Hard trials. Effort effects are more modest but consistent across parameters, with High effort reducing drift rate and increasing non-decision time. These effects are consistent across both ADT and VDT, supporting the additive model structure where difficulty and effort effects are shared across tasks, with only intercepts differing between modalities.
 
-### Brinley Plot: Reaction Time Relationships
-
-Brinley plots are a classic visualization in cognitive aging research that reveal generalized slowing patterns by plotting RT in one condition against RT in another condition [@brinley1965cognitive]. The slope of the regression line indicates the degree of generalized slowing, with slopes > 1 indicating disproportionate slowing in more difficult conditions.
-
-```{r}
-#| label: fig-brinley-plot
-#| fig-cap: "Brinley Plot: Reaction Time Relationships. Scatter plot showing mean RT for Hard trials (y-axis) versus Easy trials (x-axis) for each participant, colored by effort condition (blue = Low effort, crimson = High effort). Reaction times are displayed in milliseconds (ms). The dashed diagonal line (slope = 1) represents proportional slowing (equal RT increase in both conditions). The solid black regression line shows the actual relationship with 95% confidence interval (shaded ribbon), with slope > 1 indicating disproportionate slowing in Hard trials relative to Easy trials. Points above the diagonal indicate participants who slowed more in Hard relative to Easy trials. This visualization connects our DDM findings to the broader cognitive aging literature on generalized slowing [@brinley1965cognitive; @cerella1985; @salthouse1996]."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("fig_brinley_plot.pdf"))
-```
-
-**Interpretation**: The Brinley plot reveals a strong positive relationship between Easy and Hard RTs, with a slope > 1 indicating disproportionate slowing in Hard trials—a hallmark of generalized slowing in older adults [@cerella1985; @salthouse1996]. The scatter of points around the regression line reflects individual differences in the magnitude of difficulty effects, consistent with the heterogeneity in drift rate effects observed in our DDM analysis. The separation by effort condition suggests that high effort may exacerbate the difficulty effect for some participants, though this pattern requires further investigation.
 
 ## Model Convergence & Selection
 
@@ -3336,58 +3428,17 @@ High effort (40% MVC) produces small but credible effects on drift rate and non-
 
 **Absolute fit**: Subject-wise mid-body PPCs show acceptable error magnitudes (QP RMSE ≤ 0.09 s for most cells; ≤15% flagged). The model captures central RT tendencies and accuracy well.
 
-**PPC Summary (Joint Model)**: PPCs were good for Standard and Easy cells (QP RMSE \< 0.13, KS \< 0.08), with modest misfit in VDT-Hard (worst QP RMSE ≈ 0.206). This pattern suggests some residual fast-tail behavior not captured by a constant-drift Wiener process.
-
-```{r}
-#| label: fig-pdiff-heatmap
-#| fig-cap: "Observed vs. model-predicted p('different') across 12 cells (Task × Effort × Difficulty)."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("fig_pdiff_heatmap.png"))
-```
-
-```{r}
-#| label: fig-ppc-small-multiples
-#| fig-cap: ""
-#| fig-align: center
-#| out-width: "90%"
-#| results: asis
-if (knitr::is_latex_output()) {
-  caption_text <- "PPC best/median/worst cells (QP RMSE and KS with thresholds)."
-  caption_text_escaped <- latex_escape(caption_text)
-  knitr::asis_output(paste0(
-    "\\begin{landscape}\n",
-    "\\begin{figure}[H]\n",
-    "\\centering\n",
-    "\\includegraphics[width=0.9\\textwidth]{", fig_path("fig_ppc_small_multiples.png"), "}\n",
-    "\\caption{", caption_text_escaped, "}\n",
-    "\\label{fig-ppc-small-multiples}\n",
-    "\\end{figure}\n",
-    "\\end{landscape}\n"
-  ))
-} else {
-  knitr::include_graphics(fig_path("fig_ppc_small_multiples.png"))
-  cat("\n\n*Figure: PPC best/median/worst cells (QP RMSE and KS with thresholds).*\n")
-}
-```
+**PPC Summary (Joint Model)**: PPCs were good for Standard and Easy cells (QP RMSE \< 0.13, KS \< 0.08), with modest misfit in VDT-Hard (worst QP RMSE ≈ 0.206). This pattern suggests some residual fast-tail behavior not captured by a constant-drift Wiener process. Cell-wise PPC residuals are shown in Supplementary Figure @fig-pdiff-heatmap. Additional PPC diagnostics (best/median/worst cells) are shown in Supplementary Figure @fig-ppc-small-multiples.
 
 **Known limitation**: Pooled conditional PPCs reveal residual fast-tail misfit, most pronounced in Easy/VDT conditions. This is a known limitation of constant-drift Wiener DDMs without across-trial variability (sv, sz, st₀) or explicit contaminant/lapse processes.
 
 ## Model Validation: Parameter Consistency and Sanity Checks
 
-To validate the internal consistency of our model estimates, we performed three sanity checks recommended by independent expert review. These checks verify that parameter estimates are mathematically consistent with observed behavioral patterns.
+To validate the internal consistency of our model estimates, we performed three sanity checks recommended by independent expert review. These checks verify that parameter estimates are mathematically consistent with observed behavioral patterns. All sanity-check figures are provided in Supplementary Figures @fig-sanity-rt-asymmetry–@fig-sanity-subject-heterogeneity.
 
 ### RT Asymmetry on Standard Trials
 
 On Standard trials, the model estimated a strong negative drift rate (v = -1.404) toward "Same" responses, combined with a slight starting-point bias toward "Different" (z = 0.567). To verify the consistency of these estimates, we examined whether RT patterns align with model predictions.
-
-```{r}
-#| label: fig-sanity-rt-asymmetry
-#| fig-cap: "RT Distribution by Response Type on Standard Trials. Density plots showing reaction time distributions for \"Same\" (crimson) and \"Different\" (blue) responses on Standard (Δ=0) trials. \"Same\" responses were 293 ms faster on average (mean RT = 1.03 s) than \"Different\" responses (mean RT = 1.32 s). This pattern is consistent with strong negative drift: when participants rapidly accumulate evidence for identity, they reach the \"Same\" boundary quickly, resulting in fast RTs. \"Different\" responses (errors) occur less frequently and typically require more time, possibly reflecting near-deadline responses when the process fails to reach the \"Same\" boundary before the response window closes."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("sanity_check1_rt_asymmetry.png"))
-```
 
 **Result**: "Same" responses were significantly faster than "Different" responses (mean RT: 1.03 s vs. 1.32 s, difference = 293 ms). This pattern aligns perfectly with the model's prediction: strong negative drift causes rapid evidence accumulation toward "Same", resulting in fast "Same" responses. The slower "Different" responses likely reflect rare errors that occur when the process fails to reach the "Same" boundary within the response window.
 
@@ -3395,27 +3446,11 @@ knitr::include_graphics(fig_path("sanity_check1_rt_asymmetry.png"))
 
 The primary model estimated that Hard trials have negative drift relative to Standard trials. To verify this estimate is consistent with observed below-chance accuracy on Hard trials, we examined the posterior distribution of Hard trial drift rates.
 
-```{r}
-#| label: fig-sanity-hard-drift
-#| fig-cap: "Posterior Distribution of Hard Trial Drift Rate. Density plot showing the posterior distribution of drift rate (v) for Hard trials. The mean drift rate is -0.643 (95% CrI: [-0.740, -0.546]), with 100% of posterior draws below zero. This confirms that Hard trials have negative drift toward \"Same\" responses, explaining why participants choose \"Same\" approximately 70% of the time even when stimuli differ. The weak sensory evidence for difference (small stimulus offsets) is insufficient to overcome the baseline tendency to see stimuli as identical."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("sanity_check2_hard_drift.png"))
-```
-
 **Result**: Hard trials show consistently negative drift (mean v = -0.643, 95% CrI: [-0.740, -0.546], P(v < 0) = 100%). This confirms that the sensory evidence for difference on Hard trials is too weak to overcome the baseline tendency toward "Same", explaining the observed below-chance accuracy (~30%) on Hard trials.
 
 ### Subject Heterogeneity in Drift Rates
 
 The discrepancy between analytical predictions (using group-level mean parameters) and PPC results (using full posterior with subject heterogeneity) suggests substantial individual differences in drift rates. To verify this, we examined the distribution of subject-level drift rate estimates.
-
-```{r}
-#| label: fig-sanity-subject-heterogeneity
-#| fig-cap: "Distribution of Subject-Level Drift Rates on Standard Trials. Histogram showing the distribution of subject-specific drift rate estimates (deviations from group mean) for Standard trials. The distribution shows substantial heterogeneity (SD = 0.65, range: -3.08 to -0.21), with most subjects showing strong negative drift (|v| ≥ 1.0) but a small subset (4.5%) showing weak drift (|v| < 0.5). This heterogeneity explains why the analytical formula (using group means) under-predicts error rates compared to PPC (which respects individual differences), consistent with Jensen's Inequality in hierarchical models."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("sanity_check3_subject_heterogeneity.png"))
-```
 
 **Result**: Subject-level drift rates show substantial heterogeneity (SD = 0.65, range: -3.08 to -0.21). Most subjects (60%) show strong negative drift (|v| ≥ 1.0), while a small subset (4.5%) show weak drift (|v| < 0.5). This heterogeneity explains the PPC vs. analytical formula discrepancy: subjects with weaker drift contribute disproportionately to error rates, but their contribution is masked when using group-level mean parameters.
 
@@ -3429,32 +3464,7 @@ Posterior Predictive Checks (PPC) were performed to validate model fit by compar
 
 **PPC Implementation**: For the primary model, we generated 1,000 posterior predictive draws using `brms::posterior_predict()` with `negative_rt = TRUE` to obtain signed reaction times (positive RT = "Different"/upper boundary, negative RT = "Same"/lower boundary). This parameter is critical for correctly extracting choice predictions from `brms` Wiener models. For each draw, we computed the proportion of "Different" responses and compared the distribution of predicted proportions to the observed proportion in the data.
 
-**PPC Results**: On Standard trials, the model accurately predicted choice proportions: observed 10.9% "Different" responses vs. predicted 11.2% (95% credible interval: [9.9%, 12.7%]). The difference of 0.3% falls well within acceptable ranges, confirming that the model captures the data distribution accurately. The observed value falls within the 95% credible interval, indicating excellent model fit.
-
-```{r}
-#| label: fig-ppc-validation
-#| fig-cap: ""
-#| fig-align: center
-#| out-width: "90%"
-#| results: asis
-if (knitr::is_latex_output()) {
-  caption_text <- "Posterior Predictive Check: Choice Proportions on Standard Trials. Histogram showing the distribution of predicted proportions of 'Different' responses across 500 posterior predictive draws. The red dashed vertical line indicates the observed proportion (10.9%), and the blue solid line indicates the mean predicted proportion (11.2%). The orange dotted lines show the 95% credible interval ([9.9%, 12.7%]). The observed value falls well within the predicted distribution, confirming that the hierarchical model accurately captures the data structure and avoids aggregation bias (Jensen's Inequality) by respecting subject-level heterogeneity."
-  caption_text_escaped <- latex_escape(caption_text)
-  knitr::asis_output(paste0(
-    "\\begin{landscape}\n",
-    "\\begin{figure}[H]\n",
-    "\\centering\n",
-    "\\includegraphics[width=0.9\\textwidth]{", fig_path("plot3_ppc_validation.png"), "}\n",
-    "\\caption{", caption_text_escaped, "}\n",
-    "\\label{fig-ppc-validation}\n",
-    "\\end{figure}\n",
-    "\\end{landscape}\n"
-  ))
-} else {
-  knitr::include_graphics(fig_path("plot3_ppc_validation.png"))
-  cat("\n\n*Figure: Posterior Predictive Check: Choice Proportions on Standard Trials. Histogram showing the distribution of predicted proportions of 'Different' responses across 500 posterior predictive draws. The red dashed vertical line indicates the observed proportion (10.9%), and the blue solid line indicates the mean predicted proportion (11.2%). The orange dotted lines show the 95% credible interval ([9.9%, 12.7%]). The observed value falls well within the predicted distribution, confirming that the hierarchical model accurately captures the data structure and avoids aggregation bias (Jensen's Inequality) by respecting subject-level heterogeneity.*\n")
-}
-```
+**PPC Results**: On Standard trials, the model accurately predicted choice proportions: observed 10.9% "Different" responses vs. predicted 11.2% (95% credible interval: [9.9%, 12.7%]). The difference of 0.3% falls well within acceptable ranges, confirming that the model captures the data distribution accurately. The observed value falls within the 95% credible interval, indicating excellent model fit. Choice-proportion PPC validation is shown in Supplementary Figure @fig-ppc-validation.
 
 ## Primary PPC Gate: Subject-Wise Mid-Body Quantiles
 
@@ -3500,25 +3510,7 @@ if (!is.null(pf_subj) && !is.na(pf_subj$n_cells)) {
 
 ## Visual Diagnostics
 
-### 1. RT Distribution Overlays
-
-```{r}
-#| label: fig-ppc-rt-overlay
-#| fig-cap: "Posterior Predictive Check: RT Distributions. Empirical (black solid) vs. posterior predictive (blue solid) RT densities by Task × Effort × Difficulty. Overall model fit is good for central tendencies, with some misfit in fast tails (especially Easy/VDT)."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("fig_ppc_rt_overlay.pdf"))
-```
-
-### Quantile-Probability (QP) Plots
-
-```{r}
-#| label: fig-qp-plot
-#| fig-cap: "Quantile-Probability (QP) Plot. Empirical vs. predicted RT quantiles by difficulty level, with separate panels for Task × Effort. Points colored by difficulty (Standard=gray, Easy=blue, Hard=red) and shaped by response type (Correct/Error). Dashed diagonal = perfect prediction. Deviations primarily occur in fast tails for Easy/VDT conditions."
-#| fig-align: center
-#| out-width: "90%"
-knitr::include_graphics(fig_path("fig_qp.pdf"))
-```
+RT overlay PPCs are shown in Supplementary Figure @fig-ppc-rt-overlay. QP plot diagnostics are shown in Supplementary Figure @fig-qp-plot.
 
 ### Sensitivity Analyses
 
@@ -3554,7 +3546,7 @@ Despite the internal noise introduced by high effort (as evidenced by reduced dr
 
 Regarding starting-point bias ($z$), our results revealed a consistent conservative bias across conditions, with a posterior mean of $z = 0.567$ (95% CrI [0.534, 0.601]) on Standard trials, indicating a slight preference for "different" responses. This bias was robust across effort conditions, with no significant effect of effort level (High vs. Low contrast: Δ = 0.048, 95% CrI [-0.025, 0.120], P(Δ>0) = 0.903). However, we did observe a significant task difference: VDT showed less bias toward "different" than ADT (Δ = -0.179, 95% CrI [-0.259, -0.101], P(Δ>0) < 0.001), suggesting modality-specific differences in response tendencies.
 
-These findings can be interpreted in the context of LC-NE system dynamics. Recent work suggests that phasic arousal, indexed by pupil dilation, can suppress pre-existing choice biases, "resetting" the decision process to a neutral state [@deGee2020pupil]. Consistent with the weak relationship between arousal and starting-point bias observed in our direct pupil–DDM integration analysis (see @sec-pupil-ddm-integration), bias correlations were small and not credibly different from zero (e.g., tonic × z: r = 0.085 [-0.021, 0.190], P(r>0) = 0.941). In our study, the lack of a significant effort effect on bias suggests that the high-effort manipulation (40% MVC) may not have elicited strong enough phasic arousal responses to modulate starting-point bias, or that any such effects were offset by other factors. Alternatively, the integrity of the LC-NE system in our older adult sample may have moderated the expected bias suppression [@huang2024]. The task-specific bias differences (VDT < ADT) may reflect inherent differences in how auditory versus visual detection tasks engage response strategies, independent of arousal state. The direct pupillometry integration confirms that arousal primarily affects information accumulation (drift rate) rather than response preparation or starting-point adjustments in this sample.
+These findings can be interpreted in the context of LC-NE system dynamics. Recent work suggests that phasic arousal, indexed by pupil dilation, can suppress pre-existing choice biases, "resetting" the decision process to a neutral state [@degee2020pupil]. Consistent with the weak relationship between arousal and starting-point bias observed in our direct pupil–DDM integration analysis (see @sec-pupil-ddm-integration), bias correlations were small and not credibly different from zero (e.g., tonic × z: r = 0.085 [-0.021, 0.190], P(r>0) = 0.941). In our study, the lack of a significant effort effect on bias suggests that the high-effort manipulation (40% MVC) may not have elicited strong enough phasic arousal responses to modulate starting-point bias, or that any such effects were offset by other factors. Alternatively, the integrity of the LC-NE system in our older adult sample may have moderated the expected bias suppression [@huang2024]. The task-specific bias differences (VDT < ADT) may reflect inherent differences in how auditory versus visual detection tasks engage response strategies, independent of arousal state. The direct pupillometry integration confirms that arousal primarily affects information accumulation (drift rate) rather than response preparation or starting-point adjustments in this sample.
 
 ## Limitations & Conclusion
 
@@ -3611,7 +3603,153 @@ This chapter presents a comprehensive hierarchical Wiener DDM analysis of a resp
 
 # Supplementary Figures
 
-## S1. Conditional Accuracy Function (CAF)
+## S1. Model Diagnostics and Priors
+
+```{r}
+#| label: fig-ndt-prior-posterior
+#| fig-cap: "t₀ Prior vs Posterior. Prior (gray line) and posterior (blue shaded density) distributions for the t₀ intercept. The prior is Normal(log(0.23), 0.12) on the log scale (≈0.23 s on natural scale). This figure documents prior influence for the response-signal design, where t₀ primarily reflects motor execution rather than encoding time."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("fig_ndt_prior_posterior.pdf"))
+```
+
+```{r}
+#| label: fig-loo
+#| fig-cap: "Model Comparison: Leave-One-Out Cross-Validation. ELPD (Expected Log-Predictive Density) with 95% SE bars by model. The best model (highest ELPD) is indicated with a dashed red line. ΔELPD values (difference from best) are annotated above each point. Larger ELPD indicates better out-of-sample predictive accuracy."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("fig_loo.pdf"))
+```
+
+## S2. Posterior Predictive Checks (Full Visuals)
+
+```{r}
+#| label: fig-pdiff-heatmap
+#| fig-cap: "Observed vs. model-predicted p('different') across 12 cells (Task × Effort × Difficulty)."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("fig_pdiff_heatmap.png"))
+```
+
+```{r}
+#| label: fig-ppc-small-multiples
+#| fig-cap: ""
+#| fig-align: center
+#| out-width: "90%"
+#| results: asis
+if (knitr::is_latex_output()) {
+  caption_text <- "PPC best/median/worst cells (QP RMSE and KS with thresholds)."
+  caption_text_escaped <- latex_escape(caption_text)
+  knitr::asis_output(paste0(
+    "\\begin{landscape}\n",
+    "\\begin{figure}[H]\n",
+    "\\centering\n",
+    "\\includegraphics[width=0.9\\textwidth]{", fig_path("fig_ppc_small_multiples.png"), "}\n",
+    "\\caption{", caption_text_escaped, "}\n",
+    "\\label{fig-ppc-small-multiples}\n",
+    "\\end{figure}\n",
+    "\\end{landscape}\n"
+  ))
+} else {
+  knitr::include_graphics(fig_path("fig_ppc_small_multiples.png"))
+  cat("\n\n*Figure: PPC best/median/worst cells (QP RMSE and KS with thresholds).*\n")
+}
+```
+
+```{r}
+#| label: fig-ppc-validation
+#| fig-cap: ""
+#| fig-align: center
+#| out-width: "90%"
+#| results: asis
+if (knitr::is_latex_output()) {
+  caption_text <- "Posterior Predictive Check: Choice Proportions on Standard Trials. Histogram showing the distribution of predicted proportions of 'Different' responses across 500 posterior predictive draws. The red dashed vertical line indicates the observed proportion (10.9%), and the blue solid line indicates the mean predicted proportion (11.2%). The orange dotted lines show the 95% credible interval ([9.9%, 12.7%]). The observed value falls well within the predicted distribution, confirming that the hierarchical model accurately captures the data structure and avoids aggregation bias (Jensen's Inequality) by respecting subject-level heterogeneity."
+  caption_text_escaped <- latex_escape(caption_text)
+  knitr::asis_output(paste0(
+    "\\begin{landscape}\n",
+    "\\begin{figure}[H]\n",
+    "\\centering\n",
+    "\\includegraphics[width=0.9\\textwidth]{", fig_path("plot3_ppc_validation.png"), "}\n",
+    "\\caption{", caption_text_escaped, "}\n",
+    "\\label{fig-ppc-validation}\n",
+    "\\end{figure}\n",
+    "\\end{landscape}\n"
+  ))
+} else {
+  knitr::include_graphics(fig_path("plot3_ppc_validation.png"))
+  cat("\n\n*Figure: Posterior Predictive Check: Choice Proportions on Standard Trials. Histogram showing the distribution of predicted proportions of 'Different' responses across 500 posterior predictive draws. The red dashed vertical line indicates the observed proportion (10.9%), and the blue solid line indicates the mean predicted proportion (11.2%). The orange dotted lines show the 95% credible interval ([9.9%, 12.7%]). The observed value falls well within the predicted distribution, confirming that the hierarchical model accurately captures the data structure and avoids aggregation bias (Jensen's Inequality) by respecting subject-level heterogeneity.*\n")
+}
+```
+
+```{r}
+#| label: fig-ppc-rt-overlay
+#| fig-cap: "Posterior Predictive Check: RT Distributions. Empirical (black solid) vs. posterior predictive (blue solid) RT densities by Task × Effort × Difficulty. Overall model fit is good for central tendencies, with some misfit in fast tails (especially Easy/VDT)."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("fig_ppc_rt_overlay.pdf"))
+```
+
+```{r}
+#| label: fig-qp-plot
+#| fig-cap: "Quantile-Probability (QP) Plot. Empirical vs. predicted RT quantiles by difficulty level, with separate panels for Task × Effort. Points colored by difficulty (Standard=gray, Easy=blue, Hard=red) and shaped by response type (Correct/Error). Dashed diagonal = perfect prediction. Deviations primarily occur in fast tails for Easy/VDT conditions."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("fig_qp.pdf"))
+```
+
+## S3. Model Sanity Checks (Parameter Consistency)
+
+```{r}
+#| label: fig-sanity-rt-asymmetry
+#| fig-cap: "RT Distribution by Response Type on Standard Trials. Density plots showing reaction time distributions for \"Same\" (crimson) and \"Different\" (blue) responses on Standard (Δ=0) trials. \"Same\" responses were 293 ms faster on average (mean RT = 1.03 s) than \"Different\" responses (mean RT = 1.32 s). This pattern is consistent with strong negative drift: when participants rapidly accumulate evidence for identity, they reach the \"Same\" boundary quickly, resulting in fast RTs. \"Different\" responses (errors) occur less frequently and typically require more time, possibly reflecting near-deadline responses when the process fails to reach the \"Same\" boundary before the response window closes."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("sanity_check1_rt_asymmetry.png"))
+```
+
+```{r}
+#| label: fig-sanity-hard-drift
+#| fig-cap: "Posterior Distribution of Hard Trial Drift Rate. Density plot showing the posterior distribution of drift rate (v) for Hard trials. The mean drift rate is -0.643 (95% CrI: [-0.740, -0.546]), with 100% of posterior draws below zero. This confirms that Hard trials have negative drift toward \"Same\" responses, explaining why participants choose \"Same\" approximately 70% of the time even when stimuli differ. The weak sensory evidence for difference (small stimulus offsets) is insufficient to overcome the baseline tendency to see stimuli as identical."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("sanity_check2_hard_drift.png"))
+```
+
+```{r}
+#| label: fig-sanity-subject-heterogeneity
+#| fig-cap: "Distribution of Subject-Level Drift Rates on Standard Trials. Histogram showing the distribution of subject-specific drift rate estimates (deviations from group mean) for Standard trials. The distribution shows substantial heterogeneity (SD = 0.65, range: -3.08 to -0.21), with most subjects showing strong negative drift (|v| ≥ 1.0) but a small subset (4.5%) showing weak drift (|v| < 0.5). This heterogeneity explains why the analytical formula (using group means) under-predicts error rates compared to PPC (which respects individual differences), consistent with Jensen's Inequality in hierarchical models."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("sanity_check3_subject_heterogeneity.png"))
+```
+
+## S4. Individual Differences and Parameter Relationships
+
+```{r}
+#| label: fig-subject-parameter-distribution
+#| fig-cap: "Subject-Level Parameter Distribution. Violin plots showing the distribution of subject-level random effects (deviations from group mean) for each DDM parameter. The boxplots within each violin show the median and interquartile range. Zero (dashed line) represents the group mean. This visualization highlights the substantial individual variability in decision-making parameters across our sample of 67 older adults."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("fig_subject_parameter_distribution.pdf"))
+```
+
+```{r}
+#| label: fig-parameter-correlation
+#| fig-cap: "Subject-Level Parameter Correlation: Drift Intercept vs. Bias Intercept. Scatter plot showing the relationship between subject-level drift intercept and bias intercept estimates. Each point represents one subject (n = 67). The correlation is r = -0.205, indicating a weak negative relationship: subjects with stronger negative drift (toward 'Same') tend to have slightly lower bias (closer to 0.5, less bias toward 'Different'). The regression line with 95% confidence interval (shaded ribbon) shows the trend. This pattern suggests that participants who are more sensitive to stimulus identity (stronger negative drift) may also adopt more neutral starting points, potentially reflecting a more conservative decision strategy."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("plot4_parameter_correlation.png"))
+```
+
+```{r}
+#| label: fig-brinley-plot
+#| fig-cap: "Brinley Plot: Reaction Time Relationships. Scatter plot showing mean RT for Hard trials (y-axis) versus Easy trials (x-axis) for each participant, colored by effort condition (blue = Low effort, crimson = High effort). Reaction times are displayed in milliseconds (ms). The dashed diagonal line (slope = 1) represents proportional slowing (equal RT increase in both conditions). The solid black regression line shows the actual relationship with 95% confidence interval (shaded ribbon), with slope > 1 indicating disproportionate slowing in Hard trials relative to Easy trials. Points above the diagonal indicate participants who slowed more in Hard relative to Easy trials. This visualization connects our DDM findings to the broader cognitive aging literature on generalized slowing [@brinley1965cognitive; @cerella1985; @salthouse1996]."
+#| fig-align: center
+#| out-width: "90%"
+knitr::include_graphics(fig_path("fig_brinley_plot.pdf"))
+```
+
+## S5. Conditional Accuracy Function (CAF)
 
 ```{r}
 #| label: fig-caf
@@ -3621,7 +3759,7 @@ This chapter presents a comprehensive hierarchical Wiener DDM analysis of a resp
 knitr::include_graphics(fig_path("fig_caf.pdf"))
 ```
 
-## S2. PPC Residual Heatmaps
+## S6. PPC Residual Heatmaps
 
 ```{r}
 #| label: fig-ppc-heatmaps
