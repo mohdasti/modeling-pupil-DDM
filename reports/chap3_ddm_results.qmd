@@ -18,7 +18,7 @@ format:
       - margin=1in
     fontsize: 11pt
     linestretch: 1.5
-    fig-pos: "H"
+    fig-pos: "htbp"  <!-- QC fix: Changed from "H" to "htbp" to allow flexible float placement and reduce blank pages -->
     include-in-header:
       text: |
         \usepackage{pdflscape}
@@ -1107,7 +1107,7 @@ Sample demographics and trial counts are shown in @tbl-demographics and @tbl-tri
 ```{r}
 #| label: tbl-demographics
 #| tbl-cap: "Sample Demographics"
-#| tbl-pos: "H"
+#| tbl-pos: "htbp"
 # Compute demographics from available data
 if (!is.null(behavioral_data)) {
   # Try to extract subject-level demographics
@@ -1233,7 +1233,7 @@ if (!is.null(demographics) && "age" %in% names(demographics)) {
 ```{r}
 #| label: tbl-trial-counts
 #| tbl-cap: "Trial Counts by Condition"
-#| tbl-pos: "H"
+#| tbl-pos: "htbp"
 # Compute trial counts by condition
 if (!is.null(behavioral_data)) {
   # Standardize column names
@@ -1373,7 +1373,7 @@ Accuracy descriptives are shown in @tbl-accuracy-by-condition.
 ```{r}
 #| label: tbl-accuracy-by-condition
 #| tbl-cap: "Accuracy by Condition (Subject-Level Means)"
-#| tbl-pos: "H"
+#| tbl-pos: "htbp"
 # Compute accuracy by condition
 if (!is.null(behavioral_data)) {
   # Standardize column names for accuracy
@@ -1538,7 +1538,7 @@ Overall accuracy summary is shown in @tbl-overall-accuracy.
 ```{r}
 #| label: tbl-overall-accuracy
 #| tbl-cap: "Overall Accuracy Summary"
-#| tbl-pos: "H"
+#| tbl-pos: "htbp"
 # Overall accuracy across all conditions
 if (!is.null(behavioral_data) && !is.null(acc_col)) {
   subj_col <- if ("subject_id" %in% names(behavioral_data)) "subject_id" else if ("sub" %in% names(behavioral_data)) "sub" else NULL
@@ -1612,7 +1612,7 @@ Reaction time descriptives are shown in @tbl-global-rt and @tbl-rt-by-condition.
 ```{r}
 #| label: tbl-global-rt
 #| tbl-cap: "Global RT Characteristics (All Trials)"
-#| tbl-pos: "H"
+#| tbl-pos: "htbp"
 # Compute RT descriptives
 if (!is.null(behavioral_data)) {
   # Standardize RT column name
@@ -1733,7 +1733,7 @@ if (!is.null(behavioral_data)) {
 ```{r}
 #| label: tbl-rt-by-condition
 #| tbl-cap: "RT by Condition (Subject-Level Medians)"
-#| tbl-pos: "H"
+#| tbl-pos: "htbp"
 # Condition-wise RT table with row grouping
 if (!is.null(behavioral_data) && !is.null(rt_col) && !is.null(task_col) && !is.null(diff_col) && !is.null(effort_col) && exists("rt_by_condition")) {
   rt_table_data <- rt_by_condition %>%
@@ -1905,7 +1905,7 @@ Pupillometry data quality metrics are shown in @tbl-pupil-quality.
 ```{r}
 #| label: tbl-pupil-quality
 #| tbl-cap: "Pupillometry Data Quality Summary"
-#| tbl-pos: "H"
+#| tbl-pos: "htbp"
 # Compute pupil data quality metrics
 if (!is.null(pupil_data)) {
   # Compute quality metrics
@@ -2012,7 +2012,7 @@ Baseline pupil diameter by condition is shown in @tbl-baseline-pupil.
 ```{r}
 #| label: tbl-baseline-pupil
 #| tbl-cap: "Baseline Pupil Diameter by Condition"
-#| tbl-pos: "H"
+#| tbl-pos: "htbp"
 # Compute baseline pupil diameter by task and effort
 if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data)) {
   baseline_pupil_summary <- pupil_data %>%
@@ -2120,7 +2120,7 @@ Task-evoked pupil response (TEPR) by condition is shown in @tbl-tepr, and @fig-t
 ```{r}
 #| label: tbl-tepr
 #| tbl-cap: "Task-Evoked Pupil Response (TEPR) by Condition"
-#| tbl-pos: "H"
+#| tbl-pos: "htbp"
 # Compute TEPR (cognitive AUC) by task, difficulty, and effort
 if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data) && "difficulty_level" %in% names(pupil_data)) {
   tepr_summary <- pupil_data %>%
@@ -2924,7 +2924,7 @@ if (!is.null(param_natural)) {
 ```{r}
 #| label: tbl-contrasts
 #| tbl-cap: "Posterior Contrasts (Directional Probabilities)"
-#| tbl-pos: "H"
+#| tbl-pos: "htbp"
 if (!is.null(contrasts_table)) {
   # Handle duplicate column names - CSV may have both q05/q95 and q2.5/q97.5
   # Drop q05/q95 if q2.5/q97.5 exist to avoid duplicates
@@ -3159,9 +3159,9 @@ if (!is.null(contrasts_table)) {
 **Key contrasts interpreted**:
 
 -   **Easy vs. Hard on drift (v)**: Strong positive effect in both tasks (P(Δ\>0) \> 0.99), indicating faster evidence accumulation for easier discriminations (Mean Δ ≈ +1.50 units/s).
--   **Easy vs. Hard on boundary (a)**: Negative effect (Mean Δ ≈ -0.04 on log scale, or \~4% reduction), consistent with reduced caution.
+-   **Easy vs. Hard on boundary (a)**: Negative effect (Mean Δ ≈ -0.04 on log scale, or approximately 4% reduction), consistent with reduced caution.
 -   **Task differences**: VDT shows systematically different parameter values than ADT, supporting task-specific processing.
--   **Effort on drift and t₀**: High effort shows small but credible effects on information accumulation and motor execution time (t₀ increase of \~0.03 log-units or \~7.5 ms).
+-   **Effort on drift and t₀**: High effort shows small but credible effects on information accumulation and motor execution time (t₀ increase of approximately 0.03 log-units or approximately 7.5 ms).
 
 ### Bias Estimates (Standard-Only Model)
 
@@ -3275,12 +3275,13 @@ The hierarchical structure reveals substantial individual differences in all DDM
 
 ```{r}
 #| label: fig-drift-rate-difficulty
-#| fig-cap: "Drift Rate (v) Across Difficulty Levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard (Δ=0), Hard (Low Signal), and Easy (High Signal) trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift (v ≈ -1.23), indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials also show negative drift (v ≈ -0.64), indicating weak evidence for difference that is insufficient to overcome the tendency toward 'Same', explaining the below-chance accuracy (~30%). Easy trials show positive drift (v ≈ +0.90), enabling accurate discrimination. This pattern demonstrates the dramatic impact of stimulus discriminability on evidence accumulation."
+#| fig-cap: "Drift Rate (v) Across Difficulty Levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard (Δ=0), Hard (Low Signal), and Easy (High Signal) trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift (v ≈ -1.23), indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials also show negative drift (v ≈ -0.64), indicating weak evidence for difference that is insufficient to overcome the tendency toward 'Same', explaining the below-chance accuracy (approximately 30%). Easy trials show positive drift (v ≈ +0.90), enabling accurate discrimination. This pattern demonstrates the dramatic impact of stimulus discriminability on evidence accumulation."
+<!-- QC fix: Replaced ~30% with "approximately 30%" to prevent LaTeX caption artifact -->
 #| fig-align: center
 #| out-width: "90%"
 #| results: asis
 if (knitr::is_latex_output()) {
-  caption_text <- "Drift Rate (v) Across Difficulty Levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard (Δ=0), Hard (Low Signal), and Easy (High Signal) trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift (v ≈ -1.23), indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials also show negative drift (v ≈ -0.64), indicating weak evidence for difference that is insufficient to overcome the tendency toward 'Same', explaining the below-chance accuracy (~30%). Easy trials show positive drift (v ≈ +0.90), enabling accurate discrimination. This pattern demonstrates the dramatic impact of stimulus discriminability on evidence accumulation."
+  caption_text <- "Drift Rate (v) Across Difficulty Levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard (Δ=0), Hard (Low Signal), and Easy (High Signal) trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift (v ≈ -1.23), indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials also show negative drift (v ≈ -0.64), indicating weak evidence for difference that is insufficient to overcome the tendency toward 'Same', explaining the below-chance accuracy (approximately 30%). Easy trials show positive drift (v ≈ +0.90), enabling accurate discrimination. This pattern demonstrates the dramatic impact of stimulus discriminability on evidence accumulation."
   caption_text_escaped <- latex_escape(caption_text)
   knitr::asis_output(paste0(
     "\\begin{landscape}\n",
@@ -3294,7 +3295,7 @@ if (knitr::is_latex_output()) {
   ))
 } else {
   include_graphics_safe(fig_path("plot1_drift_rate_by_difficulty.png"))
-  cat("\n\n*Figure: Drift Rate (v) Across Difficulty Levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard (Δ=0), Hard (Low Signal), and Easy (High Signal) trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift (v ≈ -1.23), indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials also show negative drift (v ≈ -0.64), indicating weak evidence for difference that is insufficient to overcome the tendency toward 'Same', explaining the below-chance accuracy (~30%). Easy trials show positive drift (v ≈ +0.90), enabling accurate discrimination. This pattern demonstrates the dramatic impact of stimulus discriminability on evidence accumulation.*\n")
+  cat("\n\n*Figure: Drift Rate (v) Across Difficulty Levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard (Δ=0), Hard (Low Signal), and Easy (High Signal) trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift (v ≈ -1.23), indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials also show negative drift (v ≈ -0.64), indicating weak evidence for difference that is insufficient to overcome the tendency toward 'Same', explaining the below-chance accuracy (approximately 30%). Easy trials show positive drift (v ≈ +0.90), enabling accurate discrimination. This pattern demonstrates the dramatic impact of stimulus discriminability on evidence accumulation.*\n")
 }
 ```
 
@@ -3855,7 +3856,7 @@ if (!is.null(sensitivity_summary)) {
 }
 ```
 
-**Results**: Most key parameters showed robust estimates when excluding sub-chance participants. For Model3_Difficulty and Model4_Additive, the drift intercept and boundary separation showed delta CIs that included zero, indicating no meaningful change. The Easy difficulty effect was also robust. The Hard difficulty effect showed a small shift (Δ ≈ -0.10, delta CI did not include zero), but this represents a small change in magnitude (\~6.5% of the baseline estimate) and does not alter the substantive conclusion that Hard trials show negative drift relative to Standard. **Conclusion**: The inclusion of sub-chance participants did not meaningfully alter main effects or substantive conclusions, supporting our decision to retain all 67 participants to maximize sample size and leverage hierarchical modeling's ability to stabilize estimates through shrinkage.
+**Results**: Most key parameters showed robust estimates when excluding sub-chance participants. For Model3_Difficulty and Model4_Additive, the drift intercept and boundary separation showed delta CIs that included zero, indicating no meaningful change. The Easy difficulty effect was also robust. The Hard difficulty effect showed a small shift (Δ ≈ -0.10, delta CI did not include zero), but this represents a small change in magnitude (approximately 6.5% of the baseline estimate) and does not alter the substantive conclusion that Hard trials show negative drift relative to Standard. **Conclusion**: The inclusion of sub-chance participants did not meaningfully alter main effects or substantive conclusions, supporting our decision to retain all 67 participants to maximize sample size and leverage hierarchical modeling's ability to stabilize estimates through shrinkage.
 
 # References {.unnumbered}
 
