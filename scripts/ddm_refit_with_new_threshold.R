@@ -3067,65 +3067,84 @@ if (!SKIP_STANDARD_ONLY) {
               # =========================================================================
               # COMPUTE CONTRASTS FROM POSTERIOR DRAWS (not from means!)
               # =========================================================================
-              # Task contrast: VDT - ADT (at each effort level)
-              task_contrast_low_draws <- z_vdt_low_draws - z_adt_low_draws
-              task_contrast_high_draws <- z_vdt_high_draws - z_adt_high_draws
+              # Validate draws before computing contrasts
+              n_draws_valid <- length(z_adt_low_draws)
+              if (n_draws_valid == 0 || any(is.na(z_adt_low_draws)) || any(is.na(z_adt_high_draws)) ||
+                  any(is.na(z_vdt_low_draws)) || any(is.na(z_vdt_high_draws))) {
+                log_error(paste("Invalid posterior draws for contrasts at", rt_def, thresh))
+                log_error(paste("  Draw counts:", length(z_adt_low_draws), length(z_adt_high_draws), 
+                               length(z_vdt_low_draws), length(z_vdt_high_draws)))
+                log_error("Skipping contrast computation for this model")
+                contrast_rows <- list()  # Empty list, will be skipped
+              } else {
+                # Task contrast: VDT - ADT (averaged across effort levels)
+                task_contrast_draws <- (z_vdt_low_draws + z_vdt_high_draws) / 2 - 
+                                        (z_adt_low_draws + z_adt_high_draws) / 2
+                
+                # Effort contrast: high - low (averaged across task levels)
+                effort_contrast_draws <- (z_adt_high_draws + z_vdt_high_draws) / 2 - 
+                                         (z_adt_low_draws + z_vdt_low_draws) / 2
+                
+                # Validate contrast draws
+                if (any(is.na(task_contrast_draws)) || any(is.na(effort_contrast_draws))) {
+                  log_error(paste("NA values in contrast draws at", rt_def, thresh))
+                  log_error("Skipping contrast computation for this model")
+                  contrast_rows <- list()
+                } else {
+                  # Summarize contrasts (using same format as post-processing script)
+                  contrast_rows <- list(
+                    # Task contrast (collapsed across effort)
+                    data.frame(
+                      rt_def = rt_def,
+                      threshold = thresh,
+                      contrast = "Visual_Auditory",
+                      z_diff_mean = mean(task_contrast_draws, na.rm = TRUE),
+                      z_diff_median = median(task_contrast_draws, na.rm = TRUE),
+                      z_diff_q2.5 = quantile(task_contrast_draws, 0.025, na.rm = TRUE),
+                      z_diff_q97.5 = quantile(task_contrast_draws, 0.975, na.rm = TRUE),
+                      p_gt0 = mean(task_contrast_draws > 0, na.rm = TRUE),
+                      stringsAsFactors = FALSE
+                    ),
+                    # Effort contrast (collapsed across task)
+                    data.frame(
+                      rt_def = rt_def,
+                      threshold = thresh,
+                      contrast = "Low_High",
+                      z_diff_mean = mean(effort_contrast_draws, na.rm = TRUE),
+                      z_diff_median = median(effort_contrast_draws, na.rm = TRUE),
+                      z_diff_q2.5 = quantile(effort_contrast_draws, 0.025, na.rm = TRUE),
+                      z_diff_q97.5 = quantile(effort_contrast_draws, 0.975, na.rm = TRUE),
+                      p_gt0 = mean(effort_contrast_draws > 0, na.rm = TRUE),
+                      stringsAsFactors = FALSE
+                    )
+                  )
+                  
+                  # Validate quantiles are not NA/NaN
+                  for (i in seq_along(contrast_rows)) {
+                    if (is.na(contrast_rows[[i]]$z_diff_q2.5) || is.na(contrast_rows[[i]]$z_diff_q97.5) ||
+                        is.nan(contrast_rows[[i]]$z_diff_q2.5) || is.nan(contrast_rows[[i]]$z_diff_q97.5)) {
+                      log_error(paste("NA/NaN quantiles computed for contrast", contrast_rows[[i]]$contrast, 
+                                     "at", rt_def, thresh))
+                      log_error(paste("  Task contrast draws: n=", length(task_contrast_draws),
+                                     ", mean=", mean(task_contrast_draws, na.rm = TRUE)))
+                      log_error(paste("  Effort contrast draws: n=", length(effort_contrast_draws),
+                                     ", mean=", mean(effort_contrast_draws, na.rm = TRUE)))
+                      contrast_rows <- list()  # Clear invalid contrasts
+                      break
+                    }
+                  }
+                }
+              }
               
-              # Effort contrast: high - low (at each task level)
-              effort_contrast_adt_draws <- z_adt_high_draws - z_adt_low_draws
-              effort_contrast_vdt_draws <- z_vdt_high_draws - z_vdt_low_draws
-              
-              # Summarize contrasts
-              contrast_rows <- list(
-                # Task contrasts
-                data.frame(
-                  rt_def = rt_def,
-                  threshold = thresh,
-                  contrast_name = "task: VDT-ADT | low",
-                  diff_mean = mean(task_contrast_low_draws, na.rm = TRUE),
-                  diff_median = median(task_contrast_low_draws, na.rm = TRUE),
-                  diff_q2.5 = quantile(task_contrast_low_draws, 0.025, na.rm = TRUE),
-                  diff_q97.5 = quantile(task_contrast_low_draws, 0.975, na.rm = TRUE),
-                  stringsAsFactors = FALSE
-                ),
-                data.frame(
-                  rt_def = rt_def,
-                  threshold = thresh,
-                  contrast_name = "task: VDT-ADT | high",
-                  diff_mean = mean(task_contrast_high_draws, na.rm = TRUE),
-                  diff_median = median(task_contrast_high_draws, na.rm = TRUE),
-                  diff_q2.5 = quantile(task_contrast_high_draws, 0.025, na.rm = TRUE),
-                  diff_q97.5 = quantile(task_contrast_high_draws, 0.975, na.rm = TRUE),
-                  stringsAsFactors = FALSE
-                ),
-                # Effort contrasts
-                data.frame(
-                  rt_def = rt_def,
-                  threshold = thresh,
-                  contrast_name = "effort: high-low | ADT",
-                  diff_mean = mean(effort_contrast_adt_draws, na.rm = TRUE),
-                  diff_median = median(effort_contrast_adt_draws, na.rm = TRUE),
-                  diff_q2.5 = quantile(effort_contrast_adt_draws, 0.025, na.rm = TRUE),
-                  diff_q97.5 = quantile(effort_contrast_adt_draws, 0.975, na.rm = TRUE),
-                  stringsAsFactors = FALSE
-                ),
-                data.frame(
-                  rt_def = rt_def,
-                  threshold = thresh,
-                  contrast_name = "effort: high-low | VDT",
-                  diff_mean = mean(effort_contrast_vdt_draws, na.rm = TRUE),
-                  diff_median = median(effort_contrast_vdt_draws, na.rm = TRUE),
-                  diff_q2.5 = quantile(effort_contrast_vdt_draws, 0.025, na.rm = TRUE),
-                  diff_q97.5 = quantile(effort_contrast_vdt_draws, 0.975, na.rm = TRUE),
-                  stringsAsFactors = FALSE
-                )
-              )
-              
-              # Store contrasts for this run (in outer-scope list)
-              contrast_key <- paste0(rt_def, "__", formatC(thresh, format="f", digits=2))
-              standard_contrast_list[[contrast_key]] <- bind_rows(contrast_rows)
-              
-              log_info("Computed condition-level bias predictions and contrasts from posterior draws")
+              # Store contrasts for this run (in outer-scope list) only if valid
+              if (length(contrast_rows) > 0) {
+                contrast_key <- paste0(rt_def, "__", formatC(thresh, format="f", digits=2))
+                standard_contrast_list[[contrast_key]] <- bind_rows(contrast_rows)
+                log_info("Computed condition-level bias predictions and contrasts from posterior draws")
+                log_info(paste("  Contrasts:", paste(sapply(contrast_rows, function(x) x$contrast), collapse = ", ")))
+              } else {
+                log_warn(paste("No valid contrasts computed for", rt_def, "at threshold", thresh))
+              }
             } else {
               log_warn(paste("z_draws_matrix has unexpected shape:", 
                             ifelse(is.matrix(z_draws_matrix), 
@@ -3418,24 +3437,45 @@ if (!SKIP_STANDARD_ONLY) {
           write_csv(contrasts_df, contrasts_file)
           log_info(paste("Saved bias contrasts:", contrasts_file))
           log_info(paste("  Rows:", nrow(contrasts_df), "| Expected:", 
-                        length(standard_contrast_list) * 4, "contrasts"))
+                        length(standard_contrast_list) * 2, "contrasts (2 per model: Visual_Auditory, Low_High)"))
           
           # Validation: check for NA quantiles and ensure draws were used
-          na_quantiles <- sum(is.na(contrasts_df$diff_q2.5)) + sum(is.na(contrasts_df$diff_q97.5))
+          if (!"z_diff_q2.5" %in% names(contrasts_df) || !"z_diff_q97.5" %in% names(contrasts_df)) {
+            log_error("VALIDATION FAILED: standard_only_bias_contrasts.csv missing required quantile columns")
+            log_error(paste("Expected columns: z_diff_q2.5, z_diff_q97.5"))
+            log_error(paste("Found columns:", paste(names(contrasts_df), collapse = ", ")))
+            stop("Standard-only contrast export validation failed: missing columns")
+          }
+          
+          na_quantiles <- sum(is.na(contrasts_df$z_diff_q2.5)) + sum(is.na(contrasts_df$z_diff_q97.5))
           if (na_quantiles > 0) {
             log_error(paste("VALIDATION FAILED: standard_only_bias_contrasts.csv has", 
                            na_quantiles, "NA quantile values"))
             log_error("This indicates contrasts were not computed from posterior draws correctly")
             log_error("Contrasts must be computed from posterior draws, not from condition-level means")
+            # Show which rows have NA
+            na_rows <- contrasts_df[is.na(contrasts_df$z_diff_q2.5) | is.na(contrasts_df$z_diff_q97.5), ]
+            log_error(paste("Rows with NA quantiles:", nrow(na_rows)))
+            for (i in 1:min(5, nrow(na_rows))) {
+              log_error(paste("  Row", i, ":", paste(na_rows[i, c("rt_def", "threshold", "contrast")], collapse = ", ")))
+            }
             stop("Standard-only contrast export validation failed")
           }
           
           # Additional validation: check that quantiles are reasonable
-          invalid_quantiles <- sum(contrasts_df$diff_q2.5 > contrasts_df$diff_q97.5, na.rm = TRUE)
+          invalid_quantiles <- sum(contrasts_df$z_diff_q2.5 > contrasts_df$z_diff_q97.5, na.rm = TRUE)
           if (invalid_quantiles > 0) {
             log_error(paste("VALIDATION FAILED: standard_only_bias_contrasts.csv has", 
                            invalid_quantiles, "rows where q2.5 > q97.5"))
             stop("Standard-only contrast export validation failed: invalid quantile order")
+          }
+          
+          # Check for NaN values (should have been converted to NA, but double-check)
+          nan_check <- sum(is.nan(contrasts_df$z_diff_q2.5)) + sum(is.nan(contrasts_df$z_diff_q97.5))
+          if (nan_check > 0) {
+            log_error(paste("VALIDATION FAILED: standard_only_bias_contrasts.csv has", 
+                           nan_check, "NaN quantile values"))
+            stop("Standard-only contrast export validation failed: NaN values present")
           }
           
           log_info("✓ Contrast validation passed: all quantiles computed from posterior draws")
