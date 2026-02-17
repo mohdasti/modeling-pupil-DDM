@@ -5253,57 +5253,6 @@ PPC residual heatmaps visualize model fit across the 12 experimental cells (Task
 include_graphics_safe(fig_path("fig_ppc_heatmaps.pdf"))
 ```
 
-### Heatmap Detail Tables
-
-@tbl-ppc-heatmap-wide provides numeric values for the KS statistic and QP RMSE shown in the heatmap visualizations. Rows correspond to the 12 experimental cells. Values exceeding pre-declared thresholds (KS $>$ 0.15, QP RMSE $>$ 0.09 s) are flagged in the main PPC gate summary (see @tbl-convergence-ppc-gate-appendix).
-
-```{r}
-#| label: tbl-ppc-heatmap-wide
-#| tbl-cap: "PPC Residual Heatmap (Wide Format)"
-if (!is.null(heatmap_wide)) {
-  # Function to clean factor level values
-  clean_factor_levels <- function(df) {
-    df <- df %>%
-      mutate(
-        # Clean task values
-        task = case_when(
-          task == "VDT" ~ "VDT",
-          task == "ADT" ~ "ADT",
-          TRUE ~ as.character(task)
-        ),
-        # Clean effort condition values
-        effort_condition = case_when(
-          effort_condition == "Low_Force_5pct" ~ "Low",
-          effort_condition == "High_Force_40pct" ~ "High",
-          effort_condition == "Low" ~ "Low",
-          effort_condition == "High" ~ "High",
-          TRUE ~ as.character(effort_condition)
-        ),
-        # Clean difficulty level values
-        difficulty_level = case_when(
-          difficulty_level == "Standard" ~ "Standard",
-          difficulty_level == "Easy" ~ "Easy",
-          difficulty_level == "Hard" ~ "Hard",
-          TRUE ~ as.character(difficulty_level)
-        )
-      )
-    return(df)
-  }
-  
-  heatmap_wide %>%
-    clean_factor_levels() %>%
-    mutate(across(where(is.numeric), ~round(.x, 3))) %>%
-    gt() %>%
-    cols_label(
-      task = "Task",
-      effort_condition = "Effort",
-      difficulty_level = "Difficulty",
-      ks_mean_max = "KS Statistic",
-      qp_rmse_max = "QP RMSE"
-    )
-}
-```
-
 ## A5. Sensitivity Analyses
 
 ### A5.1 Exclusion of Sub-Chance Participants
