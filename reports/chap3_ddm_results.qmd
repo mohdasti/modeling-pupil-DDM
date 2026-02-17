@@ -4414,37 +4414,6 @@ include_graphics_safe(fig_path("fig_ndt_prior_posterior.pdf"))
 ```
 
 ```{r}
-#| label: fig-loo
-#| fig-cap: "Model Comparison: Leave-One-Out Cross-Validation. ELPD (Expected Log-Predictive Density) with 95% SE bars by model. The best model (highest ELPD) is indicated with a dashed red line. ΔELPD values (difference from best) are annotated above each point. Larger ELPD indicates better out-of-sample predictive accuracy."
-#| fig-align: center
-#| out-width: "75%"
-# Inline figure from run_dir loo_summary to ensure consistency with tables
-loo_elpd_data <- loo_summary %>%
-  filter(threshold == PRIMARY_THR) %>%
-  mutate(
-    elpd = -looic / 2,
-    elpd_se = looic_se / 2,
-    model_rt = paste0(model, " (", ifelse(rt_type == "cue_locked", "cue", "probe"), ")")
-  )
-best_elpd <- max(loo_elpd_data$elpd)
-loo_elpd_data <- loo_elpd_data %>%
-  mutate(delta_elpd = elpd - best_elpd) %>%
-  arrange(elpd)
-
-elpd_range <- max(diff(range(loo_elpd_data$elpd)), 500)
-ggplot(loo_elpd_data, aes(x = reorder(model_rt, elpd), y = elpd)) +
-  geom_point(size = 2.5) +
-  geom_errorbar(aes(ymin = elpd - 1.96 * elpd_se, ymax = elpd + 1.96 * elpd_se), width = 0.15, linewidth = 0.8) +
-  geom_hline(yintercept = best_elpd, linetype = "dashed", color = "red", alpha = 0.6) +
-  geom_text(aes(y = elpd + 0.05 * elpd_range, label = sprintf("D=%.0f", delta_elpd)), hjust = 0.5, vjust = -0.55, size = 3, color = "gray40") +
-  coord_flip() +
-  labs(x = NULL, y = "ELPD (higher is better)", title = "Model Comparison: Leave-One-Out Cross-Validation",
-       subtitle = sprintf("Best model: %s (Delta ELPD = 0)", loo_elpd_data$model_rt[which.max(loo_elpd_data$elpd)])) +
-  theme_minimal(base_size = 11) +
-  theme(plot.title = element_text(size = 12, face = "bold"), plot.subtitle = element_text(size = 10, color = "gray50"))
-```
-
-```{r}
 #| label: fig-loo-comparison
 #| fig-cap: "LOO model comparison for baseline vs. additive models across RT definitions."
 #| fig-align: center
