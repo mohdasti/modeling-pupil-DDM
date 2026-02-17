@@ -3833,7 +3833,137 @@ if (!is.null(pupil_data)) {
 
 ### Task modality effects
 
-Sensitivity analyses confirmed that the Effort → Drift effect was robust to Task inclusion (Appendix~A5.3). Although auditory and visual tasks differed in absolute drift rates (Task main effect $\beta \approx 0.07$, 95% CrI [0.02, 0.12]), the Effort × Task interaction was not significant ($\beta \approx 0.03$, 95% CrI [−0.03, 0.09], includes zero), indicating that high effort reduced drift rate similarly in both modalities. Full results including forest plots and parameter tables are reported in Appendix~A5.3, Table 23.
+Sensitivity analyses confirmed that the Effort → Drift effect was robust to Task inclusion (Appendix~A5.3). Although auditory and visual tasks differed in absolute drift rates (Task main effect $\beta \approx 0.07$, 95% CrI [0.02, 0.12]), the Effort × Task interaction was not significant ($\beta \approx 0.03$, 95% CrI [−0.03, 0.09], includes zero), indicating that high effort reduced drift rate similarly in both modalities.
+
+@fig-drift-by-condition shows drift rate estimates separately for ADT and VDT across all difficulty and effort conditions. The difficulty gradient (Standard $<$ Hard $<$ Easy) is consistent across both modalities, with VDT showing slightly lower absolute drift rates than ADT. Critically, the effort effect (reduction in drift under high effort) manifests similarly in both tasks, confirming that the cognitive-motor interference effect generalizes across sensory modalities.
+
+```{r}
+#| label: fig-drift-by-condition
+#| fig-cap: "Drift rate ($v$) by difficulty and effort, separately for ADT and VDT. Points show posterior means with 95% credible intervals. The difficulty gradient (Standard $<$ Hard $<$ Easy) is consistent across tasks. High effort reduces drift rate in both modalities (no significant Effort $\\times$ Task interaction), confirming that cognitive-motor interference generalizes across sensory domains."
+#| fig-align: center
+#| out-width: "90%"
+
+# Prepare data from predicted_parameters_by_condition.csv
+# Handle both possible column naming conventions
+drift_plot_data <- pred_params %>%
+  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
+  mutate(
+    difficulty = factor(difficulty, levels = c("Standard", "Easy", "Hard")),
+    effort = factor(effort, levels = c("Low", "High")),
+    task = factor(task, levels = c("ADT", "VDT"))
+  )
+
+# Map column names (handle both drift_estimate/drift_median and drift_low/drift_q2.5)
+if ("drift_estimate" %in% names(drift_plot_data)) {
+  drift_plot_data <- drift_plot_data %>%
+    mutate(
+      drift_val = drift_estimate,
+      drift_lower = if ("drift_low" %in% names(.)) drift_low else drift_q2.5,
+      drift_upper = if ("drift_high" %in% names(.)) drift_high else drift_q97.5
+    )
+} else {
+  drift_plot_data <- drift_plot_data %>%
+    mutate(
+      drift_val = drift_median,
+      drift_lower = drift_q2.5,
+      drift_upper = drift_q97.5
+    )
+}
+
+p_drift_cond <- ggplot(drift_plot_data, aes(x = difficulty, y = drift_val, color = effort, group = effort)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50", alpha = 0.5) +
+  geom_pointrange(aes(ymin = drift_lower, ymax = drift_upper), 
+                  position = position_dodge(width = 0.3), size = 0.6) +
+  geom_line(position = position_dodge(width = 0.3), alpha = 0.5, linewidth = 0.5) +
+  facet_wrap(~ task, labeller = labeller(task = c("ADT" = "ADT", "VDT" = "VDT"))) +
+  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
+  labs(
+    x = "Difficulty",
+    y = "Drift Rate (v)",
+    title = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold"),
+    legend.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    strip.background = element_rect(fill = "grey95", color = NA)
+  ) +
+  scale_x_discrete(drop = FALSE)
+
+print(p_drift_cond)
+```
+
+Similarly, @fig-boundary-by-condition shows boundary separation across conditions and tasks. Difficulty strongly modulates caution (Easy $<$ Standard $<$ Hard) in both tasks, with minimal effort effects. The lack of an effort effect on boundary separation (discussed in Section 3.5.2) is consistent across both ADT and VDT, suggesting that older adults do not strategically adjust response caution under increased physical effort, regardless of sensory modality.
+
+```{r}
+#| label: fig-boundary-by-condition
+#| fig-cap: "Boundary separation ($a$) by difficulty and effort, separately for ADT and VDT. Points show posterior means with 95% credible intervals. Difficulty strongly modulates caution (Easy $<$ Standard $<$ Hard) in both tasks, but effort has minimal effect on boundary separation, indicating that older adults do not adjust response caution under physical effort."
+#| fig-align: center
+#| out-width: "90%"
+
+# Prepare data for boundary plot
+# Handle both possible column naming conventions
+boundary_plot_data <- pred_params %>%
+  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
+  mutate(
+    difficulty = factor(difficulty, levels = c("Standard", "Easy", "Hard")),
+    effort = factor(effort, levels = c("Low", "High")),
+    task = factor(task, levels = c("ADT", "VDT"))
+  )
+
+# Map column names (handle both bs_estimate/a_median and bs_low/a_q2.5)
+if ("bs_estimate" %in% names(boundary_plot_data)) {
+  boundary_plot_data <- boundary_plot_data %>%
+    mutate(
+      bs_val = bs_estimate,
+      bs_lower = if ("bs_low" %in% names(.)) bs_low else a_q2.5,
+      bs_upper = if ("bs_high" %in% names(.)) bs_high else a_q97.5
+    )
+} else if ("a_estimate" %in% names(boundary_plot_data)) {
+  boundary_plot_data <- boundary_plot_data %>%
+    mutate(
+      bs_val = a_estimate,
+      bs_lower = if ("a_low" %in% names(.)) a_low else a_q2.5,
+      bs_upper = if ("a_high" %in% names(.)) a_high else a_q97.5
+    )
+} else {
+  boundary_plot_data <- boundary_plot_data %>%
+    mutate(
+      bs_val = a_median,
+      bs_lower = a_q2.5,
+      bs_upper = a_q97.5
+    )
+}
+
+p_boundary_cond <- ggplot(boundary_plot_data, aes(x = difficulty, y = bs_val, color = effort, group = effort)) +
+  geom_pointrange(aes(ymin = bs_lower, ymax = bs_upper), 
+                  position = position_dodge(width = 0.3), size = 0.6) +
+  geom_line(position = position_dodge(width = 0.3), alpha = 0.5, linewidth = 0.5) +
+  facet_wrap(~ task, labeller = labeller(task = c("ADT" = "ADT", "VDT" = "VDT"))) +
+  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
+  labs(
+    x = "Difficulty",
+    y = "Boundary Separation (a)",
+    title = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold"),
+    legend.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    strip.background = element_rect(fill = "grey95", color = NA)
+  ) +
+  scale_x_discrete(drop = FALSE)
+
+print(p_boundary_cond)
+```
+
+Full statistical results including parameter estimates and contrasts are reported in Appendix~A5.3, Table 23.
 
 ### Key Contrasts
 
@@ -4649,134 +4779,6 @@ include_graphics_safe(fig_path("fig_brinley_plot.pdf"))
 } else {
   include_graphics_safe(fig_path("fig_brinley_plot.pdf"))
 }
-```
-
-### Drift and boundary by condition (faceted by task)
-
-The following figures show how drift rate ($v$) and boundary separation ($a$) vary across experimental conditions, separately for ADT and VDT tasks. These task-specific plots complement the main Results figures by showing the full pattern of means and credible intervals for each Task × Difficulty × Effort combination. Consistent with the main text, drift rate shows large difficulty effects (Easy $>$ Hard $>$ Standard) with minimal effort effects. Boundary separation shows modest difficulty effects (Hard $>$ Easy) and minimal effort modulation.
-
-```{r}
-#| label: fig-drift-by-condition
-#| fig-cap: "Drift rate ($v$) by condition. Points show posterior estimates with 95% credible intervals. X-axis shows difficulty level; facets separate by task, effort conditions are color-coded."
-#| fig-align: center
-#| out-width: "90%"
-
-# Prepare data from predicted_parameters_by_condition.csv
-# Handle both possible column naming conventions
-drift_plot_data <- pred_params %>%
-  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
-  mutate(
-    difficulty = factor(difficulty, levels = c("Standard", "Easy", "Hard")),
-    effort = factor(effort, levels = c("Low", "High")),
-    task = factor(task, levels = c("ADT", "VDT"))
-  )
-
-# Map column names (handle both drift_estimate/drift_median and drift_low/drift_q2.5)
-if ("drift_estimate" %in% names(drift_plot_data)) {
-  drift_plot_data <- drift_plot_data %>%
-    mutate(
-      drift_val = drift_estimate,
-      drift_lower = if ("drift_low" %in% names(.)) drift_low else drift_q2.5,
-      drift_upper = if ("drift_high" %in% names(.)) drift_high else drift_q97.5
-    )
-} else {
-  drift_plot_data <- drift_plot_data %>%
-    mutate(
-      drift_val = drift_median,
-      drift_lower = drift_q2.5,
-      drift_upper = drift_q97.5
-    )
-}
-
-p_drift_cond <- ggplot(drift_plot_data, aes(x = difficulty, y = drift_val, color = effort, group = effort)) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50", alpha = 0.5) +
-  geom_pointrange(aes(ymin = drift_lower, ymax = drift_upper), 
-                  position = position_dodge(width = 0.3), size = 0.6) +
-  geom_line(position = position_dodge(width = 0.3), alpha = 0.5, linewidth = 0.5) +
-  facet_wrap(~ task, labeller = labeller(task = c("ADT" = "ADT", "VDT" = "VDT"))) +
-  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
-  labs(
-    x = "Difficulty",
-    y = "Drift Rate (v)",
-    title = NULL
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    axis.title = element_text(face = "bold"),
-    strip.text = element_text(face = "bold"),
-    legend.title = element_text(face = "bold"),
-    panel.grid.minor = element_blank(),
-    legend.position = "bottom",
-    strip.background = element_rect(fill = "grey95", color = NA)
-  ) +
-  scale_x_discrete(drop = FALSE)
-
-print(p_drift_cond)
-```
-
-```{r}
-#| label: fig-boundary-by-condition
-#| fig-cap: "Boundary separation ($a$) by condition. Points show posterior estimates with 95% credible intervals. X-axis shows difficulty level; facets separate by task, effort conditions are color-coded."
-#| fig-align: center
-#| out-width: "90%"
-
-# Prepare data for boundary plot
-# Handle both possible column naming conventions
-boundary_plot_data <- pred_params %>%
-  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
-  mutate(
-    difficulty = factor(difficulty, levels = c("Standard", "Easy", "Hard")),
-    effort = factor(effort, levels = c("Low", "High")),
-    task = factor(task, levels = c("ADT", "VDT"))
-  )
-
-# Map column names (handle both bs_estimate/a_median and bs_low/a_q2.5)
-if ("bs_estimate" %in% names(boundary_plot_data)) {
-  boundary_plot_data <- boundary_plot_data %>%
-    mutate(
-      bs_val = bs_estimate,
-      bs_lower = if ("bs_low" %in% names(.)) bs_low else a_q2.5,
-      bs_upper = if ("bs_high" %in% names(.)) bs_high else a_q97.5
-    )
-} else if ("a_estimate" %in% names(boundary_plot_data)) {
-  boundary_plot_data <- boundary_plot_data %>%
-    mutate(
-      bs_val = a_estimate,
-      bs_lower = if ("a_low" %in% names(.)) a_low else a_q2.5,
-      bs_upper = if ("a_high" %in% names(.)) a_high else a_q97.5
-    )
-} else {
-  boundary_plot_data <- boundary_plot_data %>%
-    mutate(
-      bs_val = a_median,
-      bs_lower = a_q2.5,
-      bs_upper = a_q97.5
-    )
-}
-
-p_boundary_cond <- ggplot(boundary_plot_data, aes(x = difficulty, y = bs_val, color = effort, group = effort)) +
-  geom_pointrange(aes(ymin = bs_lower, ymax = bs_upper), 
-                  position = position_dodge(width = 0.3), size = 0.6) +
-  geom_line(position = position_dodge(width = 0.3), alpha = 0.5, linewidth = 0.5) +
-  facet_wrap(~ task, labeller = labeller(task = c("ADT" = "ADT", "VDT" = "VDT"))) +
-  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
-  labs(
-    x = "Difficulty",
-    y = "Boundary Separation (a)",
-    title = NULL
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    axis.title = element_text(face = "bold"),
-    strip.text = element_text(face = "bold"),
-    legend.title = element_text(face = "bold"),
-    panel.grid.minor = element_blank(),
-    legend.position = "bottom",
-    strip.background = element_rect(fill = "grey95", color = NA)
-  ) +
-  scale_x_discrete(drop = FALSE)
-
-print(p_boundary_cond)
 ```
 
 ### Posterior Contrasts (ROPE)
