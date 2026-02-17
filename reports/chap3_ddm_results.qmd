@@ -4148,13 +4148,13 @@ if (file.exists(pupil_drift_fig)) {
 
 ```{r}
 #| label: fig-drift-rate-difficulty
-#| fig-cap: "Drift rate ($v$) across difficulty levels for ADT and VDT. Forest plot showing posterior means with 95% credible intervals for Standard ($\\Delta=0$), Hard, and Easy trials, separately by task modality. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift (participants actively accumulate evidence toward 'Same' when stimuli are identical). Hard trials show weak negative drift. Easy trials show positive drift, enabling accurate discrimination. The difficulty gradient is consistent across both modalities."
+#| fig-cap: "Drift rate ($v$) across difficulty levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard ($\\Delta=0$), Hard (8–16 Hz offset), and Easy (32–64 Hz offset) trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift, indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials show negative drift, indicating weak evidence for difference. Easy trials show positive drift, enabling accurate discrimination."
 #| fig-align: center
 #| out-width: "90%"
-# Inline figure from run_dir pred_params - show task-specific drift rates
+# Inline figure from run_dir pred_params to ensure consistency with latest data
 drift_forest_data <- pred_params %>%
   filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
-  group_by(task, difficulty) %>%
+  group_by(difficulty) %>%
   summarise(
     drift_median = mean(drift_median),
     drift_q2.5 = mean(drift_q2.5),
@@ -4162,37 +4162,22 @@ drift_forest_data <- pred_params %>%
     .groups = "drop"
   ) %>%
   mutate(
-    task = factor(task, levels = c("ADT", "VDT")),
     difficulty = factor(difficulty, levels = c("Standard", "Hard", "Easy")),
     difficulty_label = case_when(
-      difficulty == "Standard" ~ "Standard ($\\Delta$=0)",
-      difficulty == "Hard" ~ "Hard",
-      difficulty == "Easy" ~ "Easy",
+      difficulty == "Standard" ~ "Standard (Delta=0)",
+      difficulty == "Hard" ~ "Hard (8-16 Hz)",
+      difficulty == "Easy" ~ "Easy (32-64 Hz)",
       TRUE ~ as.character(difficulty)
     )
   )
 
-p_drift_forest <- ggplot(drift_forest_data, aes(x = reorder(difficulty_label, drift_median), y = drift_median, color = task)) +
+p_drift_forest <- ggplot(drift_forest_data, aes(x = reorder(difficulty_label, drift_median), y = drift_median)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "grey50", alpha = 0.5) +
-  geom_pointrange(
-    aes(ymin = drift_q2.5, ymax = drift_q97.5),
-    position = position_dodge(width = 0.4),
-    size = 0.8,
-    linewidth = 0.8
-  ) +
-  scale_color_manual(
-    values = c("ADT" = "#1f78b4", "VDT" = "#DC143C"),
-    name = "Task Modality"
-  ) +
+  geom_pointrange(aes(ymin = drift_q2.5, ymax = drift_q97.5), size = 0.8, linewidth = 0.8) +
   coord_flip() +
   labs(x = NULL, y = "Drift Rate (v)") +
   theme_bw(base_size = 12) +
-  theme(
-    axis.title = element_text(face = "bold"),
-    panel.grid.minor = element_blank(),
-    legend.position = "bottom",
-    legend.title = element_text(face = "bold")
-  )
+  theme(axis.title = element_text(face = "bold"), panel.grid.minor = element_blank())
 
 print(p_drift_forest)
 ```
