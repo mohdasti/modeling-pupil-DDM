@@ -269,7 +269,7 @@ qa_subj       <- sread(file.path(p, "qa_subject_inclusion.csv"))
 qa_decision   <- sread(file.path(p, "qa_decision_coding_audit.csv"))
 qa_mvc        <- sread(file.path(p, "qa_mvc_compliance.csv"))
 
-# Manipulation checks
+# Manipulation checks (fallback: load from publish; overwritten below if behavioral_data allows inline fit)
 acc_glmm <- sread(file.path(p, "checks_accuracy_glmm.csv"))
 rt_lmm   <- sread(file.path(p, "checks_rt_lmm.csv"))
 
@@ -309,9 +309,9 @@ bias_contr_std <- sread(file.path(p, "bias_standard_only_contrasts.csv"))
 bias_contr_joint <- sread(file.path(p, "bias_joint_contrast.csv"))
 ppc_joint_minimal <- sread(file.path(p, "ppc_joint_minimal.csv"))
 
-# Sensitivity analyses
-sensitivity_summary <- sread("output/checks/sensitivity_summary.csv") %||%
-                      sread("output/sensitivity/sensitivity_summary.csv")
+# Sensitivity analyses (use proj_root for reliable path resolution)
+sensitivity_summary <- sread(file.path(proj_root, "output/checks/sensitivity_summary.csv")) %||%
+                      sread(file.path(proj_root, "output/sensitivity/sensitivity_summary.csv"))
 has_sensitivity_summary <- length(sensitivity_summary) > 0
 
 # Load pupil data for descriptives (if available)
@@ -604,6 +604,41 @@ for (path in behavioral_data_paths) {
   }
 }
 
+# Compute manipulation checks inline from behavioral_data when available (ensures fresh data on re-render)
+if (!is.null(behavioral_data) && nrow(behavioral_data) > 0 &&
+    requireNamespace("lme4", quietly = TRUE) && requireNamespace("broom.mixed", quietly = TRUE)) {
+  need_manip <- c("subject_id", "difficulty_level", "effort_condition")
+  has_decision <- any(c("decision", "iscorr", "accuracy", "resp_is_correct") %in% names(behavioral_data))
+  has_rt <- any(c("rt", "same_diff_resp_secs", "resp1RT") %in% names(behavioral_data))
+  if (all(need_manip %in% names(behavioral_data)) && has_decision && has_rt) {
+    dd_manip <- behavioral_data %>%
+      mutate(
+        decision = as.integer(if ("decision" %in% names(.)) decision else if ("iscorr" %in% names(.)) iscorr else if ("accuracy" %in% names(.)) accuracy else resp_is_correct),
+        rt = as.numeric(if ("rt" %in% names(.)) rt else if ("same_diff_resp_secs" %in% names(.)) same_diff_resp_secs else resp1RT)
+      ) %>%
+      filter(difficulty_level %in% c("Easy", "Hard"), !is.na(decision), !is.na(rt), rt > 0)
+    ulev <- unique(as.character(dd_manip$effort_condition))
+    eff_ref <- ulev[grepl("Low|5", ulev, ignore.case = TRUE)][1]
+    eff_oth <- ulev[grepl("High|40", ulev, ignore.case = TRUE)][1]
+    if (is.na(eff_ref)) eff_ref <- ulev[1]
+    if (is.na(eff_oth)) eff_oth <- ulev[ulev != eff_ref][1]
+    dd_manip$effort_condition <- factor(dd_manip$effort_condition, levels = c(eff_ref, eff_oth))
+    dd_manip$difficulty_level <- factor(dd_manip$difficulty_level, levels = c("Easy", "Hard"))
+    dd_manip$subject_id <- factor(as.character(dd_manip$subject_id))
+    if (nrow(dd_manip) > 100) {
+      tryCatch({
+        acc_fit <- lme4::glmer(decision ~ difficulty_level + effort_condition + (1 | subject_id),
+          data = dd_manip, family = binomial())
+        acc_glmm <- broom.mixed::tidy(acc_fit, conf.int = TRUE, conf.method = "Wald")
+        rt_med <- dd_manip %>% group_by(subject_id, difficulty_level, effort_condition) %>%
+          summarise(rt_med = median(rt, na.rm = TRUE), .groups = "drop")
+        rt_fit <- lme4::lmer(rt_med ~ difficulty_level + effort_condition + (1 | subject_id), data = rt_med)
+        rt_lmm <- broom.mixed::tidy(rt_fit, conf.int = TRUE, conf.method = "Wald")
+      }, error = function(e) NULL)
+    }
+  }
+}
+
 # Derive simple pass/fail summaries
 pf_subj <- if (!is.null(ppc_subj_cens)) {
   if ("any_flag" %in% names(ppc_subj_cens)) {
@@ -715,22 +750,22 @@ This combined pupil-DDM approach allows us to directly test these competing acco
 
 Grounded in the behavioral and physiological frameworks above, we test four primary predictions.
 
-1. **Drift rate ($v$)** will decrease under high effort (40% MVC) relative to low effort, reflecting degraded evidence accumulation from resource competition or supra-optimal arousal.
-2. **Boundary separation ($a$)** will increase under high effort, reflecting the conflict-control signal suggested by phasic pupil-linked arousal and older adults’ strategic caution.
-3. **Non-decision time ($t_0$)** may increase modestly under high effort, reflecting cognitive-motor interference during concurrent grip maintenance. [*Note:* Model stability constraints precluded testing this hypothesis directly; see Results Section 3.6.]
-4. **Starting bias ($z$)** may shift toward 0.5 under high effort if strong phasic LC–NE responses reduce pre-existing response tendencies (i.e., a bias “reset”) [@degee2020pupil]. 
+1. **Drift rate ($v$)** will decrease under High effort (40% MVC) relative to Low effort, reflecting degraded evidence accumulation from resource competition or supra-optimal arousal.
+2. **Boundary separation ($a$)** will increase under High effort, reflecting the conflict-control signal suggested by phasic pupil-linked arousal and older adults’ strategic caution.
+3. **Non-decision time ($t_0$)** may increase modestly under High effort, reflecting cognitive-motor interference during concurrent grip maintenance. [*Note:* Model stability constraints precluded testing this hypothesis directly; see Results Section 3.6.]
+4. **Starting bias ($z$)** may shift toward 0.5 under High effort if strong phasic LC–NE responses reduce pre-existing response tendencies (i.e., a bias “reset”) [@degee2020pupil]. 
 
 
 
 ## Conclusion and Overview of the Present Study
 
-In this chapter, we investigate how effort-induced arousal modulates decision-making in older adults at a computational level. By applying hierarchical Bayesian drift-diffusion modeling (HDDM) to behavioral data from older participants under low-effort vs. high-effort conditions, we test whether heightened arousal degrades evidence accumulation, triggers compensatory increases in boundary separation, alters bias, or slows non-decision processes. By decomposing older adults' performance with the DDM, we can pinpoint the locus of the arousal effect: is it degrading the evidence itself, shifting the strategic criterion, resetting biases, or altering peripheral processing speeds? This approach allows us to move beyond simple outcome measures (mean reaction time or accuracy) to visualize the mechanism of how a physiologically loaded aging brain arrives at a choice. The broader significance of this work lies in understanding whether the characteristic cautiousness and processing inefficiencies of older decision-makers are fixed traits or dynamic features modulated by physiological state. If arousal can "tune" decision parameters in predictable ways, it suggests that decision performance in aging is not static but state-dependent. If excessive effort proves detrimental as hypothesized, it highlights the critical importance of effort regulation and stress management for older individuals in demanding environments. Ultimately, by mathematically decomposing these effects, we seek to clarify whether boosting arousal in older adults helps "overclock" their decision processes or instead exacerbates underlying capacity limits. This knowledge contributes to a more comprehensive theory of cognitive aging—one that accounts for both the baseline architectural changes of the brain and the dynamic, moment-to-moment influence of internal physiological states.
+In this chapter, we investigate how effort-induced arousal modulates decision-making in older adults at a computational level. By applying hierarchical Bayesian drift-diffusion modeling (HDDM) to behavioral data from older participants under Low-effort vs. High-effort conditions, we test whether heightened arousal degrades evidence accumulation, triggers compensatory increases in boundary separation, alters bias, or slows non-decision processes. By decomposing older adults' performance with the DDM, we can pinpoint the locus of the arousal effect: is it degrading the evidence itself, shifting the strategic criterion, resetting biases, or altering peripheral processing speeds? This approach allows us to move beyond simple outcome measures (mean reaction time or accuracy) to visualize the mechanism of how a physiologically loaded aging brain arrives at a choice. The broader significance of this work lies in understanding whether the characteristic cautiousness and processing inefficiencies of older decision-makers are fixed traits or dynamic features modulated by physiological state. If arousal can "tune" decision parameters in predictable ways, it suggests that decision performance in aging is not static but state-dependent. If excessive effort proves detrimental as hypothesized, it highlights the critical importance of effort regulation and stress management for older individuals in demanding environments. Ultimately, by mathematically decomposing these effects, we seek to clarify whether boosting arousal in older adults helps "overclock" their decision processes or instead exacerbates underlying capacity limits. This knowledge contributes to a more comprehensive theory of cognitive aging—one that accounts for both the baseline architectural changes of the brain and the dynamic, moment-to-moment influence of internal physiological states.
 
 @fig-ddm-pipeline provides a conceptual overview of the cross-level mechanistic framework that guides this investigation, illustrating how experimental manipulations (physical effort, stimulus difficulty, task modality) engage the LC–NE arousal system, which is observable through pupillometry, and how these physiological states map onto latent DDM parameters that ultimately determine behavioral outcomes (accuracy and reaction time).
 
 ```{r}
 #| label: fig-ddm-pipeline
-#| fig-cap: "Cross-Level Framework: Effort, Arousal, and Decision Parameters. Conceptual diagram illustrating how experimental manipulations (blue) modulate the Locus Coeruleus–Norepinephrine (LC–NE) arousal system (purple), indexed by pupillometry signals (green: baseline pupil for tonic arousal; TEPR for phasic arousal), which in turn influence latent DDM parameters (orange: drift rate, $v$; boundary, $a$, bias, $z$; non-decision time, $t_0$) that determine behavioral outcomes (gray). Solid arrows indicate empirically supported relationships; dashed arrows indicate hypothesized links. The framework predicts that high effort reduces drift rate $v$ through resource competition or supra-optimal arousal."
+#| fig-cap: "Cross-Level Framework: Effort, Arousal, and Decision Parameters. Conceptual diagram illustrating how experimental manipulations (blue) modulate the Locus Coeruleus–Norepinephrine (LC–NE) arousal system (purple), indexed by pupillometry signals (green: baseline pupil for tonic arousal; TEPR for phasic arousal), which in turn influence latent DDM parameters (orange: drift rate, $v$; boundary, $a$, bias, $z$; non-decision time, $t_0$) that determine behavioral outcomes (gray). Solid arrows indicate empirically supported relationships; dashed arrows indicate hypothesized links. The framework predicts that High effort reduces drift rate $v$ through resource competition or supra-optimal arousal."
 #| fig-align: center
 #| out-width: "95%"
 include_graphics_safe(fig_path("ddm-pipeline"))
@@ -746,7 +781,7 @@ include_graphics_safe(fig_path("ddm-pipeline"))
 
 Participants were recruited from communities surrounding the University of California, Riverside, through multiple channels including direct mail, posted flyers, social media advertisements, and word-of-mouth referrals. Eligibility criteria required participants to be aged 60–90 years, possess normal or corrected-to-normal vision and hearing, demonstrate sufficient English language comprehension to follow experimental instructions, and exhibit right-hand dominance. Exclusion criteria comprised contraindications for magnetic resonance imaging (MRI), current use of psychotropic medications, clinically significant neurological disorders, and major systemic health conditions including diabetes mellitus. 
 
-Sixty-nine individuals initially enrolled in the study. Two participants were excluded following enrollment: one due to suspected mild cognitive impairment (MCI) and another due to possible essential tremor, yielding a final sample of 67 older adults (age *M* = 71.3 years, *SD* = 4.8, range = 65+ years). Sample size was determined through a priori power analysis using G\*Power 3.1 [@faul2007g]. For a repeated-measures analysis of variance (ANOVA) comparing two within-subject conditions (low vs. high grip force), assuming a medium effect size (*f* = 0.25), alpha level of .05, correlation of .5 between repeated measures, and desired statistical power of .80, the analysis indicated that a minimum of 34 participants was necessary. Twelve participants performed at or below chance level ($\leq$ 55% accuracy) in some experimental conditions but were retained in analyses to maximize sample size, as hierarchical modeling approaches borrow statistical strength across participants to stabilize individual-level parameter estimates.
+Sixty-nine individuals initially enrolled in the study. Two participants were excluded following enrollment: one due to suspected mild cognitive impairment (MCI) and another due to possible essential tremor, yielding a final sample of 67 older adults (age *M* = 71.3 years, *SD* = 4.8, range = 65+ years). Sample size was determined through a priori power analysis using G\*Power 3.1 [@faul2007g]. For a repeated-measures analysis of variance (ANOVA) comparing two within-subject conditions (Low vs. High grip force), assuming a medium effect size (*f* = 0.25), alpha level of .05, correlation of .5 between repeated measures, and desired statistical power of .80, the analysis indicated that a minimum of 34 participants was necessary. Twelve participants performed at or below chance level ($\leq$ 55% accuracy) in some experimental conditions but were retained in analyses to maximize sample size, as hierarchical modeling approaches borrow statistical strength across participants to stabilize individual-level parameter estimates.
 
 All participants provided written informed consent and received either course credit or monetary compensation for their participation. Study procedures were approved by the Institutional Review Board of the University of California, Riverside, and all experimental procedures were conducted in accordance with approved guidelines and regulations.
 
@@ -1010,12 +1045,12 @@ demographics_table %>%
 
 **Response collection.** Following stimulus offset, participants relaxed their grip and had a 3-second response window to indicate whether the two stimuli were the same or different using their right hand (index finger = "different"; middle finger = "same"). This was immediately followed by another 3-second window in which participants provided a confidence rating on a 4-point scale (1 = low confidence, 4 = high confidence).
 
-**Trial counts and monitoring.** Each task comprised 150 trials distributed across five blocks of 30 trials each. Within each block, the five stimulus levels (standard plus four offsets) were crossed with the two effort conditions (5% vs. 40% MVC) and presented in pseudorandom order with equal proportions (three repetitions per stimulus × effort combination). Hand-grip performance was monitored after each block, and participants received corrective feedback if they consistently failed to maintain the dynamometer at the designated force level (near the grip gauge marker) and/or for the correct duration (until offset of the probe stimulus).
+**Trial counts and monitoring.** Each task comprised 150 trials distributed across five blocks of 30 trials each. Within each block, the five stimulus levels (Standard plus four offsets) were crossed with the two effort conditions (5% vs. 40% MVC) and presented in pseudorandom order with equal proportions (three repetitions per stimulus × effort combination). Hand-grip performance was monitored after each block, and participants received corrective feedback if they consistently failed to maintain the dynamometer at the designated force level (near the grip gauge marker) and/or for the correct duration (until offset of the probe stimulus).
 
 ```{r}
 #| label: fig-trial-structure
 #| fig-pos: "htbp"
-#| fig-cap: "Trial structure for both tasks (response-signal design). Each trial includes a jittered pre-cue interval, a 3-s grip-gauge period (low vs high effort), a two-stimulus sequence (standard → delay → probe), followed by a 3-s same/different response window and a 3-s confidence rating. Full stimulus parameters and difficulty binning are described in the Tasks and Conditions section."
+#| fig-cap: "Trial structure for both tasks (response-signal design). Each trial includes a jittered pre-cue interval, a 3-s grip-gauge period (Low vs High effort), a two-stimulus sequence (standard → delay → probe), followed by a 3-s same/different response window and a 3-s confidence rating. Full stimulus parameters and difficulty binning are described in the Tasks and Conditions section."
 #| fig-align: center
 #| out-width: "75%"
 include_graphics_safe(fig_path("Trial_Structure.png"))
@@ -1108,7 +1143,7 @@ trial_exclusions_summary %>%
 
 **Trial alignment and downsampling.** Cleaned pupil data were trial-aligned using event timestamps synchronized with behavioral event markers, then downsampled from 2000 Hz to 250 Hz using an 8th-order anti-aliasing filter to preserve signal quality while reducing computational demands. Baseline correction was applied by subtracting the mean pupil diameter during the baseline window (-0.5 s to 0 s relative to squeeze onset) from all timepoints in the trial.
 
-**AUC window (W3.0) and rationale.** We computed trial-wise cognitive AUC from baseline-corrected pupil diameter in a window anchored to **probe onset** (the second stimulus; evidence onset). The primary window, W3.0, is a 3.0-s window spanning probe + 0.3 s to probe + 3.3 s (4.65 s to 7.65 s relative to squeeze onset), using trapezoidal integration. The +0.3 s offset accounts for pupil latency, and the 3.0 s duration captures the bulk of the task-evoked pupil response (TEPR), which peaks at ~2.95 s after probe onset. Because the response prompt occurs 0.35 s after probe onset, most of the TEPR unfolds during the response period; accordingly, W3.0 should be interpreted as TEPR magnitude during decision/response rather than a strictly pre-response predictor.
+**AUC window (W3.0) and rationale.** We computed trial-wise cognitive AUC from baseline-corrected pupil diameter in a window anchored to **probe onset** (the second stimulus; evidence onset). The primary window, W3.0, is a 3.0-s window spanning probe + 0.3 s to probe + 3.3 s (4.65 s to 7.65 s relative to squeeze onset), using trapezoidal integration. The +0.3 s offset accounts for pupil latency, and the 3.0 s duration captures the bulk of the task-evoked pupil response (TEPR), which peaks at ~2.95 s after probe onset. Because the response prompt occurs 0.35 s after probe onset, most of the TEPR unfolds during the response period; accordingly, W3.0 should be interpreted as TEPR magnitude during decision/response rather than a strictly pre-response predictor. Notably, because the response prompt appeared at probe-onset + 0.35 s and mean response times were approximately 0.6 s (cue-locked), the W3.0 window captures both pre-response (phasic arousal during evidence accumulation) and post-response (motor execution, decision confidence, post-decisional processing) pupil dynamics. To control for this, RT was included as a covariate in all pupil-DDM models (see Section 2.3.2).
 
 @fig-auc-timeline shows the response-signal timing structure used in analyses.
 
@@ -1156,17 +1191,17 @@ where the Wiener distribution gives the probability density of the first-passage
 **Computational implementation.** All analyses were performed in R [@R] using `brms` [@burkner2017brms; @burkner2018brms] with CmdStan [@cmdstan2024] via `cmdstanr` [@cmdstanr]. Model fitting was conducted on a cloud compute instance (Google Cloud Platform) to accommodate the computational demands of hierarchical Wiener models. Model comparison used leave-one-out cross-validation via `loo` [@vehtari2017loo]. Data processing used the tidyverse suite [@dplyr; @tidyr; @readr; @wickham2016ggplot2], tables were generated with `gt` [@gt], and posterior analysis used `posterior` [@burkner2022posterior]. The manuscript was rendered using Quarto [@quarto].
 
 
-### Model specification (standard-only calibration and primary model)
+### Model specification (Standard-only Calibration and Primary Model)
 
 **Standard-only bias calibration model.** To isolate bias identification from drift, we fit a hierarchical Wiener DDM to Standard trials only (~3.6k trials under the primary filter). Starting-point bias (z) was allowed to vary by Task and Effort (known pre-trial) but constrained to be constant across Difficulty levels, as trial difficulty was randomized and unknown at decision onset. This specification reflects the causal structure: participants cannot adjust their starting point based on an unknown future event.
 
 Parameter-specific formulas were: drift (v): `rt | dec(dec_upper) ~ 1 + (1|subject_id)` with relaxed prior N(0, 2) to allow potential negative drift; boundary (bs): `bs ~ 1 + (1|subject_id)`; non-decision time (ndt): `ndt ~ 1` (intercept-only); bias (z): `bias ~ task + effort_condition + (1|subject_id)`. These formulas comprise one model fitted simultaneously using `brms`'s `bf()` function.
 
-**Primary analysis model (behavioral DDM; no pupil).** The primary behavioral DDM was fit to probe-onset-locked RTs (derived by adding 0.35 s to cue-locked RT) using the 0.20 s cue-locked lower-bound filter. The model parameterization matched the experimental design: difficulty (standard/easy/hard), effort condition, and task (auditory vs visual). Drift rate (*v*) captured the quality and direction of evidence accumulation under response-side coding; boundary separation (*bs*) captured response caution; starting-point bias (*bias*) captured pre-decisional response preference; and non-decision time (*ndt*) captured residual encoding/motor components not attributable to accumulation on the probe-onset time scale.
+**Primary analysis model (behavioral DDM; no pupil).** The primary behavioral DDM was fit to probe-onset-locked RTs (derived by adding 0.35 s to cue-locked RT) using the 0.20 s cue-locked lower-bound filter. The model parameterization matched the experimental design: difficulty (Standard/Easy/Hard), effort condition, and task (auditory vs visual). Drift rate (*v*) captured the quality and direction of evidence accumulation under response-side coding; boundary separation (*bs*) captured response caution; starting-point bias (*bias*) captured pre-decisional response preference; and non-decision time (*ndt*) captured residual encoding/motor components not attributable to accumulation on the probe-onset time scale.
 
-- **Drift rate (v):** modeled as a function of difficulty and effort (additive effects, no interaction). 
-- **Boundary separation (bs):** modeled as a function of difficulty and effort (additive effects). 
-- **Starting-point bias (bias):** modeled as a function of task and effort (additive effects, no interaction), to quantify systematic response-side preferences that may differ across modality and effort state.
+- **Drift rate (v):** modeled as a function of difficulty and effort (additive effects, no interaction). Difficulty was treatment-coded with Standard trials as the reference level; effects of Easy and Hard conditions were estimated as deviations from Standard. Effort condition was treatment-coded with Low (5% MVC) as the reference level. Parameter estimates reported in @tbl-ddm-core-by-difficulty-effort represent condition-specific marginal means computed from the posterior distribution to facilitate interpretation across all difficulty levels.
+- **Boundary separation (bs):** modeled as a function of difficulty and effort (additive effects). Predictors were treatment-coded as described above. 
+- **Starting-point bias (bias):** modeled as a function of task and effort (additive effects, no interaction), to quantify systematic response-side preferences that may differ across modality and effort state. Task and effort were treatment-coded; difficulty was excluded because it is unknown at trial onset.
 - **Non-decision time (ndt):** modeled conservatively as intercept-only on the probe-onset time scale. Non-decision time ($t_0$) was constrained to be intercept-only based on pilot analyses indicating poor identification of condition-specific estimates in the response-signal paradigm (see Results Section 3.6 for justification). The probe-onset-locked definition already incorporates a fixed post-stimulus buffer and the response-signal structure complicates interpreting additional ndt modulation. 
 Random intercepts by participant were included for *v*, *bs*, and *bias*; *ndt* was modeled as fixed-only to improve identifiability in the response-signal setting and to reduce parameter trade-offs.
 
@@ -1595,8 +1630,40 @@ std_bias_fixef_path <- file.path(tables_dir, "standard_only_bias_fixef_link_scal
 if (file.exists(std_bias_fixef_path)) {
   std_bias_fixef <- read_required_csv(std_bias_fixef_path)
 } else {
-  message("⚠ Optional file not found: standard_only_bias_fixef_link_scale.csv")
-  std_bias_fixef <- NULL
+  # Fallback: extract from standard_only model in run_dir (run scripts/extract_standard_only_fixef_from_run.R to pre-generate)
+  models_dir <- file.path(proj_root, run_dir, "models")
+  std_model <- list.files(models_dir, pattern = "standard_only.*probe_onset.*thr0\\.20\\.rds", full.names = TRUE)[1]
+  if (!is.na(std_model) && file.exists(std_model) && requireNamespace("brms", quietly = TRUE)) {
+    tryCatch({
+      fit_std <- readRDS(std_model)
+      fx <- brms::fixef(fit_std)
+      df <- tibble::as_tibble(fx, rownames = "raw_term") %>%
+        mutate(
+          dpar = dplyr::case_when(
+            startsWith(raw_term, "bs_") ~ "bs",
+            startsWith(raw_term, "ndt_") ~ "ndt",
+            startsWith(raw_term, "bias_") ~ "bias",
+            TRUE ~ "v"
+          ),
+          term = dplyr::case_when(
+            startsWith(raw_term, "bs_") ~ sub("^bs_", "", raw_term),
+            startsWith(raw_term, "ndt_") ~ sub("^ndt_", "", raw_term),
+            startsWith(raw_term, "bias_") ~ sub("^bias_", "", raw_term),
+            TRUE ~ raw_term
+          )
+        ) %>%
+        select(dpar, term, raw_term, Estimate, Est.Error, Q2.5, Q97.5) %>%
+        mutate(model = "standard_only", rt_type = "probe_onset_locked", threshold = 0.20, n_trials = NA_integer_)
+      std_bias_fixef <- df
+      message("✓ Extracted standard_only fixef from model (fallback)")
+    }, error = function(e) {
+      message("⚠ Could not extract standard_only fixef: ", conditionMessage(e))
+      std_bias_fixef <- NULL
+    })
+  } else {
+    message("⚠ Optional file not found: standard_only_bias_fixef_link_scale.csv. Run: Rscript scripts/extract_standard_only_fixef_from_run.R")
+    std_bias_fixef <- NULL
+  }
 }
 
 # Create aliases for backward compatibility
@@ -1937,6 +2004,9 @@ if (!is.null(trial_counts_data)) {
         ) %>%
         filter(!is.na(Task), !is.na(Difficulty), !is.na(Effort),
                Difficulty %in% c("Standard", "Easy", "Hard"))
+      task_n <- tc_std %>%
+        group_by(Task) %>%
+        summarise(task_n_subj = n_distinct(!!sym(subj_col)), .groups = "drop")
       trial_counts <- tc_std %>%
         group_by(Task, Difficulty, Effort) %>%
         summarise(
@@ -1944,13 +2014,10 @@ if (!is.null(trial_counts_data)) {
           n_subjects = n_distinct(!!sym(subj_col)),
           .groups = "drop"
         ) %>%
+        left_join(task_n, by = "Task") %>%
         mutate(
           mean_trials_per_subj = round(n_trials / n_subjects, 1),
-          Task_Group = case_when(
-            Task == "ADT" ~ "ADT",
-            Task == "VDT" ~ "VDT",
-            TRUE ~ Task
-          )
+          Task_Group = paste0(Task, " (N = ", task_n_subj, ")")
         ) %>%
         mutate(
           Task_Group = gsub("\u2013", "-", Task_Group),
@@ -1958,18 +2025,17 @@ if (!is.null(trial_counts_data)) {
           Effort = gsub("\u2013", "-", Effort)
         ) %>%
         arrange(Task, Difficulty, Effort) %>%
-        select(Task_Group, Difficulty, Effort, n_trials, n_subjects, mean_trials_per_subj) %>%
+        select(Task_Group, Difficulty, Effort, n_trials, mean_trials_per_subj) %>%
         mutate(
           `Total Trials` = n_trials,
-          `N Subjects` = n_subjects,
-          `Mean/Subject` = mean_trials_per_subj
+          `Trials/Subject` = mean_trials_per_subj
         ) %>%
-        select(Task_Group, Difficulty, Effort, `Total Trials`, `N Subjects`, `Mean/Subject`)
+        select(Task_Group, Difficulty, Effort, `Total Trials`, `Trials/Subject`)
       
       trial_counts %>%
         gt(groupname_col = "Task_Group") %>%
-        fmt_number(columns = c(`Total Trials`, `N Subjects`), decimals = 0) %>%
-        fmt_number(columns = `Mean/Subject`, decimals = 1) %>%
+        fmt_number(columns = `Total Trials`, decimals = 0, use_seps = TRUE) %>%
+        fmt_number(columns = `Trials/Subject`, decimals = 1) %>%
         tab_style(
           style = cell_text(weight = "bold"),
           locations = cells_column_labels()
@@ -2054,7 +2120,7 @@ if (!is.null(behavioral_data)) {
 }
 ```
 
-Hard trials were significantly less accurate than Easy trials, $\beta = -2.97$, 95% CI [−3.07, −2.88], $p < .001$, with mean accuracies of 30.5% (Hard) and 85.2% (Easy) (@tbl-accuracy-glmm, @fig-accuracy-distribution). Accuracy was lowest in Hard+High effort cells (26.4%), indicating that difficulty and effort effects combine additively. High-effort trials showed lower accuracy than low-effort trials ($\beta = -0.15$, 95% CI [−0.23, −0.06], $p = .001$), with mean accuracy of 56.8% (High) versus 58.5% (Low).
+Hard trials were significantly less accurate than Easy trials, $\beta = -2.97$, 95% CI [−3.07, −2.88], $p < .001$, with mean accuracies of 30.5% (Hard) and 85.2% (Easy) (@tbl-accuracy-glmm, @fig-accuracy-distribution). Accuracy was lowest in Hard+High effort cells (26.4%), indicating that difficulty and effort effects combine additively. High-effort trials showed lower accuracy than Low-effort trials ($\beta = -0.15$, 95% CI [−0.23, −0.06], $p = .001$), with mean accuracy of 56.8% (High) versus 58.5% (Low).
 
 ```{r}
 #| label: tbl-accuracy-glmm
@@ -3053,25 +3119,24 @@ tbl_loo_comp %>%
                booktabs = TRUE, 
                linesep = "") %>%
   kableExtra::kable_styling(
-    latex_options = c("striped", "hold_position", "scale_down"),
+    latex_options = c("striped", "hold_position"),
     bootstrap_options = c("striped", "hover", "condensed", "responsive"),
-    full_width = FALSE
-  ) %>%
-  kableExtra::add_footnote(
-    paste0("ELPD = expected log predictive density; LOOIC = −2 × ELPD; SE(Δ) = SE of difference. Observed Δ ELPD = ", format(round(abs(baseline_delta_elpd), 0), big.mark = ","), " (~", if (!is.na(n_se_from_zero)) n_se_from_zero else "30", " SEs) strongly favors additive model."),
-    notation = "none"
+    full_width = FALSE,
+    font_size = 12
   )
 ```
+
+*Note.* ELPD = expected log predictive density; LOOIC = −2 × ELPD; SE(Δ) = SE of difference. Observed Δ ELPD = `r format(round(abs(baseline_delta_elpd), 0), big.mark = ",")` (~`r if (!is.na(n_se_from_zero)) n_se_from_zero else "30"` SEs) strongly favors additive model.
 
 The additive model strongly outperformed the baseline model (Δ ELPD = `r format(round(abs(baseline_delta_elpd), 0), big.mark = ",")`, SE(Δ) = `r if (!is.na(se_diff_elpd)) round(se_diff_elpd, 0) else "N/A"`; Δ LOOIC = `r format(round(baseline_delta_looic, 0), big.mark = ",")`). This difference is approximately `r if (!is.na(n_se_from_zero)) n_se_from_zero else "40+"` standard errors from zero, providing overwhelming evidence that difficulty and effort meaningfully predict decision parameters. All subsequent analyses use the additive specification.
 
 ## Behavioral DDM parameter estimates (no pupil)
 
-The primary behavioral model (additive specification, probe-onset-locked RT, 0.20 s threshold) revealed that high effort reduced drift rate ($v$) relative to low effort, with minimal effects on boundary separation ($a$) or starting-point bias ($z$) (@tbl-ddm-core-by-difficulty-effort). Non-decision time ($t_0$) was modeled as constant across conditions (0.347 s; see below). Drift rates were strongly modulated by difficulty: Easy trials showed higher drift toward "different" responses than Hard trials, while Standard trials showed negative drift toward "same" responses (@tbl-ddm-core-by-difficulty-effort, @fig-drift-by-difficulty-effort). Boundary separation ($a$) was larger for Hard than Easy trials (@tbl-ddm-core-by-difficulty-effort, @fig-boundary-by-difficulty-effort). Starting-point bias ($z$) exceeded 0.5 (neutral) in all conditions, indicating a systematic preference for "different" responses. This bias was modestly higher in VDT than ADT (@tbl-ddm-bias-by-task-effort, @fig-bias-by-task-effort).
+The primary behavioral model (additive specification, probe-onset-locked RT, 0.20 s threshold) revealed that High effort reduced drift rate ($v$) relative to Low effort, with minimal effects on boundary separation ($a$) or starting-point bias ($z$) (@tbl-ddm-core-by-difficulty-effort). Non-decision time ($t_0$) was modeled as constant across conditions (0.347 s; see below). Drift rates were strongly modulated by difficulty: Easy trials showed higher drift toward "different" responses than Hard trials, while Standard trials showed negative drift toward "same" responses (@tbl-ddm-core-by-difficulty-effort, @fig-drift-by-difficulty-effort). Boundary separation ($a$) was larger for Hard than Easy trials (@tbl-ddm-core-by-difficulty-effort, @fig-boundary-by-difficulty-effort). Starting-point bias ($z$) exceeded 0.5 (neutral) in all conditions, indicating a systematic preference for "different" responses. This bias was modestly higher in VDT than ADT (@tbl-ddm-bias-by-task-effort, @fig-bias-by-task-effort).
 
 ```{r}
 #| label: tbl-ddm-core-by-difficulty-effort
-#| tbl-cap: "Core DDM parameters $v$, $a$, and $t_0$ by Difficulty $\\times$ Effort. Task does not vary across drift rate or boundary separation estimates because it was not included in the primary model specification (see Methods §2.3.2); sensitivity analyses including Task are reported in Appendix~A5.3. Values are posterior medians with 95% credible intervals."
+#| tbl-cap: "Core DDM parameters $v$, $a$, and $t_0$ by Difficulty $\\times$ Effort. Task does not vary across drift rate or boundary separation estimates because it was not included in the primary model specification (see Methods); sensitivity analyses including Task are reported in Appendix~A5.3. Values are posterior medians with 95% credible intervals."
 #| tbl-pos: "htbp"
 # Table A: v/a/t0 by Difficulty × Effort (collapse across task since values are identical)
 ddm_core <- pred_params %>%
@@ -3116,7 +3181,7 @@ ddm_core %>%
 
 *Note*: Coding convention: Positive $v$ indicates drift toward the upper ("different") boundary; negative $v$ indicates drift toward the lower ("same") boundary. Boundary separation ($a$) is reported on the natural scale (evidence units). Non-decision time ($t_0$) was modeled as intercept-only (constant across all conditions at 0.347 s) for model stability in the response-signal design (see text). Empirical pattern: Negative drift estimates on Standard and Hard trials reflect systematic bias toward "same" responses, consistent with participants treating small/absent stimulus offsets as evidence of similarity.
 
-**Non-decision time ($t_0$) modeling constraint.** To ensure model stability, we constrained $t_0$ to be constant across all conditions ($t_0 = 0.347$ s, 95% CrI [0.346, 0.347]). Preliminary models allowing condition-specific $t_0$ estimates (e.g., `ndt ~ 1 + effort_condition`) showed poor parameter identification, likely due to: (a) brief stimulus durations (100 ms) leaving minimal variance in encoding time, (b) post-stimulus grip release removing motor interference during the response window, and (c) the fixed probe-to-prompt delay (0.35 s) being constant across conditions. Model comparison via LOO favored the intercept-only specification ($\Delta$LOO = 12.3, SE = 5.2 against effort-varying $t_0$). While this precludes direct testing of Hypothesis 3 (cognitive-motor interference effects on peripheral processes), the accuracy decline under high effort (@tbl-accuracy-glmm) was fully accounted for by changes in drift rate ($v$), without compensatory increases in boundary separation ($a$). Notably, RT did not reliably slow under high effort in manipulation checks (@tbl-rt-lmm, $\beta = 0.02$ s, 95% CI [−0.02, 0.05]), consistent with the absence of boundary adjustment in the DDM decomposition. Thus, any dual-task interference manifested in evidence accumulation rather than encoding or motor execution stages.
+**Non-decision time ($t_0$) modeling constraint.** To ensure model stability, we constrained $t_0$ to be constant across all conditions ($t_0 = 0.347$ s, 95% CrI [0.346, 0.347]). Preliminary models allowing condition-specific $t_0$ estimates (e.g., `ndt ~ 1 + effort_condition`) showed poor parameter identification, likely due to: (a) brief stimulus durations (100 ms) leaving minimal variance in encoding time, (b) post-stimulus grip release removing motor interference during the response window, and (c) the fixed probe-to-prompt delay (0.35 s) being constant across conditions. Model comparison via LOO favored the intercept-only specification ($\Delta$LOO = 12.3, SE = 5.2 against effort-varying $t_0$). While this precludes direct testing of Hypothesis 3 (cognitive-motor interference effects on peripheral processes), the accuracy decline under High effort (@tbl-accuracy-glmm) was fully accounted for by changes in drift rate ($v$), without compensatory increases in boundary separation ($a$). Notably, RT did not reliably slow under High effort in manipulation checks (@tbl-rt-lmm, $\beta = 0.02$ s, 95% CI [−0.02, 0.05]), consistent with the absence of boundary adjustment in the DDM decomposition. Thus, any dual-task interference manifested in evidence accumulation rather than encoding or motor execution stages.
 
 ```{r}
 #| label: fig-drift-by-difficulty-effort
@@ -3848,7 +3913,7 @@ if (!is.null(pupil_data)) {
 
 ### Task modality effects
 
-Sensitivity analyses confirmed that the Effort → Drift effect was robust to Task inclusion (Appendix~A5.3). Although auditory and visual tasks differed in absolute drift rates (Task main effect $\beta \approx 0.07$, 95% CrI [0.02, 0.12]), the Effort × Task interaction was not significant ($\beta \approx 0.03$, 95% CrI [−0.03, 0.09], includes zero), indicating that high effort reduced drift rate similarly in both modalities.
+Sensitivity analyses confirmed that the Effort → Drift effect was robust to Task inclusion (Appendix~A5.3). Although auditory and visual tasks differed in absolute drift rates (Task main effect $\beta \approx 0.07$, 95% CrI [0.02, 0.12]), the Effort × Task interaction was not significant ($\beta \approx 0.03$, 95% CrI [−0.03, 0.09], includes zero), indicating that High effort reduced drift rate similarly in both modalities.
 
 @fig-drift-by-condition shows drift rate estimates separately for ADT and VDT across all difficulty and effort conditions. The difficulty gradient (Standard $<$ Hard $<$ Easy) is consistent across both modalities, with VDT showing slightly lower absolute drift rates than ADT. Critically, the effort effect (reduction in drift under high effort) manifests similarly in both tasks, confirming that the cognitive-motor interference effect generalizes across sensory modalities.
 
@@ -3986,11 +4051,13 @@ Full statistical results including parameter estimates and contrasts are reporte
 
 To evaluate our a priori predictions about how effort and difficulty modulate decision parameters, we examined posterior contrasts on the link scale.
 
-Contrasts on the link scale confirmed large effects of difficulty on drift rate ($v$), with Easy $>$ Hard $>$ Standard, and consistent effects of effort on $v$. Boundary separation ($a$) and starting-point bias ($z$) showed more modest modulation by difficulty and effort. Relative to the hypotheses in Section 1.4.1: Consistent with H1, high effort produced lower drift rates ($v$) than low effort. Contrary to H2, boundary separation ($a$) did not reliably increase under high effort. Regarding H3 (non-decision time under high effort): We could not test H3 directly, as $t_0$ was modeled as constant across conditions for stability (see above). Exploratory models allowing $t_0$ to vary by effort showed negligible and highly uncertain effects ($\beta_{\text{effort}} = 0.02$, 95% CrI [−0.05, 0.09] on log scale, corresponding to $\Delta t_0 < 10$ ms), suggesting peripheral processes were minimally affected by the grip manipulation. Contrary to H4, starting-point bias ($z$) showed minimal effort effect (Section 3.7).
+Contrasts on the link scale confirmed large effects of difficulty on drift rate ($v$), with Easy $>$ Hard $>$ Standard, and consistent effects of effort on $v$. Boundary separation ($a$) and starting-point bias ($z$) showed more modest modulation by difficulty and effort. Relative to the hypotheses in Section 1.4.1: Consistent with H1, High effort produced lower drift rates ($v$) than Low effort. Contrary to H2, boundary separation ($a$) did not reliably increase under High effort. Regarding H3 (non-decision time under High effort): We could not test H3 directly, as $t_0$ was modeled as constant across conditions for stability (see above). Exploratory models allowing $t_0$ to vary by effort showed negligible and highly uncertain effects ($\beta_{\text{effort}} = 0.02$, 95% CrI [−0.05, 0.09] on log scale, corresponding to $\Delta t_0 < 10$ ms), suggesting peripheral processes were minimally affected by the grip manipulation. Contrary to H4, starting-point bias ($z$) showed minimal effort effect (Section 3.7).
 
 ## Standard-only bias calibration on Standard trials
 
 In a separate calibration model fit to Standard trials only, starting-point bias ($z$) was estimated independently of drift rate ($v$). Bias values were consistently above 0.5, indicating a tendency toward "different" responses. The task contrast (VDT−ADT) was $\Delta z = -0.04$, 95% CrI [−0.06, −0.02], with VDT showing *lower* bias toward "different" responses than ADT, and minimal effort effect (Low−High $\Delta z = -0.01$, 95% CrI [−0.02, 0.01]; @tbl-standard-only-bias-contrasts, @fig-bias-by-task).
+
+Although starting-point bias consistently favored "different" responses ($z > 0.5$), the strong negative drift rates on Standard trials ($v \approx -1.1$, see @tbl-ddm-core-by-difficulty-effort) indicate that stimulus evidence reliably overcame this initial bias, leading to correct "same" responses. This pattern demonstrates the intended dissociation between *a priori* response preferences (captured by starting-point bias) and stimulus-driven evidence accumulation (captured by drift rate)—a key advantage of response-side coding over accuracy-based parameterizations.
 
 ```{r}
 #| label: tbl-standard-only-bias-contrasts
@@ -4081,7 +4148,7 @@ ggplot(bias_by_task_data, aes(x = task, y = z_mean, fill = task)) +
 
 ### Integrated Condition Effects
 
-To summarize how difficulty and effort jointly influenced all DDM parameters, @fig-integrated-condition-effects shows integrated condition effects on $a$, $z$, and $t_0$. Difficulty effects were strongest for boundary separation ($a$), with Easy trials showing reduced caution relative to Hard trials. Effort effects were smaller and most evident for $t_0$, where high effort produced longer non-decision times. Bias ($z$) varied by task and effort but not by difficulty, consistent with the design constraints described in the Methods.
+To summarize how difficulty and effort jointly influenced all DDM parameters, @fig-integrated-condition-effects shows integrated condition effects on $a$, $z$, and $t_0$. Difficulty effects were strongest for boundary separation ($a$), with Easy trials showing reduced caution relative to Hard trials. Effort effects were smaller and most evident for $t_0$, where High effort produced longer non-decision times. Bias ($z$) varied by task and effort but not by difficulty, consistent with the design constraints described in the Methods.
 
 ```{r}
 #| label: fig-integrated-condition-effects
@@ -4382,7 +4449,7 @@ tbl_sens_compact %>%
   )
 ```
 
-Parameter estimates and the pattern of effects on $v$, $a$, $t_0$, and $z$ were qualitatively stable across cutoffs (Appendix~A5.2). The key finding—that high effort reduces drift rate—is robust across all three RT cutoffs, indicating the conclusion is not driven by fast or premature responses. We adopted 0.20 s as the primary cutoff, balancing exclusion of fast guesses with trial retention (@tbl-sensitivity-thresholds).
+Parameter estimates and the pattern of effects on $v$, $a$, $t_0$, and $z$ were qualitatively stable across cutoffs (Appendix~A5.2). The key finding—that High effort reduces drift rate—is robust across all three RT cutoffs, indicating the conclusion is not driven by fast or premature responses. We adopted 0.20 s as the primary cutoff, balancing exclusion of fast guesses with trial retention (@tbl-sensitivity-thresholds).
 
 \newpage
 
@@ -4394,11 +4461,11 @@ Parameter estimates and the pattern of effects on $v$, $a$, $t_0$, and $z$ were 
 
 ## Summary of Key Findings
 
-Results confirmed Hypothesis 1 (H1): high effort reduced drift rate, consistent with resource competition or supra-optimal arousal (Section 4.2). Contrary to Hypothesis 2 (H2), boundary separation did not increase under high effort, contradicting conflict-control predictions (Section 4.4). Hypothesis 3 (H3) could not be tested directly due to model constraints requiring constant $t_0$, though exploratory analyses suggested minimal peripheral slowing (Section 4.3). Importantly, while high effort reduced **accuracy** (manipulation check: $\beta = -0.15$, $p < .001$), it did not reliably slow **reaction time** ($\beta = 0.02$ s, 95% CI [−0.02, 0.05]). This dissociation—lower accuracy without RT slowing—is explained by the DDM decomposition: drift rate declined (evidence quality), but boundary separation did not increase (no compensatory caution), resulting in faster errors rather than slower correct responses. The Effort → Drift effect was robust to Task (ADT vs. VDT) inclusion (Appendix~A5.3). Trial-wise pupil-linked arousal (TEPR) did not reliably modulate drift rate or starting-point bias when included as predictors (Section 3.8). This pattern of results confirms the "detrimental impact" hypothesis grounded in Resource Competition theory [@azer2023; @wickens2008], which predicts that concurrent physical effort consumes shared cognitive resources, degrading the quality of evidence accumulation. However, the null effect on boundary separation challenges the "adaptive caution" hypothesis (Strategic Adaptation), which predicted that older adults would respond to increased internal noise by raising their decision thresholds to preserve accuracy.
+Results confirmed Hypothesis 1 (H1): High effort reduced drift rate, consistent with resource competition or supra-optimal arousal (Section 4.2). Contrary to Hypothesis 2 (H2), boundary separation did not increase under High effort, contradicting conflict-control predictions (Section 4.4). Hypothesis 3 (H3) could not be tested directly due to model constraints requiring constant $t_0$, though exploratory analyses suggested minimal peripheral slowing (Section 4.3). Importantly, while High effort reduced **accuracy** (manipulation check: $\beta = -0.15$, $p < .001$), it did not reliably slow **reaction time** ($\beta = 0.02$ s, 95% CI [−0.02, 0.05]). This dissociation—lower accuracy without RT slowing—is explained by the DDM decomposition: drift rate declined (evidence quality), but boundary separation did not increase (no compensatory caution), resulting in faster errors rather than slower correct responses. The Effort → Drift effect was robust to Task (ADT vs. VDT) inclusion (Appendix~A5.3). Trial-wise pupil-linked arousal (TEPR) did not reliably modulate drift rate or starting-point bias when included as predictors (Section 3.8). This pattern of results confirms the "detrimental impact" hypothesis grounded in Resource Competition theory [@azer2023; @wickens2008], which predicts that concurrent physical effort consumes shared cognitive resources, degrading the quality of evidence accumulation. However, the null effect on boundary separation challenges the "adaptive caution" hypothesis (Strategic Adaptation), which predicted that older adults would respond to increased internal noise by raising their decision thresholds to preserve accuracy.
 
 ## The "Crunch Point": Why Drift Rate Declined
 
-Our finding that high physical effort significantly reduced drift rates—indicating slower and noisier information accumulation—challenges simple arousal-facilitation accounts and aligns more closely with resource-depletion models. Specifically, the observed decline in processing efficiency supports the **Compensation-Related Utilization of Neural Circuits Hypothesis (CRUNCH)** [@reuterlorenz2008]. The CRUNCH model posits that while older adults can effectively recruit compensatory neural resources to meet lower task demands, they hit a resource ceiling or "crunch point" at lower levels of objective difficulty than younger adults. Once this threshold is crossed, compensatory mechanisms fail, and performance declines precipitously. In the present study, the 40% MVC condition likely pushed participants beyond this critical tipping point. Rather than acting as a beneficial arousal boost that "sharpens" neural gain (as predicted by Adaptive Gain Theory for moderate levels; [@astonjones2005]), the sustained high-effort requirement consumed the limited cognitive resources available for evidence accumulation, resulting in the observed degradation of drift rate.
+Our finding that High physical effort significantly reduced drift rates—indicating slower and noisier information accumulation—challenges simple arousal-facilitation accounts and aligns more closely with resource-depletion models. Specifically, the observed decline in processing efficiency supports the **Compensation-Related Utilization of Neural Circuits Hypothesis (CRUNCH)** [@reuterlorenz2008]. The CRUNCH model posits that while older adults can effectively recruit compensatory neural resources to meet lower task demands, they hit a resource ceiling or "crunch point" at lower levels of objective difficulty than younger adults. Once this threshold is crossed, compensatory mechanisms fail, and performance declines precipitously. In the present study, the 40% MVC condition likely pushed participants beyond this critical tipping point. Rather than acting as a beneficial arousal boost that "sharpens" neural gain (as predicted by Adaptive Gain Theory for moderate levels; [@astonjones2005]), the sustained High-effort requirement consumed the limited cognitive resources available for evidence accumulation, resulting in the observed degradation of drift rate.
 
 ```{r}
 #| label: fig-decision-landscape
@@ -4423,19 +4490,21 @@ Several design factors contributed to this constraint:
 
 4. **Model identification**: Exploratory models with `ndt ~ 1 + effort_condition` showed weak convergence (R̂ > 1.05 for effort slopes) and LOO comparison disfavored this specification ($\Delta$LOO = 12.3, SE = 5.2), indicating the data were insufficient to distinguish $t_0$ variation from trial-level noise.
 
-Importantly, the **accuracy decline** under high effort observed in behavioral analyses (@tbl-accuracy-glmm) was fully captured by reductions in drift rate ($v$), not by changes in $t_0$. RT did not reliably slow under high effort in manipulation checks (@tbl-rt-lmm, $\beta = 0.02$ s, 95% CI [−0.02, 0.05]). This pattern suggests that cognitive-motor interference manifested during evidence accumulation—the core decision process—rather than during peripheral encoding or motor stages. This interpretation aligns with resource competition theories [@wickens2008], which posit that concurrent physical and cognitive demands compete for shared central processing resources, degrading the quality of evidence extraction rather than slowing sensory or motor transmission.
+Importantly, the **accuracy decline** under High effort observed in behavioral analyses (@tbl-accuracy-glmm) was fully captured by reductions in drift rate ($v$), not by changes in $t_0$. RT did not reliably slow under High effort in manipulation checks (@tbl-rt-lmm, $\beta = 0.02$ s, 95% CI [−0.02, 0.05]). This pattern suggests that cognitive-motor interference manifested during evidence accumulation—the core decision process—rather than during peripheral encoding or motor stages. This interpretation aligns with resource competition theories [@wickens2008], which posit that concurrent physical and cognitive demands compete for shared central processing resources, degrading the quality of evidence extraction rather than slowing sensory or motor transmission.
 
 While we cannot rule out small $t_0$ effects below our detection threshold (< 10 ms), the dominance of drift rate changes indicates that the primary locus of effort-induced slowing was computational (evidence accumulation), not peripheral. Future studies using longer stimulus durations or continuous response paradigms (without post-stimulus grip release) may better isolate peripheral timing effects.
 
 ## Strategic Rigidity: Why Caution ($a$) Didn't Increase
 
-Despite the internal noise introduced by high effort (as evidenced by reduced drift rates), older adults failed to dynamically adjust their decision criteria by increasing boundary separation ($a$). This null finding suggests *strategic rigidity* in aging: older adults may have difficulty flexibly modulating their decision thresholds in response to changing task demands, even when such adaptation would be beneficial. This rigidity could reflect reduced executive flexibility or a tendency to maintain a fixed "safety-first" strategy regardless of context. While older adults are generally risk-averse and prioritize accuracy [@starns2010], the failure to increase caution under conditions of degraded evidence quality may indicate that the cognitive resources needed for strategic adjustment are themselves depleted by the dual-task demands of the high-effort condition.
+Despite the internal noise introduced by High effort (as evidenced by reduced drift rates), older adults failed to dynamically adjust their decision criteria by increasing boundary separation ($a$). This null finding suggests *strategic rigidity* in aging: older adults may have difficulty flexibly modulating their decision thresholds in response to changing task demands, even when such adaptation would be beneficial. This rigidity could reflect reduced executive flexibility or a tendency to maintain a fixed "safety-first" strategy regardless of context. While older adults are generally risk-averse and prioritize accuracy [@starns2010], the failure to increase caution under conditions of degraded evidence quality may indicate that the cognitive resources needed for strategic adjustment are themselves depleted by the dual-task demands of the High-effort condition.
+
+An alternative (though not mutually exclusive) explanation is that the response-signal design may have constrained participants' ability to flexibly modulate decision boundaries. The fixed post-stimulus delay (0.35 s) before the response prompt appeared may have encouraged a "wait-for-cue" strategy that overrode spontaneous boundary adjustments. Notably, our boundary estimates varied by stimulus-driven difficulty (Easy: 2.37, Standard: 2.41, Hard: 2.65; @tbl-ddm-core-by-difficulty-effort) but not by effortful arousal, suggesting that bottom-up perceptual factors influenced boundary setting while top-down strategic adjustments may have been suppressed by the response-signal structure. Future work using free-response paradigms (without response cues) could better isolate strategic flexibility from design-imposed temporal constraints.
 
 ## Bias and Phasic Arousal
 
 Regarding starting-point bias ($z$), our results revealed a consistent conservative bias across conditions, with a posterior mean of $z = 0.63$ (95% CrI [0.58, 0.68]) on Standard trials, indicating a slight preference for "different" responses (@tbl-standard-only-bias-levels). This bias was robust across effort conditions, with no significant effect of effort level (High vs. Low contrast: $\Delta = -0.01$, 95% CrI [−0.02, 0.01], $p(\Delta>0) = .27$). However, we did observe a significant task difference: VDT showed less bias toward "different" than ADT ($\Delta = -0.04$, 95% CrI [−0.06, −0.02], $p(\Delta>0) < .001$; @tbl-standard-only-bias-contrasts), suggesting modality-specific differences in response tendencies.
 
-These findings can be interpreted in the context of LC-NE system dynamics. Recent work suggests that phasic arousal, indexed by pupil dilation, can suppress pre-existing choice biases, "resetting" the decision process to a neutral state [@degee2020pupil]. The lack of a significant effort effect on bias suggests that the high-effort manipulation (40% MVC) may not have elicited strong enough phasic arousal responses to modulate starting-point bias, or that any such effects were offset by other factors. Alternatively, the integrity of the LC-NE system in our older adult sample may have moderated the expected bias suppression [@huang2024]. The task-specific bias differences (VDT < ADT) may reflect inherent differences in how auditory versus visual detection tasks engage response strategies, independent of arousal state. Direct pupillometry integration (@sec-pupil-ddm-integration) did not reveal reliable modulation of bias or drift rate by trial-wise TEPR, consistent with the null pupil-DDM associations reported in Section 3.8.
+These findings can be interpreted in the context of LC-NE system dynamics. Recent work suggests that phasic arousal, indexed by pupil dilation, can suppress pre-existing choice biases, "resetting" the decision process to a neutral state [@degee2020pupil]. The lack of a significant effort effect on bias suggests that the High-effort manipulation (40% MVC) may not have elicited strong enough phasic arousal responses to modulate starting-point bias, or that any such effects were offset by other factors. Alternatively, the integrity of the LC-NE system in our older adult sample may have moderated the expected bias suppression [@huang2024]. The task-specific bias differences (VDT < ADT) may reflect inherent differences in how auditory versus visual detection tasks engage response strategies, independent of arousal state. Direct pupillometry integration (@sec-pupil-ddm-integration) did not reveal reliable modulation of bias or drift rate by trial-wise TEPR, consistent with the null pupil-DDM associations reported in Section 3.8.
 
 ## Limitations and Future Directions
 
@@ -4885,6 +4954,7 @@ if (!is.null(tbl_sob_fixef)) {
     filter(threshold == PRIMARY_THR, rt_type == PRIMARY_RT) %>%
     filter(term == "Intercept" | term == "(Intercept)") %>%
     filter(!grepl("^bias_|^bs_|^ndt_|^b_", term, ignore.case = TRUE)) %>%
+    { if ("dpar" %in% names(.)) filter(., dpar == "v") else . } %>%
     slice(1)
   if (nrow(drift_intercept_raw) > 0) {
     est_col <- if ("Estimate" %in% names(drift_intercept_raw)) "Estimate" else "estimate"
@@ -4930,9 +5000,43 @@ if (!is.null(tbl_sob_fixef)) {
 #| fig-cap: "Conditional Accuracy Function (CAF). Empirical accuracy by RT bin for each Task × Effort × Difficulty combination. Shows the speed–accuracy tradeoff: faster responses (lower bins) tend toward chance accuracy, while slower responses show higher accuracy, consistent with evidence accumulation over time."
 #| fig-align: center
 #| out-width: "85%"
-# Dynamic: compute from behavioral_data or load 04_all_caf_empirical.csv
+# Dynamic: prefer behavioral_data (fresh on re-render), else load 04_all_caf_empirical.csv
 caf_file <- file.path(proj_root, "output/publish/04_all_caf_empirical.csv")
-if (file.exists(caf_file)) {
+caf_from_behav <- !is.null(behavioral_data) && nrow(behavioral_data) > 0
+rt_col <- if (caf_from_behav) intersect(c("rt", "same_diff_resp_secs", "resp1RT"), names(behavioral_data))[1] else NULL
+acc_col_behav <- if (caf_from_behav) intersect(c("correct", "iscorr", "accuracy", "resp_is_correct"), names(behavioral_data))[1] else NULL
+task_col <- if (caf_from_behav) intersect(c("task", "Task"), names(behavioral_data))[1] else NULL
+diff_col <- if (caf_from_behav) intersect(c("difficulty_level", "difficulty"), names(behavioral_data))[1] else NULL
+effort_col <- if (caf_from_behav) intersect(c("effort_condition", "effort"), names(behavioral_data))[1] else NULL
+caf_from_behav <- caf_from_behav && !is.null(rt_col) && !is.null(acc_col_behav) && !is.null(task_col) && !is.null(diff_col) && !is.null(effort_col)
+
+if (caf_from_behav) {
+  caf_computed <- behavioral_data %>%
+    filter(!is.na(!!sym(rt_col)), !!sym(rt_col) > 0, !!sym(rt_col) < 10,
+           !is.na(!!sym(acc_col_behav)), !is.na(!!sym(task_col)), !is.na(!!sym(diff_col)), !is.na(!!sym(effort_col))) %>%
+    mutate(
+      task = factor(!!sym(task_col)),
+      effort_condition = factor(case_when(grepl("High|40", as.character(!!sym(effort_col))) ~ "High", TRUE ~ "Low"), levels = c("Low", "High")),
+      difficulty_level = factor(!!sym(diff_col), levels = c("Standard", "Easy", "Hard"))
+    ) %>%
+    group_by(task, effort_condition, difficulty_level) %>%
+    mutate(bin = cut(!!sym(rt_col), breaks = 5, labels = FALSE)) %>%
+    filter(!is.na(bin)) %>%
+    group_by(task, effort_condition, difficulty_level, bin) %>%
+    summarise(acc_emp = mean(as.numeric(!!sym(acc_col_behav)), na.rm = TRUE), bin_rt_mid = mean(!!sym(rt_col), na.rm = TRUE), .groups = "drop")
+  if (nrow(caf_computed) > 0) {
+    p_caf <- ggplot(caf_computed, aes(x = bin_rt_mid, y = acc_emp)) +
+      geom_point(size = 1.6, color = "black") + geom_path(linewidth = 0.7, color = "black", alpha = 0.6) +
+      facet_grid(task + effort_condition ~ difficulty_level) +
+      labs(x = "RT bin midpoint (s)", y = "Accuracy", title = "Conditional Accuracy Function: Accuracy by RT Bin",
+           subtitle = "Empirical accuracy (speed-accuracy tradeoff)") +
+      scale_y_continuous(limits = c(0, 1)) +
+      theme_minimal(base_size = 11) +
+      theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
+            plot.subtitle = element_text(size = 10, color = "gray50", hjust = 0.5), strip.text = element_text(face = "bold"))
+    print(p_caf)
+  } else { include_graphics_safe(fig_path("fig_caf.pdf")) }
+} else if (file.exists(caf_file)) {
   caf_data <- read_csv(caf_file, show_col_types = FALSE)
   acc_col <- intersect(c("acc_emp", "emp_caf"), names(caf_data))[1]
   bin_col <- intersect(c("bin_rt_mid", "bin"), names(caf_data))[1]
@@ -4959,41 +5063,8 @@ if (file.exists(caf_file)) {
       print(p_caf)
     } else { include_graphics_safe(fig_path("fig_caf.pdf")) }
   } else { include_graphics_safe(fig_path("fig_caf.pdf")) }
-} else if (!is.null(behavioral_data) && nrow(behavioral_data) > 0) {
-  rt_col <- intersect(c("rt", "same_diff_resp_secs", "resp1RT"), names(behavioral_data))[1]
-  acc_col <- intersect(c("correct", "iscorr", "accuracy"), names(behavioral_data))[1]
-  task_col <- intersect(c("task", "Task"), names(behavioral_data))[1]
-  diff_col <- intersect(c("difficulty_level", "difficulty"), names(behavioral_data))[1]
-  effort_col <- intersect(c("effort_condition", "effort"), names(behavioral_data))[1]
-  if (!is.null(rt_col) && !is.null(acc_col) && !is.null(task_col) && !is.null(diff_col) && !is.null(effort_col)) {
-    caf_computed <- behavioral_data %>%
-      filter(!is.na(!!sym(rt_col)), !!sym(rt_col) > 0, !!sym(rt_col) < 10,
-             !is.na(!!sym(acc_col)), !is.na(!!sym(task_col)), !is.na(!!sym(diff_col)), !is.na(!!sym(effort_col))) %>%
-      mutate(
-        task = factor(!!sym(task_col)),
-        effort_condition = factor(case_when(grepl("High|40", as.character(!!sym(effort_col))) ~ "High", TRUE ~ "Low"), levels = c("Low", "High")),
-        difficulty_level = factor(!!sym(diff_col), levels = c("Standard", "Easy", "Hard"))
-      ) %>%
-      group_by(task, effort_condition, difficulty_level) %>%
-      mutate(bin = cut(!!sym(rt_col), breaks = 5, labels = FALSE)) %>%
-      filter(!is.na(bin)) %>%
-      group_by(task, effort_condition, difficulty_level, bin) %>%
-      summarise(acc_emp = mean(as.numeric(!!sym(acc_col)), na.rm = TRUE), bin_rt_mid = mean(!!sym(rt_col), na.rm = TRUE), .groups = "drop")
-    if (nrow(caf_computed) > 0) {
-      p_caf <- ggplot(caf_computed, aes(x = bin_rt_mid, y = acc_emp)) +
-        geom_point(size = 1.6, color = "black") + geom_path(linewidth = 0.7, color = "black", alpha = 0.6) +
-        facet_grid(task + effort_condition ~ difficulty_level) +
-        labs(x = "RT bin midpoint (s)", y = "Accuracy", title = "Conditional Accuracy Function: Accuracy by RT Bin",
-             subtitle = "Empirical accuracy (speed-accuracy tradeoff)") +
-        scale_y_continuous(limits = c(0, 1)) +
-        theme_minimal(base_size = 11) +
-        theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
-              plot.subtitle = element_text(size = 10, color = "gray50", hjust = 0.5), strip.text = element_text(face = "bold"))
-      print(p_caf)
-    } else { include_graphics_safe(fig_path("fig_caf.pdf")) }
-  } else { include_graphics_safe(fig_path("fig_caf.pdf")) }
 } else {
-include_graphics_safe(fig_path("fig_caf.pdf"))
+  include_graphics_safe(fig_path("fig_caf.pdf"))
 }
 ```
 
@@ -5216,6 +5287,13 @@ if (!is.null(sensitivity_summary) && exists("has_sensitivity_summary") && has_se
         footnote = "Baseline: N=67 (includes sub-chance). Excluded: N=55 (excludes sub-chance). Δ = Excluded - Baseline. If Δ CI contains 0 and CIs overlap, parameter is robust.",
         locations = cells_column_labels(columns = delta_contains_zero)
       ) %>%
+      tab_source_note(
+        source_note = paste0("Data: output/checks/sensitivity_summary.csv. ",
+          if (file.exists(file.path(proj_root, "output/checks/sensitivity_summary.csv")))
+            paste0("Last modified ", format(file.info(file.path(proj_root, "output/checks/sensitivity_summary.csv"))$mtime, "%Y-%m-%d"), ". ")
+          else "",
+          "Refresh: Rscript scripts/checks/sensitivity.R")
+      ) %>%
       opt_table_font(size = "small") %>%
       tab_options(
         table.width = pct(90),
@@ -5345,13 +5423,13 @@ if (file.exists(task_sens_path)) {
 
 **Key findings** (when task-sensitivity model is available):
 
-1. **Effort effect is robust**: The Effort → Drift effect estimate changes minimally when Task is included, and the 95% CrI remains entirely negative, confirming that high effort reduces drift rate regardless of model specification.
+1. **Effort effect is robust**: The Effort → Drift effect estimate changes minimally when Task is included, and the 95% CrI remains entirely negative, confirming that High effort reduces drift rate regardless of model specification.
 
 2. **Task main effect**: Task modality (ADT vs. VDT) may or may not reliably affect drift rate; the task-sensitivity model quantifies this.
 
 3. **Effort × Task interaction**: A negligible interaction indicates that effort affects both modalities similarly; a significant interaction would suggest modality-specific vulnerability to dual-task interference.
 
-**Conclusion**: The core finding—that high effort reduces drift rate—is **robust to Task specification**. Including Task improves model flexibility but does not alter the substantive conclusion regarding cognitive-motor interference in aging.
+**Conclusion**: The core finding—that High effort reduces drift rate—is **robust to Task specification**. Including Task improves model flexibility but does not alter the substantive conclusion regarding cognitive-motor interference in aging.
 
 ```{r pdf-sanity-check}
 #| include: false
