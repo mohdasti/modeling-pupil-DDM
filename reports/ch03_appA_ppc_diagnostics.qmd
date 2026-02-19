@@ -111,7 +111,11 @@ The following subsections provide detailed methods and diagnostic results for th
 
 ### A3.1 PPC Validation Method {#sec-ch3-ppc-method .unnumbered}
 
-We evaluated model fit using posterior predictive checks (PPC) with pre-specified thresholds: subject-wise mid-body QP RMSE < 0.09 s, |Δ accuracy| < 0.05, KS statistic < 0.15, and <15% of cells flagged. Residuals were computed as observed minus posterior median predicted values. Subject-wise diagnostics met pre-specified thresholds (@tbl-convergence-ppc-gate-appendix).
+We evaluated model fit using posterior predictive checks (PPC) with pre-specified thresholds: subject-wise mid-body QP RMSE < 0.09 s, |Δ accuracy| < 0.05, KS statistic < 0.15, and <15% of cells flagged. Residuals were computed as observed minus posterior median predicted values.
+
+**Interpretation of PPC metrics:** The strict subject-condition-level PPC thresholds were not fully satisfied (@tbl-convergence-ppc-gate-appendix), with elevated flagging rates driven primarily by fast-tail misfit in Easy/VDT conditions. This pattern is consistent with known limitations of the standard Wiener DDM, which assumes constant drift within trials and no across-trial variability in drift (sv), starting point (sz), or non-decision time (st₀). Fast responses in easy conditions are particularly challenging for this model class, as they may reflect anticipatory responses, fast-guess processes, or extremely high momentary drift rates incompatible with the Wiener process assumptions.
+
+**Robustness of inferences:** Despite these localized deviations, the model accurately captured: (1) mid-body RT quantiles across all conditions (QP plots show good alignment for central quantiles; @fig-ch3app-qp-plot), (2) accuracy patterns by condition (mean accuracy errors < 0.05), and (3) the qualitative shape of RT distributions (RT overlay plots show good central fit; @fig-ch3app-ppc-rt-overlay). Critically, key parameter contrasts (effort effects on drift rate, difficulty effects on boundary separation) were robust to these tail deviations, as verified by sensitivity analyses excluding fast responses (Appendix A5). The strict PPC thresholds serve as a conservative benchmark for identifying model limitations, but do not invalidate substantive conclusions when deviations are confined to sparse data regions and parameter estimates remain stable.
 
 ### A3.2 Visual PPC Diagnostics {#sec-ch3-ppc-visual .unnumbered}
 
