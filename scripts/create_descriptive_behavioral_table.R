@@ -7,6 +7,9 @@ suppressPackageStartupMessages({
   library(readr)
 })
 
+# Load logging and validation utilities
+source("R/utils/logging_validation.R")
+
 # Configuration
 PROBE_DUR_SEC <- 0.1
 GRIP_RELAX_SEC <- 0.25
@@ -90,16 +93,16 @@ if ("difficulty_level" %in% names(df)) {
   if (is.numeric(df$difficulty_level)) {
     df$difficulty_3 <- case_when(
       df$difficulty_level == 0 ~ "Standard",
-      df$difficulty_level %in% c(1, 2) ~ "Easy",
-      df$difficulty_level %in% c(3, 4) ~ "Hard",
+      df$difficulty_level %in% c(1, 2) ~ "Hard",
+      df$difficulty_level %in% c(3, 4) ~ "Easy",
       TRUE ~ "Standard"
     )
   } else {
     df$difficulty_3 <- as.character(df$difficulty_level)
     df$difficulty_3 <- case_when(
       grepl("standard|baseline|0", df$difficulty_3, ignore.case = TRUE) ~ "Standard",
-      grepl("easy|1|2", df$difficulty_3, ignore.case = TRUE) ~ "Easy",
-      grepl("hard|3|4", df$difficulty_3, ignore.case = TRUE) ~ "Hard",
+      grepl("easy|3|4", df$difficulty_3, ignore.case = TRUE) ~ "Easy",
+      grepl("hard|1|2", df$difficulty_3, ignore.case = TRUE) ~ "Hard",
       TRUE ~ "Standard"
     )
   }
@@ -138,12 +141,15 @@ counts_by_condition <- ddm_base %>%
 choice_props <- ddm_base %>%
   group_by(task, effort_condition, difficulty_3) %>%
   summarise(
-    prop_same = mean(choice_binary == 1L, na.rm = TRUE),
-    prop_different = mean(choice_binary == 0L, na.rm = TRUE),
-    n_same = sum(choice_binary == 1L, na.rm = TRUE),
-    n_different = sum(choice_binary == 0L, na.rm = TRUE),
+    prop_different = mean(choice_binary == 1L, na.rm = TRUE),  # choice_binary == 1 means resp_is_diff == 1 (different)
+    prop_same = mean(choice_binary == 0L, na.rm = TRUE),      # choice_binary == 0 means resp_is_diff == 0 (same)
+    n_different = sum(choice_binary == 1L, na.rm = TRUE),
+    n_same = sum(choice_binary == 0L, na.rm = TRUE),
     .groups = "drop"
   )
+
+# Validation: prop_same + prop_different should equal 1
+stopifnot(all(abs(choice_props$prop_same + choice_props$prop_different - 1) < 1e-8))
 
 rt_cue_quantiles <- ddm_base %>%
   group_by(task, effort_condition, difficulty_3) %>%

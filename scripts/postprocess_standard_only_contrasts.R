@@ -11,6 +11,9 @@ suppressPackageStartupMessages({
   library(readr)
 })
 
+# Load logging and validation utilities
+source("R/utils/logging_validation.R")
+
 # Get run directory from command line or use default
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) > 0) {
@@ -103,13 +106,30 @@ for (model_file in model_files) {
   cat("  Posterior draws:", n_draws, "\n")
   
   # Create prediction grid: Task × Effort
+  # Match the exact factor levels used in the model
+  # Check model data to get correct factor levels
+  model_data <- fit$data
+  task_levels <- levels(factor(model_data$task))
+  effort_levels <- levels(factor(model_data$effort_condition))
+  
+  if (length(task_levels) == 0) {
+    task_levels <- c("ADT", "VDT")
+  }
+  if (length(effort_levels) == 0) {
+    # Try common variations
+    effort_levels <- c("Low_5_MVC", "High_40_MVC")
+  }
+  
+  cat("  Task levels:", paste(task_levels, collapse = ", "), "\n")
+  cat("  Effort levels:", paste(effort_levels, collapse = ", "), "\n")
+  
   newdata <- expand.grid(
-    task = c("ADT", "VDT"),
-    effort_condition = c("low", "high"),
+    task = task_levels,
+    effort_condition = effort_levels,
     stringsAsFactors = FALSE
   )
-  newdata$task <- factor(newdata$task, levels = c("ADT", "VDT"))
-  newdata$effort_condition <- factor(newdata$effort_condition, levels = c("low", "high"))
+  newdata$task <- factor(newdata$task, levels = task_levels)
+  newdata$effort_condition <- factor(newdata$effort_condition, levels = effort_levels)
   
   # Get posterior predictions for bias (z on natural scale)
   z_draws_matrix <- tryCatch({
@@ -125,29 +145,50 @@ for (model_file in model_files) {
       cat("  WARNING: posterior_epred/linpred failed, using manual computation\n")
       post_draws <- brms::as_draws_df(fit)
       
-      # Find bias coefficients
+      # Find bias coefficients - be flexible with naming
       bias_cols <- grep("^b_bias_", names(post_draws), value = TRUE)
-      intercept_col <- grep("^b_bias_Intercept$", bias_cols, value = TRUE)[1]
-      task_col <- grep("taskVDT|task_VDT", bias_cols, value = TRUE, ignore.case = TRUE)[1]
-      effort_col <- grep("effort_conditionhigh|effort.*high", bias_cols, value = TRUE, ignore.case = TRUE)[1]
+      intercept_col <- grep("^b_bias_Intercept$|^b_bias_Intercept\\.", bias_cols, value = TRUE)[1]
+      
+      # Find task coefficient (VDT relative to ADT)
+      task_col <- grep("taskVDT|task_VDT|taskVDT|task.*VDT", bias_cols, value = TRUE, ignore.case = TRUE)[1]
+      if (is.na(task_col)) {
+        # Try alternative patterns
+        task_col <- grep("^b_bias_task", bias_cols, value = TRUE)[1]
+      }
+      
+      # Find effort coefficient (high relative to low)
+      effort_col <- grep("effort_conditionhigh|effort.*high|effort.*High", bias_cols, value = TRUE, ignore.case = TRUE)[1]
+      if (is.na(effort_col)) {
+        # Try alternative patterns
+        effort_col <- grep("^b_bias_effort", bias_cols, value = TRUE)[1]
+      }
       
       if (is.na(intercept_col)) {
+        cat("  ERROR: Could not find bias_Intercept. Available bias columns:\n")
+        cat("    ", paste(bias_cols, collapse = "\n    "), "\n")
         stop("Could not find bias_Intercept in posterior draws")
       }
       
       intercept_draws <- post_draws[[intercept_col]]
-      task_draws <- if (!is.na(task_col)) post_draws[[task_col]] else rep(0, length(intercept_draws))
-      effort_draws <- if (!is.na(effort_col)) post_draws[[effort_col]] else rep(0, length(intercept_draws))
+      n_draws <- length(intercept_draws)
       
-      # Compute z for each condition: ADT_low, ADT_high, VDT_low, VDT_high
+      task_draws <- if (!is.na(task_col)) post_draws[[task_col]] else rep(0, n_draws)
+      effort_draws <- if (!is.na(effort_col)) post_draws[[effort_col]] else rep(0, n_draws)
+      
+      # Compute z for each condition on natural scale (plogis transforms from logit)
+      # ADT_low: intercept only
       z_adt_low <- plogis(intercept_draws)
+      # ADT_high: intercept + effort
       z_adt_high <- plogis(intercept_draws + effort_draws)
+      # VDT_low: intercept + task
       z_vdt_low <- plogis(intercept_draws + task_draws)
+      # VDT_high: intercept + task + effort
       z_vdt_high <- plogis(intercept_draws + task_draws + effort_draws)
       
-      # Return as matrix: draws × conditions
+      # Return as matrix: draws × conditions (matching newdata order)
+      # Order: ADT/Low, ADT/High, VDT/Low, VDT/High
       matrix(c(z_adt_low, z_adt_high, z_vdt_low, z_vdt_high), 
-             ncol = 4, nrow = length(intercept_draws))
+             ncol = 4, nrow = n_draws, byrow = FALSE)
     })
   })
   
@@ -159,10 +200,45 @@ for (model_file in model_files) {
   }
   
   # Extract draws for each condition
-  z_adt_low_draws <- z_draws_matrix[, 1]
-  z_adt_high_draws <- z_draws_matrix[, 2]
-  z_vdt_low_draws <- z_draws_matrix[, 3]
-  z_vdt_high_draws <- z_draws_matrix[, 4]
+  # Map conditions based on newdata order
+  # newdata order: ADT/Low, ADT/High, VDT/Low, VDT/High (if 2x2)
+  # But need to handle any order - match by task and effort
+  condition_map <- data.frame(
+    row_idx = 1:nrow(newdata),
+    task = as.character(newdata$task),
+    effort = as.character(newdata$effort_condition)
+  )
+  
+  # Find indices for each condition
+  adt_low_idx <- which(condition_map$task == "ADT" & 
+                       (grepl("Low|low", condition_map$effort) | condition_map$effort == "low"))[1]
+  adt_high_idx <- which(condition_map$task == "ADT" & 
+                        (grepl("High|high", condition_map$effort) | condition_map$effort == "high"))[1]
+  vdt_low_idx <- which(condition_map$task == "VDT" & 
+                       (grepl("Low|low", condition_map$effort) | condition_map$effort == "low"))[1]
+  vdt_high_idx <- which(condition_map$task == "VDT" & 
+                        (grepl("High|high", condition_map$effort) | condition_map$effort == "high"))[1]
+  
+  # Fallback: if only 4 conditions, assume standard order
+  if (nrow(newdata) == 4 && (is.na(adt_low_idx) || is.na(adt_high_idx) || 
+                              is.na(vdt_low_idx) || is.na(vdt_high_idx))) {
+    adt_low_idx <- 1
+    adt_high_idx <- 2
+    vdt_low_idx <- 3
+    vdt_high_idx <- 4
+  }
+  
+  if (any(is.na(c(adt_low_idx, adt_high_idx, vdt_low_idx, vdt_high_idx)))) {
+    cat("  ERROR: Could not map conditions correctly\n")
+    cat("  Condition map:\n")
+    print(condition_map)
+    next
+  }
+  
+  z_adt_low_draws <- z_draws_matrix[, adt_low_idx]
+  z_adt_high_draws <- z_draws_matrix[, adt_high_idx]
+  z_vdt_low_draws <- z_draws_matrix[, vdt_low_idx]
+  z_vdt_high_draws <- z_draws_matrix[, vdt_high_idx]
   
   cat("  Condition z means: ADT_low=", round(mean(z_adt_low_draws), 4),
       ", ADT_high=", round(mean(z_adt_high_draws), 4),
@@ -178,40 +254,62 @@ for (model_file in model_files) {
   effort_contrast_draws <- (z_adt_high_draws + z_vdt_high_draws) / 2 - 
                            (z_adt_low_draws + z_vdt_low_draws) / 2
   
-  # Summarize contrasts
+  # Summarize contrasts with dissertation-grade format
+  # Compute quantiles explicitly to catch any issues
+  task_q2.5 <- quantile(task_contrast_draws, 0.025, na.rm = TRUE, names = FALSE)
+  task_q97.5 <- quantile(task_contrast_draws, 0.975, na.rm = TRUE, names = FALSE)
+  task_mean <- mean(task_contrast_draws, na.rm = TRUE)
+  task_median <- median(task_contrast_draws, na.rm = TRUE)
+  task_p_gt0 <- mean(task_contrast_draws > 0, na.rm = TRUE)
+  
+  effort_q2.5 <- quantile(effort_contrast_draws, 0.025, na.rm = TRUE, names = FALSE)
+  effort_q97.5 <- quantile(effort_contrast_draws, 0.975, na.rm = TRUE, names = FALSE)
+  effort_mean <- mean(effort_contrast_draws, na.rm = TRUE)
+  effort_median <- median(effort_contrast_draws, na.rm = TRUE)
+  effort_p_gt0 <- mean(effort_contrast_draws > 0, na.rm = TRUE)
+  
+  # Check for NA/NaN quantiles immediately
+  if (is.na(task_q2.5) || is.na(task_q97.5) || is.na(effort_q2.5) || is.na(effort_q97.5)) {
+    cat("  ERROR: Found NA quantile values\n")
+    cat("    Task contrast: q2.5 =", task_q2.5, ", q97.5 =", task_q97.5, "\n")
+    cat("    Effort contrast: q2.5 =", effort_q2.5, ", q97.5 =", effort_q97.5, "\n")
+    cat("    Task draws: n =", length(task_contrast_draws), ", valid =", sum(!is.na(task_contrast_draws)), "\n")
+    cat("    Effort draws: n =", length(effort_contrast_draws), ", valid =", sum(!is.na(effort_contrast_draws)), "\n")
+    stop("Cannot compute quantiles: NA values detected")
+  }
+  
+  # Check quantile ordering
+  if (task_q2.5 > task_q97.5) {
+    stop("Task contrast quantiles out of order: q2.5 (", task_q2.5, ") > q97.5 (", task_q97.5, ")")
+  }
+  if (effort_q2.5 > effort_q97.5) {
+    stop("Effort contrast quantiles out of order: q2.5 (", effort_q2.5, ") > q97.5 (", effort_q97.5, ")")
+  }
+  
   contrast_rows <- list(
     data.frame(
       rt_def = rt_def,
       threshold = threshold,
       contrast = "Visual_Auditory",
-      z_diff_mean = mean(task_contrast_draws, na.rm = TRUE),
-      z_diff_median = median(task_contrast_draws, na.rm = TRUE),
-      z_diff_q2.5 = quantile(task_contrast_draws, 0.025, na.rm = TRUE),
-      z_diff_q97.5 = quantile(task_contrast_draws, 0.975, na.rm = TRUE),
-      p_gt0 = mean(task_contrast_draws > 0, na.rm = TRUE),
+      estimate = task_median,  # Use median as estimate (can also use mean)
+      q2.5 = task_q2.5,
+      q97.5 = task_q97.5,
+      p_gt0 = task_p_gt0,
       stringsAsFactors = FALSE
     ),
     data.frame(
       rt_def = rt_def,
       threshold = threshold,
       contrast = "Low_High",
-      z_diff_mean = mean(effort_contrast_draws, na.rm = TRUE),
-      z_diff_median = median(effort_contrast_draws, na.rm = TRUE),
-      z_diff_q2.5 = quantile(effort_contrast_draws, 0.025, na.rm = TRUE),
-      z_diff_q97.5 = quantile(effort_contrast_draws, 0.975, na.rm = TRUE),
-      p_gt0 = mean(effort_contrast_draws > 0, na.rm = TRUE),
+      estimate = effort_median,  # Use median as estimate (can also use mean)
+      q2.5 = effort_q2.5,
+      q97.5 = effort_q97.5,
+      p_gt0 = effort_p_gt0,
       stringsAsFactors = FALSE
     )
   )
   
-  # Check for NA quantiles
-  na_check <- sum(is.na(contrast_rows[[1]]$z_diff_q2.5), is.na(contrast_rows[[1]]$z_diff_q97.5),
-                  is.na(contrast_rows[[2]]$z_diff_q2.5), is.na(contrast_rows[[2]]$z_diff_q97.5))
-  if (na_check > 0) {
-    cat("  ERROR: Found", na_check, "NA quantile values\n")
-  } else {
-    cat("  ✓ Quantiles computed successfully (no NA)\n")
-  }
+  cat("  ✓ Quantiles computed successfully (no NA)\n")
   
   # Store results
   key <- paste0(rt_def, "__", formatC(threshold, format="f", digits=2))
@@ -224,30 +322,46 @@ for (model_file in model_files) {
 if (length(contrast_results) > 0) {
   contrasts_df <- bind_rows(contrast_results)
   
-  # Remove any NaN values
+  # Remove any NaN values (convert to NA for explicit checking)
   contrasts_df <- contrasts_df %>%
     mutate(across(where(is.numeric), ~ ifelse(is.nan(.x), NA_real_, .x)))
   
-  # Write output
+  # DISSERTATION-GRADE VALIDATION: Assert no NA in CI columns
+  na_q2.5 <- sum(is.na(contrasts_df$q2.5))
+  na_q97.5 <- sum(is.na(contrasts_df$q97.5))
+  
+  if (na_q2.5 > 0 || na_q97.5 > 0) {
+    cat("ERROR: Validation failed - NA values in CI columns!\n")
+    cat("  NA in q2.5:", na_q2.5, "rows\n")
+    cat("  NA in q97.5:", na_q97.5, "rows\n")
+    cat("\nRows with missing CIs:\n")
+    broken_rows <- contrasts_df %>%
+      filter(is.na(q2.5) | is.na(q97.5)) %>%
+      select(rt_def, threshold, contrast, estimate, q2.5, q97.5, p_gt0)
+    print(broken_rows)
+    stop("Contrasts CSV contains NA quantiles - cannot export")
+  }
+  
+  # DISSERTATION-GRADE VALIDATION: Assert quantile ordering (q2.5 <= estimate <= q97.5)
+  ordering_violations <- contrasts_df %>%
+    filter(q2.5 > estimate | estimate > q97.5)
+  
+  if (nrow(ordering_violations) > 0) {
+    cat("ERROR: Validation failed - quantile ordering violations!\n")
+    cat("  Violations:", nrow(ordering_violations), "rows\n")
+    cat("\nRows with ordering violations:\n")
+    print(ordering_violations %>% select(rt_def, threshold, contrast, estimate, q2.5, q97.5))
+    stop("Contrasts CSV has quantile ordering violations - cannot export")
+  }
+  
+  # All validations passed - write output
   output_file <- file.path(tables_dir, "standard_only_bias_contrasts.csv")
   write_csv(contrasts_df, output_file)
   cat("================================================================================\n")
   cat("SAVED:", output_file, "\n")
   cat("Rows:", nrow(contrasts_df), "\n")
+  cat("✓ Validation passed: all CIs non-NA and properly ordered\n")
   cat("================================================================================\n\n")
-  
-  # Sanity check: assert no NA in quantile columns
-  na_q2.5 <- sum(is.na(contrasts_df$z_diff_q2.5))
-  na_q97.5 <- sum(is.na(contrasts_df$z_diff_q97.5))
-  
-  if (na_q2.5 > 0 || na_q97.5 > 0) {
-    cat("ERROR: Validation failed!\n")
-    cat("  NA in z_diff_q2.5:", na_q2.5, "\n")
-    cat("  NA in z_diff_q97.5:", na_q97.5, "\n")
-    stop("Contrasts CSV contains NA quantiles")
-  } else {
-    cat("✓ Validation passed: no NA in quantile columns\n\n")
-  }
   
   # Print preview
   cat("Preview (first 5 rows):\n")

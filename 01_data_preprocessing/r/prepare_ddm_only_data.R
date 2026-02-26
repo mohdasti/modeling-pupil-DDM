@@ -120,6 +120,13 @@ behavioral_data <- behavioral_data %>%
     isOddball = as.integer(stim_is_diff)
   )
 
+# Also check if stim_offset exists (preferred for task-specific mapping)
+if ("stim_offset" %in% names(behavioral_data)) {
+  behavioral_data <- behavioral_data %>% mutate(stim_offset = stim_offset)
+} else {
+  behavioral_data <- behavioral_data %>% mutate(stim_offset = NA_real_)
+}
+
 log_msg("  Column mapping complete")
 log_msg("")
 
@@ -132,9 +139,22 @@ log_msg("STEP 3: Creating difficulty levels...")
 behavioral_data <- behavioral_data %>%
   mutate(
     difficulty_level = case_when(
+      # Standard: no oddball or zero offset
       isOddball == 0 | is.na(isOddball) ~ "Standard",
-      stimLev %in% c(0, 1, 2, 8, 16, 0.06, 0.12) ~ "Hard",
-      stimLev %in% c(3, 4, 32, 64, 0.24, 0.48) ~ "Easy",
+      
+      # If stim_offset is available, use task-specific offset mapping (preferred)
+      !is.na(stim_offset) & stim_offset == 0 ~ "Standard",
+      !is.na(stim_offset) & task == "ADT" & stim_offset %in% c(8, 16) ~ "Hard",
+      !is.na(stim_offset) & task == "ADT" & stim_offset %in% c(32, 64) ~ "Easy",
+      !is.na(stim_offset) & task == "VDT" & stim_offset %in% c(0.06, 0.12) ~ "Hard",
+      !is.na(stim_offset) & task == "VDT" & stim_offset %in% c(0.24, 0.48) ~ "Easy",
+      
+      # Fallback: use stim_level_index with task-specific mapping
+      # For stim_level_index: 0=Standard, 1-2=Hard, 3-4=Easy (applies to both tasks)
+      is.na(stim_offset) & stimLev == 0 ~ "Standard",
+      is.na(stim_offset) & stimLev %in% c(1, 2) ~ "Hard",
+      is.na(stim_offset) & stimLev %in% c(3, 4) ~ "Easy",
+      
       TRUE ~ NA_character_
     ),
     difficulty_level = as.factor(difficulty_level)

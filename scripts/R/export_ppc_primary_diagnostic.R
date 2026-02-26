@@ -65,28 +65,25 @@ log_msg("This script computes: (1) Conditional PPC, (2) Unconditional PPC, (3) S
 
 
 # ---- Load fit and data ----
+# Prefer run_dir additive model (matches main chapter); fallback to publish variants
+RUN_ID <- Sys.getenv("DDM_RUN_ID", "20260214_045745")
+RUN_DIR_MODEL <- file.path("output", "ddm_refits", "runs", RUN_ID, "models", "additive__probe_onset_locked__thr0.20.rds")
 
 fit_paths <- c(
-
-  file.path(PUBLISH_DIR, "fit_primary_vza_vINTX.rds"),
-
-  file.path(PUBLISH_DIR, "fit_task_ADT_vza.rds"),  # Allow task-wise models too
-
-  file.path(PUBLISH_DIR, "fit_task_VDT_vza.rds"),
-
+  file.path(PUBLISH_DIR, "fit_primary_vza.rds"),           # Primary (run_dir copy)
+  RUN_DIR_MODEL,                                           # Run dir additive model
   file.path(PUBLISH_DIR, "fit_primary_vza_biasintx.rds"),
-
   file.path(PUBLISH_DIR, "fit_primary_vza_bsintx.rds"),
-
-  file.path(PUBLISH_DIR, "fit_primary_vza.rds")
-
+  file.path(PUBLISH_DIR, "fit_primary_vza_vINTX.rds"),
+  file.path(PUBLISH_DIR, "fit_task_ADT_vza.rds"),
+  file.path(PUBLISH_DIR, "fit_task_VDT_vza.rds")
 )
 
 fit_path <- fit_paths[file.exists(fit_paths)][1]
 
 if (is.na(fit_path)) {
 
-  stop(sprintf("No fit found in %s", PUBLISH_DIR))
+  stop(sprintf("No fit found. Checked: %s", paste(fit_paths, collapse = ", ")))
 
 }
 
@@ -98,15 +95,27 @@ log_msg(sprintf("Model loaded successfully: %s", basename(fit_path)))
 
 
 
-data_path <- "data/analysis_ready/bap_ddm_ready.csv"
-
+# Prefer bap_ddm_only_ready (matches main chapter); fallback to bap_ddm_ready
+data_paths <- c(
+  "data/analysis_ready/bap_ddm_only_ready.csv",
+  "data/analysis_ready/ddm_ready_data_unthresholded.csv",
+  "data/analysis_ready/bap_ddm_ready.csv"
+)
+data_path <- data_paths[file.exists(data_paths)][1]
+if (is.na(data_path)) {
+  stop(sprintf("No data file found. Checked: %s", paste(data_paths, collapse = ", ")))
+}
 log_msg("Loading data:", data_path)
 
 dd <- readr::read_csv(data_path, show_col_types = FALSE)
 
+# Standardize RT column (model expects rt)
+if (!"rt" %in% names(dd)) {
+  rt_col <- intersect(c("rt", "resp1RT", "same_diff_resp_secs", "rt_cue_locked"), names(dd))[1]
+  if (!is.na(rt_col)) dd$rt <- as.numeric(dd[[rt_col]])
+}
 
-
-# Derive decision column
+# Derive decision column (1 = correct)
 
 if (!"decision" %in% names(dd)) {
 
@@ -138,7 +147,32 @@ if (!"decision" %in% names(dd)) {
 
 
 
+# Map effort_condition to model's expected levels (low/high)
+# Run_dir additive model was fit with effort_condition = c("low", "high")
+dd$effort_condition <- as.character(dd$effort_condition)
+dd$effort_condition <- case_when(
+  grepl("low|5_mvc|0\\.05", tolower(dd$effort_condition)) ~ "low",
+  grepl("high|40_mvc|0\\.4", tolower(dd$effort_condition)) ~ "high",
+  TRUE ~ dd$effort_condition
+)
+dd$effort_condition <- factor(dd$effort_condition, levels = c("low", "high"))
+
+# difficulty_3: run_dir model uses this name (same as difficulty_level)
+diff_levels <- c("Standard", "Easy", "Hard")
+diff_present <- intersect(diff_levels, unique(na.omit(dd$difficulty_level)))
+dd$difficulty_level <- factor(dd$difficulty_level, levels = diff_present)
+dd$difficulty_3 <- dd$difficulty_level  # Model expects difficulty_3
+
+# choice_binary: model uses dec(choice_binary); bap_ddm_only_ready has resp_is_diff or choice_binary
+if (!"choice_binary" %in% names(dd)) {
+  if ("resp_is_diff" %in% names(dd)) dd$choice_binary <- as.integer(dd$resp_is_diff)
+  else if ("choice" %in% names(dd)) dd$choice_binary <- as.integer(dd$choice)
+  else dd$choice_binary <- as.integer(dd$decision)  # Fallback: decision (iscorr) may differ from boundary
+}
+
 dd <- dd %>%
+
+  filter(!is.na(rt), is.finite(rt), rt >= 0.2, rt <= 4) %>%
 
   mutate(
 
@@ -146,15 +180,14 @@ dd <- dd %>%
 
     task = factor(task),
 
-    effort_condition = factor(effort_condition, levels = c("Low_5_MVC", "High_MVC")),
-
-    difficulty_level = factor(difficulty_level, levels = c("Standard", "Hard", "Easy")),
+    choice_binary = as.integer(choice_binary),
 
     decision = as.integer(decision)
 
   )
 
-log_msg(sprintf("Data loaded. N=%d", nrow(dd)))
+log_msg(sprintf("Data loaded. N=%d (after RT filter 0.2-4s). Effort: %s. Difficulty: %s", 
+                nrow(dd), paste(levels(dd$effort_condition), collapse = ", "), paste(levels(dd$difficulty_3), collapse = ", ")))
 
 
 
@@ -543,8 +576,8 @@ one_cell_subjectwise <- function(cell_df) {
 
 
 # ---- Cells to evaluate ----
-
-cell_vars <- c("task", "effort_condition", "difficulty_level")
+# Use difficulty_3 to match model (same values as difficulty_level)
+cell_vars <- c("task", "effort_condition", "difficulty_3")
 
 cells <- dd %>% 
 
@@ -578,7 +611,7 @@ for (i in seq_len(nrow(cells))) {
 
   cell <- cells[i, ]
 
-  cell_name <- paste(cell$task, cell$effort_condition, cell$difficulty_level, sep = ".")
+  cell_name <- paste(cell$task, cell$effort_condition, cell$difficulty_3, sep = ".")
 
   log_msg(sprintf("Processing cell %d/%d: %s (n=%d)", i, nrow(cells), cell_name, cell$n))
 
@@ -590,7 +623,7 @@ for (i in seq_len(nrow(cells))) {
 
            effort_condition == cell$effort_condition,
 
-           difficulty_level == cell$difficulty_level)
+           difficulty_3 == cell$difficulty_3)
 
   
 
@@ -694,17 +727,20 @@ res_subj <- bind_rows(res_subjectwise) %>%
 
 
 
-# Combined results
+# Combined results (add difficulty_level for downstream compatibility)
+res_cond <- res_cond %>% mutate(difficulty_level = difficulty_3)
+res_uncond <- res_uncond %>% mutate(difficulty_level = difficulty_3)
+res_subj <- res_subj %>% mutate(difficulty_level = difficulty_3)
 
 res_combined <- res_cond %>%
 
-  left_join(res_uncond %>% select(task, effort_condition, difficulty_level, qp_rmse_uncond, ks_uncond), 
+  left_join(res_uncond %>% select(task, effort_condition, difficulty_3, qp_rmse_uncond, ks_uncond), 
 
-            by = c("task", "effort_condition", "difficulty_level")) %>%
+            by = c("task", "effort_condition", "difficulty_3")) %>%
 
-  left_join(res_subj %>% select(task, effort_condition, difficulty_level, qp_rmse_subj, ks_subj), 
+  left_join(res_subj %>% select(task, effort_condition, difficulty_3, qp_rmse_subj, ks_subj), 
 
-            by = c("task", "effort_condition", "difficulty_level"))
+            by = c("task", "effort_condition", "difficulty_3"))
 
 
 
@@ -717,6 +753,29 @@ readr::write_csv(res_uncond, file.path(PUBLISH_DIR, "table3_ppc_primary_uncondit
 readr::write_csv(res_subj, file.path(PUBLISH_DIR, "table3_ppc_primary_subjectwise.csv"))
 
 readr::write_csv(res_combined, file.path(PUBLISH_DIR, "table3_ppc_primary_diagnostic_combined.csv"))
+
+# Write subjectwise as _censored alias for appendix (ch03_appA expects table3_ppc_primary_subjectwise_censored.csv)
+readr::write_csv(res_subj, file.path(PUBLISH_DIR, "table3_ppc_primary_subjectwise_censored.csv"))
+
+# PPC gate summary (for appendix and extract_ppc_gates compatibility)
+gate_summary <- res_subj %>%
+  summarise(
+    n_cells = n(),
+    n_flagged = sum(any_flag, na.rm = TRUE),
+    pct_flagged = if (n() > 0) 100 * mean(any_flag, na.rm = TRUE) else 0,
+    max_qp = if (all(is.na(qp_rmse_subj))) NA_real_ else max(qp_rmse_subj, na.rm = TRUE),
+    max_ks = if (all(is.na(ks_subj))) NA_real_ else max(ks_subj, na.rm = TRUE),
+    .groups = "drop"
+  )
+readr::write_csv(gate_summary, file.path(PUBLISH_DIR, "ppc_gate_summary.csv"))
+
+# pf_subj for appendix
+pf_subj <- list(
+  n_cells = gate_summary$n_cells[1],
+  n_flagged = gate_summary$n_flagged[1],
+  pct_flagged = gate_summary$pct_flagged[1]
+)
+saveRDS(pf_subj, file.path(PUBLISH_DIR, "pf_subj.rds"))
 
 log_msg("✓ Results written to output/publish/")
 
@@ -736,11 +795,14 @@ n_flagged_cond <- sum(res_cond$any_flag, na.rm = TRUE)
 
 log_msg(sprintf("  Cells flagged: %d/%d (%.1f%%)", n_flagged_cond, nrow(res_cond), 
 
-                (n_flagged_cond/nrow(res_cond))*100))
+                if (nrow(res_cond) > 0) (n_flagged_cond/nrow(res_cond))*100 else 0))
 
+max_ks_cond <- suppressWarnings(max(res_cond$ks_cond, na.rm = TRUE))
+max_qp_cond <- suppressWarnings(max(res_cond$qp_rmse_cond, na.rm = TRUE))
 log_msg(sprintf("  Max KS: %.3f, Max QP: %.3f", 
 
-                max(res_cond$ks_cond, na.rm = TRUE), max(res_cond$qp_rmse_cond, na.rm = TRUE)))
+                if (is.finite(max_ks_cond)) max_ks_cond else NA_real_,
+                if (is.finite(max_qp_cond)) max_qp_cond else NA_real_))
 
 log_msg("")
 
@@ -750,11 +812,14 @@ n_flagged_uncond <- sum(res_uncond$any_flag, na.rm = TRUE)
 
 log_msg(sprintf("  Cells flagged: %d/%d (%.1f%%)", n_flagged_uncond, nrow(res_uncond), 
 
-                (n_flagged_uncond/nrow(res_uncond))*100))
+                if (nrow(res_uncond) > 0) (n_flagged_uncond/nrow(res_uncond))*100 else 0))
 
+max_ks_uncond <- suppressWarnings(max(res_uncond$ks_uncond, na.rm = TRUE))
+max_qp_uncond <- suppressWarnings(max(res_uncond$qp_rmse_uncond, na.rm = TRUE))
 log_msg(sprintf("  Max KS: %.3f, Max QP: %.3f", 
 
-                max(res_uncond$ks_uncond, na.rm = TRUE), max(res_uncond$qp_rmse_uncond, na.rm = TRUE)))
+                if (is.finite(max_ks_uncond)) max_ks_uncond else NA_real_,
+                if (is.finite(max_qp_uncond)) max_qp_uncond else NA_real_))
 
 log_msg("")
 
@@ -764,11 +829,14 @@ n_flagged_subj <- sum(res_subj$any_flag, na.rm = TRUE)
 
 log_msg(sprintf("  Cells flagged: %d/%d (%.1f%%)", n_flagged_subj, nrow(res_subj), 
 
-                (n_flagged_subj/nrow(res_subj))*100))
+                if (nrow(res_subj) > 0) (n_flagged_subj/nrow(res_subj))*100 else 0))
 
+max_ks_subj <- suppressWarnings(max(res_subj$ks_subj, na.rm = TRUE))
+max_qp_subj <- suppressWarnings(max(res_subj$qp_rmse_subj, na.rm = TRUE))
 log_msg(sprintf("  Max KS: %.3f, Max QP: %.3f", 
 
-                max(res_subj$ks_subj, na.rm = TRUE), max(res_subj$qp_rmse_subj, na.rm = TRUE)))
+                if (is.finite(max_ks_subj)) max_ks_subj else NA_real_,
+                if (is.finite(max_qp_subj)) max_qp_subj else NA_real_))
 
 
 

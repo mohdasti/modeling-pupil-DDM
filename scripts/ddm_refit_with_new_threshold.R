@@ -26,26 +26,42 @@ if (!requireNamespace("brms", quietly = TRUE)) {
   stop("brms package is required")
 }
 
+# Load logging and validation utilities
+source("R/utils/logging_validation.R")
+
 # =========================================================================
 # CONFIGURATION
 # =========================================================================
 
 # Analysis ID and output directory
-analysis_id <- format(Sys.time(), "%Y%m%d_%H%M%S")
+# Allow override via environment variable or R variable to reuse existing run directory
+# Check for R variable first (if set in interactive session), then environment variable
+analysis_id <- if (exists("DDM_RUN_ID") && !is.null(DDM_RUN_ID) && DDM_RUN_ID != "") {
+  DDM_RUN_ID
+} else {
+  Sys.getenv("DDM_RUN_ID", unset = format(Sys.time(), "%Y%m%d_%H%M%S"))
+}
 output_dir <- "output/ddm_refits"
 
 # Input file configuration: default to unthresholded data, allow override via environment variable
-INPUT_FILE_DEFAULT <- "output/rt_threshold_analysis/ddm_ready_data_unthresholded.csv"
+# A) Unthresholded data path - prefer data/ (from build script), allow env override
+DATA_UNTHR_DEFAULT <- "data/ddm_ready_data_unthresholded.csv"
+DATA_UNTHR <- Sys.getenv("DDM_DATA_UNTHR", unset = "")
+if (DATA_UNTHR == "") {
+  DATA_UNTHR <- DATA_UNTHR_DEFAULT
+}
+INPUT_FILE_DEFAULT <- DATA_UNTHR  # Legacy; input_file_candidates used for actual loading
 INPUT_FILE_OVERRIDE <- Sys.getenv("DDM_INPUT_FILE", unset = "")
 
-# Input file paths (try override first, then default, then fallbacks)
+# Input file paths: prefer data/ (from build_ddm_ready_data_unthresholded.R) over output/
+# so the corrected difficulty mapping is used
 input_file_candidates <- if (INPUT_FILE_OVERRIDE != "" && file.exists(INPUT_FILE_OVERRIDE)) {
   c(INPUT_FILE_OVERRIDE)
 } else {
   c(
-    INPUT_FILE_DEFAULT,  # Primary: unthresholded data
-    "output/rt_threshold_analysis/ddm_ready_data.csv",  # Fallback only
-    "data/ddm_ready_data_unthresholded.csv",
+    "data/ddm_ready_data_unthresholded.csv",  # Primary: from build script (corrected mapping)
+    "output/rt_threshold_analysis/ddm_ready_data_unthresholded.csv",
+    "output/rt_threshold_analysis/ddm_ready_data.csv",
     "data/ddm_ready_data.csv"
   )
 }
@@ -101,8 +117,10 @@ run_index <- data.frame(
 write_csv(run_index, RUN_INDEX_FILE)
 
 # Thresholds for sensitivity analysis
-SENS_THRESHOLDS <- c(0.15, 0.20, 0.25)  # Renamed for consistency with requirements
-SENSITIVITY_THRESHOLDS <- SENS_THRESHOLDS  # Keep alias for backward compatibility
+# B) Make thresholds numeric (never store "0.20 s" in numeric column)
+thresholds <- c(0.15, 0.20, 0.25)
+SENS_THRESHOLDS <- thresholds
+SENSITIVITY_THRESHOLDS <- thresholds  # Keep alias for backward compatibility
 CHOSEN_THRESHOLD <- 0.200  # Default from evaluation
 
 # MCMC settings
@@ -296,11 +314,11 @@ standardize_ddm_ready <- function(df) {
   # Handle difficulty_3 (factor with Standard/Hard/Easy, baseline = Standard)
   if ("difficulty_level" %in% names(df)) {
     if (is.numeric(df$difficulty_level)) {
-      # Collapse numeric 0..4 to 3 levels
+      # Collapse numeric 0..4 to 3 levels (stim_level_index: 0=Standard, 1-2=Hard, 3-4=Easy)
       df$difficulty_3 <- case_when(
         df$difficulty_level == 0 ~ "Standard",
-        df$difficulty_level %in% c(1, 2) ~ "Easy",
-        df$difficulty_level %in% c(3, 4) ~ "Hard",
+        df$difficulty_level %in% c(1, 2) ~ "Hard",
+        df$difficulty_level %in% c(3, 4) ~ "Easy",
         TRUE ~ "Standard"
       )
       log_info("Collapsed numeric difficulty_level to difficulty_3")
@@ -309,8 +327,8 @@ standardize_ddm_ready <- function(df) {
       df$difficulty_3 <- as.character(df$difficulty_level)
       df$difficulty_3 <- case_when(
         grepl("standard|baseline|0", df$difficulty_3, ignore.case = TRUE) ~ "Standard",
-        grepl("easy|1|2", df$difficulty_3, ignore.case = TRUE) ~ "Easy",
-        grepl("hard|3|4", df$difficulty_3, ignore.case = TRUE) ~ "Hard",
+        grepl("easy|3|4", df$difficulty_3, ignore.case = TRUE) ~ "Easy",
+        grepl("hard|1|2", df$difficulty_3, ignore.case = TRUE) ~ "Hard",
         TRUE ~ "Standard"
       )
       log_info("Mapped string difficulty_level to difficulty_3")
@@ -579,30 +597,57 @@ apply_rt_filters <- function(df, rt_floor = 0, rt_ceiling = 3.0) {
 }
 
 # Apply threshold and create rt_model column
-# CRITICAL: Threshold is applied to rt_cue_locked ONLY, then derived RTs are computed AFTER filtering
+# C) Apply threshold to the correct RT variable *per RT definition*
 apply_threshold_and_rt_def <- function(df, threshold, rt_def) {
-  # First apply ceiling filter (on rt_cue_locked)
+  # First apply ceiling filter (on rt_cue)
   df_filtered <- apply_rt_filters(df, rt_floor = 0, rt_ceiling = 3.0)
   
-  # Then apply threshold (on rt_cue_locked)
+  # C) Map rt_def to the correct RT column for filtering
+  if (rt_def == "cue_locked") {
+    rt_col <- "rt_cue"
+  } else if (rt_def == "probe_onset_locked") {
+    rt_col <- "rt_probe_onset"
+  } else if (rt_def == "probe_offset_locked") {
+    rt_col <- "rt_probe_offset"
+  } else {
+    log_error(paste("Unknown rt_def:", rt_def))
+    log_error("Supported: 'cue_locked', 'probe_onset_locked', 'probe_offset_locked'")
+    stop("Unknown rt_def")
+  }
+  
+  # Verify RT column exists
+  if (!rt_col %in% names(df_filtered)) {
+    log_error(paste("RT column '", rt_col, "' not found. Available columns:", 
+                    paste(names(df_filtered), collapse = ", ")))
+    stop("RT column not found")
+  }
+  
+  # Apply threshold to the correct RT column
   n_before_thresh <- nrow(df_filtered)
-  df_thr <- df_filtered %>% filter(rt_cue >= threshold)
+  df_thr <- df_filtered %>% filter(.data[[rt_col]] >= threshold)
   n_after_thresh <- nrow(df_thr)
   
-  log_info(paste("Threshold", threshold, "s (applied to rt_cue_locked): removed", 
-                 n_before_thresh - n_after_thresh, "trials, remaining:", n_after_thresh))
+  # D) Log immediately after filtering
+  min_rt_after <- min(df_thr[[rt_col]], na.rm = TRUE)
+  p01_rt_after <- quantile(df_thr[[rt_col]], 0.01, na.rm = TRUE)
+  median_rt_after <- median(df_thr[[rt_col]], na.rm = TRUE)
+  
+  log_info(paste("Threshold", threshold, "s (applied to", rt_col, "):"))
+  log_info(paste("  - n_trials before:", n_before_thresh))
+  log_info(paste("  - n_trials after:", n_after_thresh))
+  log_info(paste("  - min", rt_col, "after filtering:", round(min_rt_after, 4), "s"))
+  log_info(paste("  - 1% quantile", rt_col, "after filtering:", round(p01_rt_after, 4), "s"))
+  log_info(paste("  - median", rt_col, "after filtering:", round(median_rt_after, 4), "s"))
   
   # Create rt_model based on rt_def (AFTER thresholding)
   # For cue_locked: use rt_cue directly
-  # For probe_onset_locked: compute as rt_cue + PROBE_DUR + GRIP_RELAX (0.35s)
+  # For probe_onset_locked: use rt_probe_onset directly (already computed in data)
   if (rt_def == "cue_locked") {
     df_thr$rt_model <- df_thr$rt_cue
   } else if (rt_def == "probe_onset_locked") {
-    # Compute probe_onset_locked AFTER thresholding: rt_cue + 0.35s
-    df_thr$rt_model <- df_thr$rt_cue + PROBE_DUR_SEC + GRIP_RELAX_SEC
+    df_thr$rt_model <- df_thr$rt_probe_onset
   } else if (rt_def == "probe_offset_locked") {
-    # Optional: probe_offset_locked = rt_cue + GRIP_RELAX only
-    df_thr$rt_model <- df_thr$rt_cue + GRIP_RELAX_SEC
+    df_thr$rt_model <- df_thr$rt_probe_offset
   } else {
     log_error(paste("Unknown rt_def:", rt_def))
     log_error("Supported: 'cue_locked', 'probe_onset_locked', 'probe_offset_locked'")
@@ -705,6 +750,15 @@ map_rt_type_to_column <- function(rt_type, data) {
 
 set_step("STEP1_LOAD_DATA")
 
+# A) Log unthresholded data path configuration
+log_step(paste("Unthresholded data path (DATA_UNTHR):", DATA_UNTHR))
+if (file.exists(DATA_UNTHR)) {
+  log_step(paste("✓ Unthresholded data file exists:", DATA_UNTHR))
+} else {
+  log_warn(paste("⚠ Unthresholded data file not found at:", DATA_UNTHR))
+  log_warn("Will attempt to find alternative input file...")
+}
+
 # Pick input file and load data
 input_file <- tryCatch({
   pick_input_file()
@@ -713,13 +767,12 @@ input_file <- tryCatch({
   stop("Failed to pick input file")
 })
 
-# Pick input file (already logged in pick_input_file)
-input_file <- tryCatch({
-  pick_input_file()
-}, error = function(e) {
-  log_error(e$message)
-  stop("Failed to pick input file")
-})
+# Verify we're using unthresholded data if possible
+if (input_file != DATA_UNTHR && file.exists(DATA_UNTHR)) {
+  log_warn(paste("⚠ Using input file:", input_file))
+  log_warn(paste("⚠ Expected unthresholded data:", DATA_UNTHR))
+  log_warn("Sensitivity analysis requires unthresholded data!")
+}
 
 df_raw <- tryCatch({
   read_csv(input_file, show_col_types = FALSE)
@@ -819,12 +872,15 @@ descriptive_behavioral <- tryCatch({
   choice_props <- ddm_base %>%
     group_by(task, effort_condition, difficulty_3) %>%
     summarise(
-      prop_same = mean(choice_binary == 1L, na.rm = TRUE),
-      prop_different = mean(choice_binary == 0L, na.rm = TRUE),
-      n_same = sum(choice_binary == 1L, na.rm = TRUE),
-      n_different = sum(choice_binary == 0L, na.rm = TRUE),
+      prop_different = mean(choice_binary == 1L, na.rm = TRUE),  # choice_binary == 1 means resp_is_diff == 1 (different)
+      prop_same = mean(choice_binary == 0L, na.rm = TRUE),      # choice_binary == 0 means resp_is_diff == 0 (same)
+      n_different = sum(choice_binary == 1L, na.rm = TRUE),
+      n_same = sum(choice_binary == 0L, na.rm = TRUE),
       .groups = "drop"
     )
+  
+  # Validation: prop_same + prop_different should equal 1
+  stopifnot(all(abs(choice_props$prop_same + choice_props$prop_different - 1) < 1e-8))
   
   # Compute RT quantiles for cue-locked RT
   rt_cue_quantiles <- ddm_base %>%
@@ -1057,11 +1113,11 @@ cat("    Boundary (bs):", deparse(bs_baseline_formula), "\n")
 cat("    NDT (t0): ndt ~ 1\n")
 cat("    Bias (z): bias ~ task + effort_condition + (1 | subject_id)\n")
 cat("\n  Additive model:\n")
-cat("    Drift (v): rt | dec(choice_binary) ~ 1 + effort_condition + difficulty_level + (1 | subject_id)\n")
+cat("    Drift (v): rt | dec(choice_binary) ~ 1 + effort_condition + difficulty_3 + (1 | subject_id)\n")
 cat("    Boundary (bs):", deparse(bs_additive_formula), "\n")
 cat("    NDT (t0): ndt ~ 1\n")
 cat("    Bias (z): bias ~ task + effort_condition + (1 | subject_id)\n")
-cat("\n  Note: Bias excludes difficulty_level (unknown before evidence accumulation)\n")
+cat("\n  Note: Bias excludes difficulty_3 (unknown before evidence accumulation)\n")
 cat("        NDT is intercept-only for stability in response-signal designs\n\n")
 
 # Helper function to check priors match model and log formula
@@ -1856,15 +1912,16 @@ if (!DRY_RUN) {
             linpred <- linpred + post_draws[[effort_col]]
           }
           
-          # Add difficulty effects (for drift only, not bias)
-          if (coef_prefix == "" && row$difficulty_3 != "Standard") {
+          # Add difficulty effects (for drift and boundary separation, not bias)
+          # Bias does not vary by difficulty because trials are randomized
+          if ((coef_prefix == "" || coef_prefix == "bs_") && row$difficulty_3 != "Standard") {
             if (row$difficulty_3 == "Hard") {
-              diff_col <- "b_difficulty_3Hard"
+              diff_col <- paste0("b_", coef_prefix, "difficulty_3Hard")
               if (diff_col %in% names(post_draws)) {
                 linpred <- linpred + post_draws[[diff_col]]
               }
             } else if (row$difficulty_3 == "Easy") {
-              diff_col <- "b_difficulty_3Easy"
+              diff_col <- paste0("b_", coef_prefix, "difficulty_3Easy")
               if (diff_col %in% names(post_draws)) {
                 linpred <- linpred + post_draws[[diff_col]]
               }
@@ -1945,6 +2002,94 @@ if (!DRY_RUN) {
     })
     
     if (nrow(predicted_params_qmd) > 0) {
+      # =====================================================================
+      # VALIDATION: Verify predicted parameters match model specification
+      # =====================================================================
+      log_info("Validating predicted_parameters_by_condition.csv...")
+      
+      # A. Structure checks
+      expected_rows <- 2 * 2 * 3  # 2 tasks × 2 effort × 3 difficulty = 12
+      if (nrow(predicted_params_qmd) != expected_rows) {
+        log_error(paste("VALIDATION FAILED: Expected", expected_rows, "rows, got", nrow(predicted_params_qmd)))
+        stop("predicted_params_qmd has wrong number of rows")
+      }
+      
+      req_cols <- c("task", "effort_condition", "difficulty_3",
+                    "v_median", "v_q2.5", "v_q97.5",
+                    "a_median", "a_q2.5", "a_q97.5",
+                    "t0_median", "t0_q2.5", "t0_q97.5",
+                    "z_median", "z_q2.5", "z_q97.5")
+      missing <- setdiff(req_cols, names(predicted_params_qmd))
+      if (length(missing) > 0) {
+        log_error(paste("VALIDATION FAILED: Missing columns:", paste(missing, collapse = ", ")))
+        stop("predicted_params_qmd missing required columns")
+      }
+      
+      # Quantile ordering checks
+      check_q <- function(med, lo, hi, name) {
+        bad <- which(!(lo <= med & med <= hi))
+        if (length(bad) > 0) {
+          log_error(paste("VALIDATION FAILED: Quantile ordering failed for", name, "in rows:", paste(bad, collapse = ", ")))
+          stop(paste("Quantile ordering failed for", name))
+        }
+      }
+      check_q(predicted_params_qmd$v_median,  predicted_params_qmd$v_q2.5,  predicted_params_qmd$v_q97.5,  "v")
+      check_q(predicted_params_qmd$a_median,  predicted_params_qmd$a_q2.5,  predicted_params_qmd$a_q97.5,  "a")
+      check_q(predicted_params_qmd$t0_median, predicted_params_qmd$t0_q2.5, predicted_params_qmd$t0_q97.5, "t0")
+      check_q(predicted_params_qmd$z_median,  predicted_params_qmd$z_q2.5,  predicted_params_qmd$z_q97.5,  "z")
+      
+      # B. Design-consistency checks
+      # 1. Boundary separation MUST vary by difficulty within effort
+      a_var <- predicted_params_qmd %>%
+        dplyr::group_by(effort_condition) %>%
+        dplyr::summarise(n = dplyr::n_distinct(a_median), .groups = "drop")
+      if (any(a_var$n <= 1)) {
+        log_error(paste("VALIDATION FAILED: a_median does not vary by difficulty within effort:", 
+                        paste(a_var$effort_condition[a_var$n <= 1], collapse = ", ")))
+        stop("Boundary separation does not vary by difficulty - prediction bug!")
+      }
+      log_info(paste("  ✓ Boundary separation varies by difficulty (low effort:", 
+                     a_var$n[a_var$effort_condition == "low"], "unique values; high effort:", 
+                     a_var$n[a_var$effort_condition == "high"], "unique values)"))
+      
+      # 2. Bias must NOT vary by difficulty within task×effort
+      z_var <- predicted_params_qmd %>%
+        dplyr::group_by(task, effort_condition) %>%
+        dplyr::summarise(n = dplyr::n_distinct(z_median), .groups = "drop")
+      if (any(z_var$n != 1)) {
+        log_error(paste("VALIDATION FAILED: z_median varies by difficulty (should not):", 
+                        paste(paste(z_var$task[z_var$n != 1], z_var$effort_condition[z_var$n != 1], sep = "×"), 
+                              collapse = ", ")))
+        stop("Bias varies by difficulty - violates model specification!")
+      }
+      log_info("  ✓ Bias does not vary by difficulty (as expected)")
+      
+      # 3. v/a/t0 must be identical across tasks (task not in these formulas)
+      tol <- 1e-8
+      wide <- predicted_params_qmd %>%
+        dplyr::select(task, effort_condition, difficulty_3, v_median, a_median, t0_median) %>%
+        tidyr::pivot_wider(names_from = task, values_from = c(v_median, a_median, t0_median))
+      
+      v_diff <- abs(wide$v_median_ADT - wide$v_median_VDT)
+      a_diff <- abs(wide$a_median_ADT - wide$a_median_VDT)
+      t0_diff <- abs(wide$t0_median_ADT - wide$t0_median_VDT)
+      
+      if (any(v_diff > tol)) {
+        log_error(paste("VALIDATION FAILED: v differs by task (max diff:", max(v_diff), ") but should not"))
+        stop("Drift rate differs by task - violates model specification!")
+      }
+      if (any(a_diff > tol)) {
+        log_error(paste("VALIDATION FAILED: a differs by task (max diff:", max(a_diff), ") but should not"))
+        stop("Boundary separation differs by task - violates model specification!")
+      }
+      if (any(t0_diff > tol)) {
+        log_error(paste("VALIDATION FAILED: t0 differs by task (max diff:", max(t0_diff), ") but should not"))
+        stop("Non-decision time differs by task - violates model specification!")
+      }
+      log_info("  ✓ v/a/t0 are identical across tasks (as expected)")
+      
+      log_info("✓ All validations passed")
+      
       predicted_params_file <- file.path(TABLES_DIR, "predicted_parameters_by_condition.csv")
       write_csv(predicted_params_qmd, predicted_params_file)
       log_info(paste("Saved:", predicted_params_file))
@@ -1963,54 +2108,174 @@ cat("\nSTEP 5: Running sensitivity analysis across thresholds...\n\n")
 # Create thresholded datasets for sensitivity analysis
 set_step("STEP5_SENSITIVITY")
 
+# A) Resolve unthresholded data path (use input_file if DATA_UNTHR missing; try fallbacks)
+data_unthr_resolved <- NULL
+if (file.exists(DATA_UNTHR)) {
+  data_unthr_resolved <- DATA_UNTHR
+} else if (exists("input_file") && !is.null(input_file) && file.exists(input_file)) {
+  log_warn(paste("DATA_UNTHR not found at", DATA_UNTHR, "- using input_file:", input_file))
+  data_unthr_resolved <- input_file
+} else {
+  for (c in input_file_candidates) {
+    if (file.exists(c)) {
+      log_warn(paste("Using fallback:", c))
+      data_unthr_resolved <- c
+      break
+    }
+  }
+}
+if (is.null(data_unthr_resolved) || !file.exists(data_unthr_resolved)) {
+  log_error(paste("Unthresholded data file not found. Tried:", DATA_UNTHR, "and input_file"))
+  stop("Unthresholded data file required for sensitivity analysis. Ensure data/ddm_ready_data_unthresholded.csv exists.")
+}
+log_step(paste("Loading unthresholded data from:", data_unthr_resolved))
+log_step(paste("✓ Unthresholded data file exists:", data_unthr_resolved))
+
+# Log min RT from unthresholded data (for sanity checks)
+min_rt_unthr_cue <- min(ddm_base$rt_cue, na.rm = TRUE)
+min_rt_unthr_probe <- if ("rt_probe_onset" %in% names(ddm_base)) {
+  min(ddm_base$rt_probe_onset, na.rm = TRUE)
+} else {
+  NA_real_
+}
+log_step(paste("Min rt_cue in unthresholded data:", round(min_rt_unthr_cue, 4), "s"))
+if (!is.na(min_rt_unthr_probe)) {
+  log_step(paste("Min rt_probe_onset in unthresholded data:", round(min_rt_unthr_probe, 4), "s"))
+}
+
 # FIRST: Create sensitivity data summary table (BEFORE model fitting)
 # This shows how data characteristics change across thresholds
 log_info("Creating sensitivity data summary table...")
 sensitivity_data_summary <- list()
+threshold_count_table <- list()
 
-for (thresh in SENSITIVITY_THRESHOLDS) {
-  log_info(paste("Analyzing threshold:", thresh, "s"))
+# RT definitions to analyze
+rt_defs <- c("cue_locked", "probe_onset_locked")
+
+for (rt_def in rt_defs) {
+  log_info(paste("=== Analyzing RT definition:", rt_def, "==="))
   
-  # Apply threshold to BASE clean dataset (not ddm_data)
-  # This ensures we're using unthresholded data
-  data_thresh_cue <- apply_threshold_and_rt_def(ddm_base, thresh, "cue_locked")
+  # Determine RT column name for this definition
+  if (rt_def == "cue_locked") {
+    rt_col_name <- "rt_cue"
+  } else if (rt_def == "probe_onset_locked") {
+    rt_col_name <- "rt_probe_onset"
+  } else {
+    log_error(paste("Unknown rt_def:", rt_def))
+    next
+  }
   
-  # Compute probe_onset_locked AFTER thresholding
-  data_thresh_cue$rt_probe_onset_locked <- data_thresh_cue$rt_cue + PROBE_DUR_SEC + GRIP_RELAX_SEC
+  # Verify RT column exists
+  if (!rt_col_name %in% names(ddm_base)) {
+    log_warn(paste("RT column", rt_col_name, "not found, skipping", rt_def))
+    next
+  }
   
-  # Extract quantiles
-  rt_cue_quantiles <- quantile(data_thresh_cue$rt_cue, probs = c(0, 0.01, 0.05), na.rm = TRUE)
-  rt_probe_quantiles <- quantile(data_thresh_cue$rt_probe_onset_locked, probs = c(0, 0.01, 0.05), na.rm = TRUE)
-  
-  sensitivity_data_summary[[as.character(thresh)]] <- data.frame(
-    threshold = thresh,
-    n_trials = nrow(data_thresh_cue),
-    n_subjects = length(unique(data_thresh_cue$subject_id)),
-    min_rt_cue = min(data_thresh_cue$rt_cue, na.rm = TRUE),
-    p01_rt_cue = rt_cue_quantiles["1%"],
-    p05_rt_cue = rt_cue_quantiles["5%"],
-    min_rt_probe_onset = min(data_thresh_cue$rt_probe_onset_locked, na.rm = TRUE),
-    p01_rt_probe_onset = rt_probe_quantiles["1%"],
-    p05_rt_probe_onset = rt_probe_quantiles["5%"],
-    stringsAsFactors = FALSE
-  )
+  for (thr in thresholds) {
+    # B) Use numeric threshold, create label only for display
+    threshold_label <- sprintf("%.2f s", thr)
+    log_info(paste("Analyzing threshold:", threshold_label, "(numeric:", thr, ") for", rt_def))
+    
+    # Log BEFORE thresholding
+    n_before <- nrow(ddm_base)
+    min_rt_before <- min(ddm_base[[rt_col_name]], na.rm = TRUE)
+    log_info(paste("  BEFORE thresholding:"))
+    log_info(paste("    - N trials:", n_before))
+    log_info(paste("    - Min", rt_col_name, ":", round(min_rt_before, 4), "s"))
+    
+    # C) Apply threshold to the correct RT variable per RT definition
+    data_thresh <- apply_threshold_and_rt_def(ddm_base, thr, rt_def)
+    
+    # D) Logging is already done in apply_threshold_and_rt_def, but extract values for summary
+    n_after <- nrow(data_thresh)
+    min_rt_after <- min(data_thresh[[rt_col_name]], na.rm = TRUE)
+    p01_rt_after <- quantile(data_thresh[[rt_col_name]], 0.01, na.rm = TRUE)
+    median_rt_after <- median(data_thresh[[rt_col_name]], na.rm = TRUE)
+    
+    # Store in summary (for backward compatibility with existing code)
+    sensitivity_data_summary[[paste(rt_def, thr, sep = "_")]] <- data.frame(
+      rt_type = rt_def,
+      threshold = thr,  # B) Numeric threshold, not "0.20 s"
+      n_trials = n_after,
+      n_subjects = length(unique(data_thresh$subject_id)),
+      min_rt = min_rt_after,
+      p01_rt = p01_rt_after,
+      median_rt = median_rt_after,
+      stringsAsFactors = FALSE
+    )
+    
+    # E) Build threshold count table
+    threshold_count_table[[paste(rt_def, thr, sep = "_")]] <- data.frame(
+      rt_type = rt_def,
+      threshold = thr,  # B) Numeric threshold
+      n_trials = n_after,
+      stringsAsFactors = FALSE
+    )
+  }
 }
 
-# Combine and export sensitivity data summary
-sensitivity_data_df <- bind_rows(sensitivity_data_summary)
-sensitivity_data_file <- file.path(TABLES_DIR, "ddm_sensitivity_thresholds.csv")
-write_csv(sensitivity_data_df, sensitivity_data_file)
-log_info(paste("Saved sensitivity data summary:", sensitivity_data_file))
-log_info("Sensitivity data summary:")
-print(sensitivity_data_df)
-
-# Verify that thresholds produce different N trials (if data has fast RTs)
-if (nrow(sensitivity_data_df) >= 2) {
-  n_trials_unique <- length(unique(sensitivity_data_df$n_trials))
-  if (n_trials_unique == 1 && min(ddm_base$rt_cue, na.rm = TRUE) < min(SENSITIVITY_THRESHOLDS)) {
-    log_warn("WARNING: All thresholds produced same N trials, but data has RTs below minimum threshold!")
-    log_warn("This suggests a bug in thresholding logic.")
+# E) Combine threshold count table and validate
+if (length(threshold_count_table) > 0) {
+  threshold_counts_df <- bind_rows(threshold_count_table)
+  
+  # Validate each rt_type subset
+  for (rt_type in unique(threshold_counts_df$rt_type)) {
+    subset_df <- threshold_counts_df %>% filter(rt_type == .env$rt_type)
+    log_info(paste("Validating threshold counts for", rt_type))
+    tryCatch({
+      assert_reasonable_threshold_counts(subset_df)
+      log_info(paste("✓ Validation passed for", rt_type))
+    }, error = function(e) {
+      log_error(paste("Validation failed for", rt_type, ":", e$message))
+    }, warning = function(w) {
+      log_warn(paste("Validation warning for", rt_type, ":", w$message))
+    })
   }
+  
+  # Write threshold count table
+  threshold_count_file <- file.path(TABLES_DIR, "ddm_sensitivity_threshold_counts.csv")
+  write_csv_logged(threshold_counts_df, threshold_count_file)
+} else {
+  log_warn("threshold_count_table is empty")
+}
+
+# Combine sensitivity data summary (for backward compatibility)
+if (length(sensitivity_data_summary) > 0) {
+  sensitivity_data_df <- bind_rows(sensitivity_data_summary)
+  
+  # F) Sanity stop: Check if 0.15 and 0.20 produce identical n_trials
+  for (rt_type in unique(sensitivity_data_df$rt_type)) {
+    subset_df <- sensitivity_data_df %>% filter(rt_type == .env$rt_type)
+    if (nrow(subset_df) >= 2) {
+      thr_015 <- subset_df %>% filter(threshold == 0.15)
+      thr_020 <- subset_df %>% filter(threshold == 0.20)
+      
+      if (nrow(thr_015) == 1 && nrow(thr_020) == 1) {
+        if (thr_015$n_trials == thr_020$n_trials) {
+          min_rt_raw <- if (rt_type == "cue_locked") min_rt_unthr_cue else min_rt_unthr_probe
+          min_rt_after_015 <- thr_015$min_rt
+          
+          warning_msg <- paste0(
+            "WARNING: Thresholds 0.15 and 0.20 produce identical n_trials (", thr_015$n_trials, ") for ", rt_type, ".\n",
+            "  - Min RT in raw unthresholded data: ", round(min_rt_raw, 4), " s\n",
+            "  - Min RT after filtering with 0.15: ", round(min_rt_after_015, 4), " s\n",
+            "  This suggests you are not using unthresholded data or thresholds are not applied."
+          )
+          log_warn(warning_msg)
+          warning(warning_msg)
+        }
+      }
+    }
+  }
+  
+  # Write sensitivity data summary (backward compatibility)
+  sensitivity_data_file <- file.path(TABLES_DIR, "ddm_sensitivity_thresholds.csv")
+  write_csv_logged(sensitivity_data_df, sensitivity_data_file)
+  log_info("Sensitivity data summary:")
+  print(sensitivity_data_df)
+} else {
+  log_warn("sensitivity_data_summary is empty")
+  sensitivity_data_df <- data.frame()
 }
 
 log_info("")
@@ -2311,6 +2576,8 @@ for (thresh in SENSITIVITY_THRESHOLDS) {
     sensitivity_results[[as.character(thresh)]] <- data.frame(
       threshold = thresh,
       n_trials = nrow(data_sens_fit),
+      looic = NA_real_,
+      looic_se = NA_real_,
       drift_intercept = NA_real_,
       drift_intercept_se = NA_real_,
       bs_intercept = NA_real_,
@@ -2337,9 +2604,23 @@ for (thresh in SENSITIVITY_THRESHOLDS) {
     # Note: n_divergent_sens was renamed to divergences_sens above
     n_divergent_sens <- divergences_sens
     
+    # Compute LOOIC for sensitivity model
+    looic_sens <- NA_real_
+    looic_se_sens <- NA_real_
+    tryCatch({
+      loo_result_sens <- brms::loo(fit_sens)
+      looic_sens <- loo_result_sens$estimates["looic", "Estimate"]
+      looic_se_sens <- loo_result_sens$estimates["looic", "SE"]
+      log_info(paste("LOOIC:", round(looic_sens, 1), "(SE:", round(looic_se_sens, 1), ")"))
+    }, error = function(e) {
+      log_warn(paste("Failed to compute LOOIC for sensitivity model:", e$message))
+    })
+    
     sensitivity_results[[as.character(thresh)]] <- data.frame(
       threshold = thresh,
       n_trials = nrow(data_sens_fit),
+      looic = looic_sens,
+      looic_se = looic_se_sens,
       drift_intercept = fixef_sens["Intercept", "Estimate"],
       drift_intercept_se = fixef_sens["Intercept", "Est.Error"],
       bs_intercept = exp(fixef_sens["bs_Intercept", "Estimate"]),
@@ -2374,9 +2655,38 @@ if (length(sensitivity_results) > 0) {
   })
   
   if (nrow(sensitivity_df) > 0) {
+    # Merge data summary (n_trials, min/max RT) with model results (LOOIC, parameters)
+    # Merge by threshold to combine pre-fit data summary with post-fit model results
+    if (exists("sensitivity_data_df") && nrow(sensitivity_data_df) > 0) {
+      # Filter for cue_locked RT type (sensitivity analysis uses cue_locked)
+      # Use correct column names: min_rt (not min_rt_cue), and use all_of() to avoid tidyselect warnings
+      cols_to_select <- c("threshold", "n_trials", "n_subjects", "min_rt", "median_rt")
+      available_cols <- intersect(cols_to_select, names(sensitivity_data_df))
+      
+      sensitivity_export <- sensitivity_data_df %>%
+        filter(rt_type == "cue_locked") %>%
+        select(all_of(available_cols)) %>%
+        left_join(
+          sensitivity_df %>% select(all_of(c("threshold", "looic", "looic_se"))),
+          by = "threshold"
+        ) %>%
+        arrange(threshold)
+    } else {
+      # Fallback: use model results only
+      sensitivity_export <- sensitivity_df %>%
+        select(all_of(c("threshold", "n_trials", "looic", "looic_se"))) %>%
+        arrange(threshold)
+    }
+    
+    # Update the TABLES_DIR file (used by QMD) with merged data + LOOIC values
+    sensitivity_file_qmd <- file.path(TABLES_DIR, "ddm_sensitivity_thresholds.csv")
+    write_csv(sensitivity_export, sensitivity_file_qmd)
+    log_info(paste("Saved QMD table (with LOOIC):", sensitivity_file_qmd))
+    
+    # Also save full results to SUMMARIES_DIR
     sensitivity_file <- file.path(SUMMARIES_DIR, "ddm_sensitivity_thresholds.csv")
     write_csv(sensitivity_df, sensitivity_file)
-    log_info(paste("Saved:", sensitivity_file))
+    log_info(paste("Saved full results:", sensitivity_file))
     
     # Also save to legacy location
     write_csv(sensitivity_df, file.path(RESULTS_DIR, "ddm_sensitivity_thresholds.csv"))
@@ -2830,33 +3140,49 @@ if (!SKIP_STANDARD_ONLY) {
         # =========================================================================
         key <- paste0("standard_only|", rt_def, "|thr_", formatC(thresh, format="f", digits=2))
         
-        if (!is.null(fixef_standard)) {
-          # Store fixef as simple data.frame with metadata
-          # Convert rownames to term column
-          fx <- as.data.frame(fixef_standard)
-          fx$term <- rownames(fx)
-          rownames(fx) <- NULL
+        if (!is.null(fixef_standard) && !is.null(fit_standard)) {
+          # Use tidy_fixef_wiener function to process fixef
+          meta <- list(
+            model = "standard_only_bias",
+            rt_type = rt_def,
+            threshold = thresh,
+            n_trials = n_trials
+          )
           
-          # Add metadata columns
-          fx$threshold <- thresh
-          fx$rt_type <- rt_def
-          fx$model <- "standard_only_bias"
-          fx$n_trials <- n_trials
-          fx$n_subjects <- n_subjects
-          fx$run_id <- analysis_id
+          # Note: n_subjects is added separately after tidy_fixef_wiener for backward compatibility
           
-          # Store in list
-          standard_fixef_list[[key]] <- fx
-          
-          # Log available bias terms
-          bias_terms <- fx$term[grepl("^bias_", fx$term)]
-          if (length(bias_terms) > 0) {
-            log_info(paste("Standard-only bias fixef terms:", paste(bias_terms, collapse = ", ")))
-          } else {
-            log_warn(paste("No bias terms found in fixef for", key))
-          }
+          tryCatch({
+            fx_tidy <- tidy_fixef_wiener(fit_standard, meta)
+            
+            # Add n_subjects for backward compatibility with extraction code
+            fx_tidy$n_subjects <- n_subjects
+            
+            # Store in list
+            standard_fixef_list[[key]] <- fx_tidy
+            
+            # Log available bias terms
+            bias_terms <- fx_tidy %>%
+              filter(dpar == "bias") %>%
+              pull(term)
+            if (length(bias_terms) > 0) {
+              log_info(paste("Standard-only bias fixef terms:", paste(bias_terms, collapse = ", ")))
+            } else {
+              log_warn(paste("No bias terms found in fixef for", key))
+            }
+          }, error = function(e) {
+            log_error(paste("Failed to tidy fixef for", key, ":", e$message))
+            # Store original fixef as fallback
+            fx <- as.data.frame(fixef_standard)
+            fx$term <- rownames(fx)
+            rownames(fx) <- NULL
+            fx$threshold <- thresh
+            fx$rt_type <- rt_def
+            fx$model <- "standard_only_bias"
+            fx$n_trials <- n_trials
+            standard_fixef_list[[key]] <- fx
+          })
         } else {
-          log_warn(paste("fixef_standard is NULL for", key, "; skipping fixef storage"))
+          log_warn(paste("fixef_standard or fit_standard is NULL for", key, "; skipping fixef storage"))
         }
         
         # Store diagnostics
@@ -3261,36 +3587,60 @@ if (!SKIP_STANDARD_ONLY) {
           for (key in names(standard_fixef_list)) {
             fx <- standard_fixef_list[[key]]
             
+            # Use raw_term if available (from tidy_fixef_wiener), otherwise fall back to term
+            term_col <- if ("raw_term" %in% names(fx)) fx$raw_term else fx$term
+            
             # Extract task effect (bias_taskVDT)
-            task_term <- fx$term[grepl("^bias_taskVDT|^bias_task_VDT", fx$term)][1]
+            # Search in raw_term (or term) for patterns, then match by dpar if available
+            task_match <- grepl("^bias_taskVDT|^bias_task_VDT", term_col)
+            if ("dpar" %in% names(fx)) {
+              task_match <- task_match & fx$dpar == "bias"
+            }
+            task_term <- term_col[task_match][1]
             task_est <- if (length(task_term) > 0 && !is.na(task_term)) {
-              fx$Estimate[fx$term == task_term]
+              fx$Estimate[term_col == task_term][1]
             } else NA_real_
             
             # Extract effort effect (bias_effort_conditionhigh)
-            effort_term <- fx$term[grepl("^bias_effort_conditionhigh|^bias_effort_condition_high", fx$term)][1]
+            effort_match <- grepl("^bias_effort_conditionhigh|^bias_effort_condition_high", term_col)
+            if ("dpar" %in% names(fx)) {
+              effort_match <- effort_match & fx$dpar == "bias"
+            }
+            effort_term <- term_col[effort_match][1]
             effort_est <- if (length(effort_term) > 0 && !is.na(effort_term)) {
-              fx$Estimate[fx$term == effort_term]
+              fx$Estimate[term_col == effort_term][1]
             } else NA_real_
             
             # Check for "Low" coding
             if (is.na(effort_est)) {
-              effort_low_term <- fx$term[grepl("^bias_effort_conditionLow|^bias_effort_condition_Low", fx$term)][1]
+              effort_low_match <- grepl("^bias_effort_conditionLow|^bias_effort_condition_Low", term_col)
+              if ("dpar" %in% names(fx)) {
+                effort_low_match <- effort_low_match & fx$dpar == "bias"
+              }
+              effort_low_term <- term_col[effort_low_match][1]
               if (length(effort_low_term) > 0 && !is.na(effort_low_term)) {
-                effort_est <- -fx$Estimate[fx$term == effort_low_term]  # Negate
+                effort_est <- -fx$Estimate[term_col == effort_low_term][1]  # Negate
               }
             }
             
-            # Extract intercept
-            intercept_term <- fx$term[grepl("^bias_Intercept$", fx$term)][1]
+            # Extract intercept (bias_Intercept)
+            intercept_match <- grepl("^bias_Intercept$", term_col)
+            if ("dpar" %in% names(fx)) {
+              intercept_match <- intercept_match & fx$dpar == "bias"
+            }
+            intercept_term <- term_col[intercept_match][1]
             intercept_est <- if (length(intercept_term) > 0 && !is.na(intercept_term)) {
-              plogis(fx$Estimate[fx$term == intercept_term])  # Transform to natural scale
+              plogis(fx$Estimate[term_col == intercept_term][1])  # Transform to natural scale
             } else NA_real_
             
-            # Extract drift intercept
-            drift_term <- fx$term[grepl("^Intercept$", fx$term) & !grepl("bias|bs|ndt", fx$term)][1]
+            # Extract drift intercept (Intercept with dpar="v" or no dpar prefix)
+            drift_match <- grepl("^Intercept$", term_col) & !grepl("bias|bs|ndt", term_col)
+            if ("dpar" %in% names(fx)) {
+              drift_match <- drift_match & (fx$dpar == "v" | is.na(fx$dpar))
+            }
+            drift_term <- term_col[drift_match][1]
             drift_est <- if (length(drift_term) > 0 && !is.na(drift_term)) {
-              fx$Estimate[fx$term == drift_term]
+              fx$Estimate[term_col == drift_term][1]
             } else NA_real_
             
             # Get metadata from fx
@@ -3354,7 +3704,13 @@ if (!SKIP_STANDARD_ONLY) {
           log_error("Available fixef terms for debugging:")
           for (key in names(standard_fixef_list)) {
             fx <- standard_fixef_list[[key]]
-            bias_terms <- fx$term[grepl("^bias_", fx$term)]
+            # Use raw_term if available, otherwise term
+            term_col <- if ("raw_term" %in% names(fx)) fx$raw_term else fx$term
+            if ("dpar" %in% names(fx)) {
+              bias_terms <- term_col[fx$dpar == "bias"]
+            } else {
+              bias_terms <- term_col[grepl("^bias_", term_col)]
+            }
             log_error(paste("  ", key, ":", paste(bias_terms, collapse = ", ")))
           }
           stop("Standard-only summary export validation failed")
@@ -3489,6 +3845,92 @@ if (!SKIP_STANDARD_ONLY) {
       # =========================================================================
       # EXPORT FIXED EFFECTS ON LINK SCALE (from stored fixef_list)
       # =========================================================================
+      # TIDY FIXEF FUNCTION FOR WIENER MODELS
+      # =========================================================================
+      tidy_fixef_wiener <- function(fit, meta) {
+        # Extract fixef matrix
+        fx <- brms::fixef(fit)
+        
+        # Convert to tibble with rownames
+        df <- tibble::as_tibble(fx, rownames = "raw_term")
+        
+        # Create dpar and clean term columns
+        df <- df %>%
+          mutate(
+            dpar = case_when(
+              startsWith(raw_term, "bs_") ~ "bs",
+              startsWith(raw_term, "ndt_") ~ "ndt",
+              startsWith(raw_term, "bias_") ~ "bias",
+              TRUE ~ "v"
+            ),
+            term = case_when(
+              startsWith(raw_term, "bs_") ~ sub("^bs_", "", raw_term),
+              startsWith(raw_term, "ndt_") ~ sub("^ndt_", "", raw_term),
+              startsWith(raw_term, "bias_") ~ sub("^bias_", "", raw_term),
+              TRUE ~ raw_term
+            )
+          )
+        
+        # Rename columns to EXACTLY: Estimate, Est.Error, Q2.5, Q97.5
+        # brms uses these names already, but ensure they're correct
+        col_names_map <- c(
+          "Estimate" = "Estimate",
+          "Est.Error" = "Est.Error",
+          "Q2.5" = "Q2.5",
+          "Q97.5" = "Q97.5"
+        )
+        
+        # Verify required columns exist
+        required_cols <- c("Estimate", "Est.Error", "Q2.5", "Q97.5")
+        missing_cols <- setdiff(required_cols, names(df))
+        if (length(missing_cols) > 0) {
+          stop("Missing required columns in fixef: ", paste(missing_cols, collapse = ", "))
+        }
+        
+        # Select and rename columns (keep raw_term for validation)
+        df <- df %>%
+          select(raw_term, dpar, term, Estimate, Est.Error, Q2.5, Q97.5)
+        
+        # Bind meta columns
+        df$model <- meta$model
+        df$rt_type <- meta$rt_type
+        df$threshold <- meta$threshold
+        df$n_trials <- meta$n_trials
+        
+        # Validate
+        assert_no_na(df, c("Estimate", "Q2.5", "Q97.5"), "standard_only fixef tidy")
+        
+        # Stop if ANY raw_term contains "bias_" but dpar != "bias"
+        bias_mismatch <- df %>%
+          filter(grepl("^bias_", raw_term) & dpar != "bias")
+        if (nrow(bias_mismatch) > 0) {
+          stop("Found raw_term with 'bias_' prefix but dpar != 'bias': ", 
+               paste(bias_mismatch$raw_term, collapse = ", "))
+        }
+        
+        # Stop if ANY raw_term contains "bs_" but dpar != "bs"
+        bs_mismatch <- df %>%
+          filter(grepl("^bs_", raw_term) & dpar != "bs")
+        if (nrow(bs_mismatch) > 0) {
+          stop("Found raw_term with 'bs_' prefix but dpar != 'bs': ", 
+               paste(bs_mismatch$raw_term, collapse = ", "))
+        }
+        
+        # Stop if ANY dpar is NA
+        if (any(is.na(df$dpar))) {
+          na_dpar_terms <- df$raw_term[is.na(df$dpar)]
+          stop("Found NA dpar values for terms: ", paste(na_dpar_terms, collapse = ", "))
+        }
+        
+        # Keep raw_term column for backward compatibility with extraction code
+        # Reorder columns: dpar, term, raw_term, Estimate, Est.Error, Q2.5, Q97.5, then meta
+        df <- df %>%
+          select(dpar, term, raw_term, Estimate, Est.Error, Q2.5, Q97.5, model, rt_type, threshold, n_trials)
+        
+        return(df)
+      }
+      
+      # =========================================================================
       # ACCEPTANCE CRITERIA (verified in code):
       # 1. Running the script creates:
       #    - output/ddm_refits/runs/<run_id>/tables/standard_only_bias_fixef_link_scale.csv
@@ -3518,10 +3960,16 @@ if (!SKIP_STANDARD_ONLY) {
             stop("Standard-only fixef export validation failed")
           }
           
+          # Verify required columns exist
+          required_cols <- c("Estimate", "Est.Error", "Q2.5", "Q97.5", "dpar", "term", "model", "rt_type", "threshold", "n_trials")
+          missing_cols <- setdiff(required_cols, names(standard_fixef_all))
+          if (length(missing_cols) > 0) {
+            log_warn(paste("Missing columns in standard_fixef_all:", paste(missing_cols, collapse = ", ")))
+            log_warn("Some columns may be missing due to fallback fixef extraction")
+          }
+          
           fixef_link_file <- file.path(TABLES_DIR, "standard_only_bias_fixef_link_scale.csv")
-          write_csv(standard_fixef_all, fixef_link_file)
-          log_info(paste("Saved:", fixef_link_file))
-          log_info(paste("  Rows:", nrow(standard_fixef_all), "| Columns:", ncol(standard_fixef_all)))
+          write_csv_logged(standard_fixef_all, fixef_link_file)
         } else {
           log_warn("standard_fixef_all is empty; skipping fixef export")
         }

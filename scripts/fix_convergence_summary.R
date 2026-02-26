@@ -6,6 +6,9 @@
 library(readr)
 library(dplyr)
 
+# Load logging and validation utilities
+source("R/utils/logging_validation.R")
+
 # Get run_id from command line or use most recent
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) > 0) {

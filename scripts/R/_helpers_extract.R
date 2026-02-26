@@ -15,7 +15,14 @@ suppressPackageStartupMessages({
 dir.create("output/publish", recursive = TRUE, showWarnings = FALSE)
 
 # ---------- Paths ----------
-DATA_PATH <- "data/analysis_ready/bap_ddm_ready.csv"
+# Prefer bap_ddm_only_ready (valid rt/accuracy); bap_ddm_ready has all-NA rt/iscorr
+DATA_PATH <- "data/analysis_ready/bap_ddm_only_ready.csv"
+if (!file.exists(DATA_PATH)) {
+  DATA_PATH <- "data/ddm_ready_data_unthresholded.csv"
+}
+if (!file.exists(DATA_PATH)) {
+  DATA_PATH <- "data/analysis_ready/bap_ddm_ready.csv"
+}
 MODEL_PATH <- "output/publish/fit_primary_vza.rds"    # change if using another fit
 LOO_PATH   <- "output/publish/loo_difficulty_all.csv"
 

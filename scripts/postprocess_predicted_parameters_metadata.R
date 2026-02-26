@@ -10,6 +10,9 @@ suppressPackageStartupMessages({
   library(readr)
 })
 
+# Load logging and validation utilities
+source("R/utils/logging_validation.R")
+
 # Get run directory from command line or use default
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) > 0) {

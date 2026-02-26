@@ -202,8 +202,8 @@ ddm_data <- ddm_data %>%
       ),
       !is.na(stim_offset) ~ case_when(
         stim_offset == 0 ~ "Standard",
-        stim_offset %in% c(0.06, 0.12, 16.0) ~ "Hard",
-        stim_offset %in% c(0.24, 0.48, 32.0, 64.0) ~ "Easy",
+        stim_offset %in% c(8, 16, 0.06, 0.12) ~ "Hard",
+        stim_offset %in% c(32, 64, 0.24, 0.48) ~ "Easy",
         TRUE ~ "Unknown"
       ),
       TRUE ~ "Unknown"
