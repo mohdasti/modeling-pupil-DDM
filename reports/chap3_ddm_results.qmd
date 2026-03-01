@@ -761,7 +761,11 @@ if (!is.null(fixef_link_abstract) && nrow(fixef_link_abstract) > 0) {
     h1_beta_str  <- sprintf("$\\beta = %.2f$", h1_est)
     h1_cri_str   <- sprintf("95%% CrI $[%.2f,\\; %.2f]$", h1_lo, h1_hi)
     h1_p0_val    <- if (!is.na(h1_se) && h1_se > 0) pnorm(0, mean = h1_est, sd = h1_se) else NA_real_
-    h1_p0_str    <- if (!is.na(h1_p0_val)) sprintf("; $P(\\beta < 0) = %.2f$", h1_p0_val) else ""
+    h1_p0_str    <- if (!is.na(h1_p0_val)) {
+      if (h1_p0_val >= 0.999) "; $P(\\beta < 0) > .999$"
+      else if (h1_p0_val <= 0.001) "; $P(\\beta < 0) < .001$"
+      else sprintf("; $P(\\beta < 0) = %.2f$", h1_p0_val)
+    } else ""
   }
 }
 ```
@@ -770,7 +774,7 @@ if (!is.null(fixef_link_abstract) && nrow(fixef_link_abstract) > 0) {
 
 # Abstract {.unnumbered}
 
-This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a response-signal change-detection task in older adults. The primary model maps task difficulty to drift rate ($v$) and boundary separation ($a$), with starting-point bias ($z$) varying by task and effort but constant across difficulty levels (reflecting the randomized trial design). Results showed that high-effort (40% MVC) conditions reliably reduced drift rate relative to low-effort (5% MVC) conditions (`r h1_beta_str`, `r h1_cri_str` `r h1_p0_str`), consistent with degraded evidence accumulation under effort-induced arousal (H1 supported). Boundary separation, non-decision time, and starting-point bias showed no reliable effort effects (H2, H3, H4 not supported), indicating that concurrent grip primarily impaired perceptual evidence quality rather than response caution or peripheral processing speed. Trial-wise pupil-linked arousal (TEPR) did not reliably modulate drift rate or starting-point bias when pooled across difficulty levels; a supplementary interaction model (`pupil_scaled * difficulty`) tests whether arousal effects are conditional on task demands, as predicted by the Yerkes–Dodson law. We report comprehensive quality assurance checks, manipulation checks independent of the DDM, model comparison via LOO cross-validation, and extensive posterior predictive checks. All models met convergence criteria. Posterior predictive checks revealed systematic deviations from strict pre-registered thresholds, driven by fast-tail misfit—a known limitation of standard Wiener models. Visual diagnostics confirmed adequate fit to mid-body RT quantiles, and key parameter contrasts were robust to these localized deviations.
+This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a response-signal change-detection task in older adults. The primary model maps task difficulty to drift rate ($v$) and boundary separation ($a$), with starting-point bias ($z$) varying by task and effort but constant across difficulty levels (reflecting the randomized trial design). Results showed that high-effort (40% MVC) conditions reliably reduced drift rate relative to low-effort (5% MVC) conditions (`r h1_beta_str`; `r h1_cri_str`, where CrI = 95% credible interval; `r h1_p0_str`), consistent with degraded evidence accumulation under effort-induced arousal (H1 supported). Boundary separation, non-decision time, and starting-point bias showed no reliable effort effects (H2, H3, H4 not supported), indicating that concurrent grip primarily impaired perceptual evidence quality rather than response caution or peripheral processing speed. Trial-wise pupil-linked arousal (TEPR) did not reliably modulate drift rate or starting-point bias when pooled across difficulty levels; a supplementary interaction model (`pupil_scaled * difficulty`) tests whether arousal effects are conditional on task demands, as predicted by the Yerkes–Dodson law. We report comprehensive quality assurance checks, manipulation checks independent of the DDM, model comparison via LOO cross-validation, and extensive posterior predictive checks. All models met convergence criteria. Posterior predictive checks revealed systematic deviations from strict pre-registered thresholds, driven by fast-tail misfit—a known limitation of standard Wiener models. Visual diagnostics confirmed adequate fit to mid-body RT quantiles, and key parameter contrasts were robust to these localized deviations.
 
 \newpage
 
@@ -2030,9 +2034,11 @@ if (!is.null(fixef_link) && nrow(fixef_link) > 0) {
     h1_p0_val    <- if (!is.na(h1_se) && h1_se > 0)
                       pnorm(0, mean = h1_est, sd = h1_se)
                     else NA_real_
-    h1_p0_str    <- if (!is.na(h1_p0_val))
-                      sprintf("; $P(\\beta < 0) = %.2f$", h1_p0_val)
-                    else ""
+    h1_p0_str    <- if (!is.na(h1_p0_val)) {
+                      if (h1_p0_val >= 0.999) "; $P(\\beta < 0) > .999$"
+                      else if (h1_p0_val <= 0.001) "; $P(\\beta < 0) < .001$"
+                      else sprintf("; $P(\\beta < 0) = %.2f$", h1_p0_val)
+                    } else ""
     h1_supported <- !is.na(h1_hi) && h1_hi < 0
   }
 }
@@ -2176,7 +2182,7 @@ cue_n_trials <- tbl_inclusion_raw %>%
 
 # Results
 
-Four a priori hypotheses were evaluated using hierarchical Bayesian Wiener DDM on `r format(primary_n_trials, big.mark = ",")` trials from `r methods_n_sample` older adults (see Section 3.1 for trial inclusion details; model selection in Section 3.3). **H1 — supported:** High effort (40% MVC) reduced drift rate relative to Low effort (`r h1_beta_str`, `r h1_cri_str` `r h1_p0_str`), indicating degraded evidence accumulation under physical load. **H2 — not supported:** Boundary separation did not reliably increase under High effort (`r h2_beta_str`, `r h2_cri_str` `r h2_null_note`), indicating no compensatory raising of decision criterion. **H3 — untestable directly:** Non-decision time $t_0$ was constrained to be constant across conditions due to model identification constraints in the response-signal design (Section 2.3.3); an exploratory specification yielded a negligible effect (`r h3_beta_str`, `r h3_cri_str`, corresponding to `r h3_natural`). **H4 — not supported:** Starting-point bias showed no reliable shift toward neutrality under High effort (`r h4_beta_str`, `r h4_cri_str` `r h4_p0_str`). Full parameter estimates and contrast-level evidence are in Section 3.4.
+We evaluated four a priori hypotheses using a hierarchical Bayesian Wiener DDM fit to `r format(primary_n_trials, big.mark = ",")` trials from `r methods_n_sample` older adults. The central finding was that High effort (40% MVC) reliably reduced drift rate compared with Low effort (5% MVC), supporting H1. Boundary separation, non-decision time, and starting-point bias showed no reliable effort effects (H2–H4 not supported), indicating that concurrent grip primarily impaired evidence quality rather than response caution or pre-stimulus bias. Detailed parameter estimates and Bayesian hypothesis tests are reported in Section 3.4.
 
 ## Data inclusion and preprocessing summary
 
@@ -2597,7 +2603,6 @@ ddm_core %>%
 
 *Note on non-decision time precision:* The extremely narrow posterior credible interval for $t_0$ (95% CrI width $\approx$ 1 ms) is an expected consequence of the modeling constraints, not a failure of inference. Non-decision time was specified as intercept-only with no random effects and no condition-level predictors, effectively estimating a single global $t_0$ parameter across `r format(primary_n_trials, big.mark = ",")` trials. With this volume of data constraining a single fixed parameter, the posterior converges to near-machine precision. Critically, because $t_0$ is modeled independently of drift rate ($v$) and boundary separation ($a$) via separate link functions in the Wiener likelihood, this precision does not propagate uncertainty to other parameters and has no bearing on the hypothesis tests for H1–H4. The intercept-only constraint was imposed deliberately to improve model identifiability in the response-signal paradigm (see Section 2.3.3).
 
-**Non-decision time ($t_0$) modeling constraint.** To ensure model stability, we constrained $t_0$ to be constant across all conditions ($t_0 = `r t0_median`$ s, 95% CrI [`r t0_q2.5`, `r t0_q97.5`]). Preliminary models allowing condition-specific $t_0$ estimates (e.g., `ndt ~ 1 + effort_condition`) showed poor parameter identification, likely due to: (a) brief stimulus durations (100 ms) leaving minimal variance in encoding time, (b) post-stimulus grip release removing motor interference during the response window, and (c) the fixed probe-to-prompt delay (0.35 s) being constant across conditions. Model comparison via LOO favored the intercept-only specification ($\Delta$LOO = 12.3, SE = 5.2 against effort-varying $t_0$). While this precludes direct testing of Hypothesis 3 (cognitive-motor interference effects on peripheral processes), the accuracy decline under High effort (@tbl-accuracy-glmm) was fully accounted for by changes in drift rate ($v$), without compensatory increases in boundary separation ($a$). Notably, RT did not reliably slow under High effort in manipulation checks (@tbl-rt-lmm, $\beta = 0.02$ s, 95% CI [−0.02, 0.05]), consistent with the absence of boundary adjustment in the DDM decomposition. Thus, any dual-task interference manifested in evidence accumulation rather than encoding or motor execution stages.
 
 ```{r}
 #| label: fig-ddm-parameters-combined
@@ -2664,7 +2669,7 @@ Because Effort is a within-subject manipulation, visual overlap in marginal mean
 
 ```{r}
 #| label: fig-effort-drift-posterior-diff
-#| fig-cap: "**Figure 6. Bayesian Hypothesis Test: Effort Effect on Drift Rate (H1).** Posterior distribution of the contrast $\\hat{v}_\\text{High} - \\hat{v}_\\text{Low}$ on the link scale, extracted directly from the hierarchical Wiener DDM posterior. This figure constitutes the formal statistical test of H1. The 95% credible interval (shaded region, bounded by dashed vertical lines) falls entirely below zero, confirming a statistically credible reduction in drift rate under High effort ($\\delta$ = −0.07, 95% CrI [−0.11, −0.03], $P(\\delta < 0) = 1.00$). This Bayesian posterior contrast is the analogue of a one-tailed significance test: the probability that the true effort effect on drift rate is zero or positive is less than 0.001."
+#| fig-cap: "Bayesian Hypothesis Test: Effort Effect on Drift Rate (H1). Posterior distribution of the High $-$ Low effort contrast on drift rate ($v$), extracted from the primary model. The 95% credible interval (CrI; shaded region) falls entirely below zero, supporting H1 ($\\delta$ = −0.07, 95% CrI [−0.11, −0.03], $P(\\delta < 0) > .999$)."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "55%"
@@ -3356,7 +3361,7 @@ Sensitivity analyses confirmed that the Effort → Drift effect was robust to Ta
 
 Full statistical results including parameter estimates and contrasts are reported in Appendix~A4.3, Table 22. <!-- FIXED: Table 23 is pupil-LOO; primary DDM contrasts are in Table 22 per Report-3 audit -->
 
-## Standard-only bias calibration on Standard trials
+## Starting-Point Bias and H4: Standard-Only Calibration
 
 In a separate calibration model fit to Standard trials only, starting-point bias ($z$) was estimated independently of drift rate ($v$). Bias values were consistently above 0.5, indicating a tendency toward "different" responses. The task contrast (VDT−ADT) was $\Delta z = -0.04$, 95% CrI [−0.06, −0.02], with VDT showing *lower* bias toward "different" responses than ADT, and minimal effort effect (Low−High: `r h4_beta_str`, `r h4_cri_str``r h4_p0_str`; @tbl-standard-only-bias-contrasts, @fig-bias-by-task).
 
@@ -3374,7 +3379,7 @@ if (!is.null(pred_params) && nrow(pred_params) > 0) {
 }
 ```
 
-Starting-point bias ($z$) represents the participant's pre-stimulus expectation before any sensory information is gathered. Crucially, as specified in our hierarchical model (`z ~ task + effort`), bias was estimated independently of trial difficulty because participants did not know whether an upcoming trial would be Standard, Easy, or Hard. Therefore, the estimated bias reflects a global task strategy rather than a trial-specific reaction. Across tasks, older adults exhibited a systematic pre-stimulus bias toward the "Different" boundary ($z > 0.5$). In Signal Detection Theory terms, this reflects a **liberal** detection criterion — participants were predisposed to report "Different" with relatively low evidentiary thresholds, not a conservative one. This pattern is consistent with the "Different-as-default heuristic" documented in same-different paradigms: detecting any mismatch is a self-terminating process that can terminate immediately upon encountering a discrepant feature, whereas confirming that two stimuli are identical requires an exhaustive feature-by-feature comparison [@farell1985; @nosofsky1997palmeri]. By adopting a starting point biased toward the "Different" boundary, older adults reduced the cognitive demands of Standard (Same) trials — at the cost of elevated false alarm rates on trials where stimuli were in fact identical.
+Starting-point bias ($z$) represents the participant's pre-stimulus expectation before any sensory information is gathered. Crucially, as specified in our hierarchical model (`z ~ task + effort`), bias was estimated independently of trial difficulty because participants did not know whether an upcoming trial would be Standard, Easy, or Hard. Therefore, the estimated bias reflects a global task strategy rather than a trial-specific reaction. Across tasks, older adults exhibited a systematic pre-stimulus bias toward the "Different" boundary ($z > 0.5$). In Signal Detection Theory terms, this reflects a **liberal** detection criterion — participants were predisposed to report "Different" with relatively low evidentiary thresholds, not a conservative one. This pattern is consistent with the "Different-as-default heuristic" documented in same-different paradigms [@farell1985; @nosofsky1997palmeri], discussed further in relation to boundary separation in Section 3.5.1. By adopting a starting point biased toward the "Different" boundary, older adults reduced the cognitive demands of Standard (Same) trials — at the cost of elevated false alarm rates on trials where stimuli were in fact identical.
 
 ```{r}
 #| label: tbl-standard-only-bias-contrasts
@@ -4010,6 +4015,10 @@ print(p_drift_forest)
 
 ```{r}
 #| label: fig-difficulty-posterior-diffs
+#| eval: false
+#| include: false
+# REMOVED: duplicate of fig-difficulty-contrasts (Section 3.4). Pairwise difficulty contrast
+# posterior distributions are shown once in @fig-difficulty-contrasts.
 #| fig-cap: "Posterior distributions of pairwise difficulty contrasts on drift rate ($v$, left panel) and boundary separation ($a$, right panel). Each density shows the posterior of the named difference score. Vertical dashed lines mark zero; the shaded band is the 95% credible interval. Contrasts not crossing zero confirm statistically credible effects of difficulty on both parameters."
 #| fig-align: center
 #| fig-pos: "htbp"
@@ -4096,9 +4105,9 @@ if (file.exists(model_path_diff) && requireNamespace("brms", quietly = TRUE) &&
 }
 ```
 
-Because difficulty is a within-subject manipulation, marginal error bars for Standard, Hard, and Easy conditions overlap with between-subject variability. Plotting the posterior distribution of the *difference* isolates the within-subject contrast. The 95% credible intervals for all three pairwise difficulty contrasts (Hard − Standard, Easy − Standard, Easy − Hard) do not cross zero for either drift rate ($v$) or boundary separation ($a$), confirming these effects are statistically credible regardless of apparent overlap in marginal parameter plots.
+Pairwise difficulty contrasts for drift rate ($v$) and boundary separation ($a$) — with all three 95% CrIs excluding zero — are presented in @fig-difficulty-contrasts (Section 3.4).
 
-**Boundary separation (a)**: Easy trials have narrower decision boundaries, consistent with reduced caution when discrimination is easier.
+**Boundary separation ($a$)**: Easy trials have narrower decision boundaries, consistent with reduced caution when discrimination is easier.
 
 ## Sensitivity analysis across RT cutoffs
 
@@ -4484,7 +4493,7 @@ include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf"))
 
 ```{r}
 #| label: fig-parameter-correlation
-#| fig-cap: "Subject-Level Parameter Correlation: Drift Intercept vs. Bias Intercept. Scatter plot showing the relationship between subject-level drift intercept and bias intercept estimates. Each point represents one subject (n = 67). The correlation is $r$ = -0.205, indicating a weak negative relationship: subjects with stronger negative drift (toward 'Same') tend to have slightly lower bias (closer to 0.5, less bias toward 'Different'). The regression line with 95% confidence interval (shaded ribbon) shows the trend. This pattern suggests that participants who are more sensitive to stimulus identity (stronger negative drift) may also adopt more neutral starting points, potentially reflecting a more conservative decision strategy."
+#| fig-cap: "Subject-Level Parameter Correlation: Drift Intercept vs. Bias Intercept. Scatter plot showing the relationship between subject-level random-effect estimates for drift intercept and bias intercept. Each point represents one participant ($n$ = 67). The correlation is $r$ = −0.205, indicating a weak negative association; participants with stronger negative drift tend to show slightly lower starting-point bias. The regression line with 95% confidence band is shown."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "70%"
