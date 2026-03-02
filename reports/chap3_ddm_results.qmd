@@ -2123,7 +2123,7 @@ if (!is.null(std_bias_contrasts) && nrow(std_bias_contrasts) > 0) {
 # ── Task bias contrast (VDT − ADT) from standard-only model ──
 h4task_beta_str <- "$\\Delta z = -0.04$"
 h4task_cri_str  <- "95\\% CrI $[-0.06,\\; -0.02]$"
-h4task_p0_str   <- "; $P(\\Delta z < 0) = 0.99$"
+h4task_p0_str   <- "; $P(\\Delta z_{\\text{ADT}-\\text{VDT}} > 0) > .999$"
 
 if (!is.null(std_bias_contrasts) && nrow(std_bias_contrasts) > 0) {
   h4task_row <- std_bias_contrasts |>
@@ -2147,13 +2147,18 @@ if (!is.null(std_bias_contrasts) && nrow(std_bias_contrasts) > 0) {
     h4task_cri_str  <- sprintf("95\\%% CrI $[%.3f,\\; %.3f]$",
                                h4task_lo, h4task_hi)
 
-    # h4task_p0_str: P(Δz < 0) — probability in observed direction.
-    # pgt0 = P(VDT − ADT > 0) ≈ 0.01; use 1 − pgt0 ≈ 0.99.
+    # h4task_p0_str: P(Δz_ADT-VDT > 0) — probability in stated direction (ADT > VDT).
+    # std_bias_contrasts stores VDT − ADT contrast; p_gt0 = P(VDT−ADT > 0) ≈ 0.001.
+    # Body text reads "ADT showed higher bias than VDT", so we report 1 − p_gt0 = P(ADT−VDT > 0).
     p0_col <- intersect(c("p_gt0", "pgt0", "Pgt0", "P_gt0"),
                         names(h4task_row))
     if (length(p0_col) > 0 && !is.na(h4task_row[[p0_col[1]]])) {
-      h4task_p0_str <- sprintf("; $P(\\Delta z < 0) = %.2f$",
-                               1 - h4task_row[[p0_col[1]]])
+      p_adt_gt_vdt <- 1 - h4task_row[[p0_col[1]]]
+      h4task_p0_str <- dplyr::case_when(
+        p_adt_gt_vdt >= 0.999 ~ "; $P(\\Delta z_{\\text{ADT}-\\text{VDT}} > 0) > .999$",
+        p_adt_gt_vdt <= 0.001 ~ "; $P(\\Delta z_{\\text{ADT}-\\text{VDT}} > 0) < .001$",
+        TRUE ~ sprintf("; $P(\\Delta z_{\\text{ADT}-\\text{VDT}} > 0) = %.3f$", p_adt_gt_vdt)
+      )
     }
   }
 }
@@ -3530,7 +3535,29 @@ include_graphics_safe(fig_path("fig_integrated_condition_effects.pdf"))
 
 ### Individual Differences
 
-The hierarchical structure revealed substantial individual differences in all DDM parameters, with drift rate showing the widest variability. Parameter correlations revealed a weak negative relationship ($r$ = −0.205) between drift intercept and bias intercept at the subject level. Supporting figures are provided in Appendix~A1 (@fig-subject-parameter-distribution and @fig-brinley-plot).
+```{r cor-val-setup}
+#| echo: false
+#| include: false
+# Compute cor_val_fig17 here (before inline reference) so caption and text agree.
+cor_val_fig17 <- -0.205  # fallback
+model_path_cor_early <- file.path(proj_root, params$run_dir, "models",
+                                  "additive__probe_onset_locked__thr0.20.rds")
+if (file.exists(model_path_cor_early) && requireNamespace("brms", quietly = TRUE)) {
+  tryCatch({
+    suppressPackageStartupMessages(library(brms))
+    fit_cor_e <- readRDS(model_path_cor_early)
+    coef_e    <- brms::coef(fit_cor_e, summary = TRUE)
+    if (!is.null(coef_e) && "subject_id" %in% names(coef_e)) {
+      d_e <- coef_e$subject_id[, , "Intercept"]
+      b_e <- coef_e$subject_id[, , "bias_Intercept"]
+      if (!is.null(d_e) && !is.null(b_e))
+        cor_val_fig17 <- cor(d_e[, "Estimate"], b_e[, "Estimate"], use = "complete.obs")
+    }
+  }, error = function(e) invisible(NULL))
+}
+```
+
+The hierarchical structure revealed substantial individual differences in all DDM parameters, with drift rate showing the widest variability. Parameter correlations revealed a weak negative relationship ($r$ = `r sprintf("%.3f", cor_val_fig17)`) between drift intercept and bias intercept at the subject level. Supporting figures are provided in Appendix~A1 (@fig-subject-parameter-distribution and @fig-brinley-plot).
 
 **Divergence between standard-only and primary model bias estimates.** The starting-point bias estimate from the standard-only calibration model ($z = 0.63$, 95% CrI [0.60, 0.66]; @tbl-standard-only-bias-levels) is notably higher than the estimates from the primary model fit to all trials ($z \approx 0.52$–$0.55$ across conditions; @tbl-ddm-core-by-difficulty-effort). This divergence is an expected consequence of model structure, not an inconsistency.
 
@@ -4188,7 +4215,7 @@ Parameter estimates and the pattern of effects on $v$, $a$, $t_0$, and $z$ were 
 
 ## Summary of Key Findings
 
-Results confirmed Hypothesis 1 (H1): High effort reduced drift rate, consistent with resource competition or supra-optimal arousal (Section 3.4.1). Contrary to Hypothesis 2 (H2), boundary separation did not increase under High effort, contradicting Adaptive Gain Theory predictions [@astonjones2005] (Section 3.4.1). Hypothesis 3 (H3) could not be tested directly due to model constraints requiring constant $t_0$, though exploratory analyses suggested minimal peripheral slowing (Section 3.4.1). Contrary to Hypothesis 4 (H4), starting-point bias showed no reliable shift toward neutrality under High effort (Section 3.5), suggesting that concurrent grip did not reset pre-existing response preferences in older adults. Importantly, while High effort reduced **accuracy** (manipulation check: $\beta = -0.16$, $p < .001$), it did not reliably slow **reaction time** ($\beta = 0.02$ s, 95% CI [−0.02, 0.05]). This dissociation—lower accuracy without RT slowing—is explained by the DDM decomposition: drift rate declined (evidence quality), but boundary separation did not increase (no compensatory caution), consistent with the DDM prediction of faster errors rather than slower correct responses under degraded drift without compensatory boundary increase. The Effort → Drift effect was robust to Task (ADT vs. VDT) inclusion (Appendix~A4.3). Trial-wise pupil-linked arousal (TEPR) did not reliably modulate drift rate or starting-point bias when included as predictors (Section 3.6). This pattern of results confirms the "detrimental impact" hypothesis grounded in Resource Competition theory [@azer2023; @wickens2008], which predicts that concurrent physical effort consumes shared cognitive resources, degrading the quality of evidence accumulation. However, the null effect on boundary separation challenges the "adaptive caution" hypothesis (Strategic Adaptation), which predicted that older adults would respond to increased internal noise by raising their decision thresholds to preserve accuracy.
+Results confirmed Hypothesis 1 (H1): High effort reduced drift rate, consistent with resource competition or supra-optimal arousal (Section 3.4.1). Contrary to Hypothesis 2 (H2), boundary separation did not increase under High effort, which is not consistent with the AGT-derived prediction that phasic LC-NE activation would trigger compensatory boundary widening [@astonjones2005] (Section 3.4.1). Hypothesis 3 (H3) could not be tested directly due to model constraints requiring constant $t_0$, though exploratory analyses suggested minimal peripheral slowing (Section 3.4.1). Contrary to Hypothesis 4 (H4), starting-point bias showed no reliable shift toward neutrality under High effort (Section 3.5), suggesting that concurrent grip did not reset pre-existing response preferences in older adults. Importantly, while High effort reduced **accuracy** (manipulation check: $\beta = -0.16$, $p < .001$), it did not reliably slow **reaction time** ($\beta = 0.02$ s, 95% CI [−0.02, 0.05]). This dissociation—lower accuracy without RT slowing—is explained by the DDM decomposition: drift rate declined (evidence quality), but boundary separation did not increase (no compensatory caution), consistent with the DDM prediction of faster errors rather than slower correct responses under degraded drift without compensatory boundary increase. The Effort → Drift effect was robust to Task (ADT vs. VDT) inclusion (Appendix~A4.3). Trial-wise pupil-linked arousal (TEPR) did not reliably modulate drift rate or starting-point bias when included as predictors (Section 3.6). This pattern of results is consistent with the "detrimental impact" hypothesis grounded in Resource Competition theory [@azer2023; @wickens2008], which predicts that concurrent physical effort consumes shared cognitive resources, degrading the quality of evidence accumulation. However, the null effect on boundary separation challenges the "adaptive caution" hypothesis (Strategic Adaptation), which predicted that older adults would respond to increased internal noise by raising their decision thresholds to preserve accuracy.
 
 ## The "Crunch Point": Why Drift Rate Declined
 
@@ -4501,7 +4528,7 @@ include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf"))
 
 ```{r}
 #| label: fig-parameter-correlation
-#| fig-cap: "Subject-Level Parameter Correlation: Drift Intercept vs. Bias Intercept. Scatter plot showing the relationship between subject-level random-effect estimates for drift intercept and bias intercept. Each point represents one participant ($n$ = 67). The correlation is $r$ = −0.205, indicating a weak negative association; participants with stronger negative drift tend to show slightly lower starting-point bias. The regression line with 95% confidence band is shown."
+#| fig-cap: !expr sprintf("Subject-Level Parameter Correlation: Drift Intercept vs. Bias Intercept. Scatter plot showing the relationship between subject-level random-effect estimates for drift intercept and bias intercept. Each point represents one participant (n = 67). The correlation is r = %.3f, indicating a %s association; participants with stronger negative drift tend to show %s starting-point bias. The regression line with 95%% confidence band is shown.", cor_val_fig17, ifelse(abs(cor_val_fig17) < 0.3, "weak", ifelse(abs(cor_val_fig17) < 0.6, "moderate", "strong")), ifelse(cor_val_fig17 < 0, "slightly lower", "slightly higher"))
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "70%"
@@ -4517,11 +4544,12 @@ if (file.exists(model_path_cor) && requireNamespace("brms", quietly = TRUE)) {
       bias_coefs <- coef_subj$subject_id[, , "bias_Intercept"]
       if (!is.null(drift_coefs) && !is.null(bias_coefs)) {
         subj_cor <- tibble(subject_id = rownames(drift_coefs), drift_intercept = drift_coefs[, "Estimate"], bias_intercept = bias_coefs[, "Estimate"])
-        cor_val <- cor(subj_cor$drift_intercept, subj_cor$bias_intercept, use = "complete.obs")
+        # Update cor_val_fig17 with the live computed value (caption and body text use same variable)
+        cor_val_fig17 <<- cor(subj_cor$drift_intercept, subj_cor$bias_intercept, use = "complete.obs")
         p_cor <- ggplot(subj_cor, aes(x = drift_intercept, y = bias_intercept)) +
           geom_point(size = 1.8, alpha = 0.7, color = "#1f78b4") +
           geom_smooth(method = "lm", se = TRUE, color = "#DC143C", linewidth = 0.8, fill = "gray90", alpha = 0.3) +
-          labs(title = "Subject-Level Parameter Correlation", subtitle = sprintf("Drift Intercept vs. Bias Intercept (r = %.3f)", cor_val),
+          labs(title = "Subject-Level Parameter Correlation", subtitle = sprintf("Drift Intercept vs. Bias Intercept (r = %.3f)", cor_val_fig17),
                x = "Drift Intercept (Subject-Level)", y = "Bias Intercept (Subject-Level, logit scale)") +
           theme_minimal(base_size = 12) +
           theme(plot.title = element_text(face = "bold", hjust = 0.5), plot.subtitle = element_text(hjust = 0.5, color = "gray50"))
@@ -5005,11 +5033,7 @@ if (!is.null(sensitivity_summary) && exists("has_sensitivity_summary") && has_se
         locations = cells_column_labels(columns = delta_contains_zero)
       ) %>%
       tab_source_note(
-        source_note = paste0("Data: output/checks/sensitivity_summary.csv. ",
-          if (file.exists(file.path(proj_root, "output/checks/sensitivity_summary.csv")))
-            paste0("Last modified ", format(file.info(file.path(proj_root, "output/checks/sensitivity_summary.csv"))$mtime, "%Y-%m-%d"), ". ")
-          else "",
-          "Refresh: Rscript scripts/checks/sensitivity.R")
+        source_note = "Parameter estimates are posterior medians; Δ CI is the 95% credible interval for the difference between the full sample and the sub-chance-excluded subsample."
       ) %>%
       opt_table_font(size = "small") %>%
       tab_options(
@@ -5108,7 +5132,7 @@ if (!is.null(tbl_sens) && nrow(tbl_sens) > 0 && "looic" %in% names(tbl_sens)) {
 
 ### A4.3 Task Modality Effects: Sensitivity Analysis {.unnumbered}
 
-The primary model (Table 8) excluded Task (ADT vs. VDT) as a predictor for drift rate ($v$) and boundary separation ($a$) to reduce model complexity. Peer reviewers noted that auditory and visual processing speeds differ psychophysically, and pooling these modalities may mask Task main effects or Effort × Task interactions. To address this, we fit a **task-sensitivity model** with:
+The primary model (Table 8) excluded Task (ADT vs. VDT) as a predictor for drift rate ($v$) and boundary separation ($a$) to reduce model complexity. We additionally examined whether absolute drift rates differed between auditory and visual tasks, as pooling these modalities could potentially mask Task main effects or Effort × Task interactions. To address this, we fit a **task-sensitivity model** with:
 
 - Drift rate ($v$): `~ difficulty + effort * task` (with interaction)
 - Boundary separation ($a$): `~ difficulty + effort + task` (main effects only)
