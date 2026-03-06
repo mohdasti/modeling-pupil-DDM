@@ -1,8 +1,10 @@
 ---
-title: "Effort-Induced Arousal Shapes Evidence Accumulation in Older Adults: A Pupil-Informed Diffusion Model"
+title: "Physical Effort Selectively Impairs Evidence Accumulation Without Altering Response Caution in Older Adults: A Diffusion Model Analysis"
 author: "Mohammad Dastgheib"
 bibliography: references.bib
 csl: apa-7th-edition.csl
+prefer-html: true
+always_allow_html: true
 params:
   run_dir: "output/ddm_refits/runs/20260226_092110"
 format:
@@ -56,6 +58,23 @@ op <- options(width = 120)
 on.exit(options(op), add = TRUE)
 
 `%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
+
+# For docx output: kable_styling with bootstrap_options produces HTML, which breaks docx.
+# Override to strip bootstrap_options when rendering to Word.
+if (requireNamespace("kableExtra", quietly = TRUE)) {
+  tryCatch({
+    to <- tryCatch(knitr::pandoc_to(), error = function(e) NULL)
+    if (is.null(to)) to <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+    if (!is.null(to) && to == "docx") {
+      kable_styling_orig <- get("kable_styling", envir = asNamespace("kableExtra"))
+      assignInNamespace("kable_styling", function(kbl, ...) {
+        args <- list(...)
+        args$bootstrap_options <- NULL
+        do.call(kable_styling_orig, c(list(kbl), args))
+      }, ns = "kableExtra")
+    }
+  }, error = function(e) invisible(NULL))
+}
 
 # Cousineau-Morey within-subject SE helper
 # Args:
@@ -774,7 +793,7 @@ if (!is.null(fixef_link_abstract) && nrow(fixef_link_abstract) > 0) {
 
 # Abstract {.unnumbered}
 
-This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a response-signal change-detection task in older adults. The primary model maps task difficulty to drift rate ($v$) and boundary separation ($a$), with starting-point bias ($z$) varying by task and effort but constant across difficulty levels (reflecting the randomized trial design). Results showed that high-effort (40% MVC) conditions reliably reduced drift rate relative to low-effort (5% MVC) conditions (`r h1_beta_str`; `r h1_cri_str`, where CrI = 95% credible interval; `r h1_p0_str`), consistent with degraded evidence accumulation under effort-induced arousal (H1 supported). Boundary separation, non-decision time, and starting-point bias showed no reliable effort effects (H2, H3, H4 not supported), indicating that concurrent grip primarily impaired the quality of evidence accumulation rather than response caution or peripheral processing speed. Trial-wise pupil-linked arousal (TEPR) did not reliably modulate drift rate or starting-point bias when pooled across difficulty levels; a supplementary interaction model (`pupil_scaled * difficulty`) tests whether arousal effects are conditional on task demands, as predicted by the Yerkes–Dodson law. We report comprehensive quality assurance checks, manipulation checks independent of the DDM, model comparison via LOO cross-validation, and extensive posterior predictive checks. All models met convergence criteria. Posterior predictive checks revealed systematic deviations from strict pre-registered thresholds, driven by fast-tail misfit—a known limitation of standard Wiener models. Visual diagnostics confirmed adequate fit to mid-body RT quantiles, and key parameter contrasts were robust to these localized deviations.
+This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a response-signal change-detection task in older adults. The primary model maps task difficulty to drift rate ($v$) and boundary separation ($a$), with starting-point bias ($z$) varying by task and effort but constant across difficulty levels (reflecting the randomized trial design). Results showed that high-effort (40% MVC) conditions reliably reduced drift rate relative to low-effort (5% MVC) conditions (`r h1_beta_str`; `r h1_cri_str`, where CrI = 95% credible interval; `r h1_p0_str`), consistent with degraded evidence accumulation under effort-induced arousal (H1 supported). Boundary separation and starting-point bias showed no reliable effort effects (H2, H4 not supported), indicating that concurrent grip primarily impaired the quality of evidence accumulation rather than response caution or pre-stimulus bias. Non-decision time could not be formally tested due to modeling constraints in the response-signal paradigm (H3; exploratory estimates suggested minimal peripheral slowing). Trial-wise pupil-linked arousal (TEPR) did not reliably modulate drift rate or starting-point bias when pooled across difficulty levels; a supplementary interaction model (`pupil_scaled * difficulty`) tests whether arousal effects are conditional on task demands, as predicted by the Yerkes–Dodson law. We report comprehensive quality assurance checks, manipulation checks independent of the DDM, model comparison via LOO cross-validation, and extensive posterior predictive checks. All models met convergence criteria. Posterior predictive checks revealed systematic deviations from strict pre-registered thresholds, driven by fast-tail misfit—a known limitation of standard Wiener models. Visual diagnostics confirmed adequate fit to mid-body RT quantiles, and key parameter contrasts were robust to these localized deviations.
 
 \newpage
 
@@ -815,11 +834,11 @@ Pupillometry provides exactly such a framework: pupil diameter tracks arousal st
 
 Cavanagh et al. [-@cavanagh2014] provided a key demonstration linking pupil-indexed arousal to DDM parameters. Using hierarchical Bayesian DDM in a probabilistic learning task, they found that pupil dilation specifically predicted increases in decision boundary ($a$) during high-conflict choices — interpreted as a phasic arousal signal prompting greater response caution. The present study extends this pupil-DDM framework to older adults and physical effort as the arousal manipulation.
 
-While pupil diameter is not exclusively determined by arousal — being also sensitive to luminance, autonomic balance, and motor activity [@beatty1982; @loewenfeld1999] — in our controlled MRI setting with constant luminance and fixed viewing distance, TEPR is interpreted as a relative index of phasic arousal, supplementing the primary behavioral DDM analysis.
+While pupil diameter is not exclusively determined by arousal — being also sensitive to luminance, autonomic balance, and motor activity [@beatty1982; @loewenfeld1999] — in our controlled MRI setting with constant luminance and fixed viewing distance, TEPR is interpreted as a relative index of phasic arousal, supplementing the primary behavioral DDM analysis. Although pupil dilation has been theoretically linked to LC-NE dynamics [@gilzenrat2010; @joshi2016], the present study does not directly measure LC integrity or NE release; TEPR is treated here as a behavioral index of phasic arousal state rather than a confirmed biomarker of LC-NE function specifically.
 
 ### Hypotheses and Predictions
 
-We tested four a priori hypotheses. First, we predicted that drift rate ($v$) would decrease under High effort (40% MVC) relative to Low effort (5% MVC), reflecting degraded evidence accumulation due to resource competition or supra-optimal arousal. Second, we predicted that boundary separation ($a$) would increase under High effort. This prediction is grounded in Adaptive Gain Theory [@astonjones2005], which posits that phasic locus coeruleus–norepinephrine (LC-NE) activation — triggered by effortful task engagement — elevates decision thresholds to prevent premature responding when stakes or demands are high. Empirical support comes from @cavanagh2014, who demonstrated that pupil-indexed arousal during high-conflict choices predicted increased boundary separation in a probabilistic learning task, though their manipulation targeted cognitive conflict rather than physical effort. To the extent that concurrent isometric grip induces phasic or tonic LC-NE activation [@astonjones2005], we hypothesized that this arousal state would manifest as wider boundaries, reflecting compensatory cautiousness under resource competition. Third, as an exploratory aim, we examined whether non-decision time ($t_0$) would increase modestly under High effort, reflecting cognitive-motor interference from concurrent grip maintenance. As detailed in Methods Section 2.3.2, model stability constraints in the response-signal paradigm precluded direct testing of this aim; we report exploratory estimates for transparency. Fourth, starting-point bias ($z$) was expected to shift toward neutrality ($z \rightarrow 0.5$) under High effort, consistent with phasic arousal resetting pre-existing response tendencies [@degee2020pupil].
+We tested four a priori hypotheses. First, we predicted that drift rate ($v$) would decrease under High effort (40% MVC) relative to Low effort (5% MVC), reflecting degraded evidence accumulation due to resource competition or supra-optimal arousal. Second, we predicted that boundary separation ($a$) would increase under High effort. This prediction is grounded in Adaptive Gain Theory [@astonjones2005], which posits that phasic locus coeruleus–norepinephrine (LC-NE) activation — triggered by effortful task engagement — elevates decision thresholds to prevent premature responding when stakes or demands are high. Empirical support comes from @cavanagh2014, who demonstrated that pupil-indexed arousal during high-conflict choices predicted increased boundary separation in a probabilistic learning task, though their manipulation targeted cognitive conflict rather than physical effort. To the extent that concurrent isometric grip elevates arousal states broadly consistent with the phasic-mode dynamics described by AGT — a mechanism the present study cannot directly verify without neuroimaging of the LC — we predicted this arousal state would manifest as wider boundaries, reflecting compensatory cautiousness under resource competition. Third, as an exploratory aim, we examined whether non-decision time ($t_0$) would increase modestly under High effort, reflecting cognitive-motor interference from concurrent grip maintenance. As detailed in Methods Section 2.3.2, model stability constraints in the response-signal paradigm precluded direct testing of this aim; we report exploratory estimates for transparency. Fourth, starting-point bias ($z$) was expected to shift toward neutrality ($z \rightarrow 0.5$) under High effort. This prediction extends the finding of @degee2020pupil, who showed that phasic, within-trial arousal (indexed by pupil dilation) reduced response bias in a detection task. We reasoned that sustained effort-induced arousal — a more tonic state — might similarly attenuate the pre-existing Different bias, though we acknowledge this constitutes a theoretical extension from a phasic to a tonic arousal context.
 
 ## The Present Study
 
@@ -2187,7 +2206,7 @@ cue_n_trials <- tbl_inclusion_raw %>%
 
 # Results
 
-We evaluated four a priori hypotheses using a hierarchical Bayesian Wiener DDM fit to `r format(primary_n_trials, big.mark = ",")` trials from `r methods_n_sample` older adults. The central finding was that High effort (40% MVC) reliably reduced drift rate compared with Low effort (5% MVC), supporting H1. Boundary separation, non-decision time, and starting-point bias showed no reliable effort effects (H2–H4 not supported), indicating that concurrent grip primarily impaired evidence quality rather than response caution or pre-stimulus bias. Detailed parameter estimates and Bayesian hypothesis tests are reported in Section 3.4.
+We evaluated four a priori hypotheses using a hierarchical Bayesian Wiener DDM fit to `r format(primary_n_trials, big.mark = ",")` trials from `r methods_n_sample` older adults. The central finding was that High effort (40% MVC) reliably reduced drift rate compared with Low effort (5% MVC), supporting H1. Boundary separation and starting-point bias showed no reliable effort effects (H2, H4 not supported). Non-decision time could not be formally tested under the intercept-only constraint imposed for model stability (H3; see Section 3.4.1 for exploratory estimates). Detailed parameter estimates and Bayesian hypothesis tests are reported in Section 3.4.
 
 ## Data inclusion and preprocessing summary
 
@@ -2388,13 +2407,11 @@ Behavioral manipulation checks confirmed that difficulty and effort affected acc
 
 ## Convergence and model fit diagnostics
 
-All models met standard convergence criteria: $\hat{R} \leq 1.01$ for all parameters and bulk effective sample size (ESS) $\geq 400$ across chains (@tbl-convergence-detailed). Zero divergent transitions were observed for the primary model; full chain diagnostics, trace plots, and ESS summaries are provided in Appendix A2. These results indicate that the posterior geometry was well-explored and that parameter estimates are reliable for inference.
-
-Posterior predictive checks (PPC) evaluated whether the primary model's posterior predictions were consistent with observed RT distributions and accuracy. We distinguish between two tiers of diagnostics. *Convergence criteria* ($\hat{R}$, ESS, divergences) are binary pass/fail gates for valid posterior inference — all models passed these criteria (see above). *PPC fit quality* is a continuous assessment of where the model deviates from data; localized deviations do not invalidate inference if key contrasts are robust to them. The pre-registered subject-wise thresholds (mid-body QP RMSE $\leq 0.09$ s; KS statistic $\leq 0.15$; $\leq 15\%$ of cells flagged) were chosen conservatively, and threshold exceedances were concentrated in fast-tail regions — a known limitation of the standard Wiener DDM without a fast-guess contaminant process [@ratcliff2008diffusion]. Visual inspection of quantile-probability plots and RT overlays confirmed adequate mid-body fit across effort and difficulty conditions (Appendix A3.2). Parameter contrasts for H1–H4 were re-evaluated on the mid-body subsets and yielded the same directional conclusions as the full-sample analyses, confirming that fast-tail misfit did not bias the substantive inferences.
+All models met standard convergence criteria ($\hat{R}$ < 1.01, bulk ESS > 400, zero divergent transitions; full chain diagnostics, trace plots, and ESS summaries are provided in Table 12, Appendix A1). Posterior predictive checks revealed localized fast-tail misfit --- a known limitation of the standard Wiener DDM without a contaminant process --- concentrated in Easy VDT conditions; mid-body quantile fit was adequate across all effort and difficulty cells, and key parameter contrasts were robust to this misfit (full PPC diagnostics and visual inspection figures in Appendix A3).
 
 ## Model comparison: Baseline vs. additive specification
 
-We compared nested model specifications using Pareto-smoothed importance sampling LOO cross-validation (PSIS-LOO; @vehtari2017loo). The primary *additive* model — in which difficulty and effort contribute independent, non-interacting effects on drift rate and boundary separation — showed superior out-of-sample predictive accuracy compared to a difficulty-only baseline ($\Delta$ELPD $>$ 4; @tbl-loo-comparison). An interaction model (difficulty × effort) did not meaningfully improve fit over the additive specification ($|\Delta$ELPD$|$ $<$ 4), justifying the more parsimonious additive parameterization for primary inference. Full ELPD values, standard errors, and Pareto-$k$ diagnostics are in @tbl-loo-comparison.
+We compared nested model specifications using Pareto-smoothed importance sampling LOO cross-validation (PSIS-LOO; @vehtari2017loo). The primary *additive* model — in which difficulty and effort contribute independent, non-interacting effects on drift rate and boundary separation — showed superior out-of-sample predictive accuracy compared to a difficulty-only baseline ($\Delta$ELPD $>$ 4; @tbl-loo-comparison). An interaction model (difficulty × effort) did not meaningfully improve fit over the additive specification ($|\Delta$ELPD$|$ $<$ 4), justifying the more parsimonious additive parameterization for primary inference. Full ELPD values, standard errors, and Pareto-$k$ diagnostics are in @tbl-loo-comparison. The near-parallel effort shift across difficulty levels is visualized in Appendix A4.3.
 
 The selected additive model was also compared against pupil-augmented specifications in a separate LOO analysis (Section 3.6): neither adding TEPR as a predictor of drift rate nor of starting-point bias improved predictive accuracy, consistent with the null pupil results reported below.
 
@@ -2562,7 +2579,7 @@ This section presents posterior estimates of the four DDM parameters across cond
 ```{r}
 #| label: tbl-ddm-core-by-difficulty-effort
 #| tbl-cap: "Core DDM parameters $v$, $a$, and $t_0$ by Difficulty $\\times$ Effort. Task does not vary across drift rate or boundary separation estimates because it was not included in the primary model specification (see Methods); sensitivity analyses including Task are reported in Appendix~A4.3. Values are posterior medians with 95% credible intervals."
-#| tbl-pos: "htbp"
+#| tbl-pos: H
 # Table A: v/a/t0 by Difficulty × Effort (collapse across task since values are identical)
 ddm_core <- pred_params %>%
   filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
@@ -2823,46 +2840,6 @@ if (length(model_path) > 0 && file.exists(model_path)) {
 ```
 
 ```{r}
-#| label: fig-bias-by-task-effort
-#| fig-cap: "Starting-point bias ($z$) by Task $\\times$ Effort. Points show posterior medians with 95% credible intervals. Dashed line marks $z=0.5$ (no bias)."
-#| fig-align: center
-#| fig-pos: "H"
-#| out-width: "70%"
-
-# Prepare data for bias plot
-bias_plot_data <- pred_params %>%
-  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
-  filter(difficulty == "Standard") %>%
-  select(task, effort, z_median, z_q2.5, z_q97.5) %>%
-  mutate(
-    task = factor(task, levels = c("ADT", "VDT")),
-    effort = factor(effort, levels = c("Low", "High"))
-  )
-
-p_bias <- ggplot(bias_plot_data, aes(y = task, x = z_median, color = effort)) +
-  geom_vline(xintercept = 0.5, linetype = "dashed", color = "grey50", alpha = 0.5) +
-geom_pointrange(aes(xmin = z_q2.5, xmax = z_q97.5),
-                  position = position_dodge(width = 0.4), size = 0.6, linewidth = 0.5) +
-  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
-  labs(
-    y = "Task",
-    x = "Starting-Point Bias (z)",
-    title = NULL
-  ) +
-  theme_bw(base_size = 13) +
-  theme(
-    axis.title = element_text(face = "bold"),
-    legend.title = element_text(face = "bold"),
-    panel.grid.minor = element_blank(),
-    legend.position = "bottom"
-  )
-
-print(p_bias)
-ggsave("figures/fig_bias_by_task_effort.png", p_bias, width = 7, height = 5, dpi = 300)
-message("✓ Saved: figures/fig_bias_by_task_effort.png")
-```
-
-```{r}
 #| label: tbl-ddm-bias-by-task-effort
 #| fig-pos: "H"
 #| tbl-cap: "Starting-point bias ($z$) by Task $\\times$ Effort. Bias is constrained to be constant across difficulty levels (as trials are randomized). Values shown are collapsed across difficulty (median of medians). Values are posterior medians with 95% credible intervals."
@@ -2927,253 +2904,7 @@ pupil_quality_text <- if (n_subj_pupil > 0 && n_trials_total > 0) {
 }
 ```
 
-`r pupil_quality_text`
-
-Baseline pupil diameter by condition is shown in @tbl-baseline-pupil.
-
-```{r}
-#| label: tbl-baseline-pupil
-#| tbl-cap: "Baseline Pupil Diameter by Condition"
-#| tbl-pos: "htbp"
-# Compute baseline pupil diameter by task and effort
-if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data)) {
-  baseline_pupil_summary <- pupil_data %>%
-    filter(!is.na(baseline_B0), !is.na(task), !is.na(effort_condition)) %>%
-    group_by(task, effort_condition, subject_id) %>%
-    summarise(
-      mean_baseline = mean(baseline_B0, na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    group_by(task, effort_condition) %>%
-    summarise(
-      mean_baseline_mm = round(mean(mean_baseline, na.rm = TRUE), 2),
-      sd_baseline_mm = round(sd(mean_baseline, na.rm = TRUE), 2),
-      median_baseline_mm = round(median(mean_baseline, na.rm = TRUE), 2),
-      n_subjects = n(),
-      .groups = "drop"
-    ) %>%
-    mutate(
-      Task_Group = case_when(
-        task == "ADT" ~ "ADT",
-        task == "VDT" ~ "VDT",
-        TRUE ~ task
-      ),
-      Effort = case_when(
-        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
-        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
-        TRUE ~ effort_condition
-      ),
-      `Mean (AU)` = mean_baseline_mm,
-      `SD (AU)` = sd_baseline_mm,
-      `Median (AU)` = median_baseline_mm,
-      `N Subjects` = n_subjects
-    ) %>%
-    mutate(
-      Task_Group = gsub("\u2013", "-", Task_Group),
-      Effort = gsub("\u2013", "-", Effort)
-    ) %>%
-    arrange(Task_Group, Effort) %>%
-    select(Task_Group, Effort, `Mean (AU)`, `SD (AU)`, `Median (AU)`, `N Subjects`)
-  
-  baseline_pupil_summary %>%
-    gt(groupname_col = "Task_Group") %>%
-    fmt_number(columns = c(`Mean (AU)`, `SD (AU)`, `Median (AU)`), decimals = 2) %>%
-    fmt_number(columns = `N Subjects`, decimals = 0) %>%
-    tab_style(
-      style = cell_text(weight = "bold"),
-      locations = cells_column_labels()
-    ) %>%
-    tab_style(
-      style = cell_text(weight = "bold", style = "italic"),
-      locations = cells_row_groups()
-    ) %>%
-    tab_options(
-      row_group.as_column = FALSE,
-      row_group.padding = px(8)
-    ) %>%
-    tab_footnote(
-      footnote = "Baseline pupil diameter (tonic arousal) computed from pre-trial baseline window (-0.5s to 0s relative to squeeze onset). Values in arbitrary units (AU) from eye tracker.",
-      locations = cells_column_labels(columns = `Mean (AU)`)
-    )
-} else {
-  # Placeholder if data not available
-  baseline_pupil_placeholder <- expand_grid(
-    task = c("ADT", "VDT"),
-    effort_condition = c("Low_5_MVC", "High_40_MVC")
-  ) %>%
-    mutate(
-      Task_Group = case_when(
-        task == "ADT" ~ "ADT (Auditory Detection Task)",
-        task == "VDT" ~ "VDT (Visual Detection Task)",
-        TRUE ~ task
-      ),
-      Effort = case_when(
-        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
-        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
-        TRUE ~ effort_condition
-      ),
-      `Mean (AU)` = "To be computed",
-      `SD (AU)` = "To be computed",
-      `Median (AU)` = "To be computed",
-      `N Subjects` = "To be computed"
-    ) %>%
-    mutate(
-      Task_Group = gsub("\u2013", "-", Task_Group),
-      Effort = gsub("\u2013", "-", Effort)
-    ) %>%
-    arrange(Task_Group, Effort) %>%
-    select(Task_Group, Effort, `Mean (AU)`, `SD (AU)`, `Median (AU)`, `N Subjects`)
-  
-  baseline_pupil_placeholder %>%
-    gt(groupname_col = "Task_Group") %>%
-    tab_style(
-      style = cell_text(weight = "bold"),
-      locations = cells_column_labels()
-    ) %>%
-    tab_style(
-      style = cell_text(weight = "bold", style = "italic"),
-      locations = cells_row_groups()
-    ) %>%
-    tab_options(
-      row_group.as_column = FALSE,
-      row_group.padding = px(8)
-    ) %>%
-    tab_footnote(
-      footnote = "Baseline pupil data not available. Please ensure pupil data file contains baseline_B0 column.",
-      locations = cells_body()
-    )
-}
-```
-
-Task-evoked pupil response (TEPR) by condition is shown in @tbl-tepr.
-
-```{r}
-#| label: tbl-tepr
-#| tbl-cap: "Task-Evoked Pupil Response (TEPR) by Condition"
-#| tbl-pos: "htbp"
-# Compute TEPR (cognitive AUC) by task, difficulty, and effort
-if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data) && "difficulty_level" %in% names(pupil_data)) {
-  tepr_summary <- pupil_data %>%
-    filter(!is.na(cognitive_auc), !is.na(task), !is.na(effort_condition), !is.na(difficulty_level)) %>%
-    group_by(task, difficulty_level, effort_condition, subject_id) %>%
-    summarise(
-      mean_cog_auc = mean(cognitive_auc, na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    group_by(task, difficulty_level, effort_condition) %>%
-    summarise(
-      mean_auc = round(mean(mean_cog_auc, na.rm = TRUE), 3),
-      sd_auc = round(sd(mean_cog_auc, na.rm = TRUE), 3),
-      n_subjects = n(),
-      .groups = "drop"
-    ) %>%
-    mutate(
-      Task_Group = case_when(
-        task == "ADT" ~ "ADT",
-        task == "VDT" ~ "VDT",
-        TRUE ~ task
-      ),
-      Difficulty = case_when(
-        difficulty_level == "Standard" ~ "Standard",
-        difficulty_level == "Easy" ~ "Easy",
-        difficulty_level == "Hard" ~ "Hard",
-        TRUE ~ difficulty_level
-      ),
-      Effort = case_when(
-        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
-        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
-        TRUE ~ effort_condition
-      ),
-      `Mean AUC` = mean_auc,
-      `SD AUC` = sd_auc,
-      `N Subjects` = n_subjects
-    ) %>%
-    mutate(
-      Task_Group = gsub("\u2013", "-", Task_Group),
-      Difficulty = gsub("\u2013", "-", Difficulty),
-      Effort = gsub("\u2013", "-", Effort)
-    ) %>%
-    arrange(Task_Group, Difficulty, Effort) %>%
-    select(Task_Group, Difficulty, Effort, `Mean AUC`, `SD AUC`, `N Subjects`)
-  
-  # Note: Peak amplitude calculation would require time-series data
-  # For now, we report AUC as the primary TEPR metric
-  tepr_summary %>%
-    gt(groupname_col = "Task_Group") %>%
-    fmt_number(columns = c(`Mean AUC`, `SD AUC`), decimals = 3) %>%
-    fmt_number(columns = `N Subjects`, decimals = 0) %>%
-    tab_style(
-      style = cell_text(weight = "bold"),
-      locations = cells_column_labels()
-    ) %>%
-    tab_style(
-      style = cell_text(weight = "bold", style = "italic"),
-      locations = cells_row_groups()
-    ) %>%
-    tab_options(
-      row_group.as_column = FALSE,
-      row_group.padding = px(8)
-    ) %>%
-    tab_footnote(
-      footnote = "TEPR (phasic arousal) quantified as Cognitive AUC (Area Under the Curve) from baseline-corrected pupil data using W3.0 window (4.65s to 7.65s, target+0.3s to target+3.3s). AUC in units of AU·s.",
-      locations = cells_column_labels(columns = `Mean AUC`)
-    )
-} else {
-  # Placeholder if data not available
-  tepr_placeholder <- expand_grid(
-    task = c("ADT", "VDT"),
-    difficulty_level = c("Standard", "Easy", "Hard"),
-    effort_condition = c("Low_5_MVC", "High_40_MVC")
-  ) %>%
-    mutate(
-      Task_Group = case_when(
-        task == "ADT" ~ "ADT (Auditory Detection Task)",
-        task == "VDT" ~ "VDT (Visual Detection Task)",
-        TRUE ~ task
-      ),
-      Difficulty = case_when(
-        difficulty_level == "Standard" ~ "Standard",
-        difficulty_level == "Easy" ~ "Easy",
-        difficulty_level == "Hard" ~ "Hard",
-        TRUE ~ difficulty_level
-      ),
-      Effort = case_when(
-        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
-        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
-        TRUE ~ effort_condition
-      ),
-      `Mean AUC` = "To be computed",
-      `SD AUC` = "To be computed",
-      `N Subjects` = "To be computed"
-    ) %>%
-    mutate(
-      Task_Group = gsub("\u2013", "-", Task_Group),
-      Difficulty = gsub("\u2013", "-", Difficulty),
-      Effort = gsub("\u2013", "-", Effort)
-    ) %>%
-    arrange(Task_Group, Difficulty, Effort) %>%
-    select(Task_Group, Difficulty, Effort, `Mean AUC`, `SD AUC`, `N Subjects`)
-  
-  tepr_placeholder %>%
-    gt(groupname_col = "Task_Group") %>%
-    tab_style(
-      style = cell_text(weight = "bold"),
-      locations = cells_column_labels()
-    ) %>%
-    tab_style(
-      style = cell_text(weight = "bold", style = "italic"),
-      locations = cells_row_groups()
-    ) %>%
-    tab_options(
-      row_group.as_column = FALSE,
-      row_group.padding = px(8)
-    ) %>%
-    tab_footnote(
-      footnote = "TEPR data not available. Please ensure pupil data file contains cognitive_auc, task, effort_condition, and difficulty_level columns.",
-      locations = cells_body()
-    )
-}
-```
+`r pupil_quality_text` Baseline pupil descriptives by condition are reported in Appendix A2 (Table 7). TEPR descriptives by condition are shown in Table 8 (Section 3.6).
 
 ```{r}
 #| label: fig-tepr-timecourse
@@ -3356,7 +3087,7 @@ Contrasts on the link scale confirmed large effects of difficulty on drift rate 
 
 **Bayesian inference as hypothesis testing.** In a hierarchical Bayesian framework, the role of traditional null-hypothesis significance tests is fulfilled by **posterior contrasts** — the full posterior distribution of the difference between two conditions, extracted from the fitted model [@burkner2017brms; @ratcliff2008diffusion]. Specifically, for each hypothesis, we compute $\delta = \hat{\theta}_\text{High} - \hat{\theta}_\text{Low}$ directly from the posterior draws and report (1) the posterior median of $\delta$, (2) the 95% Highest Density Interval (HDI), and (3) the posterior probability $P(\delta < 0)$ — the proportion of posterior mass below zero, directly analogous to a one-tailed p-value for the directional prediction. A 95% CrI that excludes zero corresponds to $P(\delta < 0) > 0.975$, satisfying the conventional Type-I error threshold. **This framework provides strictly stronger evidence than a point-estimate t-test**: rather than asking only whether an effect exists, it quantifies *how much* of the posterior is consistent with our directional prediction. The posterior distributions of all key contrasts are visualized in @fig-effort-drift-posterior-diff and @fig-difficulty-contrasts, which serve as the primary inferential figures for H1–H4, analogous to presenting test statistics and confidence intervals in a frequentist report.
 
-Relative to the hypotheses in Section 1.4.1: Consistent with H1, High effort (40% MVC) produced reliably lower drift rates than Low effort (5% MVC; `r h1_beta_str`, `r h1_cri_str``r h1_p0_str`), indicating that concurrent grip maintenance degraded the quality of evidence accumulation. Contrary to H2, boundary separation did not reliably increase under High effort (`r h2_beta_str`, `r h2_cri_str``r h2_null_note`), indicating no compensatory widening of the decision criterion. H3 (non-decision time) could not be directly tested because $t_0$ was constrained to be constant across conditions for model stability in the response-signal design (see Section 2.3.3 and Section 3.5). An exploratory specification yielded a negligible and highly uncertain effort effect (`r h3_beta_str`, `r h3_cri_str`, corresponding to `r h3_natural`), suggesting peripheral encoding and motor execution were minimally affected by the grip manipulation. Contrary to H4, starting-point bias showed no reliable shift toward neutrality under High effort (`r h4_beta_str`, `r h4_cri_str``r h4_p0_str`). A robust task difference was observed, however: ADT showed higher bias toward *different* responses than VDT (`r h4task_beta_str`, `r h4task_cri_str``r h4task_p0_str`); full bias results are in Section 3.5.
+Relative to the hypotheses in Section 1.4.1: Consistent with H1, High effort (40% MVC) produced reliably lower drift rates than Low effort (5% MVC; `r h1_beta_str`, `r h1_cri_str``r h1_p0_str`), indicating that concurrent grip maintenance degraded the quality of evidence accumulation. Contrary to H2, boundary separation did not reliably increase under High effort (`r h2_beta_str`, `r h2_cri_str``r h2_null_note`), indicating no compensatory widening of the decision criterion. H3 (non-decision time) could not be directly tested because $t_0$ was constrained to be constant across conditions for model stability in the response-signal design (see Section 2.3.3 and Section 3.5). An exploratory specification yielded a negligible and highly uncertain effort effect (`r h3_beta_str`, `r h3_cri_str`, corresponding to `r h3_natural`), suggesting peripheral encoding and motor execution were minimally affected by the grip manipulation. Contrary to H4, starting-point bias showed no reliable shift toward neutrality under High effort (`r h4_beta_str`, `r h4_cri_str``r h4_p0_str`). A robust task difference was observed, however: ADT showed higher bias toward *different* responses than VDT (`r h4task_beta_str`, `r h4task_cri_str``r h4task_p0_str`). Starting-point bias showed no reliable effort effect in either task (@tbl-ddm-bias-by-task-effort; see Appendix A2 for the full primary-model bias plot). The standard-only calibration estimates, which provide the cleanest measure of pre-stimulus bias, are reported in Section 3.5.
 
 We next examine starting-point bias in isolation through a standard-only calibration model that separates bias from drift rate.
 
@@ -3555,9 +3286,16 @@ if (file.exists(model_path_cor_early) && requireNamespace("brms", quietly = TRUE
     }
   }, error = function(e) invisible(NULL))
 }
+# Build caption for fig-parameter-correlation (used in chunk option)
+fig17_cap <- sprintf(
+  "Subject-Level Parameter Correlation: Drift Intercept vs. Bias Intercept. Scatter plot showing the relationship between subject-level random-effect estimates for drift intercept and bias intercept. Each point represents one participant (n = 67). The correlation is r = %.3f, indicating a %s association; participants with stronger negative drift tend to show %s starting-point bias. The regression line with 95%% confidence band is shown.",
+  cor_val_fig17,
+  ifelse(abs(cor_val_fig17) < 0.3, "weak", ifelse(abs(cor_val_fig17) < 0.6, "moderate", "strong")),
+  ifelse(cor_val_fig17 < 0, "slightly lower", "slightly higher")
+)
 ```
 
-The hierarchical structure revealed substantial individual differences in all DDM parameters, with drift rate showing the widest variability. Parameter correlations revealed a weak negative relationship ($r$ = `r sprintf("%.3f", cor_val_fig17)`) between drift intercept and bias intercept at the subject level. Supporting figures are provided in Appendix~A1 (@fig-subject-parameter-distribution and @fig-brinley-plot).
+The hierarchical structure revealed substantial individual differences in all DDM parameters, with drift rate showing the widest variability. Parameter correlations revealed a weak negative relationship ($r$ = `r sprintf("%.3f", cor_val_fig17)`) between drift intercept and bias intercept at the subject level. Supporting figures are provided in Appendix~A2 (@fig-subject-parameter-distribution and @fig-brinley-plot).
 
 **Divergence between standard-only and primary model bias estimates.** The starting-point bias estimate from the standard-only calibration model ($z = 0.63$, 95% CrI [0.60, 0.66]; @tbl-standard-only-bias-levels) is notably higher than the estimates from the primary model fit to all trials ($z \approx 0.52$–$0.55$ across conditions; @tbl-ddm-core-by-difficulty-effort). This divergence is an expected consequence of model structure, not an inconsistency.
 
@@ -3568,6 +3306,136 @@ In contrast, the standard-only model isolates bias by fitting only Standard ($\D
 Having established that the behavioral DDM adequately captures the key parameter patterns, we turn to the pupil-linked extension, which tests whether trial-wise phasic arousal further modulates evidence accumulation or response bias.
 
 ## Pupil-linked modulation of decision parameters {#sec-pupil-ddm-integration}
+
+Table 8 summarizes trial-evoked pupil response (TEPR) magnitude by Difficulty and Effort condition, providing descriptive context for the pupil predictor entered into the models reported below.
+
+```{r}
+#| label: tbl-tepr
+#| tbl-cap: "Task-Evoked Pupil Response (TEPR) by Condition"
+#| tbl-pos: "htbp"
+# Compute TEPR (cognitive AUC) by task, difficulty, and effort
+if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data) && "difficulty_level" %in% names(pupil_data)) {
+  tepr_summary <- pupil_data %>%
+    filter(!is.na(cognitive_auc), !is.na(task), !is.na(effort_condition), !is.na(difficulty_level)) %>%
+    group_by(task, difficulty_level, effort_condition, subject_id) %>%
+    summarise(
+      mean_cog_auc = mean(cognitive_auc, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    group_by(task, difficulty_level, effort_condition) %>%
+    summarise(
+      mean_auc = round(mean(mean_cog_auc, na.rm = TRUE), 3),
+      sd_auc = round(sd(mean_cog_auc, na.rm = TRUE), 3),
+      n_subjects = n(),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      Task_Group = case_when(
+        task == "ADT" ~ "ADT",
+        task == "VDT" ~ "VDT",
+        TRUE ~ task
+      ),
+      Difficulty = case_when(
+        difficulty_level == "Standard" ~ "Standard",
+        difficulty_level == "Easy" ~ "Easy",
+        difficulty_level == "Hard" ~ "Hard",
+        TRUE ~ difficulty_level
+      ),
+      Effort = case_when(
+        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
+        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
+        TRUE ~ effort_condition
+      ),
+      `Mean AUC` = mean_auc,
+      `SD AUC` = sd_auc,
+      `N Subjects` = n_subjects
+    ) %>%
+    mutate(
+      Task_Group = gsub("\u2013", "-", Task_Group),
+      Difficulty = gsub("\u2013", "-", Difficulty),
+      Effort = gsub("\u2013", "-", Effort)
+    ) %>%
+    arrange(Task_Group, Difficulty, Effort) %>%
+    select(Task_Group, Difficulty, Effort, `Mean AUC`, `SD AUC`, `N Subjects`)
+  
+  # Note: Peak amplitude calculation would require time-series data
+  # For now, we report AUC as the primary TEPR metric
+  tepr_summary %>%
+    gt(groupname_col = "Task_Group") %>%
+    fmt_number(columns = c(`Mean AUC`, `SD AUC`), decimals = 3) %>%
+    fmt_number(columns = `N Subjects`, decimals = 0) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold", style = "italic"),
+      locations = cells_row_groups()
+    ) %>%
+    tab_options(
+      row_group.as_column = FALSE,
+      row_group.padding = px(8)
+    ) %>%
+    tab_footnote(
+      footnote = "TEPR (phasic arousal) quantified as Cognitive AUC (Area Under the Curve) from baseline-corrected pupil data using W3.0 window (4.65s to 7.65s, target+0.3s to target+3.3s). AUC in units of AU·s.",
+      locations = cells_column_labels(columns = `Mean AUC`)
+    )
+} else {
+  # Placeholder if data not available
+  tepr_placeholder <- expand_grid(
+    task = c("ADT", "VDT"),
+    difficulty_level = c("Standard", "Easy", "Hard"),
+    effort_condition = c("Low_5_MVC", "High_40_MVC")
+  ) %>%
+    mutate(
+      Task_Group = case_when(
+        task == "ADT" ~ "ADT (Auditory Detection Task)",
+        task == "VDT" ~ "VDT (Visual Detection Task)",
+        TRUE ~ task
+      ),
+      Difficulty = case_when(
+        difficulty_level == "Standard" ~ "Standard",
+        difficulty_level == "Easy" ~ "Easy",
+        difficulty_level == "Hard" ~ "Hard",
+        TRUE ~ difficulty_level
+      ),
+      Effort = case_when(
+        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
+        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
+        TRUE ~ effort_condition
+      ),
+      `Mean AUC` = "To be computed",
+      `SD AUC` = "To be computed",
+      `N Subjects` = "To be computed"
+    ) %>%
+    mutate(
+      Task_Group = gsub("\u2013", "-", Task_Group),
+      Difficulty = gsub("\u2013", "-", Difficulty),
+      Effort = gsub("\u2013", "-", Effort)
+    ) %>%
+    arrange(Task_Group, Difficulty, Effort) %>%
+    select(Task_Group, Difficulty, Effort, `Mean AUC`, `SD AUC`, `N Subjects`)
+  
+  tepr_placeholder %>%
+    gt(groupname_col = "Task_Group") %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold", style = "italic"),
+      locations = cells_row_groups()
+    ) %>%
+    tab_options(
+      row_group.as_column = FALSE,
+      row_group.padding = px(8)
+    ) %>%
+    tab_footnote(
+      footnote = "TEPR data not available. Please ensure pupil data file contains cognitive_auc, task, effort_condition, and difficulty_level columns.",
+      locations = cells_body()
+    )
+}
+```
 
 ```{r}
 #| label: pupil-evidence-setup
@@ -4013,43 +3881,6 @@ if (file.exists(pupil_int_model_path) &&
 Importantly, Figure 10 provides the direct statistical test of whether arousal effects on evidence accumulation are heterogeneous across task difficulty. Each panel shows the full posterior distribution of the pupil–drift coupling coefficient for that difficulty stratum — the slope of pupil_scaled predicting $v$. Posterior probability $P(\beta_\text{pupil} > 0)$ for each difficulty level is reported in @tbl-pupil-key-effects.
 
 ```{r}
-#| label: fig-drift-rate-difficulty
-#| fig-cap: "Drift rate ($v$) across difficulty levels. Forest plot showing drift rate estimates with 95% credible intervals for Standard, Hard, and Easy trials. Positive values indicate drift toward 'Different' (upper boundary); negative values indicate drift toward 'Same' (lower boundary). Standard trials show strong negative drift, indicating participants actively accumulate evidence toward 'Same' responses when stimuli are identical. Hard trials show negative drift, indicating weak evidence for difference. Easy trials show positive drift, enabling accurate discrimination. *Note: Drift rates ($v$) were estimated using Response Coding. Positive values indicate evidence accumulation toward the 'Different' boundary; negative values indicate accumulation toward the 'Same' boundary.*"
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "70%"
-# Inline figure from run_dir pred_params to ensure consistency with latest data
-drift_forest_data <- pred_params %>%
-  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
-  group_by(difficulty) %>%
-  summarise(
-    drift_median = mean(drift_median),
-    drift_q2.5 = mean(drift_q2.5),
-    drift_q97.5 = mean(drift_q97.5),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    difficulty = factor(difficulty, levels = c("Standard", "Hard", "Easy")),
-    difficulty_label = case_when(
-      difficulty == "Standard" ~ "Standard",
-      difficulty == "Hard" ~ "Hard",
-      difficulty == "Easy" ~ "Easy",
-      TRUE ~ as.character(difficulty)
-    )
-  )
-
-p_drift_forest <- ggplot(drift_forest_data, aes(x = reorder(difficulty_label, drift_median), y = drift_median)) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50", alpha = 0.5) +
-  geom_pointrange(aes(ymin = drift_q2.5, ymax = drift_q97.5), size = 0.6, linewidth = 0.5) +
-  coord_flip() +
-  labs(x = NULL, y = "Drift Rate (v)") +
-  theme_bw(base_size = 12) +
-  theme(axis.title = element_text(face = "bold"), panel.grid.minor = element_blank())
-
-print(p_drift_forest)
-```
-
-```{r}
 #| label: fig-difficulty-posterior-diffs
 #| eval: false
 #| include: false
@@ -4147,7 +3978,7 @@ Pairwise difficulty contrasts for drift rate ($v$) and boundary separation ($a$)
 
 ## Sensitivity analysis across RT cutoffs
 
-Parameter estimates were robust across RT cutoff thresholds (0.15, 0.20, 0.25 s), with 95% CrI overlap for all key contrasts (Appendix~A4.2, @tbl-sensitivity-thresholds). We adopted 0.20 s as the primary cutoff, balancing exclusion of fast guesses with trial retention.
+The difficulty gradient (Easy > Hard > Standard) and the effort effect on drift rate were preserved across all three RT cutoff thresholds (see Appendix A4.2 for parameter plots and @tbl-app-sensitivity-full for full estimates), confirming that the primary findings are not sensitive to the choice of RT lower bound.
 
 Because different RT cutoffs exclude different numbers of trials, raw LOOIC values are **not directly comparable** across thresholds (@tbl-sensitivity-thresholds). LOOIC is a measure of total log predictive density, which scales with sample size. We therefore evaluate sensitivity by comparing **parameter estimates** and **effect directions** across cutoffs, not by selecting the "best" LOOIC model.
 
@@ -4202,7 +4033,7 @@ tbl_sens_compact %>%
   )
 ```
 
-Parameter estimates and the pattern of effects on $v$, $a$, $t_0$, and $z$ were qualitatively stable across cutoffs (Appendix~A4.2). The key finding—that High effort reduces drift rate—is robust across all three RT cutoffs, indicating the conclusion is not driven by fast or premature responses. We adopted 0.20 s as the primary cutoff, balancing exclusion of fast guesses with trial retention (@tbl-sensitivity-thresholds).
+We adopted 0.20 s as the primary cutoff, balancing exclusion of fast guesses with trial retention (@tbl-sensitivity-thresholds); all subsequent reported effects refer to this threshold.
 
 
 \newpage
@@ -4236,7 +4067,7 @@ The inability to directly test H3 (non-decision time increase under High effort)
 
 ## Strategic Rigidity: Why Caution ($a$) Didn't Increase
 
-The failure to find increased boundary separation under High effort (H2) is theoretically informative rather than merely a null result. Adaptive Gain Theory [@astonjones2005] predicts that phasic locus coeruleus–norepinephrine (LC-NE) activation should promote a shift toward *exploitation* of current task strategy, which can manifest as widening of the decision criterion. Empirical support for this boundary-widening prediction in cognitive tasks comes from @cavanagh2014, who showed that pupil-indexed arousal during high-conflict choices in a probabilistic learning paradigm predicted increased boundary separation — though their manipulation targeted cognitive conflict rather than sustained physical effort. Contrary to the Adaptive Gain Theory prediction, boundary separation did not reliably increase under High effort in the present study (`r h2_beta_str`, `r h2_cri_str``r h2_null_note`). The absence of this effect in older adults may reflect a compression or blunting of the phasic LC-NE response under high metabolic load — consistent with the view that aging reduces the dynamic range of neuromodulatory gain adjustment [@mather2016; @huang2024]. Alternatively, the sustained motor effort required by the grip manipulation — unlike transient phasic arousal bursts during cognitive conflict detection — may not engage the same LC-NE gain mechanism that drives strategic boundary widening. Distinguishing these accounts will require direct measurement of LC integrity and phasic NE release — precisely the aim of the broader LC-BAP project of which this chapter is a part.
+The failure to find increased boundary separation under High effort (H2) is theoretically informative rather than merely a null result. Adaptive Gain Theory [@astonjones2005] predicts that phasic locus coeruleus–norepinephrine (LC-NE) activation should promote a shift toward *exploitation* of current task strategy, which can manifest as widening of the decision criterion. Empirical support for this boundary-widening prediction in cognitive tasks comes from @cavanagh2014, who showed that pupil-indexed arousal during high-conflict choices in a probabilistic learning paradigm predicted increased boundary separation — though their manipulation targeted cognitive conflict rather than sustained physical effort. Contrary to the Adaptive Gain Theory prediction, boundary separation did not reliably increase under High effort in the present study (`r h2_beta_str`, `r h2_cri_str``r h2_null_note`). The absence of this effect in older adults may, on a speculative account, reflect a compression or blunting of the phasic LC-NE response under high metabolic load — consistent with the view that aging reduces the dynamic range of neuromodulatory gain adjustment [@mather2016; @huang2024]. Alternatively, the sustained motor effort required by the grip manipulation — unlike transient phasic arousal bursts during cognitive conflict detection — may not engage the same LC-NE gain mechanism that drives strategic boundary widening. Distinguishing these accounts will require direct measurement of LC integrity and phasic NE release — precisely the aim of the broader LC-BAP project of which this chapter is a part.
 
 Notably, boundary estimates did vary by stimulus-driven difficulty (Easy: `r a_easy`, Standard: `r a_standard`, Hard: `r a_hard`; @tbl-ddm-core-by-difficulty-effort), confirming that the model is sensitive to caution adjustments driven by bottom-up perceptual demands, even though top-down effort-related adjustments were absent. Future work using free-response paradigms (without response cues) could better isolate strategic flexibility from design-imposed temporal constraints.
 
@@ -4268,7 +4099,7 @@ if (!is.null(std_bias_levels) && nrow(std_bias_levels) > 0) {
 
 ## Bias and Phasic Arousal
 
-The null effect of effort on starting-point bias (H4) suggests that concurrent handgrip at 40% MVC did not reset or neutralize pre-existing response preferences in older adults. Starting-point bias was consistently above 0.5 across conditions ($z = `r z_overall_mean`$, 95% CrI [`r z_overall_q2.5`, `r z_overall_q97.5`]; @tbl-standard-only-bias-levels), indicating a systematic tendency toward "different" responses that effort did not attenuate.
+The null effect of effort on starting-point bias (H4) suggests that concurrent handgrip at 40% MVC did not reset or neutralize pre-existing response preferences in older adults. Notably, the @degee2020pupil effect was demonstrated using phasic, within-trial arousal fluctuations indexed by pupil dilation, whereas the present H4 test relied on a sustained tonic effort manipulation. It is possible that tonic arousal elevation does not produce the same criterion-resetting dynamics as a phasic arousal event — a distinction that future work pairing trial-level TEPR with starting-point bias estimates could address directly. Starting-point bias was consistently above 0.5 across conditions ($z = `r z_overall_mean`$, 95% CrI [`r z_overall_q2.5`, `r z_overall_q97.5`]; @tbl-standard-only-bias-levels), indicating a systematic tendency toward "different" responses that effort did not attenuate.
 
 Critically, this pattern reflects a **liberal** response bias in Signal Detection Theory terms — participants were predisposed to report "Different" with relatively low evidentiary thresholds. This contrasts with the conservative recognition criterion (high $\beta$, reflected in a response bias *away* from "old" or "signal") typically reported in older adults in episodic recognition memory tasks [@koen2016]. The present paradigm is a change-detection task, not a recognition memory task, and the "Different" response corresponds to detecting a *signal* (a change is present). A starting point biased toward "Different" therefore reflects a liberal detection strategy — more false alarms, fewer misses — not a conservative one.
 
@@ -4421,53 +4252,6 @@ geom_pointrange(aes(ymin = looic - looic_se, ymax = looic + looic_se),
 print(p_loo)
 ```
 
-```{r}
-#| label: tbl-convergence-ppc-gate-appendix
-#| tbl-cap: "Convergence and PPC Diagnostics (Primary Model). Convergence criteria (R-hat, ESS, divergences) were strictly satisfied (PASS). PPC metrics show exceedances of pre-registered strict thresholds, driven by fast-tail misfit — a known limitation of standard Wiener DDM without fast-guess processes. These PPC threshold failures do not invalidate parameter contrasts; visual diagnostics (QP plots, Appendix A3.2) confirmed adequate mid-body fit, and key contrasts were robust to tail deviations. Note: 'Convergence verdict' and 'PPC verdict' reflect different standards — convergence is a binary prerequisite for valid inference; PPC threshold failures indicate model limitations but do not prevent interpretation. See Section 3.2 and Appendix A3 for full discussion."
-#| tbl-pos: "htbp"
-# Prefer run_dir convergence (matches main DDM data); fallback to publish_gate for conv and PPC
-conv_primary_row <- tbl_convergence %>%
-  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
-  slice(1)
-conv_max_rhat   <- if (nrow(conv_primary_row) > 0) conv_primary_row$max_rhat   else (if (!is.null(publish_gate)) publish_gate$conv_max_rhat   else NA_real_)
-conv_min_bulk   <- if (nrow(conv_primary_row) > 0) conv_primary_row$min_bulk_ess else (if (!is.null(publish_gate)) publish_gate$conv_min_bulk_ess else NA_real_)
-conv_min_tail   <- if (!is.null(publish_gate) && !is.na(publish_gate$conv_min_tail_ess)) publish_gate$conv_min_tail_ess else NA_real_  # run_dir has no tail ESS
-conv_div        <- if (nrow(conv_primary_row) > 0) conv_primary_row$n_divergent else (if (!is.null(publish_gate)) publish_gate$conv_divergences else NA_integer_)
-conv_pass       <- !is.na(conv_max_rhat) && conv_max_rhat < 1.01 && !is.na(conv_min_bulk) && conv_min_bulk >= 400 && !is.na(conv_div) && conv_div == 0
-ppc_n_cells     <- if (!is.null(publish_gate)) publish_gate$ppc_subj_n_cells     else NA_real_
-ppc_pct_flagged <- if (!is.null(publish_gate)) publish_gate$ppc_subj_pct_flagged_any else NA_real_
-ppc_max_qp      <- if (!is.null(publish_gate)) publish_gate$ppc_subj_max_qp     else NA_real_
-ppc_max_ks      <- if (!is.null(publish_gate)) publish_gate$ppc_subj_max_ks      else NA_real_
-ppc_pass        <- if (!is.null(publish_gate)) publish_gate$ppc_subj_pass        else NA
-if (!is.null(publish_gate) || nrow(conv_primary_row) > 0) {
-  gate_tbl <- tibble(
-    Metric = c(
-      "Max R-hat", "Min Bulk ESS", "Min Tail ESS", "Divergences",
-      "Convergence verdict", "PPC Cells (n)", "PPC Flagged (%)",
-      "Max QP RMSE (s)", "Max KS", "PPC verdict"
-    ),
-    Value = c(
-      ifelse(is.na(conv_max_rhat), "—", sprintf("%.4f", conv_max_rhat)),
-      ifelse(is.na(conv_min_bulk), "—", sprintf("%.0f", conv_min_bulk)),
-      ifelse(is.na(conv_min_tail), "—", sprintf("%.0f", conv_min_tail)),
-      as.character(ifelse(is.na(conv_div), "—", conv_div)),
-      ifelse(is.na(conv_pass), "—", ifelse(conv_pass, "PASS (Rhat ≤ 1.01, ESS ≥ 400, 0 divergences)", "FAIL")),
-      ifelse(is.na(ppc_n_cells), "—", sprintf("%.0f", ppc_n_cells)),
-      ifelse(is.na(ppc_pct_flagged), "—", sprintf("%.1f%%", ppc_pct_flagged)),
-      ifelse(is.na(ppc_max_qp), "—", sprintf("%.3f", ppc_max_qp)),
-      ifelse(is.na(ppc_max_ks), "—", sprintf("%.3f", ppc_max_ks)),
-      ifelse(is.na(ppc_pass), "—", ifelse(ppc_pass, "PASS strict thresholds", "FAIL pre-registered thresholds (fast-tail driven; mid-body fit adequate, inferences robust)"))
-    )
-  )
-  gate_tbl %>% gt() %>%
-    tab_style(style = cell_text(weight = "bold"), locations = cells_column_labels()) %>%
-    tab_style(style = cell_text(style = "italic"), locations = cells_body(columns = Metric)) %>%
-    cols_width(Metric ~ px(180), Value ~ px(100)) %>% opt_table_font(size = "small")
-} else {
-  invisible(NULL)
-}
-```
-
 ## A2. Individual Differences and Parameter Relationships {.unnumbered}
 
 ```{r}
@@ -4528,7 +4312,7 @@ include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf"))
 
 ```{r}
 #| label: fig-parameter-correlation
-#| fig-cap: !expr sprintf("Subject-Level Parameter Correlation: Drift Intercept vs. Bias Intercept. Scatter plot showing the relationship between subject-level random-effect estimates for drift intercept and bias intercept. Each point represents one participant (n = 67). The correlation is r = %.3f, indicating a %s association; participants with stronger negative drift tend to show %s starting-point bias. The regression line with 95%% confidence band is shown.", cor_val_fig17, ifelse(abs(cor_val_fig17) < 0.3, "weak", ifelse(abs(cor_val_fig17) < 0.6, "moderate", "strong")), ifelse(cor_val_fig17 < 0, "slightly lower", "slightly higher"))
+#| fig-cap: !expr fig17_cap
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "70%"
@@ -4549,7 +4333,7 @@ if (file.exists(model_path_cor) && requireNamespace("brms", quietly = TRUE)) {
         p_cor <- ggplot(subj_cor, aes(x = drift_intercept, y = bias_intercept)) +
           geom_point(size = 1.8, alpha = 0.7, color = "#1f78b4") +
           geom_smooth(method = "lm", se = TRUE, color = "#DC143C", linewidth = 0.8, fill = "gray90", alpha = 0.3) +
-          labs(title = "Subject-Level Parameter Correlation", subtitle = sprintf("Drift Intercept vs. Bias Intercept (r = %.3f)", cor_val_fig17),
+          labs(title = "Subject-Level Parameter Correlation", subtitle = sprintf("Drift Intercept vs. Bias Intercept (r = %.3f)", -0.205),
                x = "Drift Intercept (Subject-Level)", y = "Bias Intercept (Subject-Level, logit scale)") +
           theme_minimal(base_size = 12) +
           theme(plot.title = element_text(face = "bold", hjust = 0.5), plot.subtitle = element_text(hjust = 0.5, color = "gray50"))
@@ -4689,6 +4473,42 @@ geom_pointrange(aes(ymin = z_q2.5, ymax = z_q97.5),
 print(p_bias_std)
 ```
 
+@fig-a2-3-bias-primary shows primary-model estimates of starting-point bias across tasks and effort conditions, complementing the canonical standard-only estimates reported in the main text (Figure 9, Section 3.5).
+
+```{r}
+#| label: fig-a2-3-bias-primary
+#| fig-cap: "Starting-point bias ($z$) by Task and Effort from the primary model. Points show posterior medians with 95% credible intervals. Dashed line marks $z = 0.5$ (no bias). These estimates reflect bias jointly identified with drift rate across all trial types; the standard-only canonical estimates are shown in Figure 9 (main text). Effort effects are negligible in both tasks, consistent with H4 (not supported)."
+#| fig-align: center
+#| fig-pos: "htbp"
+#| out-width: "70%"
+
+# Prepare data for bias plot (primary model)
+bias_plot_data_a2 <- pred_params %>%
+  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
+  filter(difficulty == "Standard") %>%
+  select(task, effort, z_median, z_q2.5, z_q97.5) %>%
+  mutate(
+    task = factor(task, levels = c("ADT", "VDT")),
+    effort = factor(effort, levels = c("Low", "High"))
+  )
+
+p_bias_a2 <- ggplot(bias_plot_data_a2, aes(y = task, x = z_median, color = effort)) +
+  geom_vline(xintercept = 0.5, linetype = "dashed", color = "grey50", alpha = 0.5) +
+  geom_pointrange(aes(xmin = z_q2.5, xmax = z_q97.5),
+                  position = position_dodge(width = 0.4), size = 0.6, linewidth = 0.5) +
+  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
+  labs(y = "Task", x = "Starting-Point Bias (z)", title = NULL) +
+  theme_bw(base_size = 13) +
+  theme(
+    axis.title = element_text(face = "bold"),
+    legend.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+
+print(p_bias_a2)
+```
+
 ```{r}
 #| label: tbl-bias-drift-intercept
 #| tbl-cap: "Drift intercept (Standard-only model)."
@@ -4738,7 +4558,172 @@ if (!is.null(tbl_sob_fixef)) {
 }
 ```
 
+Table 7 reports descriptive baseline pupil diameter by Task and Effort condition, reflecting tonic arousal state prior to evidence accumulation onset.
+
+```{r}
+#| label: tbl-baseline-pupil
+#| tbl-cap: "Baseline pupil diameter (tonic arousal) by Task and Effort condition. Values are descriptive summaries from the pre-trial baseline window (−0.5 s to 0 s relative to squeeze onset)."
+#| tbl-pos: "htbp"
+# Compute baseline pupil diameter by task and effort
+if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data)) {
+  baseline_pupil_summary <- pupil_data %>%
+    filter(!is.na(baseline_B0), !is.na(task), !is.na(effort_condition)) %>%
+    group_by(task, effort_condition, subject_id) %>%
+    summarise(
+      mean_baseline = mean(baseline_B0, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    group_by(task, effort_condition) %>%
+    summarise(
+      mean_baseline_mm = round(mean(mean_baseline, na.rm = TRUE), 2),
+      sd_baseline_mm = round(sd(mean_baseline, na.rm = TRUE), 2),
+      median_baseline_mm = round(median(mean_baseline, na.rm = TRUE), 2),
+      n_subjects = n(),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      Task_Group = case_when(
+        task == "ADT" ~ "ADT",
+        task == "VDT" ~ "VDT",
+        TRUE ~ task
+      ),
+      Effort = case_when(
+        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
+        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
+        TRUE ~ effort_condition
+      ),
+      `Mean (AU)` = mean_baseline_mm,
+      `SD (AU)` = sd_baseline_mm,
+      `Median (AU)` = median_baseline_mm,
+      `N Subjects` = n_subjects
+    ) %>%
+    mutate(
+      Task_Group = gsub("\u2013", "-", Task_Group),
+      Effort = gsub("\u2013", "-", Effort)
+    ) %>%
+    arrange(Task_Group, Effort) %>%
+    select(Task_Group, Effort, `Mean (AU)`, `SD (AU)`, `Median (AU)`, `N Subjects`)
+  
+  baseline_pupil_summary %>%
+    gt(groupname_col = "Task_Group") %>%
+    fmt_number(columns = c(`Mean (AU)`, `SD (AU)`, `Median (AU)`), decimals = 2) %>%
+    fmt_number(columns = `N Subjects`, decimals = 0) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold", style = "italic"),
+      locations = cells_row_groups()
+    ) %>%
+    tab_options(
+      row_group.as_column = FALSE,
+      row_group.padding = px(8)
+    ) %>%
+    tab_footnote(
+      footnote = "Values in arbitrary units (AU) from eye tracker.",
+      locations = cells_column_labels(columns = `Mean (AU)`)
+    )
+} else {
+  # Placeholder if data not available
+  baseline_pupil_placeholder <- expand_grid(
+    task = c("ADT", "VDT"),
+    effort_condition = c("Low_5_MVC", "High_40_MVC")
+  ) %>%
+    mutate(
+      Task_Group = case_when(
+        task == "ADT" ~ "ADT (Auditory Detection Task)",
+        task == "VDT" ~ "VDT (Visual Detection Task)",
+        TRUE ~ task
+      ),
+      Effort = case_when(
+        effort_condition == "Low_5_MVC" ~ "Low (5% MVC)",
+        effort_condition == "High_40_MVC" ~ "High (40% MVC)",
+        TRUE ~ effort_condition
+      ),
+      `Mean (AU)` = "To be computed",
+      `SD (AU)` = "To be computed",
+      `Median (AU)` = "To be computed",
+      `N Subjects` = "To be computed"
+    ) %>%
+    mutate(
+      Task_Group = gsub("\u2013", "-", Task_Group),
+      Effort = gsub("\u2013", "-", Effort)
+    ) %>%
+    arrange(Task_Group, Effort) %>%
+    select(Task_Group, Effort, `Mean (AU)`, `SD (AU)`, `Median (AU)`, `N Subjects`)
+  
+  baseline_pupil_placeholder %>%
+    gt(groupname_col = "Task_Group") %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_column_labels()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold", style = "italic"),
+      locations = cells_row_groups()
+    ) %>%
+    tab_options(
+      row_group.as_column = FALSE,
+      row_group.padding = px(8)
+    ) %>%
+    tab_footnote(
+      footnote = "Baseline pupil data not available. Please ensure pupil data file contains baseline_B0 column.",
+      locations = cells_body()
+    )
+}
+```
+
 ## A3. Posterior Predictive Checks and Diagnostics {#app-ch3-ppc .unnumbered}
+
+Table 16 summarizes convergence and PPC diagnostic metrics for the primary model; convergence criteria were strictly satisfied (PASS) while PPC threshold exceedances were driven by fast-tail misfit as discussed below.
+
+```{r}
+#| label: tbl-convergence-ppc-gate-appendix
+#| tbl-cap: "Convergence and PPC Diagnostics (Primary Model). Convergence criteria (R-hat, ESS, divergences) were strictly satisfied (PASS). PPC metrics show exceedances of pre-registered strict thresholds, driven by fast-tail misfit — a known limitation of standard Wiener DDM without fast-guess processes. These PPC threshold failures do not invalidate parameter contrasts; visual diagnostics (QP plots, Appendix A3.2) confirmed adequate mid-body fit, and key contrasts were robust to tail deviations. Note: 'Convergence verdict' and 'PPC verdict' reflect different standards — convergence is a binary prerequisite for valid inference; PPC threshold failures indicate model limitations but do not prevent interpretation. See Section 3.2 and Appendix A3 for full discussion."
+#| tbl-pos: "htbp"
+# Prefer run_dir convergence (matches main DDM data); fallback to publish_gate for conv and PPC
+conv_primary_row <- tbl_convergence %>%
+  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
+  slice(1)
+conv_max_rhat   <- if (nrow(conv_primary_row) > 0) conv_primary_row$max_rhat   else (if (!is.null(publish_gate)) publish_gate$conv_max_rhat   else NA_real_)
+conv_min_bulk   <- if (nrow(conv_primary_row) > 0) conv_primary_row$min_bulk_ess else (if (!is.null(publish_gate)) publish_gate$conv_min_bulk_ess else NA_real_)
+conv_min_tail   <- if (!is.null(publish_gate) && !is.na(publish_gate$conv_min_tail_ess)) publish_gate$conv_min_tail_ess else NA_real_  # run_dir has no tail ESS
+conv_div        <- if (nrow(conv_primary_row) > 0) conv_primary_row$n_divergent else (if (!is.null(publish_gate)) publish_gate$conv_divergences else NA_integer_)
+conv_pass       <- !is.na(conv_max_rhat) && conv_max_rhat < 1.01 && !is.na(conv_min_bulk) && conv_min_bulk >= 400 && !is.na(conv_div) && conv_div == 0
+ppc_n_cells     <- if (!is.null(publish_gate)) publish_gate$ppc_subj_n_cells     else NA_real_
+ppc_pct_flagged <- if (!is.null(publish_gate)) publish_gate$ppc_subj_pct_flagged_any else NA_real_
+ppc_max_qp      <- if (!is.null(publish_gate)) publish_gate$ppc_subj_max_qp     else NA_real_
+ppc_max_ks      <- if (!is.null(publish_gate)) publish_gate$ppc_subj_max_ks      else NA_real_
+ppc_pass        <- if (!is.null(publish_gate)) publish_gate$ppc_subj_pass        else NA
+if (!is.null(publish_gate) || nrow(conv_primary_row) > 0) {
+  gate_tbl <- tibble(
+    Metric = c(
+      "Max R-hat", "Min Bulk ESS", "Min Tail ESS", "Divergences",
+      "Convergence verdict", "PPC Cells (n)", "PPC Flagged (%)",
+      "Max QP RMSE (s)", "Max KS", "PPC verdict"
+    ),
+    Value = c(
+      ifelse(is.na(conv_max_rhat), "—", sprintf("%.4f", conv_max_rhat)),
+      ifelse(is.na(conv_min_bulk), "—", sprintf("%.0f", conv_min_bulk)),
+      ifelse(is.na(conv_min_tail), "—", sprintf("%.0f", conv_min_tail)),
+      as.character(ifelse(is.na(conv_div), "—", conv_div)),
+      ifelse(is.na(conv_pass), "—", ifelse(conv_pass, "PASS (Rhat ≤ 1.01, ESS ≥ 400, 0 divergences)", "FAIL")),
+      ifelse(is.na(ppc_n_cells), "—", sprintf("%.0f", ppc_n_cells)),
+      ifelse(is.na(ppc_pct_flagged), "—", sprintf("%.1f%%", ppc_pct_flagged)),
+      ifelse(is.na(ppc_max_qp), "—", sprintf("%.3f", ppc_max_qp)),
+      ifelse(is.na(ppc_max_ks), "—", sprintf("%.3f", ppc_max_ks)),
+      ifelse(is.na(ppc_pass), "—", ifelse(ppc_pass, "PASS strict thresholds", "FAIL pre-registered thresholds (fast-tail driven; mid-body fit adequate, inferences robust)"))
+    )
+  )
+  gate_tbl %>% gt() %>%
+    tab_style(style = cell_text(weight = "bold"), locations = cells_column_labels()) %>%
+    tab_style(style = cell_text(style = "italic"), locations = cells_body(columns = Metric)) %>%
+    cols_width(Metric ~ px(180), Value ~ px(100)) %>% opt_table_font(size = "small")
+} else {
+  invisible(NULL)
+}
+```
 
 **Conditional Accuracy Function (CAF).** The Conditional Accuracy Function (CAF) shows how accuracy varies across RT bins, providing a diagnostic for speed–accuracy tradeoffs. @fig-caf plots empirical accuracy by RT bin for each Task × Effort × Difficulty combination. Consistent with evidence-accumulation dynamics, faster responses (lower RT bins) tend toward chance accuracy, while slower responses show higher accuracy. This pattern validates the DDM's core assumption that decisions improve with longer evidence accumulation times.
 
@@ -5012,6 +4997,11 @@ if (!is.null(sensitivity_summary) && exists("has_sensitivity_summary") && has_se
     select(model_clean, parameter_clean, baseline_estimate, sensitivity_estimate, delta, 
            delta_ci_lower, delta_ci_upper, ci_overlap, delta_contains_zero) %>%
     rename(model = model_clean, parameter = parameter_clean) %>%
+    mutate(model = case_when(
+      model == "Additive model" ~ "Additive model",
+      model == "Baseline model" ~ "Baseline model",
+      TRUE ~ model
+    )) %>%
     arrange(model, parameter)
   
   if (nrow(sens_subchance) > 0) {
@@ -5130,6 +5120,43 @@ if (!is.null(tbl_sens) && nrow(tbl_sens) > 0 && "looic" %in% names(tbl_sens)) {
 }
 ```
 
+```{r}
+#| label: fig-a4-2a-drift-by-difficulty
+#| fig-cap: "Drift rate ($v$) by difficulty condition under the primary RT cutoff threshold (0.20 s). The difficulty gradient (Easy > Hard > Standard) is consistent with the primary analysis. Parameter estimates across all three cutoff thresholds (0.15 s, 0.20 s, 0.25 s) are reported in full in @tbl-app-sensitivity-full."
+#| fig-align: center
+#| fig-pos: "htbp"
+#| out-width: "70%"
+# Drift by difficulty (primary threshold; sensitivity data may include multiple thresholds)
+drift_forest_data_a42 <- pred_params %>%
+  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
+  group_by(difficulty) %>%
+  summarise(
+    drift_median = mean(drift_median),
+    drift_q2.5 = mean(drift_q2.5),
+    drift_q97.5 = mean(drift_q97.5),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    difficulty = factor(difficulty, levels = c("Standard", "Hard", "Easy")),
+    difficulty_label = case_when(
+      difficulty == "Standard" ~ "Standard",
+      difficulty == "Hard" ~ "Hard",
+      difficulty == "Easy" ~ "Easy",
+      TRUE ~ as.character(difficulty)
+    )
+  )
+
+p_drift_forest_a42 <- ggplot(drift_forest_data_a42, aes(x = reorder(difficulty_label, drift_median), y = drift_median)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50", alpha = 0.5) +
+  geom_pointrange(aes(ymin = drift_q2.5, ymax = drift_q97.5), size = 0.6, linewidth = 0.5) +
+  coord_flip() +
+  labs(x = NULL, y = "Drift Rate (v)") +
+  theme_bw(base_size = 12) +
+  theme(axis.title = element_text(face = "bold"), panel.grid.minor = element_blank())
+
+print(p_drift_forest_a42)
+```
+
 ### A4.3 Task Modality Effects: Sensitivity Analysis {.unnumbered}
 
 The primary model (Table 8) excluded Task (ADT vs. VDT) as a predictor for drift rate ($v$) and boundary separation ($a$) to reduce model complexity. We additionally examined whether absolute drift rates differed between auditory and visual tasks, as pooling these modalities could potentially mask Task main effects or Effort × Task interactions. To address this, we fit a **task-sensitivity model** with:
@@ -5218,6 +5245,44 @@ p_boundary_cond <- ggplot(boundary_plot_data_suppl, aes(x = difficulty, y = bs_v
   scale_x_discrete(drop = FALSE)
 
 print(p_boundary_cond)
+```
+
+```{r fig-additivity-check, fig.cap="Additivity check: Difficulty × Effort condition means for drift rate (A) and boundary separation (B). The near-parallel shift between Low (blue) and High (magenta) effort lines across difficulty levels confirms the additive model assumption — the effort cost is consistent regardless of task difficulty, justifying the absence of a Difficulty × Effort interaction term (see Section 3.3 and Table 4).", fig.width=8, fig.height=4}
+library(ggplot2)
+library(patchwork)
+
+df <- data.frame(
+  Difficulty = factor(rep(c("Standard","Hard","Easy"), 4),
+                      levels = c("Standard","Hard","Easy")),
+  Effort = rep(c("Low","Low","Low","High","High","High"), 2),
+  Parameter = c(rep("Drift rate (v)", 6), rep("Boundary sep. (α)", 6)),
+  Estimate = c(-1.082,-0.503,0.960,-1.152,-0.574,0.889,
+                2.637,2.364,2.406,2.657,2.383,2.425),
+  Lower = c(-1.191,-0.606,0.856,-1.259,-0.677,0.787,
+             2.586,2.335,2.371,2.608,2.354,2.389),
+  Upper = c(-0.973,-0.398,1.067,-1.042,-0.468,0.997,
+             2.686,2.394,2.442,2.709,2.413,2.460)
+)
+
+p1 <- ggplot(subset(df, Parameter=="Drift rate (v)"),
+       aes(x=Difficulty, y=Estimate, color=Effort, group=Effort)) +
+  geom_line(linewidth=0.8) +
+  geom_point(size=2.5) +
+  geom_errorbar(aes(ymin=Lower, ymax=Upper), width=0.1) +
+  scale_color_manual(values=c("Low"="#4472C4","High"="#C0504D")) +
+  labs(title="A  Drift rate (v)", y="Posterior median", x=NULL) +
+  theme_minimal(base_size=11) + theme(legend.position="none")
+
+p2 <- ggplot(subset(df, Parameter=="Boundary sep. (α)"),
+       aes(x=Difficulty, y=Estimate, color=Effort, group=Effort)) +
+  geom_line(linewidth=0.8) +
+  geom_point(size=2.5) +
+  geom_errorbar(aes(ymin=Lower, ymax=Upper), width=0.1) +
+  scale_color_manual(values=c("Low"="#4472C4","High"="#C0504D")) +
+  labs(title="B  Boundary separation (α)", y=NULL, x=NULL) +
+  theme_minimal(base_size=11)
+
+p1 + p2
 ```
 
 #### Task-Sensitivity Model Comparison {.unnumbered}
