@@ -366,11 +366,30 @@ log_line(sprintf("min RT = %.3f s  |  safe NDT = %.3f s (log = %.3f)",
                  min_rt, safe_ndt, log(safe_ndt)))
 
 safe_init <- function(chain_id = 1) {
+  # Intercepts are set to principled starting values.
+  # Slope vectors (b, b_bs, b_ndt, b_bias) are zeroed explicitly.
+  #
+  # WHY b_ndt MUST be zeroed:
+  #   Intercept_ndt = log(safe_ndt) ≈ −2.59.
+  #   If Stan draws b_ndt slopes from Uniform(−2, 2), the per-trial NDT becomes
+  #   exp(−2.59 + slope_task + slope_effort). With slopes of ~1.5, NDT → 1.5 s,
+  #   which exceeds the minimum RT (0.251 s) and makes the Wiener log-density −Inf.
+  #   Setting b_ndt = 0 guarantees NDT_init = exp(−2.59) = 0.075 s < min_RT.
+  #
+  # Slope vector lengths derived from formula:
+  #   b      (drift):    difficulty(2) + task(1) + effort*block*age_z(7) = 10
+  #   b_bs   (boundary): difficulty(2) + task(1) + effort*block(3) + age_z(1) = 7
+  #   b_ndt  (ndt):      task(1) + effort(1) = 2
+  #   b_bias (bias):     difficulty(2) + task(1) = 3
   list(
-    Intercept      = rnorm(1, 0, 0.2),
+    Intercept      = rnorm(1, 0, 0.1),
     Intercept_bs   = log(runif(1, 1.3, 1.9)),
     Intercept_ndt  = log(safe_ndt),
-    Intercept_bias = rnorm(1, 0, 0.1)
+    Intercept_bias = rnorm(1, 0, 0.05),
+    b              = rep(0, 10L),
+    b_bs           = rep(0,  7L),
+    b_ndt          = rep(0,  2L),
+    b_bias         = rep(0,  3L)
   )
 }
 
