@@ -4935,18 +4935,19 @@ if (fat_fit_available) {
 }
 
 if (fat_table_available) {
-  fat_posterior_tbl <- read_csv(fat_csv, show_col_types = FALSE)
+  fat_posterior_tbl <- read_csv(fat_csv, show_col_types = FALSE) |>
+    mutate(
+      q2.5  = as.numeric(sub("[[](-?[0-9.]+),.*",      "\\1", CrI_95)),
+      q97.5 = as.numeric(sub(".*,[ ]*(-?[0-9.]+)[]]",  "\\1", CrI_95))
+    )
 }
 ```
 
-```{r}
-#| label: fig-fatigue-posteriors
-#| fig-cap: "Within-session fatigue dynamics: focal posterior estimates. **Panel A — Coefficient plot:** Posterior medians (points) and 95% credible intervals (horizontal bars) for all focal parameters in the drift ($v$, blue) and boundary separation ($a$, red) submodels. Filled circles indicate parameters whose 95% CrI excludes zero; open circles cross zero. The only credible effect is the within-run boundary decline in the second half (★). **Panel B — Expected boundary trajectories:** Posterior median and 95% CrI for the population-average boundary separation ($a$; exp scale) in each of the four effort × session-half cells, derived from fixed-effects posterior draws. Both effort conditions show a small first-to-second-half decrease, but the decline is larger and credibly non-zero only under Low effort; under High effort the positive interaction term partially offsets the relaxation, leaving the second-half boundary nearly unchanged."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "100%"
-#| fig-height: 6
+```{r fatigue-build-figure}
+#| include: false
 #| echo: false
+
+p_fatigue_combined <- NULL
 
 if (fat_fit_available && fat_table_available) {
   tryCatch({
@@ -4960,15 +4961,15 @@ if (fat_fit_available && fat_table_available) {
     label_map <- c(
       "b_age_z"                                                    = "Age",
       "b_block_halfSecond_Half"                                    = "Block half: 2nd vs 1st",
-      "b_block_halfSecond_Half:age_z"                             = "Block half × Age",
+      "b_block_halfSecond_Half:age_z"                             = "Block half x Age",
       "b_effort_conditionHigh_40_MVC"                             = "Effort: High vs Low",
-      "b_effort_conditionHigh_40_MVC:age_z"                       = "Effort × Age",
-      "b_effort_conditionHigh_40_MVC:block_halfSecond_Half"       = "Effort × Block half",
-      "b_effort_conditionHigh_40_MVC:block_halfSecond_Half:age_z" = "Effort × Block half × Age",
+      "b_effort_conditionHigh_40_MVC:age_z"                       = "Effort x Age",
+      "b_effort_conditionHigh_40_MVC:block_halfSecond_Half"       = "Effort x Block half",
+      "b_effort_conditionHigh_40_MVC:block_halfSecond_Half:age_z" = "Effort x Block half x Age",
       "b_bs_age_z"                                               = "Age",
-      "b_bs_block_halfSecond_Half"                               = "Block half: 2nd vs 1st \u2605",
+      "b_bs_block_halfSecond_Half"                               = "Block half: 2nd vs 1st [*]",
       "b_bs_effort_conditionHigh_40_MVC"                        = "Effort: High vs Low",
-      "b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half"  = "Effort × Block half"
+      "b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half"  = "Effort x Block half"
     )
 
     fat_forest <- fat_posterior_tbl |>
@@ -5001,15 +5002,13 @@ if (fat_fit_available && fat_table_available) {
       scale_size_manual(values = c("TRUE" = 3.2, "FALSE" = 2.2), guide = "none") +
       facet_grid(parameter_type ~ ., scales = "free_y", space = "free_y") +
       labs(
-        x     = "Posterior estimate  (log scale for boundary; identity for drift)",
+        x     = "Posterior estimate (log scale for boundary; identity for drift)",
         y     = NULL,
-        title = "A \u2003 Coefficient estimates (focal parameters)"
+        title = "A - Coefficient estimates (focal parameters)"
       ) +
       theme_minimal(base_size = 10) +
       theme(
-        strip.text         = element_text(face = "bold", size = 9.5,
-                                          colour = c("Boundary (a)" = "#d6604d",
-                                                     "Drift (v)"    = "#2166ac")),
+        strip.text         = element_text(face = "bold", size = 9.5),
         panel.grid.minor   = element_blank(),
         panel.grid.major.y = element_blank(),
         legend.position    = "bottom",
@@ -5026,10 +5025,10 @@ if (fat_fit_available && fat_table_available) {
     bs_intx <- fat_draws[["b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half"]]
 
     cell_draws <- tibble(
-      `Low effort\n1st half`   = exp(bs_int),
-      `Low effort\n2nd half`   = exp(bs_int + bs_bh),
-      `High effort\n1st half`  = exp(bs_int + bs_eff),
-      `High effort\n2nd half`  = exp(bs_int + bs_eff + bs_bh + bs_intx)
+      `Low effort 1st half`   = exp(bs_int),
+      `Low effort 2nd half`   = exp(bs_int + bs_bh),
+      `High effort 1st half`  = exp(bs_int + bs_eff),
+      `High effort 2nd half`  = exp(bs_int + bs_eff + bs_bh + bs_intx)
     ) |>
       pivot_longer(everything(), names_to = "cell", values_to = "boundary")
 
@@ -5061,8 +5060,8 @@ if (fat_fit_available && fat_table_available) {
       scale_fill_manual(values  = pal_b, name = NULL) +
       labs(
         x     = "Session half",
-        y     = "Expected boundary separation (a; exp scale)",
-        title = "B \u2003 Boundary trajectories across the run"
+        y     = "Expected boundary separation (exp scale)",
+        title = "B - Boundary trajectories across the run"
       ) +
       coord_cartesian(ylim = c(1.88, 2.20)) +
       theme_minimal(base_size = 10) +
@@ -5075,17 +5074,24 @@ if (fat_fit_available && fat_table_available) {
         plot.title         = element_text(face = "bold", size = 10)
       )
 
-    # ── Combine ────────────────────────────────────────────────────────────────
-    print(p_forest + p_boundary + plot_layout(widths = c(1.6, 1)))
+    p_fatigue_combined <- p_forest + p_boundary + plot_layout(widths = c(1.6, 1))
 
   }, error = function(e) {
-    message("Fatigue trajectory figure failed: ", e$message)
-    invisible(NULL)
+    message("Fatigue trajectory figure build failed: ", e$message)
   })
-} else {
-  message("Fatigue trajectory model or summary not found; skipping figure.")
-  invisible(NULL)
 }
+```
+
+```{r}
+#| label: fig-fatigue-posteriors
+#| fig-cap: "Within-session fatigue dynamics: focal posterior estimates. **Panel A** shows posterior medians (points) and 95% credible intervals (horizontal bars) for all focal parameters in the drift ($v$, blue) and boundary separation ($a$, red) submodels. Filled circles indicate parameters whose 95% CrI excludes zero; open circles span zero. The only credible effect is the within-run boundary decline in the second half ([*]). **Panel B** shows posterior median and 95% CrI for the population-average boundary separation (exp scale) in each of the four effort x session-half cells, derived from fixed-effects posterior draws. Both effort conditions show a small first-to-second-half decrease, but the decline is larger and credibly non-zero only under Low effort; under High effort the positive interaction term partially offsets the relaxation, leaving the second-half boundary nearly unchanged."
+#| fig-align: center
+#| fig-pos: "htbp"
+#| out-width: "100%"
+#| fig-height: 6
+#| echo: false
+
+print(p_fatigue_combined)
 ```
 
 ```{r}
@@ -5119,7 +5125,7 @@ if (fat_table_available) {
     ) |>
     filter(!is.na(Parameter)) |>
     select(parameter_type, Parameter, Median, SD, CrI_95, `P(>0)`, `Excl. 0`) |>
-    rename(`DDM\nParameter` = parameter_type, `95% CrI` = CrI_95)
+    rename(Section = parameter_type, `CrI [95]` = CrI_95)
 
   fat_display |>
     knitr::kable(
@@ -5130,21 +5136,19 @@ if (fat_table_available) {
       align    = c("l","l","r","r","c","r","c")
     ) |>
     kableExtra::kable_styling(
-      latex_options     = c("striped", "hold_position", "scale_down"),
+      latex_options     = c("hold_position", "scale_down"),
       bootstrap_options = c("striped", "hover", "condensed"),
       full_width        = FALSE
     ) |>
-    kableExtra::pack_rows("Drift (v)", 1, sum(fat_display[["DDM\nParameter"]] == "Drift (v)")) |>
+    kableExtra::pack_rows("Drift (v)", 1, sum(fat_display[["Section"]] == "Drift (v)")) |>
     kableExtra::pack_rows("Boundary (a)",
-                          sum(fat_display[["DDM\nParameter"]] == "Drift (v)") + 1,
+                          sum(fat_display[["Section"]] == "Drift (v)") + 1,
                           nrow(fat_display)) |>
     kableExtra::footnote(
-      general = "Reference levels: Effort = Low 5 MVC; Block half = First Half; Age z = mean-centred z-score (1 unit ~ 6.4 years). Excl. 0 = 95 percent CrI excludes zero. The dagger marks the focal three-way interaction.",
-      symbol  = "Focal three-way interaction: tests whether within-run drift-rate decay under High effort is exacerbated in older participants within this cohort.",
+      general = "Reference levels: Effort = Low (5 percent MVC); Block half = First Half; Age-z = mean-centred z-score (1 unit approx. 6.4 years). Excl. 0 = 95 percent CrI excludes zero. [*] marks the focal boundary parameter. The dagger row tests whether within-run drift-rate decay under High effort is exacerbated in older participants.",
       general_title = "Note.",
       footnote_as_chunk = TRUE,
-      escape   = TRUE,
-      threeparttable = TRUE
+      escape   = TRUE
     )
 } else {
   message("Fatigue trajectory posterior table not found; skipping.")

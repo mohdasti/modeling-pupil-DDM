@@ -524,7 +524,7 @@ extract_fatigue_summary <- function(fit) {
       CrI_95    = sprintf("[%.3f, %.3f]", q2.5, q97.5),
       excludes0 = (q2.5 > 0) | (q97.5 < 0)
     ) |>
-    select(parameter_type, parameter, median, sd, CrI_95, p_gt_0, excludes0) |>
+    select(parameter_type, parameter, median, sd, q2.5, q97.5, CrI_95, p_gt_0, excludes0) |>
     arrange(parameter_type, parameter)
 }
 
