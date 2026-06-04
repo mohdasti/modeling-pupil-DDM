@@ -844,7 +844,7 @@ A foundational demonstration of this technique was provided by Cavanagh and coll
 
 Our study extends this methodology by shifting the experimental focus from cognitive conflict to physical effort, and from healthy young cohorts to an aging population. This shift provides a fundamentally distinct test of how internal arousal states govern decision architecture. While cognitive conflict in young adults primarily modulates top-down strategic thresholds, the combination of advanced age and concurrent physical exertion introduces a severe strain on shared processing resources. Consequently, by testing pupil-informed models under varying physical loads, we can discover whether trial-by-trial fluctuations in pupil-indexed phasic arousal track a collapse in the decision boundaries ($a$) or a direct, real-time degradation in the quality of evidence accumulation ($v$) itself under conditions of sustained physical load. This provides the critical link missing from traditional static models, revealing how immediate physiological strain changes the mathematical machinery of choice in older adults.
 
-### 1.4.1 Hypotheses and Predictions
+## 1.5 Hypotheses and Predictions
 
 We evaluated four primary predictions regarding how concurrent physical load modulates the latent components of decision formation in older adults. First, we hypothesized that the drift rate ($v$) would significantly decrease under the high-effort condition (40% MVC) relative to the low-effort baseline (5% MVC). This prediction directly builds upon the principles of resource competition and functional arousal dynamics established across the preceding sections. The severe somatic burden of maintaining a high-intensity muscular contraction is expected to force the aging nervous system past the optimal peak of the Yerkes-Dodson curve, draining shared central resources and ultimately degrading the clarity and efficiency of sensory evidence accumulation.
 
@@ -854,7 +854,7 @@ Third, we addressed the impact of motor demand on peripheral overhead by explori
 
 Fourth, we tested whether the bias-attenuating properties of physiological arousal generalize from transient states to sustained states. While spontaneous, trial-by-trial phasic arousal bursts have been shown to systematically suppress choice biases, it remains unknown whether a sustained, exogenously driven tonic elevation in arousal operates through an identical framework. We hypothesized that if tonic somatic noise mirrors phasic arousal dynamics, starting-point bias ($z$) would systematically shift toward structural neutrality ($z = 0.5$) under high effort; alternatively, the chronic overhead of the motor task might lock in stable, energy-saving strategic heuristics.
 
-## 1.5 The Present Study
+## 1.6 The Present Study
 
 The present chapter applies hierarchical Bayesian drift-diffusion modeling to examine how physical effort (Low: 5% MVC vs. High: 40% MVC isometric handgrip) modulates latent decision parameters in older adults performing auditory and visual same-different discrimination tasks. Trial-by-trial task-evoked pupil responses (TEPR) serve as an exploratory index of phasic arousal to test whether within-person arousal fluctuations predict changes in evidence accumulation or response bias. Together, these analyses test whether the characteristic slowing and cautiousness of older decision-makers reflect fixed capacity limits or physiological-state-dependent features modulated by effort-induced arousal.
 
@@ -4903,6 +4903,255 @@ if (ch_table_available) {
 }
 ```
 
+## 3.8 Exploratory: Within-Session Fatigue Dynamics {#sec-fatigue-trajectory}
+
+To examine whether processing efficiency or decision caution dynamically degrades over the course of a testing run, we fit a supplementary hierarchical Wiener DDM (M_fatigue; N = 17,834 trials, 67 participants) incorporating a within-run temporal factor. Each 30-trial run was partitioned into two equal halves using the median trial index within each participant $\times$ task $\times$ run combination, yielding a `block_half` variable (First\_Half / Second\_Half) whose balance was verified (max 1-trial imbalance across all runs; QC confirmed). The drift rate subformula included a full three-way interaction — effort $\times$ block\_half $\times$ age$_z$ — to test whether temporal degradation of evidence quality was exacerbated among older-within-cohort participants (ages 60–87, mean 69.5 years, SD 6.4) under high somatic load. For boundary separation, a parsimonious two-way interaction (effort $\times$ block\_half) plus continuous age as a main effect was used to preserve sampling stability. The model converged satisfactorily (max $\hat{R}$ = 1.004; 0 divergent transitions across 4 chains $\times$ 8,000 iterations).
+
+**Within-run boundary relaxation.** The only parameter contrast with a 95% CrI excluding zero was the second-half change in boundary separation: $\hat{\beta}_{\text{block\_half}}$ = −0.022 (95% CrI [−0.040, −0.004], P($\beta$ < 0) = 99.3%). At the exponentiated (boundary-seconds) scale, this corresponds to an estimated drop from approximately 2.04 s to 1.99 s across the run's two halves under Low effort. This is a small but reliable **criterion relaxation**: as a run progresses, participants require slightly less accumulated evidence before committing to a response. Crucially, this relaxation was partially offset under High effort by a positive (though non-credible) interaction term ($\hat{\beta}_{\text{effort} \times \text{block\_half}}$ = +0.011, 95% CrI [−0.014, 0.037]), such that the expected boundary under High effort in the second half (≈ 2.03 s) was nearly equal to the first-half value. The boundary trajectories for all four condition cells — derived from posterior draws — are shown in @fig-fatigue-posteriors (Panel B).
+
+**No credible drift-rate fatigue.** The two-way effort × block\_half interaction on drift was negative but spanned zero: $\hat{\beta}$ = −0.035 (95% CrI [−0.100, 0.032], P($\beta$ < 0) = 85.3%). There is no credible evidence that drift rate decays specifically in the second half of runs under high somatic load. The effort main effect on drift was directionally consistent with the primary model ($\hat{\beta}$ = −0.038, 95% CrI [−0.085, 0.008], P($\beta$ < 0) = 94.8%), replicating the primary-model result in direction while remaining non-credible under the expanded model parameterization.
+
+**Age does not moderate the fatigue trajectory.** The focal three-way interaction (effort × block\_half × age$_z$ on drift) yielded $\hat{\beta}$ = −0.023 (95% CrI [−0.091, 0.044], P($\beta$ < 0) = 74.0%), with the CrI spanning zero. Within-run drift-rate dynamics are not age-graded within this cohort: older participants (relative to younger-older) do not show disproportionately greater drift decay under high load in the second half of a run.
+
+**A noteworthy secondary pattern.** The block\_half × age$_z$ interaction on drift was positive and 95.8% probable ($\hat{\beta}$ = +0.048, 95% CrI [−0.006, 0.102]), suggesting that older-within-cohort participants may show slightly greater drift-rate *improvement* (rather than decline) in the second half under Low effort — potentially a within-run practice or warm-up effect. The CrI clips zero, so this is best treated as a hypothesis-generating observation for future studies with larger samples or longer run horizons.
+
+All focal parameter estimates are plotted in @fig-fatigue-posteriors and tabulated in @tbl-fatigue-summary.
+
+```{r fatigue-trajectory-load}
+#| include: false
+#| echo: false
+
+fat_rds <- "output/publish/fit_exploratory_fatigue_trajectory.rds"
+fat_csv <- "output/publish/exploratory_fatigue_trajectory_posterior_summary.csv"
+
+fat_fit_available   <- file.exists(fat_rds)
+fat_table_available <- file.exists(fat_csv)
+
+if (fat_fit_available) {
+  suppressPackageStartupMessages(library(brms))
+  suppressPackageStartupMessages(library(posterior))
+  fat_fit   <- readRDS(fat_rds)
+  fat_draws <- as_draws_df(fat_fit)
+}
+
+if (fat_table_available) {
+  fat_posterior_tbl <- read_csv(fat_csv, show_col_types = FALSE)
+}
+```
+
+```{r}
+#| label: fig-fatigue-posteriors
+#| fig-cap: "Within-session fatigue dynamics: focal posterior estimates. **Panel A — Coefficient plot:** Posterior medians (points) and 95% credible intervals (horizontal bars) for all focal parameters in the drift ($v$, blue) and boundary separation ($a$, red) submodels. Filled circles indicate parameters whose 95% CrI excludes zero; open circles cross zero. The only credible effect is the within-run boundary decline in the second half (★). **Panel B — Expected boundary trajectories:** Posterior median and 95% CrI for the population-average boundary separation ($a$; exp scale) in each of the four effort × session-half cells, derived from fixed-effects posterior draws. Both effort conditions show a small first-to-second-half decrease, but the decline is larger and credibly non-zero only under Low effort; under High effort the positive interaction term partially offsets the relaxation, leaving the second-half boundary nearly unchanged."
+#| fig-align: center
+#| fig-pos: "htbp"
+#| out-width: "100%"
+#| fig-height: 6
+#| echo: false
+
+if (fat_fit_available && fat_table_available) {
+  tryCatch({
+    suppressPackageStartupMessages(library(ggplot2))
+    suppressPackageStartupMessages(library(dplyr))
+    suppressPackageStartupMessages(library(tidyr))
+    suppressPackageStartupMessages(library(patchwork))
+
+    # ── Panel A: coefficient forest plot ───────────────────────────────────────
+
+    label_map <- c(
+      "b_age_z"                                                    = "Age",
+      "b_block_halfSecond_Half"                                    = "Block half: 2nd vs 1st",
+      "b_block_halfSecond_Half:age_z"                             = "Block half × Age",
+      "b_effort_conditionHigh_40_MVC"                             = "Effort: High vs Low",
+      "b_effort_conditionHigh_40_MVC:age_z"                       = "Effort × Age",
+      "b_effort_conditionHigh_40_MVC:block_halfSecond_Half"       = "Effort × Block half",
+      "b_effort_conditionHigh_40_MVC:block_halfSecond_Half:age_z" = "Effort × Block half × Age",
+      "b_bs_age_z"                                               = "Age",
+      "b_bs_block_halfSecond_Half"                               = "Block half: 2nd vs 1st \u2605",
+      "b_bs_effort_conditionHigh_40_MVC"                        = "Effort: High vs Low",
+      "b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half"  = "Effort × Block half"
+    )
+
+    fat_forest <- fat_posterior_tbl |>
+      mutate(
+        label          = label_map[parameter],
+        parameter_type = factor(parameter_type, levels = c("Drift (v)", "Boundary (a)")),
+        credible       = as.logical(excludes0)
+      ) |>
+      filter(!is.na(label)) |>
+      group_by(parameter_type) |>
+      arrange(parameter_type, median) |>
+      ungroup() |>
+      mutate(label = factor(label, levels = unique(label)))
+
+    pal <- c("Drift (v)" = "#2166ac", "Boundary (a)" = "#d6604d")
+
+    p_forest <- ggplot(fat_forest,
+        aes(x = median, y = label, color = parameter_type)) +
+      geom_vline(xintercept = 0, linetype = "dashed",
+                 colour = "grey35", linewidth = 0.5) +
+      geom_errorbarh(aes(xmin = q2.5, xmax = q97.5),
+                     height = 0.3, linewidth = 0.65, alpha = 0.7) +
+      geom_point(aes(shape = credible, size = credible)) +
+      scale_color_manual(values = pal, guide = "none") +
+      scale_shape_manual(
+        values  = c("TRUE" = 16, "FALSE" = 21),
+        labels  = c("TRUE" = "95% CrI excludes 0", "FALSE" = "95% CrI spans 0"),
+        name    = NULL
+      ) +
+      scale_size_manual(values = c("TRUE" = 3.2, "FALSE" = 2.2), guide = "none") +
+      facet_grid(parameter_type ~ ., scales = "free_y", space = "free_y") +
+      labs(
+        x     = "Posterior estimate  (log scale for boundary; identity for drift)",
+        y     = NULL,
+        title = "A \u2003 Coefficient estimates (focal parameters)"
+      ) +
+      theme_minimal(base_size = 10) +
+      theme(
+        strip.text         = element_text(face = "bold", size = 9.5,
+                                          colour = c("Boundary (a)" = "#d6604d",
+                                                     "Drift (v)"    = "#2166ac")),
+        panel.grid.minor   = element_blank(),
+        panel.grid.major.y = element_blank(),
+        legend.position    = "bottom",
+        legend.text        = element_text(size = 8.5),
+        axis.title.x       = element_text(size = 8.5),
+        plot.title         = element_text(face = "bold", size = 10)
+      )
+
+    # ── Panel B: expected boundary per cell ────────────────────────────────────
+
+    bs_int  <- fat_draws[["Intercept_bs"]]
+    bs_bh   <- fat_draws[["b_bs_block_halfSecond_Half"]]
+    bs_eff  <- fat_draws[["b_bs_effort_conditionHigh_40_MVC"]]
+    bs_intx <- fat_draws[["b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half"]]
+
+    cell_draws <- tibble(
+      `Low effort\n1st half`   = exp(bs_int),
+      `Low effort\n2nd half`   = exp(bs_int + bs_bh),
+      `High effort\n1st half`  = exp(bs_int + bs_eff),
+      `High effort\n2nd half`  = exp(bs_int + bs_eff + bs_bh + bs_intx)
+    ) |>
+      pivot_longer(everything(), names_to = "cell", values_to = "boundary")
+
+    cell_summary <- cell_draws |>
+      group_by(cell) |>
+      summarise(
+        med  = median(boundary),
+        lo   = quantile(boundary, .025),
+        hi   = quantile(boundary, .975),
+        .groups = "drop"
+      ) |>
+      mutate(
+        effort = if_else(grepl("High", cell), "High effort (40% MVC)", "Low effort (5% MVC)"),
+        half   = if_else(grepl("1st", cell), "1st Half", "2nd Half"),
+        half   = factor(half, levels = c("1st Half", "2nd Half"))
+      )
+
+    pal_b <- c("Low effort (5% MVC)" = "#4393c3", "High effort (40% MVC)" = "#d6604d")
+
+    p_boundary <- ggplot(cell_summary,
+        aes(x = half, y = med, colour = effort, group = effort)) +
+      geom_ribbon(aes(ymin = lo, ymax = hi, fill = effort, group = effort),
+                  alpha = 0.15, colour = NA) +
+      geom_line(linewidth = 0.9) +
+      geom_errorbar(aes(ymin = lo, ymax = hi),
+                    width = 0.08, linewidth = 0.6) +
+      geom_point(size = 3.5) +
+      scale_color_manual(values = pal_b, name = NULL) +
+      scale_fill_manual(values  = pal_b, name = NULL) +
+      labs(
+        x     = "Session half",
+        y     = "Expected boundary separation (a; exp scale)",
+        title = "B \u2003 Boundary trajectories across the run"
+      ) +
+      coord_cartesian(ylim = c(1.88, 2.20)) +
+      theme_minimal(base_size = 10) +
+      theme(
+        panel.grid.minor   = element_blank(),
+        panel.grid.major.x = element_blank(),
+        legend.position    = "bottom",
+        legend.text        = element_text(size = 8.5),
+        axis.title         = element_text(size = 8.5),
+        plot.title         = element_text(face = "bold", size = 10)
+      )
+
+    # ── Combine ────────────────────────────────────────────────────────────────
+    print(p_forest + p_boundary + plot_layout(widths = c(1.6, 1)))
+
+  }, error = function(e) {
+    message("Fatigue trajectory figure failed: ", e$message)
+    invisible(NULL)
+  })
+} else {
+  message("Fatigue trajectory model or summary not found; skipping figure.")
+  invisible(NULL)
+}
+```
+
+```{r}
+#| label: tbl-fatigue-summary
+#| tbl-cap: "Posterior summary for focal within-session fatigue parameters. Estimates are on the log link scale for boundary ($a$) parameters and the identity scale for drift ($v$) parameters. Median, SD, 95% credible interval, posterior probability of a positive effect P(>0), and whether the CrI excludes zero are shown. Reference levels: Effort = Low (5% MVC); Block half = First Half; Age$_z$ = mean-centred z-score (1 unit $\\approx$ 6.4 years). The boundary second-half effect is the only parameter whose CrI excludes zero (marked \\textbf{bold})."
+#| tbl-pos: "htbp"
+#| echo: false
+
+if (fat_table_available) {
+  label_map_tbl <- c(
+    "b_age_z"                                                    = "Age$_z$ → drift",
+    "b_block_halfSecond_Half"                                    = "Block half (2nd) → drift",
+    "b_block_halfSecond_Half:age_z"                             = "Block half × Age$_z$ → drift",
+    "b_effort_conditionHigh_40_MVC"                             = "Effort (High) → drift",
+    "b_effort_conditionHigh_40_MVC:age_z"                       = "Effort × Age$_z$ → drift",
+    "b_effort_conditionHigh_40_MVC:block_halfSecond_Half"       = "Effort × Block half → drift",
+    "b_effort_conditionHigh_40_MVC:block_halfSecond_Half:age_z" = "Effort × Block half × Age$_z$ → drift \\textsuperscript{\\dag}",
+    "b_bs_age_z"                                               = "Age$_z$ → boundary",
+    "b_bs_block_halfSecond_Half"                               = "\\textbf{Block half (2nd) → boundary}",
+    "b_bs_effort_conditionHigh_40_MVC"                        = "Effort (High) → boundary",
+    "b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half"  = "Effort × Block half → boundary"
+  )
+
+  fat_display <- fat_posterior_tbl |>
+    mutate(
+      Parameter     = label_map_tbl[parameter],
+      Median        = sprintf("%.3f", median),
+      SD            = sprintf("%.3f", sd),
+      `P(>0)`       = sprintf("%.3f", p_gt_0),
+      `Excl. 0`     = ifelse(as.logical(excludes0), "Yes", "No")
+    ) |>
+    filter(!is.na(Parameter)) |>
+    select(parameter_type, Parameter, Median, SD, CrI_95, `P(>0)`, `Excl. 0`) |>
+    rename(`DDM\nParameter` = parameter_type, `95% CrI` = CrI_95)
+
+  fat_display |>
+    knitr::kable(
+      format   = ifelse(knitr::is_latex_output(), "latex", "html"),
+      booktabs = TRUE,
+      linesep  = "",
+      escape   = FALSE,
+      align    = c("l","l","r","r","c","r","c")
+    ) |>
+    kableExtra::kable_styling(
+      latex_options     = c("striped", "hold_position", "scale_down"),
+      bootstrap_options = c("striped", "hover", "condensed"),
+      full_width        = FALSE
+    ) |>
+    kableExtra::pack_rows("Drift (v)", 1, sum(fat_display[["DDM\nParameter"]] == "Drift (v)")) |>
+    kableExtra::pack_rows("Boundary (a)",
+                          sum(fat_display[["DDM\nParameter"]] == "Drift (v)") + 1,
+                          nrow(fat_display)) |>
+    kableExtra::footnote(
+      general = "Reference levels: Effort = Low 5 MVC; Block half = First Half; Age z = mean-centred z-score (1 unit ~ 6.4 years). Excl. 0 = 95 percent CrI excludes zero. The dagger marks the focal three-way interaction.",
+      symbol  = "Focal three-way interaction: tests whether within-run drift-rate decay under High effort is exacerbated in older participants within this cohort.",
+      general_title = "Note.",
+      footnote_as_chunk = TRUE,
+      escape   = TRUE,
+      threeparttable = TRUE
+    )
+} else {
+  message("Fatigue trajectory posterior table not found; skipping.")
+  invisible(NULL)
+}
+```
+
 \newpage
 
 ```{=latex}
@@ -4931,7 +5180,7 @@ include_graphics_safe(fig_path("fig_decision_landscape_3d.png"))
 ## Theoretical Implications: Decision Architecture as Optimal Control
 
 Framed within the mathematical tenets of optimal control theory, the structural thresholds estimated by the drift-diffusion model represent the analytical solution to a sequential optimal stopping problem (Bogacz et al., 2006; Gold & Shadlen, 2007; Wald, 1947). Under standard unconstrained conditions, a rational decision-maker seeking to minimize a cost function balancing decision latency and choice errors will establish a fixed evidence threshold mathematically equivalent to the DDM boundary separation parameter ($a$). In the context of cognitive aging, this boundary setting is traditionally characterized as a stable behavioral preference for accuracy over execution speed, serving as a top-down strategic cushion against underlying neurocomputational degradation (Ratcliff et al., 2004; Starns & Ratcliff, 2010).
- Our paradigm explicitly challenges the stability of this decision architecture by introducing a high-intensity, concurrent motor constraint. Sustaining an isometric contraction at 40% MVC imposes a prominent, time-varying somatic penalty that elevates the cost of prolonged processing. In free-response scenarios where individuals optimize their overall reward rate under physical or energy-depleting strain, the optimal mathematical policy shifts from a stationary threshold to dynamic, collapsing boundaries that downregulate response caution as a trial wears on (Drugowitsch et al., 2012; Tajima et al., 2016). The fact that older adults’ boundary separation ($a$) remained invariant under high muscular load highlights a meaningful degree of computational rigidity. Rather than adaptively updating their cost function to minimize physical discomfort, older adults maintained an unyielding threshold profile, prioritizing sensory discrimination accuracy even when the somatic environment rendered that policy highly inefficient.
+ Our paradigm explicitly challenges the stability of this decision architecture by introducing a high-intensity, concurrent motor constraint. Sustaining an isometric contraction at 40% MVC imposes a prominent, time-varying somatic penalty that elevates the cost of prolonged processing. In free-response scenarios where individuals optimize their overall reward rate under physical or energy-depleting strain, the optimal mathematical policy shifts from a stationary threshold to dynamic, collapsing boundaries that downregulate response caution as a trial wears on [@drugowitsch2012; @tajima2016]. The fact that older adults’ boundary separation ($a$) remained invariant under high muscular load highlights a meaningful degree of computational rigidity. Rather than adaptively updating their cost function to minimize physical discomfort, older adults maintained an unyielding threshold profile, prioritizing sensory discrimination accuracy even when the somatic environment rendered that policy highly inefficient.
  This control policy framework can be scaled up from sub-second evidence accumulation dynamics to cross-trial meta-cognitive adjustments. By treating pre-trial baseline pupil diameter as an empirical index of the participant’s physiological state ($S\_t$), we can formalize strategy adjustments as a state-conditioned control policy. Crucially, this operationalization enforces a clear division between slower, background changes in tonic somatic load and the rapid, stimulus-locked task-evoked pupil responses (TEPR) that reflect single-trial phasic allocations. A meta-cognitive agent executing a greedy policy update across successive runs would be expected to modulate its evidence criteria or starting-point boundaries as a direct function of this baseline state value ($S\_t$). 
 Our implementation of pupil-informed hierarchical modeling directly mirrors this architecture, conditioning single-trial DDM parameter variations on continuous, pre-trial pupil metrics (de Gee et al., 2017; Wiecki et al., 2013). This pupil-augmented configuration provides a valid, data-driven approximation of a state-conditioned policy rule, proving that spontaneous fluctuations in physiological state systematically adjust the baseline thresholds of human choice (de Gee et al., 2020). 
 While framing cognitive-motor performance as an optimal control problem provides a valuable conceptual bridge, a direct computational fit using reinforcement learning or maximum entropy reward recovery algorithms remains bounded by specific design limitations (Ziebart et al., 2008). Natively, an optimal stopping policy models an agent who retains complete command over the execution timeline. The strict gating mechanism of our response-signal architecture deliberately removes this temporal degree of freedom from participant control, meaning that reaction time variance reflects post-gating motor execution and peripheral overhead rather than free, intra-trial stopping boundaries.
@@ -5001,6 +5250,16 @@ Second — and more theoretically central — high somatic load (40% MVC) did no
 This pattern can be understood within the resource competition framework [@wickens2008] as follows. The primary cost of high somatic load appears to be *upstream* — degrading the quality of incoming sensory evidence (drift rate, H1) — rather than *downstream* at the level of pre-trial strategic positioning. If physical effort drained the resources available for evidence-quality computation without touching the response-criterion setting mechanism, then baseline bias and serial dependence would remain stable across effort conditions even as accuracy declined, which is precisely what the combined DDM results show. The absence of a boundary-widening response to effort (H2) reinforces this picture: older adults in this sample neither raised their caution thresholds nor increased their reliance on prior-trial responses when the somatic demand increased. Taken together, this suggests a form of **strategic rigidity** in the decision architecture — the criterion-setting system remains locked to its habitual configuration regardless of physiological state, while the quality of evidence feeding into that fixed architecture is what degrades.
 
 The marginal post-error repetition pattern in M_wsls ($\hat{\beta}_{\text{prev\_choice} \times \text{prev\_correct}}$ = −0.107, CrI [−0.225, 0.009]) deserves cautious note. The direction indicates that incorrect responses are more likely to be repeated than correct ones — a pattern inconsistent with classic win-stay/lose-shift learning and more consistent with a post-error freezing or response-perseveration account. Because the CrI includes zero this interpretation should not be over-weighted, but it resonates with accounts of post-error behavior in older adults that emphasize slowed or attenuated posterror adjustment [@west2005] rather than the adaptive shifting observed in younger cohorts.
+
+## Within-Session Fatigue: Boundary Relaxation Without Drift Degradation {#sec-fatigue-discussion}
+
+The within-session fatigue analysis (Section 3.8) produces a pattern that both qualifies and enriches the primary model findings. The single credible result is a small but reliable relaxation of boundary separation across the run: participants required slightly less accumulated evidence in the second half of each block than in the first, a phenomenon most pronounced under Low effort conditions. This is consistent with theoretical accounts of time-on-task effects in sequential decision-making: as a block progresses, the subjective cost of deliberation accumulates, and the rational response under a time-varying cost function is to lower the evidence threshold — precisely the collapsing-boundary dynamics described in optimal stopping frameworks [@drugowitsch2012; @tajima2016]. Critically, this interpretation frames boundary relaxation not as a failure of self-regulation but as a locally rational adaptation to the mounting cost of continued evidence accumulation.
+
+Two features of the result deserve particular emphasis. First, the boundary relaxation was statistically *more pronounced under Low effort* than under High effort — the positive effort × block\_half interaction on boundary (though non-credible) partially offset the decline under the 40% MVC condition. One interpretation is that high somatic load activates a protective response: when the grip itself is taxing, participants maintain their decision thresholds more persistently, perhaps because the metabolic cost of error (pressing the wrong button while exerting maximal grip) is perceived as higher than when at rest. This would represent a form of **effort-contingent criterion maintenance** — a phenomenon that is distinct from, and arguably inconsistent with, a simple resource-depletion account.
+
+Second, and more consequentially, the primary fatigue hypothesis was *not confirmed*. Drift rate — the parameter most directly linked to effortful evidence processing — showed no credible within-run decline, and the three-way interaction with age was near zero. Together with the serial dependencies null from Section 3.7, this yields a coherent picture: the internal *quality* of evidence accumulation ($v$) is relatively stable within a run, and the primary dynamic is one of **strategic criterion adjustment** rather than accumulation-stage exhaustion. The aging decision-maker in this sample does not become a noisier processor as the run progresses; rather, they become a slightly *less cautious* one. Whether this reflects adaptive urgency signaling, fatigue-driven motivation loss, or simply practice effects that lower the required threshold for familiar stimuli remains an open question.
+
+Interpreted within the broader theoretical context of this chapter, the fatigue result aligns with the strategic rigidity account advanced in the primary analyses: older adults maintained boundary separation at a stable level in response to effort condition differences (H2 null) and showed no reliable increase in heuristic responding under load (§3.7 null). The within-run dynamic adds nuance — over the *temporal course* of a block, a modest relaxation does occur, but it is uniform across effort conditions and does not interact with age. This suggests that the architectural rigidity documented at the between-condition level may yield, slightly, to within-run temporal pressure, but that this yielding is not what effort-induced physiological load is primarily driving. The locus of effort's effect remains upstream: at the quality of incoming sensory evidence ($v$), not at the strategic criterion ($a$) or its temporal dynamics.
 
 ## Limitations and Future Directions
 
