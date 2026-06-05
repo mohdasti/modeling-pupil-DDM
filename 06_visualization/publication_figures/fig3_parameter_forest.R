@@ -1,5 +1,5 @@
 # fig3_parameter_forest.R
-# NHB Fig 3: Integrated parameter forest
+# Fig 3: Integrated parameter forest
 # Panel A: effort contrasts H1–H4
 # Panel B: difficulty contrasts on v and a
 
@@ -15,12 +15,12 @@ suppressPackageStartupMessages({
 })
 
 source(here("R", "colors_manuscript.R"))
-source(here("06_visualization", "publication_figures", "nhb_paths.R"))
+source(here("06_visualization", "publication_figures", "manuscript_paths.R"))
 
 fit_primary <- readRDS(PATH_PRIMARY_MODEL)
 draws_raw  <- as_draws_df(fit_primary)
 
-theme_nhb <- function() {
+theme_manuscript <- function() {
   theme_classic(base_size = 8, base_family = "Helvetica") +
     theme(
       axis.line          = element_line(linewidth = 0.4),
@@ -113,7 +113,7 @@ panel_a <- ggplot(contrast_df) +
     xlim = c(min(contrast_df$lo95) - 0.12, max(contrast_df$hi95) + 0.08),
     clip = "off"
   ) +
-  theme_nhb() +
+  theme_manuscript() +
   theme(axis.line.y = element_blank())
 
 # ── Panel B: Difficulty contrasts on v and a ─────────────────────────────────
@@ -168,7 +168,7 @@ panel_b <- ggplot(diff_contrasts) +
     x = "Posterior estimate",
     y = NULL
   ) +
-  theme_nhb()
+  theme_manuscript()
 
 # ── Combine & save ───────────────────────────────────────────────────────────
 fig3 <- panel_a / panel_b + plot_layout(heights = c(1, 1.2))

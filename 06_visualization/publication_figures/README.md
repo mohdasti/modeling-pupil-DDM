@@ -1,16 +1,16 @@
-# NHB publication figures
+# Main manuscript figures
 
-Five main figures + supplementary for Nature Human Behavior submission.
+Five consolidated main figures plus supplementary content.
 
 ## Setup (complete)
 
 | Item | Location |
 |------|----------|
 | Shared colors | `R/colors_manuscript.R` |
-| Model/data paths | `06_visualization/publication_figures/nhb_paths.R` |
+| Model/data paths | `06_visualization/publication_figures/manuscript_paths.R` |
 | Coefficient audit | `06_visualization/publication_figures/coef_name_audit.txt` |
 | Figure outputs | `output/figures/manuscript/` |
-| Figure scripts | `06_visualization/publication_figures/fig*.R` (create via individual prompts) |
+| Figure scripts | `06_visualization/publication_figures/fig*.R` |
 
 ## Run order
 

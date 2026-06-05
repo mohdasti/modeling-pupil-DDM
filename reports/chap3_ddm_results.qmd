@@ -174,11 +174,11 @@ fatigue_effort_colors <- c(
 MANUSCRIPT_FIG_DIR <- file.path(proj_root, "output/figures/manuscript_palette")
 dir.create(MANUSCRIPT_FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 
-# NHB publication figures (figs 1–5)
-NHB_FIG_DIR <- file.path(proj_root, "output/figures/manuscript")
-nhb_fig <- function(fig_name) {
-  f <- file.path(NHB_FIG_DIR, fig_name)
-  if (!file.exists(f)) stop("NHB figure not found: ", f)
+# Main manuscript figures (figs 1–5)
+MAIN_FIG_DIR <- file.path(proj_root, "output/figures/manuscript")
+main_fig <- function(fig_name) {
+  f <- file.path(MAIN_FIG_DIR, fig_name)
+  if (!file.exists(f)) stop("Manuscript figure not found: ", f)
   f
 }
 
@@ -840,13 +840,13 @@ This chapter presents a hierarchical Wiener diffusion decision model (DDM) for a
 
 # Introduction
 
-## 1.1 Physical Effort and Performance in the Aging Brain
+## Physical Effort and Performance in the Aging Brain
 
 Older adults show pervasive response time slowing across virtually all task domains, a finding historically attributed to generalized processing speed decline [@birren1965age; @salthouse1985speed; @salthouse1996]. Beyond simple biological slowing, this behavior is often strategic; older adults systematically favor accuracy over speed, adopting a more cautious response mode to compensate for declining neural efficiency [@rabbitt1979old; @ratcliff2004aging; @starns2010]. While these patterns are well-documented in sedentary laboratory settings, real-world cognitive tasks frequently occur while simultaneously exerting physical effort.
 
 For older adults, the "cost" of such exertion is significantly higher due to age-related declines in motor efficiency and reduced neural reserves [@verhaeghen2003]. According to resource competition theories, the executive demands required to maintain a physical grip or posture compete for the same limited pool of cognitive resources needed for decision-making [@wickens2008]. While it is established that physical load can impair general performance [@verhaeghen2003; @woollacott2002], we do not yet know whether this interference simply slows down peripheral execution or fundamentally degrades the quality of information processing. This study utilizes a computational framework to decompose these effects, investigating how physical effort and physiological state interact to shape decision-making in the aging brain.
 
-## 1.2 Decomposing Decisions: The Drift-Diffusion Model
+## Decomposing Decisions: The Drift-Diffusion Model
 
 To understand the latent mechanisms underlying age-related slowing, we utilize the Drift-Diffusion Model [@ratcliff1978theory]. This computational framework assumes that decision-making is a continuous process of evidence accumulation over time, driven by two primary opposing forces that define the internal dynamics of the choice. The first of these internal forces is the deterministic mean drift rate ($v$), which represents the true quality or strength of the sensory evidence extracted from a stimulus. The second force is the stochastic diffusion constant ($\sigma$), capturing the inherent noise and moment-to-moment Gaussian fluctuations in the nervous system. Together, these two forces determine the trajectory of a decision vector over time until it intersects a boundary, a dynamic process visually formalized in @fig-ddm-process (Panel B). As shown in this architectural layout, the final choice and its corresponding timing are ultimately governed by the decision architecture, which dictates the structural boundaries and thresholds within which this continuous evidence accumulation occurs.
 
@@ -856,7 +856,7 @@ To understand the latent mechanisms underlying age-related slowing, we utilize t
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
-include_graphics_safe(nhb_fig("fig1_design_schematic.png"))
+include_graphics_safe(main_fig("fig1_design_schematic.png"))
 ```
 
 This mathematical framework allows us to decompose standard behavioral reaction time data and accuracy rates into four distinct latent parameters. The drift rate ($v$) reflects the efficiency and quality of the accumulation process itself, where the absolute magnitude of the parameter reflects the clarity of the sensory signal and the efficiency of the accumulation process itself, directing the decision vector toward either the upper ('different') or lower ('same') boundary based on stimulus properties. The boundary separation ($a$) establishes the total amount of evidence required before a participant commits to a response, serving as a direct measure of response caution. The starting-point bias ($z$) accounts for any a priori preference or baseline asymmetry toward one response alternative over another before the trial even begins. Finally, the non-decision time ($t_0$) captures the duration of peripheral mechanisms that fall completely outside the core decision process, such as initial sensory encoding and downstream motor execution [@ratcliff1978theory; @ratcliff2008diffusion; @voss2004interpreting].
@@ -865,7 +865,7 @@ Decomposing these metrics is critical when examining an aging population because
 
 An open question is whether these DDM parameters represent rigid capacity limits or if they are dynamically modulated by an individual's immediate physiological state. By using physical effort to manipulate systemic arousal, we can test whether these internal mechanisms are flexible under stress. Specifically, we can determine if the increased physiological cost of high physical effort forces an alteration in the decision architecture, perhaps prompting a compensatory increase in boundary caution, or if it directly degrades the efficiency of the evidence accumulation process itself. This methodology allows us to move past the simple observation that older adults slow down under pressure, revealing instead the real-time interaction between somatic demand and cognitive efficiency.
 
-## 1.3 Arousal, Effort, and Decision Performance in Older Adults
+## Arousal, Effort, and Decision Performance in Older Adults
 
 The relationship between physiological arousal and cognitive performance has long been conceptualized as an inverted-U function, where intermediate states yield optimal execution while hypo- or hyper-arousal leads to systemic performance degradation [@yerkes1908]. Adaptive Gain Theory provides a functional account of this classic relationship by frameworking arousal as a dynamic modulator of neural gain, which directly dictates the signal-to-noise ratio of information processing during task-relevant behavior [@astonjones2005]. When applied to the psychology of aging, empirical evidence suggests that the dynamic range of these autonomic regulation systems becomes significantly constricted. Age-related shifts in baseline arousal settings and diminished physiological flexibility make older adults highly vulnerable to over-activation. Consequently, modest increases in objective task demands can rapidly elevate systemic arousal past the optimal peak and into a supra-optimal zone where excessive internal noise compromises cognitive stability [@huang2024; @mather2016; @mikneviciute2022].
 
@@ -873,7 +873,7 @@ This physiological vulnerability becomes highly salient when cognitive operation
 
 Although it is clear that concurrent physical effort alters gross behavioral metrics like accuracy, traditional performance measures are fundamentally blind to the underlying latent mechanisms driving these failures. For example, a drop in accuracy under high physical load could reflect a degradation in the quality of sensory processing, but it could alternatively signal a top-down strategic shift where a participant deliberately lowers their decision threshold to escape the discomfort of sustained muscular contraction. Traditional reaction time and error analyses cannot adjudicate between these competing explanations. By decomposing behavioral data into distinct computational parameters within a diffusion framework, we can explicitly isolate these hidden components. Identifying whether physical effort selectively suppresses evidence quality or collapses decision boundaries provides critical insight into the functional architecture of cognitive-motor interference. This computational approach moves the field beyond merely documenting that physical demand impairs cognition, providing instead a clear mechanistic account of how somatic load shapes the speed, accuracy, and strategic boundaries of human choice.
 
-## 1.4 Pupillometry and Pupil-Informed Drift-Diffusion Modeling
+## Pupillometry and Pupil-Informed Drift-Diffusion Modeling
 
 To empirically capture these shifting states of resource allocation, we utilize pupillometry as a continuous physiological proxy for an individual's internal state. Non-invasive eye tracking provides a highly sensitive measure of central nervous system activation, where fluctuations in pupil diameter track changes in autonomic tone with exceptional temporal precision [@beatty1982; @kahneman1966]. Within this methodology, two distinct components offer insight into a participant's physiological state. While baseline pupil diameter reflects slower shifts in tonic arousal and sustained alertness, the task-evoked pupil response (TEPR) acts as a rapid, phasic signal that directly tracks moment-to-moment changes in cognitive and somatic workload [@gilzenrat2010; @vangerven2004]. Quantifying this phasic response via the trial-wise area under the curve (AUC) allows us to measure how the immediate demand of sustaining a physical grip alters an individual's physiological investment from one choice to the next.
 
@@ -885,7 +885,7 @@ A foundational demonstration of this technique was provided by Cavanagh and coll
 
 Our study extends this methodology by shifting the experimental focus from cognitive conflict to physical effort, and from healthy young cohorts to an aging population. This shift provides a fundamentally distinct test of how internal arousal states govern decision architecture. While cognitive conflict in young adults primarily modulates top-down strategic thresholds, the combination of advanced age and concurrent physical exertion introduces a severe strain on shared processing resources. Consequently, by testing pupil-informed models under varying physical loads, we can discover whether trial-by-trial fluctuations in pupil-indexed phasic arousal track a collapse in the decision boundaries ($a$) or a direct, real-time degradation in the quality of evidence accumulation ($v$) itself under conditions of sustained physical load. This provides the critical link missing from traditional static models, revealing how immediate physiological strain changes the mathematical machinery of choice in older adults.
 
-## 1.5 Hypotheses and Predictions
+## Hypotheses and Predictions
 
 We evaluated four primary predictions regarding how concurrent physical load modulates the latent components of decision formation in older adults. First, we hypothesized that the drift rate ($v$) would significantly decrease under the high-effort condition (40% MVC) relative to the low-effort baseline (5% MVC). This prediction directly builds upon the principles of resource competition and functional arousal dynamics established across the preceding sections. The severe somatic burden of maintaining a high-intensity muscular contraction is expected to force the aging nervous system past the optimal peak of the Yerkes-Dodson curve, draining shared central resources and ultimately degrading the clarity and efficiency of sensory evidence accumulation.
 
@@ -895,7 +895,7 @@ Third, we addressed the impact of motor demand on peripheral overhead by explori
 
 Fourth, we tested whether the bias-attenuating properties of physiological arousal generalize from transient states to sustained states. While spontaneous, trial-by-trial phasic arousal bursts have been shown to systematically suppress choice biases, it remains unknown whether a sustained, exogenously driven tonic elevation in arousal operates through an identical framework. We hypothesized that if tonic somatic noise mirrors phasic arousal dynamics, starting-point bias ($z$) would systematically shift toward structural neutrality ($z = 0.5$) under high effort; alternatively, the chronic overhead of the motor task might lock in stable, energy-saving strategic heuristics.
 
-## 1.6 The Present Study
+## The Present Study
 
 The present chapter applies hierarchical Bayesian drift-diffusion modeling to examine how physical effort (Low: 5% MVC vs. High: 40% MVC isometric handgrip) modulates latent decision parameters in older adults performing auditory and visual same-different discrimination tasks. Trial-by-trial task-evoked pupil responses (TEPR) serve as an exploratory index of phasic arousal to test whether within-person arousal fluctuations predict changes in evidence accumulation or response bias. Together, these analyses test whether the characteristic slowing and cautiousness of older decision-makers reflect fixed capacity limits or physiological-state-dependent features modulated by effort-induced arousal.
 
@@ -2712,7 +2712,7 @@ null_evidence_for_table <- dplyr::bind_rows(
 
 # Results
 
-## 3.1 Sample, model selection, and convergence {#sec-results-sample}
+## Sample, model selection, and convergence {#sec-results-sample}
 
 ```{r}
 #| include: false
@@ -3067,7 +3067,7 @@ if (!is.null(pred_params) && nrow(pred_params) > 0) {
 }
 ```
 
-## 3.2 Behavioral DDM parameter estimates {#sec-behavioral-ddm}
+## Behavioral DDM parameter estimates {#sec-behavioral-ddm}
 
 Posterior estimates of drift rate ($v$), boundary separation ($a$), and non-decision time ($t_0$) across conditions are summarized in @tbl-ddm-core-by-difficulty-effort and @fig-ddm-parameters-combined. Hypothesis tests (H1–H4) are in @sec-key-contrasts; starting-point bias calibration is in @sec-starting-point-bias.
 
@@ -3125,7 +3125,7 @@ ddm_core %>%
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
-include_graphics_safe(nhb_fig("fig2_central_result.png"))
+include_graphics_safe(main_fig("fig2_central_result.png"))
 ```
 
 Because Effort is a within-subject manipulation, visual overlap in marginal means is misleading. Panel B of @fig-ddm-parameters-combined plots the posterior distribution of the difference score (High $-$ Low Effort) and shows that the 95% CrI does not cross zero, confirming a highly credible reduction in drift rate.
@@ -3136,7 +3136,7 @@ Because Effort is a within-subject manipulation, visual overlap in marginal mean
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
-include_graphics_safe(nhb_fig("fig3_parameter_forest.png"))
+include_graphics_safe(main_fig("fig3_parameter_forest.png"))
 ```
 
 ```{r}
@@ -3375,7 +3375,7 @@ if (!is.null(pupil_data)) {
 }
 ```
 
-### 3.2.1 Hypothesis tests (H1–H4) {#sec-key-contrasts}
+### Hypothesis tests (H1–H4) {#sec-key-contrasts}
 
 To evaluate our a priori predictions about how effort and difficulty modulate decision parameters, we examined posterior contrasts on the link scale.
 
@@ -3496,7 +3496,7 @@ The four hypotheses sit in different inferential positions. H1 is **supported**:
 
 The Effort → Drift effect was robust to task inclusion: the Effort × Task interaction was negligible (Appendix A4.3). Primary findings were also robust to alternative RT cutoffs (0.15 s and 0.25 s; Appendix A4.2).
 
-### 3.2.2 Starting-point bias {#sec-starting-point-bias}
+### Starting-point bias {#sec-starting-point-bias}
 
 In a standard-only calibration model, starting-point bias ($z$) was estimated independently of drift rate ($v$). Bias values were consistently above 0.5. VDT showed lower bias toward "different" responses than ADT ($\Delta z = -0.04$, 95% CrI [−0.06, −0.02]; @fig-bias-by-task). The effort contrast was small and uncertain (Low−High: `r h4_beta_str`, `r h4_cri_str``r h4_p0_str`). Bias was modeled as a function of task and effort only — participants had no advance knowledge of trial difficulty [@farell1985; @nosofsky1997palmeri]. H4 effort results are in @sec-key-contrasts.
 
@@ -3549,7 +3549,7 @@ save_manuscript_fig(p_bias_task, "fig_bias_by_task", 5, 3.5)
 
 The standard-only bias estimate ($z = 0.63$, 95% CrI [0.60, 0.66]; @tbl-standard-only-bias-levels) exceeded primary-model estimates ($z \approx 0.52$–$0.55$; @tbl-ddm-core-by-difficulty-effort), reflecting the $v$–$z$ trade-off when drift and bias are estimated jointly across difficulty levels. Substantial between-subject variability in drift rate and its effort sensitivity is shown in Appendix A2 (@fig-subject-parameter-distribution).
 
-## 3.3 Pupil-linked DDM models {#sec-pupil-ddm-integration}
+## Pupil-linked DDM models {#sec-pupil-ddm-integration}
 
 To examine whether trial-wise arousal fluctuations modulate decision parameters, we compared a nested sequence of four pupil-augmented DDM specifications (see @sec-pupil-ddm-models): (1) a **behavioral baseline** model with no pupil predictor; (2) a **pupil → bias** model, testing whether TEPR predicts starting-point bias $z$ — directly relevant to H4 (bias neutrality under arousal); (3) a **pupil → drift + bias** model, testing whether TEPR also modulates drift rate $v$ — an exploratory extension of the phasic arousal–evidence accumulation hypothesis; and (4) a **pupil × Difficulty** interaction model, testing the Yerkes–Dodson prediction that arousal effects on $v$ should diverge across difficulty levels. Models were compared with PSIS-LOO relative to the behavioral baseline on the pupil-available trial subset. **Pareto-$k$ diagnostics exceeded 0.7 for all pupil-augmented models (max $k = 0.91$), so ELPD differences are not a reliable basis for model selection** [@vehtari2017loo]; we therefore treat apparent $\Delta$ELPD values as descriptive at most and **interpret pupil effects primarily from posterior coefficients** (@tbl-pupil-key-effects, below). In that light, pooled TEPR coefficients were centered near zero with CrIs spanning zero (reported below).
 
@@ -4288,7 +4288,7 @@ if (file.exists(model_path_diff) && requireNamespace("brms", quietly = TRUE) &&
 }
 ```
 
-## 3.4 Exploratory: choice history {#sec-choice-history}
+## Exploratory: choice history {#sec-choice-history}
 
 To probe whether high somatic load promotes reliance on automatic choice heuristics, we fit two supplementary hierarchical Wiener DDM variants to the full behavioral dataset (N = 17,199 trials after block-boundary exclusions; see Supplementary Methods). Both models extended the primary architecture by adding the previous trial's response (coded ±0.5 for "Different"/"Same") to the starting-point bias subformula. The history model tested the main perseveration effect and its modulation by effort. The win-stay/lose-shift (WSLS) model additionally conditioned the history effect on the previous trial's accuracy, testing whether the carry-over differed depending on whether that trial was answered correctly. Both models converged satisfactorily (history model: max $\hat{R}$ = 1.003; WSLS model: max $\hat{R}$ = 1.014; zero divergent transitions in both).
 
@@ -4324,7 +4324,7 @@ if (ch_table_available) {
 }
 ```
 
-## 3.5 Exploratory: within-session fatigue {#sec-fatigue-trajectory}
+## Exploratory: within-session fatigue {#sec-fatigue-trajectory}
 
 To examine whether processing efficiency or decision caution dynamically changes over the course of a testing run, we fit a supplementary hierarchical Wiener DDM (N = 17,834 trials, 67 participants) that incorporated a within-run temporal factor. Each 30-trial run was split at the median trial position within each participant × task × run combination, yielding first-half and second-half labels (maximum 1-trial imbalance across runs). The drift rate subformula included a three-way interaction of effort, run half, and continuous age (z-scored; 1 unit ≈ 6.4 years) to test whether temporal drift-rate decline was exacerbated in older-within-cohort participants under high somatic load. Boundary separation used a two-way effort × run-half interaction plus continuous age as a main effect. The model converged satisfactorily (max $\hat{R}$ = 1.004; 0 divergent transitions).
 
@@ -4532,7 +4532,7 @@ if (fat_fit_available && fat_table_available) {
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
-include_graphics_safe(nhb_fig("fig4_temporal_dynamics.png"))
+include_graphics_safe(main_fig("fig4_temporal_dynamics.png"))
 ```
 
 
@@ -4786,7 +4786,7 @@ save_manuscript_fig(p_loo, "fig_loo_comparison", 7, 4.5)
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
-include_graphics_safe(nhb_fig("fig5_individual_differences.png"))
+include_graphics_safe(main_fig("fig5_individual_differences.png"))
 ```
 
 ```{r}

@@ -1,5 +1,5 @@
 # fig5_individual_differences.R
-# NHB Fig 5: Individual differences and robustness
+# Fig 5: Individual differences and robustness
 # Panel A: Brinley (pooled) | Panel B: paired drift by effort | Panel C: % reduction vs baseline
 
 suppressPackageStartupMessages({
@@ -14,7 +14,7 @@ suppressPackageStartupMessages({
 })
 
 source(here("R", "colors_manuscript.R"))
-source(here("06_visualization", "publication_figures", "nhb_paths.R"))
+source(here("06_visualization", "publication_figures", "manuscript_paths.R"))
 
 fit_primary <- readRDS(PATH_PRIMARY_MODEL)
 beh_data    <- read_csv(PATH_BEHAVIORAL_DATA, show_col_types = FALSE)
@@ -23,7 +23,7 @@ label_color <- unname(stat_colors["empirical"])
 age_lo      <- "#B8BCC4"
 age_hi      <- "#2E86AB"
 
-theme_nhb <- function() {
+theme_manuscript <- function() {
   theme_classic(base_size = 8, base_family = "Helvetica") +
     theme(
       axis.line         = element_line(linewidth = 0.4),
@@ -112,7 +112,7 @@ panel_a <- ggplot(brinley_df, aes(x = Easy, y = Hard)) +
     y = "Mean RT: Hard trials (ms)",
     caption = sprintf("slope = %.2f (< 1: disproportionate slowing)", lm_slope)
   ) +
-  theme_nhb()
+  theme_manuscript()
 
 # ── Subject-level drift (Low vs High effort) ───────────────────────────────────
 re_subj <- ranef(fit_primary)$subject_id
@@ -180,7 +180,7 @@ panel_b <- ggplot(subj_violin_df, aes(x = effort_label, y = v_subj, group = subj
     y = "Subject-level drift rate (v)",
     caption = "v < 0: same-boundary (response-side coding)"
   ) +
-  theme_nhb() +
+  theme_manuscript() +
   theme(legend.position = "none")
 
 # ── Panel C: Caterpillar — subject-level drift estimates, sorted, age-colored ──
@@ -213,7 +213,7 @@ panel_c <- ggplot(cat_df, aes(x = v_est, y = rank)) +
     y = "Participant (sorted)",
     caption = "Sorted by baseline drift (Standard trials)"
   ) +
-  theme_nhb() +
+  theme_manuscript() +
   theme(
     axis.text.y  = element_blank(),
     axis.ticks.y = element_blank()

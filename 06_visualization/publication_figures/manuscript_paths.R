@@ -1,6 +1,6 @@
-# nhb_paths.R — canonical paths for NHB publication figures (master setup)
+# manuscript_paths.R — canonical paths for main manuscript figures (master setup)
 # Source at top of every fig1–fig5 script:
-#   source(here::here("06_visualization", "publication_figures", "nhb_paths.R"))
+#   source(here::here("06_visualization", "publication_figures", "manuscript_paths.R"))
 
 suppressPackageStartupMessages(library(here))
 

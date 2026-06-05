@@ -1,4 +1,4 @@
-NHB figure pipeline — coefficient name audit
+Main manuscript figure pipeline — coefficient name audit
 Generated: 2026-06-04
 Primary model: output/ddm_refits/runs/20260226_092110/models/additive__probe_onset_locked__thr0.20.rds
 N trials: 18097 (probe-onset-locked, thr 0.20, additive)

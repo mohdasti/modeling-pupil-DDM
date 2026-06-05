@@ -1,5 +1,5 @@
 # fig4_temporal_dynamics.R
-# NHB Fig 4: Temporal dynamics (fatigue + choice history)
+# Fig 4: Temporal dynamics (fatigue + choice history)
 # Panel A: boundary trajectories | Panel B: focal fatigue forest | Panel C: choice history
 
 suppressPackageStartupMessages({
@@ -14,7 +14,7 @@ suppressPackageStartupMessages({
 })
 
 source(here("R", "colors_manuscript.R"))
-source(here("06_visualization", "publication_figures", "nhb_paths.R"))
+source(here("06_visualization", "publication_figures", "manuscript_paths.R"))
 
 fit_fatigue <- readRDS(PATH_FATIGUE_MODEL)
 fit_history <- readRDS(PATH_HISTORY_MODEL)
@@ -34,7 +34,7 @@ fatigue_effort_colors <- c(
   "High effort (40% MVC)" = unname(effort_colors["High"])
 )
 
-theme_nhb <- function() {
+theme_manuscript <- function() {
   theme_classic(base_size = 8, base_family = "Helvetica") +
     theme(
       axis.line          = element_line(linewidth = 0.4),
@@ -99,7 +99,7 @@ panel_a <- ggplot(traj_df, aes(x = half, y = a_median, color = effort, group = e
     x = "Session half",
     y = "Boundary separation\n(exp scale)"
   ) +
-  theme_nhb() +
+  theme_manuscript() +
   theme(
     legend.position = "bottom",
     legend.margin = margin(t = 2, b = 0, unit = "pt"),
@@ -161,7 +161,7 @@ panel_b <- ggplot(fat_coefs) +
     clip = "off"
   ) +
   labs(title = "B \u2014 Fatigue", x = "Posterior estimate", y = NULL) +
-  theme_nhb() +
+  theme_manuscript() +
   theme(axis.line.y = element_blank(), axis.ticks.y = element_blank())
 
 # ── Panel C: Choice history (perseveration + effort × history on bias) ────────
@@ -213,7 +213,7 @@ panel_c <- ggplot(hist_density_df, aes(x = delta, fill = model, color = model)) 
     fill = NULL,
     color = NULL
   ) +
-  theme_nhb() +
+  theme_manuscript() +
   theme(legend.position = "bottom")
 
 # ── Combine & save ───────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 # fig1_design_schematic.R
-# NHB Fig 1: Study design and DDM architecture
+# Fig 1: Study design and DDM architecture
 # Panel A: existing Trial_Structure.png | Panel B: fig_ddm_process logic | Panel C: predictor map
 
 suppressPackageStartupMessages({
@@ -17,7 +17,7 @@ source(here("R", "colors_manuscript.R"))
 repo <- here::here()
 
 # ── Shared theme ──────────────────────────────────────────────────────────────
-theme_nhb <- function() {
+theme_manuscript <- function() {
   theme_classic(base_size = 8, base_family = "Helvetica") +
     theme(
       axis.line         = element_line(linewidth = 0.35, color = "black"),
@@ -175,7 +175,7 @@ build_ddm_panel <- function() {
                        breaks = seq(0, 1, by = 0.5)) +
     scale_y_continuous(limits = c(-0.20, a + 0.12), expand = c(0, 0),
                        breaks = seq(0, 1.5, by = 0.5)) +
-    theme_nhb() +
+    theme_manuscript() +
     theme(
       axis.title.x = element_text(margin = margin(t = 3)),
       axis.title.y = element_text(margin = margin(r = 3)),
@@ -186,7 +186,7 @@ build_ddm_panel <- function() {
 panel_b <- build_ddm_panel()
 
 
-# ── Panel C: predictor map (matrix.png content, compact NHB styling) ───────────
+# ── Panel C: predictor map (matrix.png content, compact manuscript styling) ───
 param_ids <- c("v", "a", "t0", "z")
 param_cols <- unname(param_colors[param_ids])
 names(param_cols) <- param_ids
@@ -266,7 +266,7 @@ panel_c <- ggplot(grid_df, aes(x = param_idx, y = pred_idx)) +
     title = "C", x = NULL, y = NULL,
     caption = "*z excludes difficulty (pre-trial randomization). t\u2080 intercept-only."
   ) +
-  theme_nhb() +
+  theme_manuscript() +
   theme(
     axis.line   = element_blank(),
     axis.ticks  = element_blank(),

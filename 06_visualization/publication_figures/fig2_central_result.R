@@ -1,5 +1,5 @@
 # fig2_central_result.R
-# NHB Fig 2: Selective effort effect on drift rate — the central claim
+# Fig 2: Selective effort effect on drift rate — the central claim
 # Panels A+B: drift (v) estimates + H1 posterior contrast
 # Panels C+D: boundary (a) estimates + H2 posterior contrast
 
@@ -13,12 +13,12 @@ suppressPackageStartupMessages({
 })
 
 source(here("R", "colors_manuscript.R"))
-source(here("06_visualization", "publication_figures", "nhb_paths.R"))
+source(here("06_visualization", "publication_figures", "manuscript_paths.R"))
 
 fit_primary <- readRDS(PATH_PRIMARY_MODEL)
 
 # ── Shared theme ──────────────────────────────────────────────────────────────
-theme_nhb <- function() {
+theme_manuscript <- function() {
   theme_classic(base_size = 8, base_family = "Helvetica") +
     theme(
       axis.line         = element_line(linewidth = 0.4),
@@ -96,7 +96,7 @@ panel_a <- ggplot(draws_v,
     labels = c("High" = "High (40% MVC)", "Low" = "Low (5% MVC)")
   ) +
   labs(title = "A", x = "Difficulty", y = "Drift rate (v)", color = "Effort") +
-  theme_nhb() +
+  theme_manuscript() +
   theme(legend.position = c(0.25, 0.88))
 
 # ── Panel B: H1 contrast posterior ───────────────────────────────────────────
@@ -125,7 +125,7 @@ panel_b <- ggplot(contrast_v, aes(x = delta)) +
     size = 2.2, hjust = 0, color = stat_colors["empirical"]
   ) +
   labs(title = "B", x = "High \u2212 Low effort on v", y = "Posterior density") +
-  theme_nhb()
+  theme_manuscript()
 
 # ── Panel C: Boundary separation by Difficulty × Effort ──────────────────────
 panel_c <- ggplot(draws_a,
@@ -137,7 +137,7 @@ panel_c <- ggplot(draws_a,
                   position = position_dodge(0.15)) +
   scale_color_manual(values = effort_colors) +
   labs(title = "C", x = "Difficulty", y = "Boundary separation (a)") +
-  theme_nhb() +
+  theme_manuscript() +
   theme(legend.position = "none")
 
 # ── Panel D: H2 contrast posterior ───────────────────────────────────────────
@@ -162,7 +162,7 @@ panel_d <- ggplot(contrast_a, aes(x = delta)) +
     size = 2.2, hjust = 0, color = stat_colors["empirical"]
   ) +
   labs(title = "D", x = "High \u2212 Low effort on a (log scale)", y = "Posterior density") +
-  theme_nhb()
+  theme_manuscript()
 
 # ── Combine & save (2×2: A–B top, C–D bottom) ───────────────────────────────
 fig2 <- (panel_a | panel_b) / (panel_c | panel_d) +

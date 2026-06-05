@@ -213,7 +213,7 @@ Please structure your response as:
 ## Additional Context
 
 - **Field**: Cognitive neuroscience / psychophysiology
-- **Publication Target**: High-impact journals (e.g., Journal of Neuroscience, eLife, Nature Human Behaviour)
+- **Publication Target**: High-impact journals (e.g., Journal of Neuroscience, eLife, Psychophysiology)
 - **Standards**: APA 7th edition, open science practices preferred
 - **Timeline**: Preparing for manuscript submission
 - **Expertise Level**: I have experience with pupillometry but seek expert validation and guidance
