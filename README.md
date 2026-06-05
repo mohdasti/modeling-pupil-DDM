@@ -45,7 +45,8 @@ This repository mirrors a working 7-step pipeline (01–07) from the BAP_DDM pro
 - A standardized seven-stage directory layout
 - Wrapper scripts inside stage folders that call core logic under `scripts/`
 - A centralized manuscript color system (`R/colors_manuscript.R`) used by all figure scripts and the Chapter 3 Quarto report
-- Versioned manuscript figure snapshots in `output/figures/manuscript_palette/` (PNG + PDF, tracked in git)
+- Five consolidated main figures (`06_visualization/publication_figures/fig1`–`fig5`) written to `output/figures/manuscript/` and embedded in `reports/chap3_ddm_results.qmd`
+- Versioned supplementary figure snapshots in `output/figures/manuscript_palette/` (PNG + PDF, tracked in git)
 - Selected, non-sensitive outputs (tables, summaries) for demonstration
 
 Raw data are not included. Use the wrapper scripts (under `02_` and `03_`) or call the core runners in `scripts/` directly.
@@ -86,7 +87,13 @@ modeling-pupil-DDM/
 │   └── robustness/                     # Sensitivity and robustness checks
 │
 ├── 06_visualization/                   # Data visualization
-│   ├── publication_figures/            # Manuscript-ready figures
+│   ├── publication_figures/            # Five main multi-panel figures (fig1–fig5)
+│   │   ├── manuscript_paths.R          # Model/data paths for main figures
+│   │   ├── fig1_design_schematic.R     # Design + DDM architecture
+│   │   ├── fig2_central_result.R       # Effort effect on drift (central claim)
+│   │   ├── fig3_parameter_forest.R     # Effort + difficulty contrast forests
+│   │   ├── fig4_temporal_dynamics.R    # Fatigue + choice history
+│   │   └── fig5_individual_differences.R
 │   ├── interactive_plots/              # Interactive visualizations
 │   └── summary_plots/                  # Analysis summary plots
 │
@@ -138,7 +145,8 @@ modeling-pupil-DDM/
 │
 ├── output/                             # Analysis outputs (mostly gitignored)
 │   ├── figures/
-│   │   └── manuscript_palette/         # Versioned manuscript figures (PNG + PDF; tracked in git)
+│   │   ├── manuscript/                 # Five consolidated main figures (regenerated locally)
+│   │   └── manuscript_palette/         # Supplementary figures (PNG + PDF; tracked in git)
 │   └── publish/                        # Published tables & audit artifacts
 │       └── audit/                      # Audit results (CSV, TXT, MD)
 │
@@ -352,10 +360,44 @@ See `docs/DDM_CHAPTER_INTEGRATION.md` for detailed integration guide.
 
 ### Manuscript Figures
 
-All Chapter 3 figures share a single color palette defined in `R/colors_manuscript.R` (condition, task, parameter, and model colors). Figure scripts save PNG and PDF to `output/figures/manuscript_palette/` via `save_manuscript_fig()` in `R/fig_save_utils.R`.
+All Chapter 3 figures share a single color palette defined in `R/colors_manuscript.R` (condition, task, parameter, and model colors).
+
+The figure workflow has two tiers:
+
+| Tier | Scripts | Output | Used in QMD |
+|------|---------|--------|-------------|
+| **Main figures** (5 multi-panel) | `06_visualization/publication_figures/fig*.R` | `output/figures/manuscript/` | Embedded via `main_fig()` in `chap3_ddm_results.qmd` |
+| **Supplementary figures** | `scripts/R/fig_*.R`, batch runner | `output/figures/manuscript_palette/` | Appendix / inline via `fig_path()` |
+
+#### Main figures (consolidated)
+
+Regenerate the five main figures after model or palette changes. Each script sources `manuscript_paths.R` (model `.rds` paths and behavioral data) and writes PNG + PDF to `output/figures/manuscript/`.
 
 ```bash
-# Regenerate the full manuscript figure set (~65 PNG/PDF files)
+# Run all five in order (requires fitted models on disk; see manuscript_paths.R)
+Rscript -e 'library(here); source(here("06_visualization/publication_figures/fig1_design_schematic.R"))'
+Rscript -e 'library(here); source(here("06_visualization/publication_figures/fig2_central_result.R"))'
+Rscript -e 'library(here); source(here("06_visualization/publication_figures/fig3_parameter_forest.R"))'
+Rscript -e 'library(here); source(here("06_visualization/publication_figures/fig4_temporal_dynamics.R"))'
+Rscript -e 'library(here); source(here("06_visualization/publication_figures/fig5_individual_differences.R"))'
+```
+
+| Script | Content |
+|--------|---------|
+| `fig1_design_schematic.R` | Trial timeline, DDM schematic, predictor map |
+| `fig2_central_result.R` | Drift/boundary by condition + H1/H2 effort posteriors |
+| `fig3_parameter_forest.R` | Effort contrast forest (H1/H2/H4) + difficulty contrasts |
+| `fig4_temporal_dynamics.R` | Fatigue boundary trajectories, coefficients, choice history |
+| `fig5_individual_differences.R` | Brinley plot, paired drift by effort, caterpillar plot |
+
+See `06_visualization/publication_figures/README.md` for path placeholders and constraints.
+
+#### Supplementary figures (batch runner)
+
+Supplementary and appendix figures save to `output/figures/manuscript_palette/` via `save_manuscript_fig()` in `R/fig_save_utils.R`.
+
+```bash
+# Regenerate the full supplementary figure set (~65 PNG/PDF files)
 Rscript scripts/render_manuscript_figures.R
 ```
 
@@ -365,9 +407,15 @@ Rscript scripts/render_manuscript_figures.R
 - Inline-style figures mirrored from `reports/chap3_ddm_results.qmd` (parameter panels, TEPR, effort/difficulty contrasts, choice history, fatigue, Brinley, LOO, supplementary drift/boundary)
 - Static design assets copied into the palette folder (trial structure, DAG, matrix)
 
-**Outputs**: `output/figures/manuscript_palette/` (also mirrored to `output/figures/` for legacy paths). This folder is versioned in git so figure snapshots and their generating scripts stay in sync on GitHub.
+**Outputs**: `output/figures/manuscript_palette/` (also mirrored to `output/figures/` for legacy paths). This folder is versioned in git so supplementary figure snapshots and their generating scripts stay in sync on GitHub. Main figures in `output/figures/manuscript/` are regenerated locally (gitignored) before rendering the QMD.
 
-**Quarto-only figures**: Some figures are produced only when rendering the QMD (e.g., pupil–drift interaction, additivity check, sensitivity LOOIC). Run `quarto render reports/chap3_ddm_results.qmd` to regenerate those into the same palette folder.
+**Quarto report**: `reports/chap3_ddm_results.qmd` embeds the five main figures from `output/figures/manuscript/` and supplementary figures from `manuscript_palette/`. Regenerate main figures first, then render:
+
+```bash
+quarto render reports/chap3_ddm_results.qmd
+```
+
+Some figures are still produced only during QMD render (e.g., pupil–drift interaction, additivity check, sensitivity LOOIC) and are saved into `manuscript_palette/`.
 
 **Per-script reference** (for LLM or human inspection):
 
@@ -412,7 +460,7 @@ The repository has been reorganized for better structure and maintainability:
 
 - **Flat Structure**: No nested directories - all content is at the root level
 - **Shared R Utilities**: Root `R/` holds cross-cutting helpers (`colors_manuscript.R`, `fig_save_utils.R`); analysis and figure scripts live in `scripts/R/`
-- **Manuscript Figures**: Centralized palette + `scripts/render_manuscript_figures.R` batch runner; versioned snapshots in `output/figures/manuscript_palette/`
+- **Manuscript Figures**: Main multi-panel figures (`06_visualization/publication_figures/`) plus supplementary batch runner (`scripts/render_manuscript_figures.R`); outputs in `output/figures/manuscript/` and `manuscript_palette/` respectively
 - **Organized Documentation**: Development notes and audit reports in `docs/development_notes/`
 - **Log Management**: All log files and status CSVs in `logs/` directory
 - **Data Organization**: Clear separation between `data/`, `output/`, and processed data in `data/pupil_processed/`
@@ -514,8 +562,8 @@ make clean-all  # Remove all generated outputs
 
 ### 6. Visualization
 - Centralized manuscript color system (`R/colors_manuscript.R`)
-- Per-figure scripts in `scripts/R/fig_*.R` plus batch runner `scripts/render_manuscript_figures.R`
-- Versioned PNG/PDF snapshots in `output/figures/manuscript_palette/`
+- Five consolidated main figures in `06_visualization/publication_figures/` → `output/figures/manuscript/`
+- Supplementary per-figure scripts in `scripts/R/fig_*.R` plus batch runner `scripts/render_manuscript_figures.R` → `output/figures/manuscript_palette/`
 - Interactive plots and analysis summaries
 
 ## 🧭 Seven-Step Pipeline (Directory → Primary Entry)
@@ -604,6 +652,10 @@ If you use this code in your research, please cite:
 
 ## 🔄 Version History
 
+- **v1.3.1** (2026-06-05): Consolidated main manuscript figures
+  - Added five multi-panel figure scripts under `06_visualization/publication_figures/` (`fig1`–`fig5`)
+  - Main figures output to `output/figures/manuscript/`; embedded in `chap3_ddm_results.qmd` via `main_fig()`
+  - Renamed path helper to `manuscript_paths.R`; journal-neutral naming throughout
 - **v1.3.0** (2026-06-04): Manuscript figure system & versioned outputs
   - Added centralized color palette (`R/colors_manuscript.R`) and save helper (`R/fig_save_utils.R`)
   - Updated all `scripts/R/fig_*.R` figure scripts and `reports/chap3_ddm_results.qmd` to use shared colors
