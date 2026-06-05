@@ -848,11 +848,11 @@ For older adults, the "cost" of such exertion is significantly higher due to age
 
 ## 1.2 Decomposing Decisions: The Drift-Diffusion Model
 
-To understand the latent mechanisms underlying age-related slowing, we utilize the Drift-Diffusion Model [@ratcliff1978theory]. This computational framework assumes that decision-making is a continuous process of evidence accumulation over time, driven by two primary opposing forces that define the internal dynamics of the choice. The first of these internal forces is the deterministic mean drift rate ($v$), which represents the true quality or strength of the sensory evidence extracted from a stimulus. The second force is the stochastic diffusion constant ($\sigma$), capturing the inherent noise and moment-to-moment Gaussian fluctuations in the nervous system. Together, these two forces determine the trajectory of a decision vector over time until it intersects a boundary, a dynamic process visually formalized in @fig-ddm-process. As shown in this architectural layout, the final choice and its corresponding timing are ultimately governed by the decision architecture, which dictates the structural boundaries and thresholds within which this continuous evidence accumulation occurs.
+To understand the latent mechanisms underlying age-related slowing, we utilize the Drift-Diffusion Model [@ratcliff1978theory]. This computational framework assumes that decision-making is a continuous process of evidence accumulation over time, driven by two primary opposing forces that define the internal dynamics of the choice. The first of these internal forces is the deterministic mean drift rate ($v$), which represents the true quality or strength of the sensory evidence extracted from a stimulus. The second force is the stochastic diffusion constant ($\sigma$), capturing the inherent noise and moment-to-moment Gaussian fluctuations in the nervous system. Together, these two forces determine the trajectory of a decision vector over time until it intersects a boundary, a dynamic process visually formalized in @fig-ddm-process (Panel B). As shown in this architectural layout, the final choice and its corresponding timing are ultimately governed by the decision architecture, which dictates the structural boundaries and thresholds within which this continuous evidence accumulation occurs.
 
 ```{r}
 #| label: fig-ddm-process
-#| fig-cap: "Study design and DDM architecture (NHB Fig 1). Panel A: trial timeline; Panel B: DDM schematic; Panel C: predictor-to-parameter map. Evidence accumulates from starting point ($z$) toward the 'different' (upper) or 'same' (lower) boundary; drift rate ($v$), boundary separation ($a$), bias ($z$), and non-decision time ($t_0$) are labelled."
+#| fig-cap: "**Study design and DDM architecture.** **(A)** Response-signal trial timeline: jittered pre-cue, 3-s grip gauge (Low = 5% MVC; High = 40% MVC), standard→probe stimulus sequence, same/different response window, and confidence rating. **(B)** Drift-diffusion schematic with response-side coding (upper boundary = 'different'; lower = 'same'); parameters labelled: drift rate ($v$), boundary separation ($a$), starting-point bias ($z$), non-decision time ($t_0$). **(C)** Predictor-to-parameter map for the primary model (included predictors marked ✓; $z$ excludes difficulty because it is unknown pre-trial; $t_0$ intercept-only)."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
@@ -1188,7 +1188,7 @@ demographics_table %>%
 
 **Task overview** Participants completed two response-signal same/different discrimination tasks—an Auditory Detection Task (ADT) and a Visual Detection Task (VDT)—each performed under concurrent hand-grip effort manipulation. In both tasks, a standard and probe stimulus were presented in succession, and participants judged whether the stimuli were the same or different using button presses, followed by a confidence rating.
 
-**Trial structure.** Both tasks shared the same response-signal timeline (see @fig-trial-structure). Each trial began with a jittered blank interval (1.5–4.5 s) displaying only a gray background. Participants were then shown a 3-second rectangular grip gauge with a marker positioned at either 5% or 40% from the bottom, indicating the target force level to be maintained using a hand-held dynamometer (left hand) at the corresponding percentage of their maximum voluntary contraction (MVC). MVC was determined during a brief calibration procedure prior to each task. Following the grip period, a 0.25-second blank screen and 0.5-second fixation dot preceded stimulus presentation.
+**Trial structure.** Both tasks shared the same response-signal timeline (see @fig-ddm-process, Panel A). Each trial began with a jittered blank interval (1.5–4.5 s) displaying only a gray background. Participants were then shown a 3-second rectangular grip gauge with a marker positioned at either 5% or 40% from the bottom, indicating the target force level to be maintained using a hand-held dynamometer (left hand) at the corresponding percentage of their maximum voluntary contraction (MVC). MVC was determined during a brief calibration procedure prior to each task. Following the grip period, a 0.25-second blank screen and 0.5-second fixation dot preceded stimulus presentation.
 
 **Auditory Detection Task (ADT).** The standard stimulus was a 0.1-second sinusoidal tone at 1000 Hz. After a 0.5-second inter-stimulus interval, the probe stimulus was presented as a 0.1-second tone that was either identical to the standard ($\Delta frequency$ = 0) or positively offset by $\Delta frequency \in \{8, 16, 32, 64\}\,\mathrm{Hz}$. For drift-diffusion model (DDM) analyses, the four non-zero offsets were collapsed into two difficulty bins: Hard = {8, 16} Hz and Easy = {32, 64} Hz, with Standard = 0 Hz.
 
@@ -1197,15 +1197,6 @@ demographics_table %>%
 **Response collection.** Following stimulus offset, participants relaxed their grip and had a 3-second response window to indicate whether the two stimuli were the same or different using their right hand (index finger = "different"; middle finger = "same"). This was immediately followed by another 3-second window in which participants provided a confidence rating on a 4-point scale (1 = low confidence, 4 = high confidence).
 
 **Trial counts and monitoring.** Each task comprised 150 trials distributed across five blocks of 30 trials each. Within each block, the five stimulus levels (Standard plus four offsets) were crossed with the two effort conditions (5% vs. 40% MVC) and presented in pseudorandom order with equal proportions (three repetitions per stimulus × effort combination). Hand-grip performance was monitored after each block, and participants received corrective feedback if they consistently failed to maintain the dynamometer at the designated force level (near the grip gauge marker) and/or for the correct duration (until offset of the probe stimulus).
-
-```{r}
-#| label: fig-trial-structure
-#| fig-pos: "htbp"
-#| fig-cap: "Trial timeline — Panel A of NHB Fig 1. See @fig-ddm-process for the complete three-panel design figure."
-#| fig-align: center
-#| out-width: "100%"
-include_graphics_safe(nhb_fig("fig1_design_schematic.png"))
-```
 
 ## Equipment
 
@@ -1309,7 +1300,7 @@ The DDM framework and its four parameters ($v$, $a$, $z$, $t_0$) are introduced 
 
 ## Decision Coding and Parameterization
 
-**Response-side coding rationale.** We employed **response-side coding** (also called "stimulus coding" or "response coding") where the upper boundary corresponds to "different" responses and the lower boundary to "same" responses (see @fig-ddm-process), rather than accuracy-based coding where boundaries represent correct/incorrect responses. This specification is necessary to disentangle *response bias* (a preference for one response alternative regardless of stimulus truth) from *discriminability* (drift rate) [@wiecki2013hddm; @ratcliff2008diffusion]. In accuracy-based coding, bias would imply a preference for being correct (which is conceptually trivial), whereas response-side coding allows us to model the meaningful response preference for the "same" option commonly observed in detection tasks. This is particularly important for same/different discrimination where participants often exhibit response-specific biases (e.g., a conservative "same" bias) rather than general accuracy biases. Previous work has demonstrated that phasic arousal reduces such response biases in detection tasks [@degee2020pupil], and capturing this effect requires mapping boundaries to response alternatives.
+**Response-side coding rationale.** We employed **response-side coding** (also called "stimulus coding" or "response coding") where the upper boundary corresponds to "different" responses and the lower boundary to "same" responses (see @fig-ddm-process, Panel B), rather than accuracy-based coding where boundaries represent correct/incorrect responses. This specification is necessary to disentangle *response bias* (a preference for one response alternative regardless of stimulus truth) from *discriminability* (drift rate) [@wiecki2013hddm; @ratcliff2008diffusion]. In accuracy-based coding, bias would imply a preference for being correct (which is conceptually trivial), whereas response-side coding allows us to model the meaningful response preference for the "same" option commonly observed in detection tasks. This is particularly important for same/different discrimination where participants often exhibit response-specific biases (e.g., a conservative "same" bias) rather than general accuracy biases. Previous work has demonstrated that phasic arousal reduces such response biases in detection tasks [@degee2020pupil], and capturing this effect requires mapping boundaries to response alternatives.
 
 **Implementation and model leverage.** Response-side coding was implemented by creating a binary response indicator, coded as 1 for "different" responses and 0 for "same" responses, ensuring accurate mapping to DDM boundary assignments. Standard (Δ=0) trials provide critical leverage for identifying bias under this coding scheme, as they isolate response preference from evidence strength; descriptive choice proportions and model-implied patterns are reported in Results. Crucially, the data were modeled using Stimulus/Response coding via the `dec(response)` argument, where the upper boundary represents a "Different" response and the lower boundary represents a "Same" response. Accuracy coding (Correct vs. Incorrect) was intentionally avoided. Response coding uniquely allows the model to estimate true pre-stimulus starting-point bias ($z$) toward a specific physical response—a critical strategic shift often observed in cognitive aging. Because of this parameterization, accurate evidence accumulation for "Standard" (Same) trials is mathematically represented as a negative drift rate (moving toward the lower boundary), rather than a deficit in processing.
 
@@ -1319,22 +1310,13 @@ Full link function specifications and the Wiener likelihood are provided in Appe
 
 **Standard-only bias calibration model.** To isolate starting-point bias from drift-rate estimation, we first fit a hierarchical Wiener DDM to Standard trials only (~3.6k trials under the primary filter). Starting-point bias ($z$) was allowed to vary by Task and Effort (known pre-trial) but constrained to be constant across Difficulty levels, as trial difficulty was randomized and unknown at decision onset. Full brms formula syntax is provided in Appendix A6.
 
-**Primary analysis model (behavioral DDM; no pupil).** Drift rate ($v$) and boundary separation ($a$) were each modeled as additive functions of difficulty (treatment-coded, Standard as reference) and effort condition (treatment-coded, Low as reference). Starting-point bias ($z$) was modeled as a function of task and effort but not difficulty, because trial difficulty is randomized and unknown before evidence accumulation begins [@fig-model-matrix]. Non-decision time ($t_0$) was constrained to an intercept-only specification based on pilot analyses indicating poor identification of condition-specific estimates in the response-signal paradigm (see @sec-starting-point-bias). Random intercepts by participant were included for $v$, $a$, and $z$; $t_0$ was modeled as fixed-only to improve identifiability. Full brms formula syntax and hierarchical model structure are provided in Appendix A6.
+**Primary analysis model (behavioral DDM; no pupil).** Drift rate ($v$) and boundary separation ($a$) were each modeled as additive functions of difficulty (treatment-coded, Standard as reference) and effort condition (treatment-coded, Low as reference). Starting-point bias ($z$) was modeled as a function of task and effort but not difficulty, because trial difficulty is randomized and unknown before evidence accumulation begins [@fig-ddm-process, Panel C]. Non-decision time ($t_0$) was constrained to an intercept-only specification based on pilot analyses indicating poor identification of condition-specific estimates in the response-signal paradigm (see @sec-starting-point-bias). Random intercepts by participant were included for $v$, $a$, and $z$; $t_0$ was modeled as fixed-only to improve identifiability. Full brms formula syntax and hierarchical model structure are provided in Appendix A6.
 
 **RT timing convention.** RT was defined as the latency from response-screen onset to button press; probe-onset-locked RT was derived by adding the fixed 0.35-s post-probe delay to cue-locked RT, so that the accumulation window aligns with evidence onset at the probe stimulus. Probe-onset-locked RT was selected as the primary timing convention because it aligns non-decision time ($t_0$) with evidence onset at the probe stimulus (@fig-rt-distributions). This choice adds a fixed 0.35-s component to $t_0$ that captures encoding-through-motor overhead on the probe-onset scale, which can compress variance in peripheral timing estimates but keeps the diffusion process anchored to when sensory evidence becomes available [@ratcliff2007application; @voss2004interpreting]. Cue-locked RT isolates post-prompt execution but discards the forced-delay encoding epoch; given our focus on evidence accumulation under concurrent grip, probe-onset locking is the more appropriate primary convention.
 
 Sensitivity analyses using cue-locked RT and alternative lower-bound cutoffs (0.15 s and 0.25 s) are reported in Appendix A4.
 
-@fig-model-matrix provides a visual summary of how experimental predictors map onto each DDM parameter in the primary model, highlighting the key constraint that starting-point bias ($z$) does not vary by difficulty because trial difficulty is randomized and unknown before evidence accumulation begins.
-
-```{r}
-#| label: fig-model-matrix
-#| fig-cap: "Predictor-to-parameter map — Panel C of NHB Fig 1. See @fig-ddm-process for the complete three-panel design figure."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "100%"
-include_graphics_safe(nhb_fig("fig1_design_schematic.png"))
-```
+@fig-ddm-process (Panel C) provides a visual summary of how experimental predictors map onto each DDM parameter in the primary model, highlighting the key constraint that starting-point bias ($z$) does not vary by difficulty because trial difficulty is randomized and unknown before evidence accumulation begins.
 
 To confirm that the difficulty and effort manipulations affected behavioral performance as intended — independent of DDM assumptions — we conducted mixed-effects models for accuracy (GLMM, binomial) and median reaction time (LMM), each including fixed effects for difficulty, effort, and task, with random intercepts for participant. Analyses were restricted to Easy and Hard trials; full model details and results are reported in Appendix A7.
 
@@ -3139,27 +3121,18 @@ ddm_core %>%
 
 ```{r}
 #| label: fig-ddm-parameters-combined
-#| fig-cap: "Selective effort effect on drift — the central result (NHB Fig 2). Panels A and C: drift rate ($v$) and boundary separation ($a$) by Difficulty $\\times$ Effort (posterior medians + 95% CrI; blue = Low, magenta = High). Panels B and D: posterior distributions for the H1 (effort→drift) and H2 (effort→boundary) contrasts. The 95% CrI for H1 excludes zero; H2 spans zero."
+#| fig-cap: "**Selective effort effect on drift — the central result.** **(A)** Posterior median drift rate ($v$) by Difficulty $\\times$ Effort (95% CrI; Low = blue, High = magenta), pooled across tasks; dashed line at $v = 0$. **(B)** H1: posterior density of the High $-$ Low effort contrast on $v$; shaded band = 95% CrI (excludes zero). **(C)** Posterior median boundary separation ($a$) by Difficulty $\\times$ Effort. **(D)** H2: posterior density of the High $-$ Low effort contrast on $a$ (log scale); 95% CrI spans zero."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
 include_graphics_safe(nhb_fig("fig2_central_result.png"))
 ```
 
-Because Effort is a within-subject manipulation, visual overlap in marginal means is misleading. Plotting the posterior distribution of the difference score (High $-$ Low Effort) explicitly demonstrates that the 95% HDI does not cross zero, confirming a highly credible reduction in drift rate (@fig-effort-drift-posterior-diff).
-
-```{r}
-#| label: fig-effort-drift-posterior-diff
-#| fig-cap: "H1 effort contrast on drift — Panel B of NHB Fig 2. See @fig-ddm-parameters-combined for the complete four-panel central-result figure."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "100%"
-include_graphics_safe(nhb_fig("fig2_central_result.png"))
-```
+Because Effort is a within-subject manipulation, visual overlap in marginal means is misleading. Panel B of @fig-ddm-parameters-combined plots the posterior distribution of the difference score (High $-$ Low Effort) and shows that the 95% CrI does not cross zero, confirming a highly credible reduction in drift rate.
 
 ```{r}
 #| label: fig-difficulty-contrasts
-#| fig-cap: "Integrated parameter forest (NHB Fig 3). Panel A: effort contrasts H1–H4 on drift, boundary, and bias. Panel B: difficulty contrasts (Easy vs Standard, Hard vs Standard) on drift and boundary. Filled circles = 95% CrI excludes zero; open circles = CrI spans zero."
+#| fig-cap: "**Integrated parameter forest.** **(A)** High $-$ Low effort contrasts for H1 (drift $v$), H2 (boundary $a$), and H4 (bias $z$); filled circles = 95% CrI excludes zero, open circles = CrI spans zero. **(B)** Pairwise difficulty contrasts on drift ($v$; identity scale) and boundary ($a$; log scale): Easy vs Standard, Hard vs Standard, and Easy vs Hard."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
@@ -3408,7 +3381,7 @@ To evaluate our a priori predictions about how effort and difficulty modulate de
 
 Contrasts on the link scale confirmed large effects of difficulty on drift rate ($v$), with Easy $>$ Hard $>$ Standard, and consistent effects of effort on $v$. Boundary separation ($a$) and starting-point bias ($z$) showed more modest modulation by difficulty and effort.
 
-For each hypothesis, inference rests on the posterior distribution of the High − Low effort contrast ($\delta$), extracted from posterior draws. We report the posterior median, 95% credible interval (CrI), and the posterior probability $P(\delta < 0)$. When a 95% CrI excludes zero, essentially all posterior mass is on one side of zero. The effort–drift contrast is visualized in @fig-effort-drift-posterior-diff. Difficulty contrasts are in @fig-difficulty-contrasts. All hypothesis results are in @tbl-hyp-summary.
+For each hypothesis, inference rests on the posterior distribution of the High − Low effort contrast ($\delta$), extracted from posterior draws. We report the posterior median, 95% credible interval (CrI), and the posterior probability $P(\delta < 0)$. When a 95% CrI excludes zero, essentially all posterior mass is on one side of zero. The effort–drift contrast is visualized in @fig-ddm-parameters-combined (Panel B) and summarized with H2 and H4 in @fig-difficulty-contrasts (Panel A). Difficulty contrasts are in @fig-difficulty-contrasts (Panel B). All hypothesis results are in @tbl-hyp-summary.
 
 **H1 (drift rate, $v$).** High effort (40% MVC) produced lower drift rates than Low effort (5% MVC): `r h1_beta_str`, `r h1_cri_str``r h1_p0_str`. The 95% CrI excludes zero.
 
@@ -3574,36 +3547,7 @@ print(p_bias_task)
 save_manuscript_fig(p_bias_task, "fig_bias_by_task", 5, 3.5)
 ```
 
-The standard-only bias estimate ($z = 0.63$, 95% CrI [0.60, 0.66]; @tbl-standard-only-bias-levels) exceeded primary-model estimates ($z \approx 0.52$–$0.55$; @tbl-ddm-core-by-difficulty-effort), reflecting the $v$–$z$ trade-off when drift and bias are estimated jointly across difficulty levels. Substantial between-subject variability in all parameters is shown in Appendix A2 (@fig-subject-parameter-distribution, @fig-brinley-plot).
-
-```{r cor-val-setup}
-#| echo: false
-#| include: false
-# Compute cor_val_fig17 here (before inline reference) so caption and text agree.
-cor_val_fig17 <- -0.205  # fallback
-model_path_cor_early <- file.path(proj_root, params$run_dir, "models",
-                                  "additive__probe_onset_locked__thr0.20.rds")
-if (file.exists(model_path_cor_early) && requireNamespace("brms", quietly = TRUE)) {
-  tryCatch({
-    suppressPackageStartupMessages(library(brms))
-    fit_cor_e <- readRDS(model_path_cor_early)
-    coef_e    <- brms::coef(fit_cor_e, summary = TRUE)
-    if (!is.null(coef_e) && "subject_id" %in% names(coef_e)) {
-      d_e <- coef_e$subject_id[, , "Intercept"]
-      b_e <- coef_e$subject_id[, , "bias_Intercept"]
-      if (!is.null(d_e) && !is.null(b_e))
-        cor_val_fig17 <- cor(d_e[, "Estimate"], b_e[, "Estimate"], use = "complete.obs")
-    }
-  }, error = function(e) invisible(NULL))
-}
-# Build caption for fig-parameter-correlation (used in chunk option)
-fig17_cap <- sprintf(
-  "Subject-Level Parameter Correlation: Drift Intercept vs. Bias Intercept. Scatter plot showing the relationship between subject-level random-effect estimates for drift intercept and bias intercept. Each point represents one participant (n = 67). The correlation is r = %.3f, indicating a %s association; participants with stronger negative drift tend to show %s starting-point bias. The regression line with 95%% confidence band is shown.",
-  cor_val_fig17,
-  ifelse(abs(cor_val_fig17) < 0.3, "weak", ifelse(abs(cor_val_fig17) < 0.6, "moderate", "strong")),
-  ifelse(cor_val_fig17 < 0, "slightly lower", "slightly higher")
-)
-```
+The standard-only bias estimate ($z = 0.63$, 95% CrI [0.60, 0.66]; @tbl-standard-only-bias-levels) exceeded primary-model estimates ($z \approx 0.52$–$0.55$; @tbl-ddm-core-by-difficulty-effort), reflecting the $v$–$z$ trade-off when drift and bias are estimated jointly across difficulty levels. Substantial between-subject variability in drift rate and its effort sensitivity is shown in Appendix A2 (@fig-subject-parameter-distribution).
 
 ## 3.3 Pupil-linked DDM models {#sec-pupil-ddm-integration}
 
@@ -4356,7 +4300,7 @@ To probe whether high somatic load promotes reliance on automatic choice heurist
 
 **History effect on drift rate.** A small positive coefficient emerged for previous-trial response as a predictor of current-trial drift rate — present in both models ($\hat{\beta}$ = 0.054 [0.008, 0.100], P($\beta$ > 0) = 99.1%). Drift rate was slightly elevated when the current response direction matched the previous trial's.
 
-All focal parameter estimates from both models are visualized in @fig-choice-history-posteriors.
+All focal parameter estimates from both models are visualized in @fig-fatigue-posteriors (Panel C).
 
 ```{r choice-history-load}
 #| include: false
@@ -4380,23 +4324,11 @@ if (ch_table_available) {
 }
 ```
 
-```{r}
-#| label: fig-choice-history-posteriors
-#| fig-cap: "Choice history posteriors — Panel C of NHB Fig 4. See @fig-fatigue-posteriors for the complete three-panel temporal-dynamics figure."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "100%"
-include_graphics_safe(nhb_fig("fig4_temporal_dynamics.png"))
-
-invisible(NULL)
-```
-
-
 ## 3.5 Exploratory: within-session fatigue {#sec-fatigue-trajectory}
 
 To examine whether processing efficiency or decision caution dynamically changes over the course of a testing run, we fit a supplementary hierarchical Wiener DDM (N = 17,834 trials, 67 participants) that incorporated a within-run temporal factor. Each 30-trial run was split at the median trial position within each participant × task × run combination, yielding first-half and second-half labels (maximum 1-trial imbalance across runs). The drift rate subformula included a three-way interaction of effort, run half, and continuous age (z-scored; 1 unit ≈ 6.4 years) to test whether temporal drift-rate decline was exacerbated in older-within-cohort participants under high somatic load. Boundary separation used a two-way effort × run-half interaction plus continuous age as a main effect. The model converged satisfactorily (max $\hat{R}$ = 1.004; 0 divergent transitions).
 
-**Within-run boundary relaxation.** The only parameter contrast with a 95% CrI excluding zero was the second-half change in boundary separation: $\hat{\beta}$ = −0.022 (95% CrI [−0.040, −0.004], P($\beta$ < 0) = 99.3%). On the exponentiated scale this corresponds to an estimated drop from approximately 2.04 to 1.99 across the two halves under Low effort (5% MVC). The effort × run-half interaction was positive but non-credible ($\hat{\beta}$ = +0.011, 95% CrI [−0.014, 0.037]): the expected boundary under High effort (40% MVC) in the second half (≈ 2.03) was close to the first-half value. Boundary trajectories for all four condition cells are shown in @fig-fatigue-posteriors (Panel B).
+**Within-run boundary relaxation.** The only parameter contrast with a 95% CrI excluding zero was the second-half change in boundary separation: $\hat{\beta}$ = −0.022 (95% CrI [−0.040, −0.004], P($\beta$ < 0) = 99.3%). On the exponentiated scale this corresponds to an estimated drop from approximately 2.04 to 1.99 across the two halves under Low effort (5% MVC). The effort × run-half interaction was positive but non-credible ($\hat{\beta}$ = +0.011, 95% CrI [−0.014, 0.037]): the expected boundary under High effort (40% MVC) in the second half (≈ 2.03) was close to the first-half value. Boundary trajectories for all four condition cells are shown in @fig-fatigue-posteriors (Panel A).
 
 **No credible drift-rate decline.** The effort × run-half interaction on drift was negative but spanned zero: $\hat{\beta}$ = −0.035 (95% CrI [−0.100, 0.032], P($\beta$ < 0) = 85.3%). There is no credible evidence that drift rate decays in the second half of a run under High effort. The effort main effect on drift was directionally consistent with the primary model ($\hat{\beta}$ = −0.038, 95% CrI [−0.085, 0.008], P($\beta$ < 0) = 94.8%) but non-credible under the expanded parameterization.
 
@@ -4404,7 +4336,7 @@ To examine whether processing efficiency or decision caution dynamically changes
 
 **Secondary pattern.** The run-half × age interaction on drift was positive and 95.8% probable ($\hat{\beta}$ = +0.048, 95% CrI [−0.006, 0.102]), with the CrI just including zero. Older-within-cohort participants tended toward slightly higher drift rates in the second half under Low effort. This should be treated as exploratory.
 
-All focal parameter estimates are plotted in @fig-fatigue-posteriors.
+Focal fatigue coefficients are plotted in @fig-fatigue-posteriors (Panel B).
 
 ```{r fatigue-trajectory-load}
 #| include: false
@@ -4596,7 +4528,7 @@ if (fat_fit_available && fat_table_available) {
 
 ```{r}
 #| label: fig-fatigue-posteriors
-#| fig-cap: "Temporal dynamics: fatigue + choice history (NHB Fig 4). Panel A: boundary trajectories 1st vs 2nd session half by effort. Panel B: focal fatigue coefficients forest (boundary decline credible [*]; effort × half interactions non-credible). Panel C: perseveration bias and effort × history posteriors from history and WSLS models."
+#| fig-cap: "**Temporal dynamics: within-session fatigue and choice history.** **(A)** Population-average boundary separation ($a$) across session halves (1st vs 2nd) by effort condition (95% CrI). **(B)** Focal fatigue-model coefficients; only the 2nd-vs-1st-half boundary decline [*] has a 95% CrI excluding zero. **(C)** Choice-history posteriors for perseveration on bias and the effort $\\times$ history interaction (history model vs WSLS model)."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
@@ -4850,25 +4782,7 @@ save_manuscript_fig(p_loo, "fig_loo_comparison", 7, 4.5)
 
 ```{r}
 #| label: fig-subject-parameter-distribution
-#| fig-cap: "Individual differences and robustness (NHB Fig 5). Panel A: Brinley plot (Hard vs Easy RT per participant; slope < 1 = disproportionate slowing). Panel B: Subject-level drift rate by effort condition (paired-slope plot; Δv annotation). Panel C: Caterpillar plot of drift estimates (sorted by magnitude; colour = age)."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "100%"
-include_graphics_safe(nhb_fig("fig5_individual_differences.png"))
-```
-
-```{r}
-#| label: fig-parameter-correlation
-#| fig-cap: "Individual drift caterpillar (Panel C of NHB Fig 5). See @fig-subject-parameter-distribution for the complete three-panel individual-differences figure."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "100%"
-include_graphics_safe(nhb_fig("fig5_individual_differences.png"))
-```
-
-```{r}
-#| label: fig-brinley-plot
-#| fig-cap: "Brinley plot — Panel A of NHB Fig 5. See @fig-subject-parameter-distribution for the complete three-panel individual-differences figure."
+#| fig-cap: "**Individual differences and robustness** ($N$ = 67). **(A)** Brinley plot: mean Hard vs Easy RT per participant (pooled across effort); dashed diagonal = proportional slowing (slope $< 1$ = disproportionate slowing on Hard trials). **(B)** Within-subject paired drift rates by effort (Low vs High); thin lines connect participants; diamond markers = group means; $\\Delta v$ annotates the fixed-effect shift. **(C)** Caterpillar plot of subject-level drift estimates sorted by magnitude (95% CrI bars; points coloured by age)."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
