@@ -1,10 +1,10 @@
 # R/fig_pdiff_heatmap.R
 
 suppressPackageStartupMessages({
-  library(brms); library(dplyr); library(readr); library(ggplot2); library(tidyr); library(posterior)
+  library(brms); library(dplyr); library(readr); library(ggplot2); library(tidyr); library(posterior); library(here)
 })
-
-dir.create("output/figures", showWarnings = FALSE, recursive = TRUE)
+source(here::here("R", "colors_manuscript.R"))
+source(here::here("R", "fig_save_utils.R"))
 
 fit <- readRDS("output/publish/fit_joint_vza_stdconstrained.rds")
 
@@ -86,9 +86,9 @@ p <- ggplot(hm_long, aes(x = effort_label, y = difficulty_label, fill = p)) +
   geom_text(aes(label = sprintf("%.2f", p)), color = "white", size = 3, fontface = "bold") +
   facet_grid(type_label ~ task_label) +
   scale_fill_gradient2(
-    low = "darkblue",
+    low = unname(effort_colors["Low"]),
     mid = "white",
-    high = "darkred",
+    high = unname(effort_colors["High"]),
     midpoint = 0.5,
     name = "p('different')",
     limits = c(0, 1)
@@ -106,11 +106,7 @@ p <- ggplot(hm_long, aes(x = effort_label, y = difficulty_label, fill = p)) +
     panel.grid = element_blank()
   )
 
-ggsave("output/figures/fig_pdiff_heatmap.png", p, width = 6.18, height = 4.63, units = "in", dpi = 300)
-ggsave("output/figures/fig_pdiff_heatmap.pdf", p, width = 6.18, height = 4.63, units = "in")
-
-cat("✓ Wrote output/figures/fig_pdiff_heatmap.png\n")
-cat("✓ Wrote output/figures/fig_pdiff_heatmap.pdf\n")
+save_manuscript_fig(p, "fig_pdiff_heatmap", 6.18, 4.63)
 
 # Print summary
 cat("\nObserved vs Predicted p('different'):\n")

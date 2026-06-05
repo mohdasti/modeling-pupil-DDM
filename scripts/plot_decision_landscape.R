@@ -3,6 +3,8 @@
 # for visualizing the "Crunch Point" in decision-making
 
 library(grDevices)
+library(here)
+source(here::here("R", "colors_manuscript.R"))
 
 # 1. Define the Wald PDF
 # Formula: f(t|v,a) = (a / sqrt(2*pi*t^3)) * exp(-((a - v*t)^2)/(2*t))
@@ -26,9 +28,9 @@ v_seq <- seq(0, 3.0, length.out = 100)
 grid <- expand.grid(t = t_seq, v = v_seq)
 z_vals <- matrix(wald_pdf(grid$t, grid$v), nrow = length(t_seq), ncol = length(v_seq))
 
-# 3. Create Color Palette (Viridis-like)
+# 3. Create Color Palette (drift-rate teal family)
 n_colors <- 100
-colors <- hcl.colors(n_colors, "Viridis")
+colors <- colorRampPalette(c("#f7f7f7", unname(param_colors["v"])))(n_colors)
 
 # Compute facet centers for color mapping
 z_facet_center <- (z_vals[-1, -1] + z_vals[-1, -ncol(z_vals)] + 
@@ -36,12 +38,13 @@ z_facet_center <- (z_vals[-1, -1] + z_vals[-1, -ncol(z_vals)] +
 z_facet_range <- cut(z_facet_center, n_colors)
 
 # 4. Save High-Res PNG (300 DPI)
-output_dir <- "output/figures"
-if (!dir.exists(output_dir)) {
-  dir.create(output_dir, recursive = TRUE)
-}
+output_dirs <- c(
+  file.path(here::here(), "output/figures/manuscript_palette"),
+  file.path(here::here(), "output/figures")
+)
+for (d in output_dirs) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-png_file <- file.path(output_dir, "fig_decision_landscape_3d.png")
+png_file <- file.path(output_dirs[1], "fig_decision_landscape_3d.png")
 # Dimensions: 6.18" × 4.94" at 300 DPI = 1854 × 1482 pixels
 png(png_file, width = 1854, height = 1482, res = 300)
 
@@ -60,6 +63,7 @@ persp(t_seq, v_seq, z_vals,
       main = "The 'Crunch Point': Collapse of Decision Efficiency")
 
 dev.off()
+file.copy(png_file, file.path(output_dirs[2], "fig_decision_landscape_3d.png"), overwrite = TRUE)
 
 cat("3D decision landscape plot saved to:", png_file, "\n")
 

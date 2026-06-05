@@ -51,19 +51,12 @@ dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 # Use waveform summaries if available
 use_waveform_summaries <- file.exists(V7_WAVEFORM_FILE)
 
-# Define the common color scheme
-condition_colors <- c(
-  "Easy / Low" = "#5DADE2",    # Light blue
-  "Easy / High" = "#2E86AB",   # Dark blue  
-  "Hard / Low" = "#EC70AB",    # Light pink
-  "Hard / High" = "#A23B72"    # Dark pink
-)
-
-# Timeline bar colors
+source(file.path(REPO_ROOT, "R", "colors_manuscript.R"))
+condition_colors <- stats::setNames(unname(cond_colors), gsub("/", " / ", names(cond_colors)))
 timeline_bar_colors <- list(
-  baseline = "#7F8C8D",
-  total_auc = "#1F78B4",
-  cognitive_auc = "#D95F02"
+  baseline      = pupil_colors["baseline"],
+  total_auc     = pupil_colors["total_auc"],
+  cognitive_auc = pupil_colors["tepr"]
 )
 
 # Task configurations (ADT and VDT) - Updated timing

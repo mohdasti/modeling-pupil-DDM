@@ -17,7 +17,9 @@ suppressPackageStartupMessages({
   library(viridis)
   library(gridExtra)
   library(posterior)
+  library(here)
 })
+source(here::here("R", "colors_manuscript.R"))
 
 # =========================================================================
 # SETUP
@@ -287,7 +289,7 @@ if (!is.null(cor_matrix)) {
   corrplot(cor_matrix, method = "circle", type = "upper", order = "original",
            tl.col = "black", tl.srt = 45, tl.cex = 0.9,
            addCoef.col = "black", number.cex = 0.8,
-           col = colorRampPalette(c("#67001f", "#d6604d", "#f7f7f7", "#4393c3", "#053061"))(200),
+           col = colorRampPalette(c(unname(stat_colors["predicted"]), unname(effort_colors["High"]), "#f7f7f7", unname(effort_colors["Low"]), unname(param_colors["v"])))(200),
            diag = TRUE)
   title("DDM Parameter Correlations", line = 2.5, cex.main = 1.2, font.main = 2)
   dev.off()
@@ -298,7 +300,7 @@ if (!is.null(cor_matrix)) {
   corrplot(cor_matrix, method = "circle", type = "upper", order = "original",
            tl.col = "black", tl.srt = 45, tl.cex = 0.9,
            addCoef.col = "black", number.cex = 0.8,
-           col = colorRampPalette(c("#67001f", "#d6604d", "#f7f7f7", "#4393c3", "#053061"))(200),
+           col = colorRampPalette(c(unname(stat_colors["predicted"]), unname(effort_colors["High"]), "#f7f7f7", unname(effort_colors["Low"]), unname(param_colors["v"])))(200),
            diag = TRUE)
   title("DDM Parameter Correlations", line = 2.5, cex.main = 1.2, font.main = 2)
   dev.off()
@@ -456,7 +458,7 @@ if (!is.null(d) && nrow(d) > 0) {
     
     # Create color vector
     color_map <- setNames(
-      c("#DC143C", "#1E90FF"),  # Crimson and Blue
+      c(unname(effort_colors["High"]), unname(effort_colors["Low"])),
       c(effort_levels$high, effort_levels$low)
     )
     
@@ -570,7 +572,7 @@ if (!is.null(d) && nrow(d) > 0) {
         high_effort_traj <- unique_effort_traj[grepl("High|40", unique_effort_traj, ignore.case = TRUE)][1]
         low_effort_traj <- unique_effort_traj[grepl("Low|5", unique_effort_traj, ignore.case = TRUE)][1]
         color_map_traj <- setNames(
-          c("#DC143C", "#1E90FF"),  # Crimson for High, Blue for Low
+          c(unname(effort_colors["High"]), unname(effort_colors["Low"])),
           c(high_effort_traj, low_effort_traj)
         )
         

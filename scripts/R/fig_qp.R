@@ -1,5 +1,6 @@
-suppressPackageStartupMessages({library(tidyverse)})
-dir.create("output/figures", recursive=TRUE, showWarnings=FALSE)
+suppressPackageStartupMessages({library(tidyverse); library(here)})
+source(here::here("R", "colors_manuscript.R"))
+source(here::here("R", "fig_save_utils.R"))
 
 # Try multiple possible locations
 qp_file <- if (file.exists("output/ppc/metrics/consolidated_for_chatgpt/03_all_qp_detail.csv")) {
@@ -137,9 +138,7 @@ plt <- qp |>
     title="Quantile-Probability Plot: Predicted vs Empirical RT Quantiles",
     subtitle="By Task × Effort (colored by Difficulty, grouped by Response Type)"
   ) +
-  scale_color_manual(
-    values=c("Standard"="gray40", "Easy"="steelblue", "Hard"="darkred")
-  ) +
+  scale_color_manual(values = diff_colors) +
   scale_shape_manual(values=c("Correct"=16, "Error"=17, "All"=15)) +
   theme_minimal(base_size=11) +
   theme(
@@ -149,7 +148,5 @@ plt <- qp |>
     strip.text = element_text(face="bold")
   )
 
-ggsave("output/figures/fig_qp.pdf", plt, width=8.5, height=5.5)
-
-cat("Created QP plot: output/figures/fig_qp.pdf\n")
+save_manuscript_fig(plt, "fig_qp", 8.5, 5.5)
 

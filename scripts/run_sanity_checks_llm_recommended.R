@@ -14,7 +14,9 @@ suppressPackageStartupMessages({
   library(readr)
   library(posterior)
   library(ggplot2)
+  library(here)
 })
+source(here::here("R", "colors_manuscript.R"))
 
 # =========================================================================
 # SETUP
@@ -108,7 +110,7 @@ p1 <- ggplot(std_data, aes(x = rt, fill = response_label)) +
   geom_density(alpha = 0.7, color = "black", linewidth = 0.3) +
   facet_wrap(~response_label, ncol = 1) +
   scale_fill_manual(
-    values = c("different" = "#1f78b4", "same" = "#DC143C"),  # Blue and crimson
+    values = c("different" = unname(task_colors["ADT"]), "same" = unname(task_colors["VDT"])),
     labels = c("different" = "Different", "same" = "Same")
   ) +
   labs(
@@ -304,8 +306,8 @@ if (!file.exists(model_std_file)) {
     # Visualization
     # Use manuscript color scheme: blue for distribution
     p3 <- ggplot(subj_drift_summary, aes(x = drift_rate)) +
-      geom_histogram(bins = 20, fill = "#1f78b4", alpha = 0.7, color = "black", linewidth = 0.3) +
-      geom_vline(xintercept = 0, linetype = "dashed", color = "#DC143C", linewidth = 1) +
+      geom_histogram(bins = 20, fill = unname(task_colors["ADT"]), alpha = 0.7, color = "black", linewidth = 0.3) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = unname(task_colors["VDT"]), linewidth = 1) +
       geom_vline(xintercept = mean(subj_drift_summary$drift_rate), 
                  linetype = "solid", color = "black", linewidth = 1.2) +
       labs(

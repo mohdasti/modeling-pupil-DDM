@@ -1,5 +1,6 @@
-suppressPackageStartupMessages({library(brms); library(tidyverse); library(posterior)})
-dir.create("output/figures", recursive=TRUE, showWarnings=FALSE)
+suppressPackageStartupMessages({library(brms); library(tidyverse); library(posterior); library(here)})
+source(here::here("R", "colors_manuscript.R"))
+source(here::here("R", "fig_save_utils.R"))
 
 # Try multiple possible locations for the model file
 model_file <- if (file.exists("output/publish/fit_primary_vza.rds")) {
@@ -50,11 +51,11 @@ p_intercept <- ggplot() +
                linewidth=0.8, alpha=0.3) +
   scale_color_manual(
     name=NULL,
-    values=c("Prior"="gray50", "Posterior"="steelblue")
+    values=c("Prior"=unname(stat_colors["prior"]), "Posterior"=unname(stat_colors["posterior"]))
   ) +
   scale_fill_manual(
     name=NULL,
-    values=c("Posterior"="steelblue"),
+    values=c("Posterior"=unname(stat_colors["posterior"])),
     guide="none"
   ) +
   labs(
@@ -93,9 +94,9 @@ if (has_task) {
                    linewidth=0.8, alpha=0.3) +
       scale_color_manual(
         name=NULL,
-        values=c("Prior"="gray50", "Posterior"="steelblue")
+        values=c("Prior"=unname(stat_colors["prior"]), "Posterior"=unname(stat_colors["posterior"]))
       ) +
-      scale_fill_manual(name=NULL, values=c("Posterior"="steelblue"), guide="none") +
+      scale_fill_manual(name=NULL, values=c("Posterior"=unname(stat_colors["posterior"])), guide="none") +
       labs(
         x="Multiplicative factor", 
         y="Density", 
@@ -134,9 +135,9 @@ if (has_effort) {
                    linewidth=0.8, alpha=0.3) +
       scale_color_manual(
         name=NULL,
-        values=c("Prior"="gray50", "Posterior"="steelblue")
+        values=c("Prior"=unname(stat_colors["prior"]), "Posterior"=unname(stat_colors["posterior"]))
       ) +
-      scale_fill_manual(name=NULL, values=c("Posterior"="steelblue"), guide="none") +
+      scale_fill_manual(name=NULL, values=c("Posterior"=unname(stat_colors["posterior"])), guide="none") +
       labs(
         x="Multiplicative factor", 
         y="Density", 
@@ -158,10 +159,8 @@ if (has_effort) {
 if (length(plots_list) > 1) {
   library(patchwork)
   p <- wrap_plots(plots_list, ncol=1)
-  ggsave("output/figures/fig_ndt_prior_posterior.pdf", p, width=6, height=3.8 * length(plots_list))
+  save_manuscript_fig(p, "fig_ndt_prior_posterior", 6, 3.8 * length(plots_list))
 } else {
-  ggsave("output/figures/fig_ndt_prior_posterior.pdf", p_intercept, width=6, height=3.8)
+  save_manuscript_fig(p_intercept, "fig_ndt_prior_posterior", 6, 3.8)
 }
-
-cat("Created NDT prior vs posterior plot: output/figures/fig_ndt_prior_posterior.pdf\n")
 

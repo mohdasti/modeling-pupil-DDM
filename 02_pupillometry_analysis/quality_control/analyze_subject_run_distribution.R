@@ -10,6 +10,10 @@
 suppressPackageStartupMessages({
   library(dplyr)
   library(readr)
+  library(here)
+})
+source(here::here("R", "colors_manuscript.R"))
+suppressPackageStartupMessages({
   library(ggplot2)
   library(tidyr)
 })
@@ -189,7 +193,7 @@ plot1 <- run_counts_df %>%
     strip.text = element_text(size = 12, face = "bold"),
     legend.position = "none"
   ) +
-  scale_fill_manual(values = c("ADT" = "#4472C4", "VDT" = "#ED7D31"))
+  scale_fill_manual(values = task_colors)
 
 ggsave(file.path(output_dir, "subject_run_distribution_barplot.png"), 
        plot1, width = 10, height = 6, dpi = 300)
@@ -219,7 +223,7 @@ plot2 <- run_counts_df %>%
     strip.text = element_text(size = 12, face = "bold"),
     legend.position = "bottom"
   ) +
-  scale_fill_manual(values = c("ADT" = "#4472C4", "VDT" = "#ED7D31")) +
+  scale_fill_manual(values = task_colors) +
   scale_x_continuous(breaks = 1:10)
 
 ggsave(file.path(output_dir, "subject_run_distribution_histogram.png"), 
@@ -249,7 +253,7 @@ plot3 <- threshold_analysis %>%
     axis.text = element_text(size = 11),
     legend.position = "bottom"
   ) +
-  scale_color_manual(values = c("ADT" = "#4472C4", "VDT" = "#ED7D31")) +
+  scale_color_manual(values = task_colors) +
   scale_x_continuous(breaks = 1:6) +
   scale_y_continuous(breaks = seq(0, 100, by = 10))
 

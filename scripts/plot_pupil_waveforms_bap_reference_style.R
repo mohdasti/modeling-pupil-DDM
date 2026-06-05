@@ -24,12 +24,14 @@ suppressPackageStartupMessages({
   library(here)
 })
 
+source(here::here("R", "colors_manuscript.R"))
+
 repo_root     <- here::here()
 waveform_path <- file.path(repo_root, "data/pupil_processed/analysis/pupil_waveforms_condition_mean.csv")
 trial_path    <- file.path(repo_root, "data/pupil_processed/analysis_ready/ch3_triallevel.csv")
-output_dir    <- file.path(repo_root, "06_visualization", "publication_figures")
+output_dir    <- file.path(repo_root, "output/figures/manuscript_palette")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-output_file   <- file.path(output_dir, "Figure_Pupil_Waveforms_ADT_VDT_reference_style.png")
+output_file   <- file.path(output_dir, "fig_pupil_waveforms_reference_style.png")
 
 # ── BAP experiment constants (from make_quick_share_v7.R) ────────────────────
 TARGET_ONSET      <- 4.35   # S2/Target/Probe onset
@@ -42,17 +44,12 @@ COG_START         <- TARGET_ONSET + 0.50     # = 4.85 s (COG_WIN_PRIMARY_START)
 COG_END           <- TARGET_ONSET + 1.70     # = 6.05 s (COG_WIN_PRIMARY_END)
 
 # ── Color scheme ─────────────────────────────────────────────────────────────
-condition_colors <- c(
-  "Easy / Low"  = "#5DADE2",
-  "Easy / High" = "#2E86AB",
-  "Hard / Low"  = "#EC70AB",
-  "Hard / High" = "#A23B72"
-)
+condition_colors <- stats::setNames(unname(cond_colors), gsub("/", " / ", names(cond_colors)))
 
 timeline_bar_colors <- list(
-  baseline      = "#7F8C8D",
-  total_auc     = "#1F78B4",
-  cognitive_auc = "#D95F02"
+  baseline      = pupil_colors["baseline"],
+  total_auc     = pupil_colors["total_auc"],
+  cognitive_auc = pupil_colors["tepr"]
 )
 
 stopifnot(file.exists(waveform_path), file.exists(trial_path))

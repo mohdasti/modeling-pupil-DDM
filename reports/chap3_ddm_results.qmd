@@ -141,6 +141,39 @@ if (basename(current_dir) == "reports") {
   proj_root <- current_dir
   use_relative_paths <- FALSE
 }
+
+source(here::here("R", "colors_manuscript.R"))
+source(here::here("R", "fig_save_utils.R"))
+stopifnot(length(cond_colors) == 6, length(param_colors) == 4, length(task_colors) == 2)
+
+# Derived palettes for figure labels that differ from vector names
+cond_colors_spaced <- stats::setNames(unname(cond_colors), gsub("/", " / ", names(cond_colors)))
+contrast_colors <- c(
+  "Easy vs. Standard" = diff_colors["Easy"],
+  "Hard vs. Standard" = diff_colors["Hard"],
+  "Easy vs. Hard"     = diff_colors["Standard"]
+)
+param_display_colors <- c(
+  "Drift (v)"              = param_colors["v"],
+  "Boundary (a)"           = param_colors["a"],
+  "Bias (z)"               = param_colors["z"],
+  "Non-decision time (t0)" = param_colors["t0"]
+)
+ch_model_colors <- c(
+  M_hist = unname(model_colors["history"]),
+  M_wsls = unname(model_colors["wsls"])
+)
+fatigue_param_colors <- c(
+  "Drift (v)"    = unname(param_colors["v"]),
+  "Boundary (a)" = unname(param_colors["a"])
+)
+fatigue_effort_colors <- c(
+  "Low effort (5% MVC)"   = unname(effort_colors["Low"]),
+  "High effort (40% MVC)" = unname(effort_colors["High"])
+)
+MANUSCRIPT_FIG_DIR <- file.path(proj_root, "output/figures/manuscript_palette")
+dir.create(MANUSCRIPT_FIG_DIR, recursive = TRUE, showWarnings = FALSE)
+
 p <- file.path(proj_root, "output/publish")
 # Ensure p is a single character string
 if (length(p) > 1) p <- p[1]
@@ -3118,7 +3151,7 @@ p_drift_pooled <- ggplot(drift_pooled, aes(x = difficulty, y = drift_median, col
   geom_hline(yintercept = 0, linetype = "dashed", color = "grey50", alpha = 0.5) +
   geom_pointrange(aes(ymin = drift_q2.5, ymax = drift_q97.5), position = position_dodge(width = 0.35), size = 0.7, linewidth = 0.6) +
   geom_line(position = position_dodge(width = 0.35), alpha = 0.7, linewidth = 0.6) +
-  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
+  scale_color_manual(values = effort_colors, name = "Effort") +
   labs(x = "Difficulty", y = "Drift Rate (v)") +
   theme_bw(base_size = 14) +
   theme(axis.title = element_text(face = "bold", size = 13), legend.title = element_text(face = "bold", size = 12),
@@ -3137,7 +3170,7 @@ boundary_pooled <- pred_params %>%
 p_boundary_pooled <- ggplot(boundary_pooled, aes(x = difficulty, y = a_median, color = effort, group = effort)) +
   geom_pointrange(aes(ymin = a_q2.5, ymax = a_q97.5), position = position_dodge(width = 0.35), size = 0.7, linewidth = 0.6) +
   geom_line(position = position_dodge(width = 0.35), alpha = 0.7, linewidth = 0.6) +
-  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
+  scale_color_manual(values = effort_colors, name = "Effort") +
   labs(x = "Difficulty", y = "Boundary Separation (a)") +
   theme_bw(base_size = 14) +
   theme(axis.title = element_text(face = "bold", size = 13), legend.title = element_text(face = "bold", size = 12),
@@ -3153,8 +3186,7 @@ fig_ddm_combined <- p_drift_pooled + p_boundary_pooled +
   theme(legend.position = "bottom")
 
 print(fig_ddm_combined)
-dir.create("output/figures", recursive = TRUE, showWarnings = FALSE)
-ggsave("output/figures/fig_ddm_parameters_combined.png", fig_ddm_combined, width = 12, height = 5, dpi = 300)
+save_manuscript_fig(fig_ddm_combined, "fig_ddm_parameters_combined", 12, 5)
 ```
 
 Because Effort is a within-subject manipulation, visual overlap in marginal means is misleading. Plotting the posterior distribution of the difference score (High $-$ Low Effort) explicitly demonstrates that the 95% HDI does not cross zero, confirming a highly credible reduction in drift rate (@fig-effort-drift-posterior-diff).
@@ -3193,10 +3225,10 @@ if (file.exists(model_path_effort) &&
       hdi_tbl <- tibble::tibble(lo = hdi_lo, hi = hdi_hi, med = med_val)
 
       p_eff <- ggplot(eff_df, aes(x = diff)) +
-        geom_density(fill = "#A23B72", alpha = 0.55, color = "black", linewidth = 0.4) +
+        geom_density(fill = effort_colors["High"], alpha = 0.55, color = "black", linewidth = 0.4) +
         geom_vline(xintercept = 0,       linetype = "dashed", color = "gray40", linewidth = 0.6) +
-        geom_vline(xintercept = hdi_lo,  linetype = "dashed", color = "#A23B72", linewidth = 0.5, alpha = 0.9) +
-        geom_vline(xintercept = hdi_hi,  linetype = "dashed", color = "#A23B72", linewidth = 0.5, alpha = 0.9) +
+        geom_vline(xintercept = hdi_lo,  linetype = "dashed", color = effort_colors["High"], linewidth = 0.5, alpha = 0.9) +
+        geom_vline(xintercept = hdi_hi,  linetype = "dashed", color = effort_colors["High"], linewidth = 0.5, alpha = 0.9) +
         geom_segment(data = hdi_tbl,
                      aes(x = lo, xend = hi, y = -Inf, yend = -Inf),
                      color = "black", linewidth = 0.9, inherit.aes = FALSE) +
@@ -3209,6 +3241,7 @@ if (file.exists(model_path_effort) &&
         theme(panel.grid.minor = element_blank(),
               axis.title = element_text(face = "bold"))
       print(p_eff)
+      save_manuscript_fig(p_eff, "fig_effort_drift_posterior_h1", 6, 3)
     } else {
       message("Effort contrast coefficient not found in model draws; skipping plot.")
       invisible(NULL)
@@ -3280,8 +3313,8 @@ if (length(model_path) > 0 && file.exists(model_path)) {
       geom_density(alpha = 0.45, linewidth = 0.5) +
       geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.7) +
       facet_wrap(~contrast, scales = "free", ncol = 1) +
-      scale_fill_manual(values  = c("#5DADE2","#A23B72","#2ECC71"), guide = "none") +
-      scale_color_manual(values = c("#5DADE2","#A23B72","#2ECC71"), guide = "none") +
+      scale_fill_manual(values  = contrast_colors, guide = "none") +
+      scale_color_manual(values = contrast_colors, guide = "none") +
       labs(x = "Posterior difference (link scale)", y = "Density",
            title = expression(paste("Drift Rate ", italic(v), " Contrasts"))) +
       theme_bw(base_size = 11) +
@@ -3291,14 +3324,16 @@ if (length(model_path) > 0 && file.exists(model_path)) {
       geom_density(alpha = 0.45, linewidth = 0.5) +
       geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.7) +
       facet_wrap(~contrast, scales = "free", ncol = 1) +
-      scale_fill_manual(values  = c("#5DADE2","#A23B72","#2ECC71"), guide = "none") +
-      scale_color_manual(values = c("#5DADE2","#A23B72","#2ECC71"), guide = "none") +
+      scale_fill_manual(values  = contrast_colors, guide = "none") +
+      scale_color_manual(values = contrast_colors, guide = "none") +
       labs(x = "Posterior difference (log scale)", y = "Density",
            title = expression(paste("Boundary Sep. ", italic(a), " Contrasts"))) +
       theme_bw(base_size = 11) +
       theme(panel.grid.minor = element_blank(), strip.text = element_text(size = 9))
 
-    print(p_v + p_a + plot_layout(ncol = 2))
+    fig_diff_contrasts <- p_v + p_a + plot_layout(ncol = 2)
+    print(fig_diff_contrasts)
+    save_manuscript_fig(fig_diff_contrasts, "fig_difficulty_contrasts", 10, 4)
   } else {
     message("Difficulty contrast columns not found in model; skipping fig-difficulty-contrasts.")
     invisible(NULL)
@@ -3385,9 +3420,13 @@ pupil_quality_text <- if (n_subj_pupil > 0 && n_trials_total > 0) {
 # Generate TEPR time course figure
 if (!is.null(pupil_data)) {
   # Try to load waveform summary data
-  waveform_file <- file.path(proj_root, "quick_share_v7/analysis/pupil_waveforms_condition_mean.csv")
+  waveform_file <- c(
+    file.path(proj_root, "data/pupil_processed/analysis/pupil_waveforms_condition_mean.csv"),
+    file.path(proj_root, "quick_share_v7/analysis/pupil_waveforms_condition_mean.csv")
+  )
+  waveform_file <- waveform_file[file.exists(waveform_file)][1]
   
-  if (file.exists(waveform_file)) {
+  if (!is.na(waveform_file) && file.exists(waveform_file)) {
     waveform_data <- read_csv(waveform_file, show_col_types = FALSE)
     
     # Filter to chapter 3 data and keep all 4 conditions (effort × difficulty)
@@ -3445,18 +3484,10 @@ if (!is.null(pupil_data)) {
       cognitive_auc_start <- 4.65  # 300ms after target onset (4.35 + 0.3)
       cognitive_auc_end <- 7.65  # 3.3s post-target (4.35 + 3.3), which is the Decision-Phase AUC (W3.0) window
       
-      # Define color scheme for 4 conditions (matching plot_pupil_waveforms.R)
-      condition_colors <- c(
-        "Easy / Low" = "#5DADE2",    # Light blue
-        "Easy / High" = "#2E86AB",   # Dark blue  
-        "Hard / Low" = "#EC70AB",    # Light pink
-        "Hard / High" = "#A23B72"    # Dark pink
-      )
-      
       # Get conditions actually present in data
       conditions_present <- unique(waveform_ch3$condition)
       conditions_present <- conditions_present[!is.na(conditions_present)]
-      colors_for_plot <- condition_colors[names(condition_colors) %in% conditions_present]
+      colors_for_plot <- cond_colors_spaced[names(cond_colors_spaced) %in% conditions_present]
       if (length(colors_for_plot) == 0) {
         # Fallback: use default colors if no matches
         colors_for_plot <- scales::hue_pal()(length(conditions_present))
@@ -3531,8 +3562,8 @@ if (!is.null(pupil_data)) {
           plot.margin = margin(10, 10, 10, 10)
         )
       
-      # Print plot
       print(p_tepr)
+      save_manuscript_fig(p_tepr, "fig_tepr_timecourse", 10, 8)
     } else {
       # Placeholder if no data
       # Waveform data not available - ensure label still resolves
@@ -3707,16 +3738,18 @@ bias_by_task_data <- std_bias_levels %>%
   ) %>%
   mutate(task = factor(task, levels = c("ADT", "VDT")))
 
-ggplot(bias_by_task_data, aes(x = task, y = z_mean, fill = task)) +
-  geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray60", linewidth = 0.8) +
+p_bias_task <- ggplot(bias_by_task_data, aes(x = task, y = z_mean, fill = task)) +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = stat_colors["zero_line"], linewidth = 0.8) +
   geom_col(width = 0.6, alpha = 0.8) +
   geom_errorbar(aes(ymin = z_q2.5, ymax = z_q97.5),
                 width = 0.25, linewidth = 0.7, color = "black") +
-  scale_fill_manual(values = c("ADT" = "#1f78b4", "VDT" = "#DC143C"), guide = "none") +
+  scale_fill_manual(values = task_colors, guide = "none") +
   scale_y_continuous(limits = c(0, 0.7), breaks = seq(0, 0.7, 0.1), expand = expansion(mult = c(0, 0.05))) +
   labs(x = "Task Modality", y = "Bias (z)", title = NULL) +
   theme_minimal(base_size = 12) +
   theme(axis.title = element_text(face = "bold"), panel.grid.minor = element_blank())
+print(p_bias_task)
+save_manuscript_fig(p_bias_task, "fig_bias_by_task", 5, 3.5)
 ```
 
 The standard-only bias estimate ($z = 0.63$, 95% CrI [0.60, 0.66]; @tbl-standard-only-bias-levels) exceeded primary-model estimates ($z \approx 0.52$–$0.55$; @tbl-ddm-core-by-difficulty-effort), reflecting the $v$–$z$ trade-off when drift and bias are estimated jointly across difficulty levels. Substantial between-subject variability in all parameters is shown in Appendix A2 (@fig-subject-parameter-distribution, @fig-brinley-plot).
@@ -4354,8 +4387,6 @@ if (file.exists(pupil_int_model_path) &&
           .groups = "drop"
         )
 
-      fill_colors <- c("Standard" = "#4393C3", "Hard" = "#D6604D", "Easy" = "#4DAC26")
-
       p_pupil_interact <- ggplot(draws_int, aes(x = slope)) +
         geom_density(aes(fill = difficulty), alpha = 0.75, color = "black", linewidth = 0.4) +
         geom_vline(xintercept = 0, linetype = "dashed", color = "grey30") +
@@ -4370,7 +4401,7 @@ if (file.exists(pupil_int_model_path) &&
           shape = 21, fill = "white", color = "black", size = 1.5
         ) +
         facet_wrap(~ difficulty, nrow = 1) +
-        scale_fill_manual(values = fill_colors, guide = "none") +
+        scale_fill_manual(values = diff_colors, guide = "none") +
         labs(
           x = "Posterior slope: pupil_scaled on drift rate (v)",
           y = "Posterior density"
@@ -4382,6 +4413,7 @@ if (file.exists(pupil_int_model_path) &&
           panel.grid.minor = element_blank()
         )
       print(p_pupil_interact)
+      save_manuscript_fig(p_pupil_interact, "fig_pupil_drift_difficulty_interaction", 9, 3.5)
     } else {
       message("Pupil interaction draws could not be extracted.")
       invisible(NULL)
@@ -4580,12 +4612,12 @@ if (ch_fits_available) {
       geom_vline(xintercept = 0, linetype = "dashed", colour = "grey40", linewidth = 0.7) +
       facet_wrap(~ parameter, scales = "free", ncol = 2) +
       scale_fill_manual(
-        values  = c("M_hist" = "#2166ac", "M_wsls" = "#d1884f"),
+        values  = ch_model_colors,
         labels  = c("M_hist" = "M_hist (base)", "M_wsls" = "M_wsls (WSLS)"),
         name    = "Model"
       ) +
       scale_colour_manual(
-        values  = c("M_hist" = "#2166ac", "M_wsls" = "#b35806"),
+        values  = ch_model_colors,
         labels  = c("M_hist" = "M_hist (base)", "M_wsls" = "M_wsls (WSLS)"),
         name    = "Model"
       ) +
@@ -4604,6 +4636,7 @@ if (ch_fits_available) {
       )
 
     print(p_ch)
+    save_manuscript_fig(p_ch, "fig_choice_history_posteriors", 10, 8)
   }, error = function(e) {
     message("Choice history figure failed: ", e$message)
     invisible(NULL)
@@ -4696,8 +4729,6 @@ if (fat_fit_available && fat_table_available) {
       ungroup() |>
       mutate(label = factor(label, levels = unique(label)))
 
-    pal <- c("Drift (v)" = "#2166ac", "Boundary (a)" = "#d6604d")
-
     p_forest <- ggplot(fat_forest,
         aes(x = median, y = label, color = parameter_type)) +
       geom_vline(xintercept = 0, linetype = "dashed",
@@ -4705,28 +4736,29 @@ if (fat_fit_available && fat_table_available) {
       geom_errorbarh(aes(xmin = q2.5, xmax = q97.5),
                      height = 0.3, linewidth = 0.65, alpha = 0.7) +
       geom_point(aes(shape = credible, size = credible)) +
-      scale_color_manual(values = pal, guide = "none") +
+      scale_color_manual(values = fatigue_param_colors, guide = "none") +
       scale_shape_manual(
         values  = c("TRUE" = 16, "FALSE" = 21),
-        labels  = c("TRUE" = "95% CrI excludes 0", "FALSE" = "95% CrI spans 0"),
-        name    = NULL
+        labels  = c("TRUE" = "CrI excludes 0", "FALSE" = "CrI spans 0"),
+        name    = NULL,
+        guide   = guide_legend(nrow = 1, byrow = TRUE, override.aes = list(size = 3))
       ) +
       scale_size_manual(values = c("TRUE" = 3.2, "FALSE" = 2.2), guide = "none") +
       facet_grid(parameter_type ~ ., scales = "free_y", space = "free_y") +
       labs(
-        x     = "Posterior estimate (log scale for boundary; identity for drift)",
-        y     = NULL,
-        title = "A - Coefficient estimates (focal parameters)"
+        x        = "Posterior estimate",
+        y        = NULL,
+        title    = NULL,
+        subtitle = "Coefficient estimates"
       ) +
       theme_minimal(base_size = 10) +
       theme(
         strip.text         = element_text(face = "bold", size = 9.5),
         panel.grid.minor   = element_blank(),
         panel.grid.major.y = element_blank(),
-        legend.position    = "bottom",
-        legend.text        = element_text(size = 8.5),
+        legend.position    = "none",
         axis.title.x       = element_text(size = 8.5),
-        plot.title         = element_text(face = "bold", size = 10)
+        plot.subtitle      = element_text(face = "bold", size = 10, hjust = 0, margin = margin(b = 4))
       )
 
     # ── Panel B: expected boundary per cell ────────────────────────────────────
@@ -4758,8 +4790,6 @@ if (fat_fit_available && fat_table_available) {
         half   = factor(half, levels = c("1st Half", "2nd Half"))
       )
 
-    pal_b <- c("Low effort (5% MVC)" = "#4393c3", "High effort (40% MVC)" = "#d6604d")
-
     p_boundary <- ggplot(cell_summary,
         aes(x = half, y = med, colour = effort, group = effort)) +
       geom_ribbon(aes(ymin = lo, ymax = hi, fill = effort, group = effort),
@@ -4768,12 +4798,17 @@ if (fat_fit_available && fat_table_available) {
       geom_errorbar(aes(ymin = lo, ymax = hi),
                     width = 0.08, linewidth = 0.6) +
       geom_point(size = 3.5) +
-      scale_color_manual(values = pal_b, name = NULL) +
-      scale_fill_manual(values  = pal_b, name = NULL) +
+      scale_color_manual(
+        values = fatigue_effort_colors,
+        name   = NULL,
+        guide  = guide_legend(nrow = 1, byrow = TRUE, override.aes = list(linewidth = 1.2))
+      ) +
+      scale_fill_manual(values = fatigue_effort_colors, guide = "none") +
       labs(
-        x     = "Session half",
-        y     = "Expected boundary separation (exp scale)",
-        title = "B - Boundary trajectories across the run"
+        x        = "Session half",
+        y        = "Boundary separation (exp scale)",
+        title    = NULL,
+        subtitle = "Boundary trajectories"
       ) +
       coord_cartesian(ylim = c(1.88, 2.20)) +
       theme_minimal(base_size = 10) +
@@ -4781,12 +4816,33 @@ if (fat_fit_available && fat_table_available) {
         panel.grid.minor   = element_blank(),
         panel.grid.major.x = element_blank(),
         legend.position    = "bottom",
-        legend.text        = element_text(size = 8.5),
         axis.title         = element_text(size = 8.5),
-        plot.title         = element_text(face = "bold", size = 10)
+        plot.subtitle      = element_text(face = "bold", size = 10, hjust = 0, margin = margin(b = 4))
       )
 
-    p_fatigue_combined <- p_forest + p_boundary + plot_layout(widths = c(1.6, 1))
+    p_fatigue_combined <- p_forest + p_boundary +
+      plot_layout(
+        widths    = c(1.55, 1),
+        guides    = "collect",
+        tag_level = "new"
+      ) +
+      plot_annotation(
+        caption = "Filled circles: 95% CrI excludes zero. Open circles: CrI spans zero.",
+        theme   = theme(
+          plot.caption   = element_text(size = 8, colour = "grey30", hjust = 0),
+          plot.tag       = element_text(face = "bold", size = 11),
+          plot.tag.position = c(0.01, 0.98)
+        )
+      ) &
+      theme(
+        legend.position    = "bottom",
+        legend.box         = "horizontal",
+        legend.box.just    = "left",
+        legend.spacing.x   = unit(0.6, "cm"),
+        legend.margin      = margin(t = 6, b = 2),
+        legend.text        = element_text(size = 8.5),
+        plot.margin        = margin(8, 8, 4, 8)
+      )
 
   }, error = function(e) {
     message("Fatigue trajectory figure build failed: ", e$message)
@@ -4799,11 +4855,15 @@ if (fat_fit_available && fat_table_available) {
 #| fig-cap: "Within-session fatigue dynamics: focal posterior estimates. **Panel A** shows posterior medians (points) and 95% credible intervals (horizontal bars) for all focal parameters in the drift ($v$, blue) and boundary separation ($a$, red) submodels. Filled circles indicate parameters whose 95% CrI excludes zero; open circles span zero. The only credible effect is the within-run boundary decline in the second half ([*]). **Panel B** shows posterior median and 95% CrI for the population-average boundary separation (exp scale) in each of the four effort x session-half cells, derived from fixed-effects posterior draws. Both effort conditions show a small first-to-second-half decrease, but the decline is larger and credibly non-zero only under Low effort; under High effort the positive interaction term partially offsets the relaxation, leaving the second-half boundary nearly unchanged."
 #| fig-align: center
 #| fig-pos: "htbp"
+#| fig-width: 11
+#| fig-height: 7.5
 #| out-width: "100%"
-#| fig-height: 6
 #| echo: false
 
-print(p_fatigue_combined)
+if (!is.null(p_fatigue_combined)) {
+  print(p_fatigue_combined)
+  save_manuscript_fig(p_fatigue_combined, "fig_fatigue_posteriors", 11, 7.5)
+}
 ```
 
 
@@ -4985,14 +5045,15 @@ if (file.exists(model_path) && requireNamespace("brms", quietly = TRUE) && requi
       p_ndt <- ggplot() +
         geom_line(data = ndt_prior, aes(x = x_natural, y = d, color = "Prior"), alpha = 0.7, linewidth = 0.8) +
         geom_density(data = post_df, aes(x = x_natural, color = "Posterior", fill = "Posterior"), linewidth = 0.8, alpha = 0.3) +
-        scale_color_manual(name = NULL, values = c("Prior" = "gray50", "Posterior" = "steelblue")) +
-        scale_fill_manual(name = NULL, values = c("Posterior" = "steelblue"), guide = "none") +
+        scale_color_manual(name = NULL, values = c("Prior" = stat_colors["prior"], "Posterior" = stat_colors["posterior"])) +
+        scale_fill_manual(name = NULL, values = c("Posterior" = unname(stat_colors["posterior"])), guide = "none") +
         labs(x = "t0 (s)", y = "Density", title = "NDT Intercept: Prior vs Posterior",
              subtitle = "Prior: Normal(log(0.35), 0.15) on log scale") +
         theme_minimal(base_size = 11) +
         theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
               plot.subtitle = element_text(size = 9, color = "gray50", hjust = 0.5), legend.position = "top")
       print(p_ndt)
+      save_manuscript_fig(p_ndt, "fig_ndt_prior_posterior", 6, 3.8)
     } else {
 include_graphics_safe(fig_path("fig_ndt_prior_posterior.pdf"))
     }
@@ -5030,7 +5091,7 @@ loo_plot_data <- loo_summary %>%
 p_loo <- ggplot(loo_plot_data, aes(x = model_label, y = looic, color = rt_label, shape = model_label)) +
 geom_pointrange(aes(ymin = looic - looic_se, ymax = looic + looic_se),
                   position = position_dodge(width = 0.3), size = 0.6) +
-  scale_color_manual(values = c("Cue-locked" = "#2E86AB", "Probe-onset-locked" = "#A23B72"), name = "RT Definition") +
+  scale_color_manual(values = c("Cue-locked" = effort_colors["Low"], "Probe-onset-locked" = effort_colors["High"]), name = "RT Definition") +
   scale_shape_manual(values = c("Baseline" = 17, "Additive" = 19), guide = "none") +
   labs(
     x = "Model",
@@ -5045,6 +5106,7 @@ geom_pointrange(aes(ymin = looic - looic_se, ymax = looic + looic_se),
   )
 
 print(p_loo)
+save_manuscript_fig(p_loo, "fig_loo_comparison", 7, 4.5)
 ```
 
 ## A2. Individual Differences and Parameter Relationships {.unnumbered}
@@ -5090,12 +5152,13 @@ if (file.exists(model_path_re) && requireNamespace("brms", quietly = TRUE)) {
           geom_violin(alpha = 0.3, trim = FALSE) +
           geom_boxplot(width = 0.2, alpha = 0.7, outlier.shape = NA) +
           geom_hline(yintercept = 0, linetype = "dashed", color = "gray50", linewidth = 0.5) +
-          scale_fill_manual(values = c("Drift (v)" = "#2E86AB", "Boundary (a)" = "#A23B72", "Bias (z)" = "#28A745", "Non-decision time (t0)" = "#6C757D"), guide = "none") +
+          scale_fill_manual(values = param_display_colors, guide = "none") +
           labs(title = "Subject-Level Parameter Estimates (Random Effects)", subtitle = "Individual differences in DDM parameters",
                x = "DDM Parameter", y = "Random Effect Estimate (link scale)", fill = "Parameter") +
           theme_minimal(base_size = 12) +
           theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5), legend.position = "none", panel.grid.minor = element_blank())
         print(p_re)
+        save_manuscript_fig(p_re, "fig_subject_parameter_distribution", 8, 5)
       } else { include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf")) }
       } else { include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf")) }
     } else { include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf")) }
@@ -5126,13 +5189,15 @@ if (file.exists(model_path_cor) && requireNamespace("brms", quietly = TRUE)) {
         # Update cor_val_fig17 with the live computed value (caption and body text use same variable)
         cor_val_fig17 <<- cor(subj_cor$drift_intercept, subj_cor$bias_intercept, use = "complete.obs")
         p_cor <- ggplot(subj_cor, aes(x = drift_intercept, y = bias_intercept)) +
-          geom_point(size = 1.8, alpha = 0.7, color = "#1f78b4") +
-          geom_smooth(method = "lm", se = TRUE, color = "#DC143C", linewidth = 0.8, fill = "gray90", alpha = 0.3) +
+          geom_point(size = 1.8, alpha = 0.7, color = param_colors["v"]) +
+          geom_smooth(method = "lm", se = TRUE, color = param_colors["a"], linewidth = 0.8,
+                    fill = scales::alpha(param_colors["a"], 0.2), alpha = 0.3) +
           labs(title = "Subject-Level Parameter Correlation", subtitle = sprintf("Drift Intercept vs. Bias Intercept (r = %.3f)", -0.205),
                x = "Drift Intercept (Subject-Level)", y = "Bias Intercept (Subject-Level, logit scale)") +
           theme_minimal(base_size = 12) +
           theme(plot.title = element_text(face = "bold", hjust = 0.5), plot.subtitle = element_text(hjust = 0.5, color = "gray50"))
         print(p_cor)
+        save_manuscript_fig(p_cor, "fig_parameter_correlation", 7, 5)
       } else { include_graphics_safe(fig_path("plot4_parameter_correlation.png")) }
     } else { include_graphics_safe(fig_path("plot4_parameter_correlation.png")) }
   }, error = function(e) { include_graphics_safe(fig_path("plot4_parameter_correlation.png")) })
@@ -5173,7 +5238,8 @@ if (!is.null(behavioral_data) && nrow(behavioral_data) > 0) {
       low_eff  <- effort_levs[grepl("Low|5", as.character(effort_levs), ignore.case = TRUE)][1]
       if (is.na(high_eff)) high_eff <- effort_levs[1]
       if (is.na(low_eff))  low_eff <- effort_levs[length(effort_levs)]
-      color_map <- setNames(c("#DC143C", "#1E90FF"), c(as.character(high_eff), as.character(low_eff)))
+      color_map <- setNames(c(effort_colors["High"], effort_colors["Low"]),
+                            c(as.character(high_eff), as.character(low_eff)))
       fit_line <- lm(mean_rt_Hard_ms ~ mean_rt_Easy_ms, data = brinley_plot_data)
       slope <- coef(fit_line)[2]
       p_brinley <- ggplot(brinley_plot_data, aes(x = mean_rt_Easy_ms, y = mean_rt_Hard_ms)) +
@@ -5189,6 +5255,7 @@ if (!is.null(behavioral_data) && nrow(behavioral_data) > 0) {
               plot.subtitle = element_text(size = 10, hjust = 0.5, color = "gray60"),
               legend.position = "bottom", panel.grid.minor = element_blank())
       print(p_brinley)
+      save_manuscript_fig(p_brinley, "fig_brinley_plot", 7, 6)
     } else {
 include_graphics_safe(fig_path("fig_brinley_plot.pdf"))
     }
@@ -5255,7 +5322,7 @@ geom_pointrange(aes(ymin = z_q2.5, ymax = z_q97.5),
                   position = position_dodge(width = 0.3), size = 0.6) +
   geom_line(position = position_dodge(width = 0.3), alpha = 0.5) +
   geom_hline(yintercept = 0.5, linetype = "dashed", color = "grey50", alpha = 0.5) +
-  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
+  scale_color_manual(values = effort_colors, name = "Effort") +
   labs(x = "Task", y = "Starting-Point Bias (z)", title = NULL) +
   theme_minimal(base_size = 12) +
   theme(
@@ -5266,6 +5333,7 @@ geom_pointrange(aes(ymin = z_q2.5, ymax = z_q97.5),
   )
 
 print(p_bias_std)
+save_manuscript_fig(p_bias_std, "fig_standard_only_bias_by_task_effort", 8, 4)
 ```
 
 @fig-a2-3-bias-primary shows primary-model estimates of starting-point bias across tasks and effort conditions, complementing the canonical standard-only estimates reported in the main text (@fig-bias-by-task, @sec-starting-point-bias).
@@ -5291,7 +5359,7 @@ p_bias_a2 <- ggplot(bias_plot_data_a2, aes(y = task, x = z_median, color = effor
   geom_vline(xintercept = 0.5, linetype = "dashed", color = "grey50", alpha = 0.5) +
   geom_pointrange(aes(xmin = z_q2.5, xmax = z_q97.5),
                   position = position_dodge(width = 0.4), size = 0.6, linewidth = 0.5) +
-  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
+  scale_color_manual(values = effort_colors, name = "Effort") +
   labs(y = "Task", x = "Starting-Point Bias (z)", title = NULL) +
   theme_bw(base_size = 13) +
   theme(
@@ -5302,6 +5370,7 @@ p_bias_a2 <- ggplot(bias_plot_data_a2, aes(y = task, x = z_median, color = effor
   )
 
 print(p_bias_a2)
+save_manuscript_fig(p_bias_a2, "fig_a2_3_bias_primary", 7, 4)
 ```
 
 ```{r}
@@ -5552,8 +5621,9 @@ if (caf_from_behav) {
     group_by(task, effort_condition, difficulty_level, bin) %>%
     summarise(acc_emp = mean(as.numeric(!!sym(acc_col_behav)), na.rm = TRUE), bin_rt_mid = mean(!!sym(rt_col), na.rm = TRUE), .groups = "drop")
   if (nrow(caf_computed) > 0) {
-    p_caf <- ggplot(caf_computed, aes(x = bin_rt_mid, y = acc_emp)) +
-      geom_point(size = 1.1, color = "black") + geom_path(linewidth = 0.5, color = "black", alpha = 0.6) +
+    p_caf <- ggplot(caf_computed, aes(x = bin_rt_mid, y = acc_emp, color = effort_condition, group = effort_condition)) +
+      geom_point(size = 1.1) + geom_path(linewidth = 0.5, alpha = 0.6) +
+      scale_color_manual(values = effort_colors, guide = "none") +
       facet_grid(task + effort_condition ~ difficulty_level) +
       labs(x = "RT bin midpoint (s)", y = "Accuracy", title = "Conditional Accuracy Function: Accuracy by RT Bin",
            subtitle = "Empirical accuracy (speed-accuracy tradeoff)") +
@@ -5562,6 +5632,7 @@ if (caf_from_behav) {
       theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
             plot.subtitle = element_text(size = 10, color = "gray50", hjust = 0.5), strip.text = element_text(face = "bold"))
     print(p_caf)
+    save_manuscript_fig(p_caf, "fig_caf", 9, 6.5)
   } else { include_graphics_safe(fig_path("fig_caf.pdf")) }
 } else if (file.exists(caf_file)) {
   caf_data <- read_csv(caf_file, show_col_types = FALSE)
@@ -5578,8 +5649,9 @@ if (caf_from_behav) {
       ) %>%
       filter(!is.na(acc_emp), is.finite(acc_emp))
     if (nrow(caf_plot) > 0) {
-      p_caf <- ggplot(caf_plot, aes(x = bin_rt_mid, y = acc_emp)) +
-        geom_point(size = 1.1, color = "black") + geom_path(linewidth = 0.5, color = "black", alpha = 0.6) +
+      p_caf <- ggplot(caf_plot, aes(x = bin_rt_mid, y = acc_emp, color = effort_condition, group = effort_condition)) +
+        geom_point(size = 1.1) + geom_path(linewidth = 0.5, alpha = 0.6) +
+        scale_color_manual(values = effort_colors, guide = "none") +
         facet_grid(task + effort_condition ~ difficulty_level) +
         labs(x = "RT bin midpoint (s)", y = "Accuracy", title = "Conditional Accuracy Function: Accuracy by RT Bin",
              subtitle = "Empirical accuracy (speed-accuracy tradeoff)") +
@@ -5588,6 +5660,7 @@ if (caf_from_behav) {
         theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
               plot.subtitle = element_text(size = 10, color = "gray50", hjust = 0.5), strip.text = element_text(face = "bold"))
       print(p_caf)
+      save_manuscript_fig(p_caf, "fig_caf", 9, 6.5)
     } else { include_graphics_safe(fig_path("fig_caf.pdf")) }
   } else { include_graphics_safe(fig_path("fig_caf.pdf")) }
 } else {
@@ -5962,10 +6035,10 @@ if (!is.null(tbl_sens) && nrow(tbl_sens) > 0 && "looic" %in% names(tbl_sens)) {
   if (!"looic_se" %in% names(tbl_sens)) {
     tbl_sens <- tbl_sens %>% mutate(looic_se = NA_real_)
   }
-  ggplot(tbl_sens, aes(x = threshold, y = looic)) +
-    geom_point(size = 1.8) +
-    {if (!all(is.na(tbl_sens$looic_se))) geom_errorbar(aes(ymin = looic - looic_se, ymax = looic + looic_se), width = 0.01)} +
-    geom_line(alpha = 0.5) +
+  p_sens_loo <- ggplot(tbl_sens, aes(x = threshold, y = looic)) +
+    geom_point(size = 1.8, color = unname(param_colors["v"])) +
+    {if (!all(is.na(tbl_sens$looic_se))) geom_errorbar(aes(ymin = looic - looic_se, ymax = looic + looic_se), width = 0.01, color = unname(param_colors["v"]))} +
+    geom_line(alpha = 0.5, color = unname(param_colors["v"])) +
     labs(
       x = "RT Cutoff Threshold (s)",
       y = "LOOIC"
@@ -5975,6 +6048,8 @@ if (!is.null(tbl_sens) && nrow(tbl_sens) > 0 && "looic" %in% names(tbl_sens)) {
       axis.title = element_text(face = "bold"),
       panel.grid.minor = element_blank()
     )
+  print(p_sens_loo)
+  save_manuscript_fig(p_sens_loo, "fig_app_sensitivity_looic", 7, 4)
 } else {
   invisible(NULL)
 }
@@ -6006,15 +6081,17 @@ drift_forest_data_a42 <- pred_params %>%
     )
   )
 
-p_drift_forest_a42 <- ggplot(drift_forest_data_a42, aes(x = reorder(difficulty_label, drift_median), y = drift_median)) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50", alpha = 0.5) +
+p_drift_forest_a42 <- ggplot(drift_forest_data_a42, aes(x = reorder(difficulty_label, drift_median), y = drift_median, color = difficulty)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = stat_colors["zero_line"], alpha = 0.5) +
   geom_pointrange(aes(ymin = drift_q2.5, ymax = drift_q97.5), size = 0.6, linewidth = 0.5) +
+  scale_color_manual(values = diff_colors, guide = "none") +
   coord_flip() +
   labs(x = NULL, y = "Drift Rate (v)") +
   theme_bw(base_size = 12) +
   theme(axis.title = element_text(face = "bold"), panel.grid.minor = element_blank())
 
 print(p_drift_forest_a42)
+save_manuscript_fig(p_drift_forest_a42, "fig_a4_2a_drift_by_difficulty", 7, 4)
 ```
 
 ### A4.3 Task Modality Effects: Sensitivity Analysis {.unnumbered}
@@ -6054,7 +6131,7 @@ p_drift_cond <- ggplot(drift_plot_data_suppl, aes(x = difficulty, y = drift_val,
   geom_pointrange(aes(ymin = drift_lower, ymax = drift_upper), position = position_dodge(width = 0.3), size = 0.6) +
   geom_line(position = position_dodge(width = 0.3), alpha = 0.5, linewidth = 0.5) +
   facet_wrap(~ task, labeller = labeller(task = c("ADT" = "ADT", "VDT" = "VDT"))) +
-  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
+  scale_color_manual(values = effort_colors, name = "Effort") +
   labs(x = "Difficulty", y = "Drift Rate (v)", title = NULL) +
   theme_minimal(base_size = 12) +
   theme(axis.title = element_text(face = "bold"), strip.text = element_text(face = "bold"),
@@ -6063,6 +6140,7 @@ p_drift_cond <- ggplot(drift_plot_data_suppl, aes(x = difficulty, y = drift_val,
   scale_x_discrete(drop = FALSE)
 
 print(p_drift_cond)
+save_manuscript_fig(p_drift_cond, "fig_suppl_drift_by_task", 8, 4)
 ```
 
 #### Boundary Separation by Task {.unnumbered}
@@ -6096,7 +6174,7 @@ p_boundary_cond <- ggplot(boundary_plot_data_suppl, aes(x = difficulty, y = bs_v
   geom_pointrange(aes(ymin = bs_lower, ymax = bs_upper), position = position_dodge(width = 0.3), size = 0.6) +
   geom_line(position = position_dodge(width = 0.3), alpha = 0.5, linewidth = 0.5) +
   facet_wrap(~ task, labeller = labeller(task = c("ADT" = "ADT", "VDT" = "VDT"))) +
-  scale_color_manual(values = c("Low" = "#5DADE2", "High" = "#A23B72"), name = "Effort") +
+  scale_color_manual(values = effort_colors, name = "Effort") +
   labs(x = "Difficulty", y = "Boundary Separation (a)", title = NULL) +
   theme_minimal(base_size = 12) +
   theme(axis.title = element_text(face = "bold"), strip.text = element_text(face = "bold"),
@@ -6105,6 +6183,7 @@ p_boundary_cond <- ggplot(boundary_plot_data_suppl, aes(x = difficulty, y = bs_v
   scale_x_discrete(drop = FALSE)
 
 print(p_boundary_cond)
+save_manuscript_fig(p_boundary_cond, "fig_suppl_boundary_by_task", 8, 4)
 ```
 
 ```{r fig-additivity-check, fig.cap="Additivity check: Difficulty × Effort condition means for drift rate (A) and boundary separation (B). The near-parallel shift between Low (blue) and High (magenta) effort lines across difficulty levels confirms the additive model assumption — the effort cost is consistent regardless of task difficulty, justifying the absence of a Difficulty × Effort interaction term (see @sec-results-sample and @tbl-loo-comparison).", fig.width=8, fig.height=4}
@@ -6129,7 +6208,7 @@ p1 <- ggplot(subset(df, Parameter=="Drift rate (v)"),
   geom_line(linewidth=0.8) +
   geom_point(size=2.5) +
   geom_errorbar(aes(ymin=Lower, ymax=Upper), width=0.1) +
-  scale_color_manual(values=c("Low"="#4472C4","High"="#C0504D")) +
+  scale_color_manual(values = effort_colors) +
   labs(title="A  Drift rate (v)", y="Posterior median", x=NULL) +
   theme_minimal(base_size=11) + theme(legend.position="none")
 
@@ -6138,11 +6217,13 @@ p2 <- ggplot(subset(df, Parameter=="Boundary sep. (α)"),
   geom_line(linewidth=0.8) +
   geom_point(size=2.5) +
   geom_errorbar(aes(ymin=Lower, ymax=Upper), width=0.1) +
-  scale_color_manual(values=c("Low"="#4472C4","High"="#C0504D")) +
+  scale_color_manual(values = effort_colors) +
   labs(title="B  Boundary separation (α)", y=NULL, x=NULL) +
   theme_minimal(base_size=11)
 
-p1 + p2
+fig_additivity <- p1 + p2
+print(fig_additivity)
+save_manuscript_fig(fig_additivity, "fig_additivity_check", 8, 4)
 ```
 
 #### Task-Sensitivity Model Comparison {.unnumbered}
@@ -7045,7 +7126,6 @@ if (!is.null(behavioral_data)) {
         filter(difficulty %in% c("Hard", "Easy")) %>%
         group_by(difficulty) %>%
         summarise(marginal_mean = mean(accuracy, na.rm = TRUE), .groups = "drop")
-      effort_colors <- c("Low" = "#5DA5DA", "High" = "#B276B2")
       p1 <- ggplot(data_long, aes(x = effort, y = accuracy, group = subject_id)) +
         geom_line(alpha = 0.15, linewidth = 0.3, color = "gray40") +
         geom_point(aes(color = effort), alpha = 0.4, size = 0.9,
@@ -7079,6 +7159,7 @@ if (!is.null(behavioral_data)) {
           panel.spacing = unit(0.8, "lines")
         )
       print(p1)
+      save_manuscript_fig(p1, "fig_accuracy_distribution", 8, 6)
       # Optional: uncomment to verify figure vs narrative alignment
       # cat("Figure 7 cell means (subject-averaged):\n"); print(fig7_cell_means)
       # cat("Figure 7 marginal by difficulty:\n"); print(fig7_marginal_diff)
@@ -7364,9 +7445,6 @@ if (file.exists(rt_dist_file)) {
     )
   
   if (nrow(rt_plot_data) > 0) {
-    # Effort palette matching Figure 7 (Accuracy)
-    effort_colors <- c("Low" = "#5DA5DA", "High" = "#B276B2")
-
     # Layout: Task as columns, Condition as rows; color by effort
     rt_plot <- ggplot(rt_plot_data, aes(x = rt, fill = Effort, color = Effort)) +
       geom_density(linewidth = 0.9, alpha = 0.5) +
@@ -7393,7 +7471,8 @@ if (file.exists(rt_dist_file)) {
       ) +
       scale_x_continuous(limits = c(0, 3), breaks = seq(0, 3, 0.5), expand = c(0, 0.05)) +
       scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
-    rt_plot
+    print(rt_plot)
+    save_manuscript_fig(rt_plot, "fig_rt_distribution", 8, 8)
   } else {
     ggplot() + 
       annotate("text", x = 0.5, y = 0.5, label = "RT distribution plot: No valid RT data.", size = 4) +
@@ -7443,8 +7522,8 @@ if (file.exists(rt_data_file)) {
     geom_histogram(alpha = 0.6, bins = 50, position = "identity") +
     scale_fill_manual(
       values = c(
-        "Cue-locked RT" = "#6794bb",
-        "Probe-onset-locked RT" = "#d35e60"
+        "Cue-locked RT" = effort_colors["Low"],
+        "Probe-onset-locked RT" = effort_colors["High"]
       )
     ) +
     facet_wrap(~rt_type, ncol = 1) +
@@ -7457,6 +7536,7 @@ if (file.exists(rt_data_file)) {
       panel.grid.minor = element_blank()
     )
   print(p_rt_dist)
+  save_manuscript_fig(p_rt_dist, "fig_rt_distributions", 7, 5)
 } else {
   invisible(NULL)
 }

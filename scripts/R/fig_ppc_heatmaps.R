@@ -1,5 +1,7 @@
-suppressPackageStartupMessages({library(tidyverse)})
-dir.create("output/figures", recursive=TRUE, showWarnings=FALSE)
+suppressPackageStartupMessages({library(tidyverse); library(here)})
+source(here::here("R", "colors_manuscript.R"))
+source(here::here("R", "fig_save_utils.R"))
+ppc_heat_hi <- unname(stat_colors["predicted"])
 
 # Try multiple possible locations
 ppc_file <- if (file.exists("output/ppc/metrics/consolidated_for_chatgpt/01_all_ppc_metrics.csv")) {
@@ -96,7 +98,7 @@ plt_all <- to_long |>
   ggplot(aes(x=difficulty_level, y=task_effort, fill=value)) +
   geom_tile(color="white", linewidth=0.3) +
   facet_grid(metric ~ model_short, scales="free_x") +
-  scale_fill_gradient(low="white", high="firebrick", name="Value") +
+  scale_fill_gradient(low="white", high=ppc_heat_hi, name="Value") +
   labs(
     x="Difficulty", 
     y="Task × Effort",
@@ -123,7 +125,7 @@ plt_primary <- to_long_primary |>
   ggplot(aes(x=difficulty_level, y=task_effort, fill=value)) +
   geom_tile(color="white", linewidth=0.5) +
   facet_wrap(~metric, ncol=1, scales="free_y") +
-  scale_fill_gradient(low="white", high="firebrick", name="Value") +
+  scale_fill_gradient(low="white", high=ppc_heat_hi, name="Value") +
   labs(
     x="Difficulty", 
     y="Task × Effort",
@@ -142,9 +144,7 @@ plt_primary <- to_long_primary |>
 library(patchwork)
 plt_combined <- plt_all / plt_primary + plot_layout(heights = c(2, 1))
 
-ggsave("output/figures/fig_ppc_heatmaps.pdf", plt_combined, width=12, height=10)
-
-cat("Created PPC heatmaps: output/figures/fig_ppc_heatmaps.pdf\n")
+save_manuscript_fig(plt_combined, "fig_ppc_heatmaps", 12, 10)
 cat("  - Top: All models\n")
 cat("  - Bottom: Primary model (", primary_model, ")\n")
 

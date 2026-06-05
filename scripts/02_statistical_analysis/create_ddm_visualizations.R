@@ -18,6 +18,7 @@ suppressPackageStartupMessages({
   library(tidyr)
   library(stringr)
   library(patchwork)
+  library(here)
 })
 
 # =========================================================================
@@ -37,10 +38,11 @@ LOG_FILE <- file.path(LOG_DIR, sprintf("visualizations_%s.log",
                                         format(Sys.time(), "%Y%m%d_%H%M%S")))
 
 # Color scheme (consistent with manuscript)
-COLOR_DIFFERENT <- "#1f78b4"  # Blue
-COLOR_SAME <- "#DC143C"       # Crimson
-COLOR_ADT <- "#1f78b4"        # Blue
-COLOR_VDT <- "#DC143C"        # Crimson
+source(here::here("R", "colors_manuscript.R"))
+COLOR_DIFFERENT <- unname(task_colors["ADT"])
+COLOR_SAME      <- unname(task_colors["VDT"])
+COLOR_ADT       <- unname(task_colors["ADT"])
+COLOR_VDT       <- unname(task_colors["VDT"])
 
 # Helper functions
 log_msg <- function(..., level = "INFO") {

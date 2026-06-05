@@ -6,6 +6,8 @@
 library(ggplot2)
 library(dplyr)
 library(readr)
+library(here)
+source(here::here("R", "colors_manuscript.R"))
 
 # Create the condition effects data based on the analysis results
 # These are the key findings from the comprehensive analysis
@@ -35,7 +37,7 @@ p <- ggplot(condition_effects, aes(x = Estimate, y = Parameter)) +
                  height = 0.2, linewidth = 1.2) +
   scale_color_manual(values = c("***" = "#2E8B57",  # Dark green for highly significant
                                 "**" = "#32CD32",   # Green for significant  
-                                "ns" = "#DC143C"),  # Red for non-significant
+                                "ns" = unname(stat_colors["predicted"])),
                      name = "Significance",
                      labels = c("***" = "p < .001",
                                "**" = "p < .01", 
@@ -72,7 +74,7 @@ p <- ggplot(condition_effects, aes(x = Estimate, y = Parameter)) +
   annotate("text", x = 0.35, y = 3, label = "↑ Increase", 
            color = "#32CD32", size = 3.5, fontface = "bold") +
   annotate("text", x = -0.1, y = 4, label = "≈ Small", 
-           color = "#DC143C", size = 3.5, fontface = "bold")
+           color = unname(stat_colors["predicted"]), size = 3.5, fontface = "bold")
 
 # Save the plot
 ggsave("output/figures/condition_effects_forest_plot.png", 

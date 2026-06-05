@@ -1,10 +1,15 @@
 # R/fig_ppc_small_multiples.R
 
 suppressPackageStartupMessages({
-  library(readr); library(dplyr); library(ggplot2); library(tidyr)
+  library(readr); library(dplyr); library(ggplot2); library(tidyr); library(here)
 })
-
-dir.create("output/figures", showWarnings = FALSE, recursive = TRUE)
+source(here::here("R", "colors_manuscript.R"))
+source(here::here("R", "fig_save_utils.R"))
+ppc_rank_colors <- c(
+  Best   = unname(param_colors["v"]),
+  Median = unname(param_colors["z"]),
+  Worst  = unname(stat_colors["predicted"])
+)
 
 ppc <- read_csv("output/publish/ppc_joint_minimal.csv", show_col_types = FALSE)
 
@@ -39,11 +44,11 @@ thresh_ks <- 0.20  # KS threshold
 p <- ggplot(pm, aes(x=rank, y=value, fill=rank)) +
   geom_col(alpha=0.7, width=0.6) +
   geom_hline(data=data.frame(metric_label="QP RMSE", y=thresh_qp), 
-             aes(yintercept=y), linetype="dashed", color="red", alpha=0.6) +
+             aes(yintercept=y), linetype="dashed", color=unname(stat_colors["predicted"]), alpha=0.6) +
   geom_hline(data=data.frame(metric_label="KS Statistic", y=thresh_ks), 
-             aes(yintercept=y), linetype="dashed", color="red", alpha=0.6) +
+             aes(yintercept=y), linetype="dashed", color=unname(stat_colors["predicted"]), alpha=0.6) +
   facet_wrap(~metric_label, scales="free_y") +
-  scale_fill_manual(values=c("Best"="darkgreen", "Median"="orange", "Worst"="darkred")) +
+  scale_fill_manual(values=ppc_rank_colors) +
   labs(x=NULL, y="Value",
        title="PPC Summary: Best / Median / Worst Cells (by QP RMSE)",
        subtitle=paste0("Best: ", pick$cell_label[1], " | Median: ", pick$cell_label[2], " | Worst: ", pick$cell_label[3]),
@@ -55,11 +60,7 @@ p <- ggplot(pm, aes(x=rank, y=value, fill=rank)) +
     strip.text=element_text(face="bold")
   )
 
-ggsave("output/figures/fig_ppc_small_multiples.png", p, width = 6.18, height = 3.47, units = "in", dpi = 300)
-ggsave("output/figures/fig_ppc_small_multiples.pdf", p, width = 6.18, height = 3.47, units = "in")
-
-cat("✓ Wrote output/figures/fig_ppc_small_multiples.png\n")
-cat("✓ Wrote output/figures/fig_ppc_small_multiples.pdf\n")
+save_manuscript_fig(p, "fig_ppc_small_multiples", 6.18, 3.47)
 
 # Print details
 cat("\nSelected cells:\n")

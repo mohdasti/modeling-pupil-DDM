@@ -1,5 +1,6 @@
-suppressPackageStartupMessages({library(tidyverse); library(brms)})
-dir.create("output/figures", recursive=TRUE, showWarnings=FALSE)
+suppressPackageStartupMessages({library(tidyverse); library(brms); library(here)})
+source(here::here("R", "colors_manuscript.R"))
+source(here::here("R", "fig_save_utils.R"))
 
 # Load model and data
 model_file <- if (file.exists("output/publish/fit_primary_vza.rds")) {
@@ -10,65 +11,65 @@ model_file <- if (file.exists("output/publish/fit_primary_vza.rds")) {
   stop("Model file not found. Checked: output/publish/fit_primary_vza*.rds")
 }
 
-data_file <- "data/analysis_ready/bap_ddm_ready.csv"
+data_candidates <- c(
+  "data/ddm_ready_data_unthresholded.csv",
+  "data/analysis_ready/bap_ddm_ready.csv"
+)
+data_file <- data_candidates[file.exists(data_candidates)][1]
+if (is.na(data_file)) stop("No behavioral data file found for PPC overlay.")
 
 fit <- readRDS(model_file)
-dd <- read_csv(data_file, show_col_types=FALSE)
+dd <- read_csv(data_file, show_col_types = FALSE)
 
 # Prepare data
 dd <- dd |>
   mutate(
-    task = factor(task),
-    # Rename effort conditions
+    task = case_when(
+      task %in% c("ADT", "aud") ~ "ADT",
+      task %in% c("VDT", "vis") ~ "VDT",
+      TRUE ~ as.character(task)
+    ) |> factor(levels = c("ADT", "VDT")),
     effort_condition = case_when(
-      effort_condition == "High_MVC" ~ "High",
-      effort_condition == "Low_5_MVC" ~ "Low",
+      effort_condition %in% c("High", "High_MVC", "High_40_MVC") ~ "High",
+      effort_condition %in% c("Low", "Low_5_MVC") ~ "Low",
       TRUE ~ as.character(effort_condition)
-    ) |>
-      factor(levels=c("Low","High")),
-    # Reorder difficulty: Standard, Easy, Hard
-    difficulty_level = factor(difficulty_level, levels=c("Standard","Easy","Hard"))
-  )
-
-# Generate posterior predictive samples (use subset for speed)
-cat("Generating posterior predictive samples...\n")
-pp_samples <- posterior_predict(fit, ndraws=100)
-cat("Generated", nrow(pp_samples), "draws ×", ncol(pp_samples), "trials\n")
+    ) |> factor(levels = c("Low", "High")),
+    difficulty_level = factor(difficulty_level, levels = c("Standard", "Easy", "Hard")),
+    rt = dplyr::coalesce(rt, rt_probe_onset_locked)
+  ) |>
+  filter(!is.na(rt), rt > 0)
 
 # Prepare empirical RTs
 empirical_rts <- dd |>
   select(task, effort_condition, difficulty_level, rt) |>
   mutate(type = "Empirical")
 
-# Prepare predictive RTs (sample from posterior predictive)
-# Reshape pp_samples: each row is a draw, each column is a trial
-n_draws <- min(50, nrow(pp_samples))  # Use 50 draws for density estimation
-pred_rts <- as.vector(pp_samples[1:n_draws, ])
-
-# Match predictive RTs to conditions (repeat conditions for each draw)
-pred_data <- dd |>
-  select(task, effort_condition, difficulty_level) |>
-  slice(rep(1:n(), n_draws)) |>
-  mutate(
-    rt = pred_rts,
-    type = "Predictive"
+pred_data <- NULL
+if (requireNamespace("RWiener", quietly = TRUE)) {
+  cat("Generating posterior predictive samples...\n")
+  pp_samples <- tryCatch(
+    brms::posterior_predict(fit, ndraws = 100),
+    error = function(e) {
+      message("posterior_predict failed: ", conditionMessage(e))
+      NULL
+    }
   )
+  if (!is.null(pp_samples)) {
+    cat("Generated", nrow(pp_samples), "draws ×", ncol(pp_samples), "trials\n")
+    n_draws <- min(50, nrow(pp_samples))
+    pred_rts <- as.vector(pp_samples[seq_len(n_draws), ])
+    pred_data <- dd |>
+      select(task, effort_condition, difficulty_level) |>
+      slice(rep(seq_len(n()), n_draws)) |>
+      mutate(rt = pred_rts, type = "Predictive")
+  }
+} else {
+  message("RWiener not installed; fig_ppc_rt_overlay will show empirical RTs only.")
+}
 
-# Combine empirical and predictive
+# Combine empirical and predictive (if available)
 ppc <- bind_rows(empirical_rts, pred_data) |>
-  mutate(
-    type = factor(type, levels=c("Empirical","Predictive")),
-    task = factor(task),
-    # Rename effort conditions
-    effort_condition = case_when(
-      effort_condition == "High_MVC" ~ "High",
-      effort_condition == "Low_5_MVC" ~ "Low",
-      TRUE ~ as.character(effort_condition)
-    ) |>
-      factor(levels=c("Low","High")),
-    # Reorder difficulty: Standard, Easy, Hard
-    difficulty_level = factor(difficulty_level, levels=c("Standard","Easy","Hard"))
-  ) |>
+  mutate(type = factor(type, levels = c("Empirical", "Predictive"))) |>
   filter(!is.na(rt), is.finite(rt), rt > 0)
 
 # Create combined facet label for task × effort
@@ -81,7 +82,7 @@ plt <- ppc |>
   ggplot(aes(x=rt, color=type)) +
   geom_density(adjust=1.2, linewidth=0.7) +
   scale_color_manual(
-    values=c("Empirical"="black", "Predictive"="steelblue"),
+    values=c("Empirical"=unname(stat_colors["empirical"]), "Predictive"=unname(stat_colors["predicted"])),
     labels=c("Empirical"="Observed", "Predictive"="Predicted")
   ) +
   facet_grid(task_effort ~ difficulty_level, scales="free_y") +
@@ -90,7 +91,11 @@ plt <- ppc |>
     y="Density", 
     color=NULL,
     title="Posterior Predictive Check: RT Distributions",
-    subtitle="Observed vs Predicted Densities by Task × Effort × Difficulty"
+    subtitle=if (any(ppc$type == "Predictive")) {
+      "Observed vs Predicted Densities by Task × Effort × Difficulty"
+    } else {
+      "Observed RT densities only (install RWiener for predictive overlay)"
+    }
   ) +
   theme_minimal(base_size=11) +
   theme(
@@ -100,7 +105,5 @@ plt <- ppc |>
     strip.text = element_text(face="bold")
   )
 
-ggsave("output/figures/fig_ppc_rt_overlay.pdf", plt, width=9, height=6.5)
-
-cat("Created RT overlay plot: output/figures/fig_ppc_rt_overlay.pdf\n")
+save_manuscript_fig(plt, "fig_ppc_rt_overlay", 9, 6.5)
 

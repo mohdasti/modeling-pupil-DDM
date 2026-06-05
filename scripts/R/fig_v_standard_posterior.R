@@ -1,10 +1,10 @@
 # R/fig_v_standard_posterior.R
 
 suppressPackageStartupMessages({
-  library(brms); library(ggplot2); library(readr); library(dplyr); library(posterior)
+  library(brms); library(ggplot2); library(readr); library(dplyr); library(posterior); library(here)
 })
-
-dir.create("output/figures", showWarnings = FALSE, recursive = TRUE)
+source(here::here("R", "colors_manuscript.R"))
+source(here::here("R", "fig_save_utils.R"))
 
 m_std <- readRDS("output/publish/fit_standard_bias_only.rds")
 draws <- as_draws_df(m_std)
@@ -23,21 +23,17 @@ max_prior_density <- max(dnorm(x, mean=0, sd=0.03))
 prior_scaled <- prior * (max_post_density / max_prior_density)
 
 p <- ggplot(v_draws, aes(x=v)) +
-  geom_histogram(aes(y=after_stat(density)), bins=60, alpha=0.6, fill="steelblue", color="white") +
+  geom_histogram(aes(y=after_stat(density)), bins=60, alpha=0.6, fill=unname(param_colors["v"]), color="white") +
   geom_line(aes(x=x, y=prior_scaled), data=data.frame(x=x, prior_scaled=prior_scaled), 
-            color="darkred", linewidth=1.2, linetype="dashed") +
-  geom_vline(xintercept=0, linetype="dotted", color="gray50", alpha=0.7) +
+            color=unname(stat_colors["prior"]), linewidth=1.2, linetype="dashed") +
+  geom_vline(xintercept=0, linetype="dotted", color=unname(stat_colors["zero_line"]), alpha=0.7) +
   labs(x="v(Standard) (drift)", y="Density",
        title="Posterior v(Standard) with tight prior overlay",
        subtitle="Prior: Normal(0, 0.03) | Posterior mean ≈ -0.036") +
   theme_minimal(base_size=11) +
   theme(plot.subtitle=element_text(size=9, color="gray40"))
 
-ggsave("output/figures/fig_v_standard_posterior.png", p, width=6, height=4, dpi=300)
-ggsave("output/figures/fig_v_standard_posterior.pdf", p, width=6, height=4)
-
-cat("✓ Wrote output/figures/fig_v_standard_posterior.png\n")
-cat("✓ Wrote output/figures/fig_v_standard_posterior.pdf\n")
+save_manuscript_fig(p, "fig_v_standard_posterior", 6, 4)
 
 # Print summary statistics
 cat("\nPosterior summary:\n")

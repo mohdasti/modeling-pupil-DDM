@@ -10,15 +10,20 @@ data/analysis_ready/
 *.h5
 *.hdf5
 
-# Output files
-output/
+# Output files (manuscript_palette figures are versioned; see ! rules below)
+output/*
+!output/figures/
+output/figures/*
+!output/figures/manuscript_palette/
 results/
-figures/
+/figures/
 logs/
 models/
 *.rds
 *.png
+!output/figures/manuscript_palette/**
 *.pdf
+!output/figures/manuscript_palette/**
 *.svg
 
 # R specific

@@ -1,5 +1,6 @@
-suppressPackageStartupMessages({library(tidyverse)})
-dir.create("output/figures", recursive=TRUE, showWarnings=FALSE)
+suppressPackageStartupMessages({library(tidyverse); library(here); library(purrr)})
+source(here::here("R", "colors_manuscript.R"))
+source(here::here("R", "fig_save_utils.R"))
 
 # Try multiple possible locations
 caf_file <- if (file.exists("output/ppc/metrics/consolidated_for_chatgpt/04_all_caf_empirical.csv")) {
@@ -53,71 +54,89 @@ if ("bin" %in% names(caf) && !"bin_rt_mid" %in% names(caf)) {
 # Check for predicted values
 has_pred <- any(grepl("pred|sim", names(caf), ignore.case=TRUE))
 
-# If we have bin numbers but not RT midpoints, we need to compute them from data
-# This requires loading the actual data to get RT ranges per bin
-if (!has_pred || grepl("^[0-9]+$", as.character(caf$bin_rt_mid[1]))) {
-  # Load data to compute RT bin midpoints
-  data_file <- "data/analysis_ready/bap_ddm_ready.csv"
-  if (file.exists(data_file)) {
-    dd <- read_csv(data_file, show_col_types=FALSE) |>
+# If bin_rt_mid holds bin indices (not seconds), compute RT midpoints from trial data
+needs_rt_mid <- !"bin_rt_mid" %in% names(caf) ||
+  all(grepl("^[0-9]+$", as.character(caf$bin_rt_mid)), na.rm = TRUE)
+
+if (needs_rt_mid) {
+  if ("bin" %in% names(caf) && !"bin_rt_mid" %in% names(caf)) {
+    caf <- caf |> rename(bin_rt_mid = bin)
+  }
+
+  data_candidates <- c(
+    "data/ddm_ready_data_unthresholded.csv",
+    "data/analysis_ready/bap_ddm_ready.csv"
+  )
+  data_file <- data_candidates[file.exists(data_candidates)][1]
+
+  if (!is.na(data_file)) {
+    dd <- read_csv(data_file, show_col_types = FALSE) |>
       mutate(
-        task = factor(task),
+        task = case_when(
+          task %in% c("ADT", "aud") ~ "ADT",
+          task %in% c("VDT", "vis") ~ "VDT",
+          TRUE ~ as.character(task)
+        ),
         effort_condition = case_when(
-          effort_condition == "High_MVC" ~ "High",
-          effort_condition == "Low_5_MVC" ~ "Low",
+          effort_condition %in% c("High", "High_MVC", "High_40_MVC") ~ "High",
+          effort_condition %in% c("Low", "Low_5_MVC") ~ "Low",
           TRUE ~ as.character(effort_condition)
-        ) |>
-          factor(levels=c("Low","High")),
-        difficulty_level = factor(difficulty_level, levels=c("Standard","Easy","Hard"))
-      )
-    
-    # Compute RT bin midpoints for each condition
+        ),
+        difficulty_level = factor(difficulty_level, levels = c("Standard", "Easy", "Hard"))
+      ) |>
+      filter(!is.na(rt), rt > 0, rt < 10,
+             task %in% c("ADT", "VDT"),
+             effort_condition %in% c("Low", "High"),
+             !is.na(difficulty_level))
+
     caf_with_rt <- caf |>
       mutate(
-        task = factor(task),
+        task = factor(task, levels = c("ADT", "VDT")),
         effort_condition = case_when(
-          effort_condition == "High_MVC" ~ "High",
-          effort_condition == "Low_5_MVC" ~ "Low",
+          effort_condition %in% c("High_MVC", "High_40_MVC", "High") ~ "High",
+          effort_condition %in% c("Low_5_MVC", "Low") ~ "Low",
           TRUE ~ as.character(effort_condition)
-        ) |>
-          factor(levels=c("Low","High")),
-        difficulty_level = factor(difficulty_level, levels=c("Standard","Easy","Hard")),
+        ) |> factor(levels = c("Low", "High")),
+        difficulty_level = factor(difficulty_level, levels = c("Standard", "Easy", "Hard")),
         bin_num = as.numeric(bin_rt_mid)
-      ) |>
-      group_by(task, effort_condition, difficulty_level) |>
-      mutate(
-        n_bins = max(bin_num, na.rm=TRUE)
-      ) |>
-      ungroup()
-    
-    # Compute RT quantiles for each condition to get bin midpoints
-    rt_bins_list <- list()
-    for (t in unique(caf_with_rt$task)) {
-      for (e in unique(caf_with_rt$effort_condition)) {
-        for (d in unique(caf_with_rt$difficulty_level)) {
-          n_bins <- max(caf_with_rt$n_bins[caf_with_rt$task==t & caf_with_rt$effort_condition==e & caf_with_rt$difficulty_level==d], na.rm=TRUE)
-          if (is.finite(n_bins) && n_bins > 0) {
-            dd_subset <- dd |> filter(task==t, effort_condition==e, difficulty_level==d)
-            if (nrow(dd_subset) > 0) {
-              rt_q <- quantile(dd_subset$rt, probs=seq(0, 1, length.out=n_bins+1), na.rm=TRUE)
-              rt_bins_list[[length(rt_bins_list)+1]] <- tibble(
-                task = t,
-                effort_condition = e,
-                difficulty_level = d,
-                bin = 1:n_bins,
-                bin_rt_mid = (rt_q[-length(rt_q)] + rt_q[-1]) / 2
-              )
-            }
-          }
-        }
+      )
+
+    rt_bins <- purrr::pmap_dfr(
+      caf_with_rt |> distinct(task, effort_condition, difficulty_level),
+      function(task, effort_condition, difficulty_level) {
+        n_bins <- max(
+          caf_with_rt$bin_num[
+            caf_with_rt$task == task &
+              caf_with_rt$effort_condition == effort_condition &
+              caf_with_rt$difficulty_level == difficulty_level
+          ],
+          na.rm = TRUE
+        )
+        if (!is.finite(n_bins) || n_bins < 1) return(NULL)
+        dd_sub <- dd |>
+          filter(.data$task == .env$task,
+                 .data$effort_condition == .env$effort_condition,
+                 .data$difficulty_level == .env$difficulty_level)
+        if (nrow(dd_sub) == 0) return(NULL)
+        rt_q <- quantile(dd_sub$rt, probs = seq(0, 1, length.out = n_bins + 1), na.rm = TRUE)
+        tibble(
+          task = task, effort_condition = effort_condition,
+          difficulty_level = difficulty_level,
+          bin = seq_len(n_bins),
+          bin_rt_mid = (rt_q[-length(rt_q)] + rt_q[-1]) / 2
+        )
       }
+    )
+
+    if (nrow(rt_bins) > 0) {
+      caf <- caf_with_rt |>
+        left_join(rt_bins, by = c("task", "effort_condition", "difficulty_level", "bin_num" = "bin")) |>
+        mutate(bin_rt_mid = coalesce(bin_rt_mid.y, bin_rt_mid.x)) |>
+        select(-any_of(c("bin_rt_mid.x", "bin_rt_mid.y", "bin_num")))
+    } else {
+      caf <- caf_with_rt |> select(-bin_num)
+      message("CAF: could not map bins to RT midpoints; using bin index on x-axis.")
     }
-    rt_bins <- bind_rows(rt_bins_list)
-    
-    caf <- caf_with_rt |>
-      left_join(rt_bins, by=c("task", "effort_condition", "difficulty_level", "bin_num"="bin")) |>
-      mutate(bin_rt_mid = coalesce(bin_rt_mid.y, bin_rt_mid.x)) |>
-      select(-bin_rt_mid.x, -bin_rt_mid.y, -bin_num, -n_bins)
   }
 }
 
@@ -151,9 +170,9 @@ if (has_pred_mean && has_pred_ci) {
   
   plt <- caf |>
     ggplot(aes(x=bin_rt_mid)) +
-    geom_ribbon(aes_string(ymin=pred_lo_col, ymax=pred_hi_col), alpha=0.15, na.rm=TRUE, fill="steelblue") +
-    geom_line(aes_string(y=pred_mean_col), na.rm=TRUE, color="steelblue", linewidth=0.8) +
-    geom_point(aes(y=acc_emp), size=1.6, color="black") +
+    geom_ribbon(aes_string(ymin=pred_lo_col, ymax=pred_hi_col), alpha=0.15, na.rm=TRUE, fill=unname(stat_colors["predicted"])) +
+    geom_line(aes_string(y=pred_mean_col), na.rm=TRUE, color=unname(stat_colors["predicted"]), linewidth=0.8) +
+    geom_point(aes(y=acc_emp), size=1.6, color=unname(stat_colors["empirical"])) +
     facet_grid(task + effort_condition ~ difficulty_level) +
     labs(
       x="RT bin midpoint (s)", 
@@ -172,9 +191,10 @@ if (has_pred_mean && has_pred_ci) {
 } else {
   # Only empirical data
   plt <- caf |>
-    ggplot(aes(x=bin_rt_mid, y=acc_emp)) +
-    geom_point(size=1.6, color="black") +
-    geom_path(linewidth=0.7, color="black", alpha=0.6) +
+    ggplot(aes(x=bin_rt_mid, y=acc_emp, color=effort_condition, group=effort_condition)) +
+    geom_point(size=1.6) +
+    geom_path(linewidth=0.7, alpha=0.6) +
+    scale_color_manual(values=effort_colors, guide="none") +
     facet_grid(task + effort_condition ~ difficulty_level) +
     labs(
       x="RT bin midpoint (s)", 
@@ -191,7 +211,5 @@ if (has_pred_mean && has_pred_ci) {
     )
 }
 
-ggsave("output/figures/fig_caf.pdf", plt, width=9, height=6.5)
-
-cat("Created CAF plot: output/figures/fig_caf.pdf\n")
+save_manuscript_fig(plt, "fig_caf", 9, 6.5)
 

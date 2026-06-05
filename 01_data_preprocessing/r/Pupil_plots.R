@@ -11,6 +11,8 @@ library(viridis)
 library(stringr)
 library(grid)
 library(cowplot)
+library(here)
+source(here::here("R", "colors_manuscript.R"))
 
 # Set paths
 processed_dir <- "/Users/mohdasti/Documents/LC-BAP/BAP/BAP_Pupillometry/BAP/BAP_processed"
@@ -246,8 +248,8 @@ create_squeeze_locked_plot_clean <- function(session_result) {
         annotate("rect", xmin = 3.25, xmax = 3.75, ymin = -Inf, ymax = Inf, 
                  alpha = 0.1, fill = "purple") +
         
-        scale_color_manual(values = c("Low Force (5%)" = "#1f78b4", "High Force (40%)" = "#e31a1c")) +
-        scale_fill_manual(values = c("Low Force (5%)" = "#1f78b4", "High Force (40%)" = "#e31a1c")) +
+        scale_color_manual(values = c("Low Force (5%)" = effort_colors["Low"], "High Force (40%)" = effort_colors["High"])) +
+        scale_fill_manual(values = c("Low Force (5%)" = effort_colors["Low"], "High Force (40%)" = effort_colors["High"])) +
         
         # CLEAN: Only subject-task as title, no axis labels
         ggtitle(paste(session_result$subject, session_result$task)) +
@@ -291,8 +293,8 @@ create_stimulus_locked_plot_clean <- function(session_result) {
         annotate("rect", xmin = -0.5, xmax = 0, ymin = -Inf, ymax = Inf, 
                  alpha = 0.1, fill = "purple") +
         
-        scale_color_manual(values = c("Low Force (5%)" = "#1f78b4", "High Force (40%)" = "#e31a1c")) +
-        scale_fill_manual(values = c("Low Force (5%)" = "#1f78b4", "High Force (40%)" = "#e31a1c")) +
+        scale_color_manual(values = c("Low Force (5%)" = effort_colors["Low"], "High Force (40%)" = effort_colors["High"])) +
+        scale_fill_manual(values = c("Low Force (5%)" = effort_colors["Low"], "High Force (40%)" = effort_colors["High"])) +
         
         # CLEAN: Only subject-task as title, no axis labels
         ggtitle(paste(session_result$subject, session_result$task)) +
@@ -350,7 +352,7 @@ create_comprehensive_plot_simple <- function(plot_list, plot_type = "squeeze") {
     legend_plot <- ggplot(legend_data, aes(x, y, color = force)) +
         geom_line(size = 1.5) +
         scale_color_manual(
-            values = c("Low Force (5%)" = "#1f78b4", "High Force (40%)" = "#e31a1c"),
+            values = c("Low Force (5%)" = effort_colors["Low"], "High Force (40%)" = effort_colors["High"]),
             name = "Handgrip Force Condition"
         ) +
         theme_void() +

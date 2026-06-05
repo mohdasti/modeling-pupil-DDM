@@ -2,9 +2,10 @@ suppressPackageStartupMessages({
   library(ggplot2)
   library(grid)
   library(dplyr)
+  library(here)
 })
-
-dir.create("output/figures", recursive = TRUE, showWarnings = FALSE)
+source(here::here("R", "colors_manuscript.R"))
+source(here::here("R", "fig_save_utils.R"))
 
 # Simulate a drift diffusion process for visualization
 # Parameters
@@ -105,18 +106,18 @@ p <- ggplot() +
            fill = "lightblue", alpha = 0.2, color = NA) +
   
   # Upper boundary ("different") - labels on right side
-  geom_hline(yintercept = a, linetype = "solid", linewidth = 2, color = "#E74C3C") +
+  geom_hline(yintercept = a, linetype = "solid", linewidth = 2, color = unname(param_colors["a"])) +
   annotate("text", x = total_rt + .4, y = a + 0.05, label = '"Different"', 
-           size = 4.8, color = "#E74C3C", fontface = "bold", hjust = 0, vjust = 0) +
+           size = 4.8, color = unname(param_colors["a"]), fontface = "bold", hjust = 0, vjust = 0) +
   annotate("text", x = total_rt + 0.4, y = a - 0.08, label = "Upper boundary (a)", 
-           size = 3.5, color = "#E74C3C", hjust = 0, vjust = 1) +
+           size = 3.5, color = unname(param_colors["a"]), hjust = 0, vjust = 1) +
   
   # Lower boundary ("same") - labels on right side
-  geom_hline(yintercept = 0, linetype = "solid", linewidth = 2, color = "#3498DB") +
+  geom_hline(yintercept = 0, linetype = "solid", linewidth = 2, color = unname(effort_colors["Low"])) +
   annotate("text", x = total_rt + 0.4, y = 0 - 0.05, label = '"Same"', 
-           size = 4.8, color = "#3498DB", fontface = "bold", hjust = 0, vjust = 1) +
+           size = 4.8, color = unname(effort_colors["Low"]), fontface = "bold", hjust = 0, vjust = 1) +
   annotate("text", x = total_rt + 0.4, y = 0 + 0.08, label = "Lower boundary", 
-           size = 3.5, color = "#3498DB", hjust = 0, vjust = 0) +
+           size = 3.5, color = unname(effort_colors["Low"]), hjust = 0, vjust = 0) +
   
   # Evidence accumulation path (draw first so other elements overlay)
   # Only include points up to and including the boundary hit
@@ -125,32 +126,32 @@ p <- ggplot() +
               evidence = evidence
             ),
             aes(x = time, y = evidence), 
-            linewidth = 2, color = "#2C3E50") +
+            linewidth = 2, color = unname(stat_colors["empirical"])) +
   
   # Starting point (bias) - label BELOW the point
-  geom_point(aes(x = ndt, y = z * a), size = 5, color = "#9B59B6", fill = "white", stroke = 2.5, shape = 21) +
+  geom_point(aes(x = ndt, y = z * a), size = 5, color = unname(param_colors["z"]), fill = "white", stroke = 2.5, shape = 21) +
   annotate("segment", x = ndt, xend = ndt, y = 0, yend = z * a, 
-           linetype = "dashed", linewidth = 1, color = "#9B59B6", alpha = 0.7) +
+           linetype = "dashed", linewidth = 1, color = unname(param_colors["z"]), alpha = 0.7) +
   annotate("text", x = ndt, y = z * a - 0.25, label = "z (starting point bias)", 
-           size = 3.8, color = "#9B59B6", fontface = "bold", hjust = 0.5, vjust = 1.5 ) +
+           size = 3.8, color = unname(param_colors["z"]), fontface = "bold", hjust = 0.5, vjust = 1.5 ) +
   
   # Drift direction arrow - label BELOW the arrow
   annotate("segment", 
            x = arrow_start_x, xend = arrow_end_x, 
            y = arrow_start_y, yend = arrow_end_y,
            arrow = arrow(length = unit(0.18, "inches"), type = "closed"),
-           linewidth = 1.2, color = "#27AE60") +
+           linewidth = 1.2, color = unname(param_colors["v"])) +
   annotate("text", x = arrow_mid_x, y = arrow_mid_y - 0.25, 
-           label = "Drift rate (v)", size = 3.8, color = "#27AE60", fontface = "bold", 
+           label = "Drift rate (v)", size = 3.8, color = unname(param_colors["v"]), fontface = "bold", 
            hjust = 1.1, vjust = 1) +
   
   # Decision time marker - already below, improve spacing
-  geom_vline(xintercept = total_rt, linetype = "dashed", linewidth = 1.2, color = "#E67E22") +
+  geom_vline(xintercept = total_rt, linetype = "dashed", linewidth = 1.2, color = unname(param_colors["t0"])) +
   annotate("text", x = total_rt, y = -0.25, label = "RT", 
-           size = 4, color = "#E67E22", fontface = "bold", hjust = 1.2, vjust = 0) +
+           size = 4, color = unname(param_colors["t0"]), fontface = "bold", hjust = 1.2, vjust = 0) +
   annotate("text", x = total_rt, y = -0.4, 
            label = paste0("= t₀ + decision time\n≈ ", round(total_rt, 2), " s"), 
-           size = 3.2, color = "#E67E22", hjust = -0.2, vjust = 0) +
+           size = 3.2, color = unname(param_colors["t0"]), hjust = -0.2, vjust = 0) +
   
   # Time axis labels - improve spacing
   annotate("segment", x = 0, xend = 0, y = -0.15, yend = -0.2, linewidth = 1) +
@@ -179,10 +180,5 @@ p <- ggplot() +
     plot.background = element_rect(fill = "white", color = NA)
   )
 
-# Save figure
-ggsave("output/figures/fig_ddm_process.pdf", p, width = 10, height = 6.5, device = "pdf")
-ggsave("output/figures/fig_ddm_process.png", p, width = 10, height = 6.5, dpi = 300, device = "png")
-
-cat("✓ Created DDM process figure: output/figures/fig_ddm_process.pdf\n")
-cat("✓ Created DDM process figure: output/figures/fig_ddm_process.png\n")
+save_manuscript_fig(p, "fig_ddm_process", 10, 6.5)
 

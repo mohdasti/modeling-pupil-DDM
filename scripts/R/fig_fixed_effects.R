@@ -1,5 +1,6 @@
-suppressPackageStartupMessages({library(brms); library(tidyverse); library(posterior)})
-dir.create("output/figures", recursive=TRUE, showWarnings=FALSE)
+suppressPackageStartupMessages({library(brms); library(tidyverse); library(posterior); library(here)})
+source(here::here("R", "colors_manuscript.R"))
+source(here::here("R", "fig_save_utils.R"))
 
 # Try multiple possible locations for the model file
 model_file <- if (file.exists("output/publish/fit_primary_vza.rds")) {
@@ -94,9 +95,10 @@ create_task_plot <- function(task_name, task_label, fx_data, task_effects) {
   fx_plot <- fx_data
   
   plt <- fx_plot |>
-    ggplot(aes(x = reorder(term_clean, mean), y = mean)) +
+    ggplot(aes(x = reorder(term_clean, mean), y = mean, color = family)) +
     geom_pointrange(aes(ymin = `q2.5`, ymax = `q97.5`), size=0.5, fatten=2) +
-    geom_hline(yintercept=0, linetype="dashed", color="gray50", alpha=0.6) +
+    scale_color_manual(values = c(v = unname(param_colors["v"]), bs = unname(param_colors["a"]), bias = unname(param_colors["z"]), ndt = unname(param_colors["t0"])), guide = "none") +
+    geom_hline(yintercept=0, linetype="dashed", color=unname(stat_colors["zero_line"]), alpha=0.6) +
     facet_wrap(~family, scales="free_y", ncol=1) +
     coord_flip() +
     labs(
@@ -120,10 +122,6 @@ plt_adt <- create_task_plot("ADT", "ADT (Auditory Detection Task)", fx_contrasts
 plt_vdt <- create_task_plot("VDT", "VDT (Visual Detection Task)", fx_contrasts, task_effect)
 
 # Save separate files
-ggsave("output/figures/fig_fixed_effects_ADT.pdf", plt_adt, width=7.5, height=8.5)
-ggsave("output/figures/fig_fixed_effects_VDT.pdf", plt_vdt, width=7.5, height=8.5)
-
-cat("Created separate fixed effects plots:\n")
-cat("  - output/figures/fig_fixed_effects_ADT.pdf\n")
-cat("  - output/figures/fig_fixed_effects_VDT.pdf\n")
+save_manuscript_fig(plt_adt, "fig_fixed_effects_ADT", 7.5, 8.5)
+save_manuscript_fig(plt_vdt, "fig_fixed_effects_VDT", 7.5, 8.5)
 
