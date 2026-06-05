@@ -174,6 +174,14 @@ fatigue_effort_colors <- c(
 MANUSCRIPT_FIG_DIR <- file.path(proj_root, "output/figures/manuscript_palette")
 dir.create(MANUSCRIPT_FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 
+# NHB publication figures (figs 1–5)
+NHB_FIG_DIR <- file.path(proj_root, "output/figures/manuscript")
+nhb_fig <- function(fig_name) {
+  f <- file.path(NHB_FIG_DIR, fig_name)
+  if (!file.exists(f)) stop("NHB figure not found: ", f)
+  f
+}
+
 p <- file.path(proj_root, "output/publish")
 # Ensure p is a single character string
 if (length(p) > 1) p <- p[1]
@@ -844,11 +852,11 @@ To understand the latent mechanisms underlying age-related slowing, we utilize t
 
 ```{r}
 #| label: fig-ddm-process
-#| fig-cap: "Drift Diffusion Model: Evidence Accumulation Process. Evidence accumulates from starting point ($z$) toward one of two boundaries: the upper boundary ('different' response) or the lower boundary ('same' response). Drift rate ($v$) reflects the quality of stimulus evidence; boundary separation ($a$) reflects response caution; non-decision time ($t_0$) captures perceptual encoding and motor execution. Total RT = decision time + $t_0$."
+#| fig-cap: "Study design and DDM architecture (NHB Fig 1). Panel A: trial timeline; Panel B: DDM schematic; Panel C: predictor-to-parameter map. Evidence accumulates from starting point ($z$) toward the 'different' (upper) or 'same' (lower) boundary; drift rate ($v$), boundary separation ($a$), bias ($z$), and non-decision time ($t_0$) are labelled."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "70%"
-include_graphics_safe(fig_path("fig_ddm_process.pdf"))
+#| out-width: "100%"
+include_graphics_safe(nhb_fig("fig1_design_schematic.png"))
 ```
 
 This mathematical framework allows us to decompose standard behavioral reaction time data and accuracy rates into four distinct latent parameters. The drift rate ($v$) reflects the efficiency and quality of the accumulation process itself, where the absolute magnitude of the parameter reflects the clarity of the sensory signal and the efficiency of the accumulation process itself, directing the decision vector toward either the upper ('different') or lower ('same') boundary based on stimulus properties. The boundary separation ($a$) establishes the total amount of evidence required before a participant commits to a response, serving as a direct measure of response caution. The starting-point bias ($z$) accounts for any a priori preference or baseline asymmetry toward one response alternative over another before the trial even begins. Finally, the non-decision time ($t_0$) captures the duration of peripheral mechanisms that fall completely outside the core decision process, such as initial sensory encoding and downstream motor execution [@ratcliff1978theory; @ratcliff2008diffusion; @voss2004interpreting].
@@ -1193,10 +1201,10 @@ demographics_table %>%
 ```{r}
 #| label: fig-trial-structure
 #| fig-pos: "htbp"
-#| fig-cap: "Trial structure for both tasks (response-signal design). Each trial includes a jittered pre-cue interval, a 3-s grip-gauge period (Low vs High effort), a two-stimulus sequence (standard → delay → probe), followed by a 3-s same/different response window and a 3-s confidence rating. Full stimulus parameters and difficulty binning are described in the Tasks and Conditions section."
+#| fig-cap: "Trial timeline — Panel A of NHB Fig 1. See @fig-ddm-process for the complete three-panel design figure."
 #| fig-align: center
-#| out-width: "75%"
-include_graphics_safe(fig_path("Trial_Structure.png"))
+#| out-width: "100%"
+include_graphics_safe(nhb_fig("fig1_design_schematic.png"))
 ```
 
 ## Equipment
@@ -1321,11 +1329,11 @@ Sensitivity analyses using cue-locked RT and alternative lower-bound cutoffs (0.
 
 ```{r}
 #| label: fig-model-matrix
-#| fig-cap: "Predictor-to-parameter mapping for the primary DDM. Checkmarks indicate included predictors; dashes indicate excluded predictors. Difficulty is excluded from the bias formula because trial difficulty is randomized and unknown at decision onset, preventing participants from adjusting their starting point based on difficulty. Task and Effort are included in bias because these conditions are known pre-stimulus. Complete brms formulas are shown for each parameter."
+#| fig-cap: "Predictor-to-parameter map — Panel C of NHB Fig 1. See @fig-ddm-process for the complete three-panel design figure."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "70%"
-include_graphics_safe(fig_path("matrix.png"))
+#| out-width: "100%"
+include_graphics_safe(nhb_fig("fig1_design_schematic.png"))
 ```
 
 To confirm that the difficulty and effort manipulations affected behavioral performance as intended — independent of DDM assumptions — we conducted mixed-effects models for accuracy (GLMM, binomial) and median reaction time (LMM), each including fixed effects for difficulty, effort, and task, with random intercepts for participant. Analyses were restricted to Easy and Hard trials; full model details and results are reported in Appendix A7.
@@ -3131,217 +3139,31 @@ ddm_core %>%
 
 ```{r}
 #| label: fig-ddm-parameters-combined
-#| fig-cap: "Drift rate ($v$) and boundary separation ($a$) by Difficulty $\\times$ Effort. (A) Drift rate and (B) Boundary separation, pooled across tasks (ADT + VDT). Points show posterior medians with 95% credible intervals. Blue = Low effort; magenta = High effort. Task modality was not included as a predictor for $v$ or $a$ in the primary model (@sec-ddm-spec); task-specific estimates are in Appendix A4.3. *Note: Drift rates ($v$) were estimated using Response Coding. Positive values indicate evidence accumulation toward the 'Different' boundary; negative values indicate accumulation toward the 'Same' boundary.*"
-#| fig-width: 12
-#| fig-height: 5
+#| fig-cap: "Selective effort effect on drift — the central result (NHB Fig 2). Panels A and C: drift rate ($v$) and boundary separation ($a$) by Difficulty $\\times$ Effort (posterior medians + 95% CrI; blue = Low, magenta = High). Panels B and D: posterior distributions for the H1 (effort→drift) and H2 (effort→boundary) contrasts. The 95% CrI for H1 excludes zero; H2 spans zero."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "90%"
-
-library(patchwork)
-
-drift_pooled <- pred_params %>%
-  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
-  group_by(difficulty, effort) %>% slice(1) %>% ungroup() %>%
-  select(difficulty, effort, drift_median, drift_q2.5, drift_q97.5) %>%
-  mutate(difficulty = factor(difficulty, levels = c("Standard", "Easy", "Hard")),
-         effort = factor(effort, levels = c("Low", "High")))
-
-p_drift_pooled <- ggplot(drift_pooled, aes(x = difficulty, y = drift_median, color = effort, group = effort)) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50", alpha = 0.5) +
-  geom_pointrange(aes(ymin = drift_q2.5, ymax = drift_q97.5), position = position_dodge(width = 0.35), size = 0.7, linewidth = 0.6) +
-  geom_line(position = position_dodge(width = 0.35), alpha = 0.7, linewidth = 0.6) +
-  scale_color_manual(values = effort_colors, name = "Effort") +
-  labs(x = "Difficulty", y = "Drift Rate (v)") +
-  theme_bw(base_size = 14) +
-  theme(axis.title = element_text(face = "bold", size = 13), legend.title = element_text(face = "bold", size = 12),
-        panel.grid.minor = element_blank(), legend.position = "none",
-        plot.subtitle = element_text(size = 12, color = "gray40", hjust = 0.5),
-        axis.text = element_text(size = 12)) +
-  scale_x_discrete(drop = FALSE)
-
-boundary_pooled <- pred_params %>%
-  filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
-  group_by(difficulty, effort) %>% slice(1) %>% ungroup() %>%
-  select(difficulty, effort, a_median, a_q2.5, a_q97.5) %>%
-  mutate(difficulty = factor(difficulty, levels = c("Standard", "Easy", "Hard")),
-         effort = factor(effort, levels = c("Low", "High")))
-
-p_boundary_pooled <- ggplot(boundary_pooled, aes(x = difficulty, y = a_median, color = effort, group = effort)) +
-  geom_pointrange(aes(ymin = a_q2.5, ymax = a_q97.5), position = position_dodge(width = 0.35), size = 0.7, linewidth = 0.6) +
-  geom_line(position = position_dodge(width = 0.35), alpha = 0.7, linewidth = 0.6) +
-  scale_color_manual(values = effort_colors, name = "Effort") +
-  labs(x = "Difficulty", y = "Boundary Separation (a)") +
-  theme_bw(base_size = 14) +
-  theme(axis.title = element_text(face = "bold", size = 13), legend.title = element_text(face = "bold", size = 12),
-        panel.grid.minor = element_blank(), legend.position = "none",
-        plot.subtitle = element_text(size = 12, color = "gray40", hjust = 0.5),
-        axis.text = element_text(size = 12)) +
-  scale_x_discrete(drop = FALSE)
-
-fig_ddm_combined <- p_drift_pooled + p_boundary_pooled +
-  plot_layout(guides = "collect") +
-  plot_annotation(tag_levels = "A", tag_prefix = "(", tag_suffix = ")",
-                  theme = theme(plot.tag = element_text(size = 18, face = "bold"))) &
-  theme(legend.position = "bottom")
-
-print(fig_ddm_combined)
-save_manuscript_fig(fig_ddm_combined, "fig_ddm_parameters_combined", 12, 5)
+#| out-width: "100%"
+include_graphics_safe(nhb_fig("fig2_central_result.png"))
 ```
 
 Because Effort is a within-subject manipulation, visual overlap in marginal means is misleading. Plotting the posterior distribution of the difference score (High $-$ Low Effort) explicitly demonstrates that the 95% HDI does not cross zero, confirming a highly credible reduction in drift rate (@fig-effort-drift-posterior-diff).
 
 ```{r}
 #| label: fig-effort-drift-posterior-diff
-#| fig-cap: "Bayesian Hypothesis Test: Effort Effect on Drift Rate (H1). Posterior distribution of the High $-$ Low effort contrast on drift rate ($v$), extracted from the primary model. The 95% credible interval (CrI; shaded region) falls entirely below zero, supporting H1 ($\\delta$ = −0.07, 95% CrI [−0.11, −0.03], $P(\\delta < 0) > .999$)."
+#| fig-cap: "H1 effort contrast on drift — Panel B of NHB Fig 2. See @fig-ddm-parameters-combined for the complete four-panel central-result figure."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "55%"
-#| fig-height: 3
-
-model_path_effort <- file.path(proj_root, params$run_dir, "models",
-                                "additive__probe_onset_locked__thr0.20.rds")
-
-if (file.exists(model_path_effort) &&
-    requireNamespace("brms", quietly = TRUE) &&
-    requireNamespace("posterior", quietly = TRUE)) {
-  tryCatch({
-    suppressPackageStartupMessages({ library(brms); library(posterior) })
-    fit_eff <- readRDS(model_path_effort)
-    d_eff <- posterior::as_draws_df(fit_eff)
-
-    # brms names the High-vs-Low coefficient b_effort_conditionhigh
-    eff_var <- intersect(c("b_effort_conditionhigh", "b_effort_conditionHigh",
-                           "b_effort_conditionhigh_mvc", "b_effort_conditionHigh40MVC"),
-                         names(d_eff))[1]
-
-    if (!is.na(eff_var)) {
-      diff_draws <- as.numeric(d_eff[[eff_var]])
-      hdi_lo <- quantile(diff_draws, 0.025)
-      hdi_hi <- quantile(diff_draws, 0.975)
-      med_val <- median(diff_draws)
-
-      eff_df  <- tibble::tibble(diff = diff_draws)
-      hdi_tbl <- tibble::tibble(lo = hdi_lo, hi = hdi_hi, med = med_val)
-
-      p_eff <- ggplot(eff_df, aes(x = diff)) +
-        geom_density(fill = effort_colors["High"], alpha = 0.55, color = "black", linewidth = 0.4) +
-        geom_vline(xintercept = 0,       linetype = "dashed", color = "gray40", linewidth = 0.6) +
-        geom_vline(xintercept = hdi_lo,  linetype = "dashed", color = effort_colors["High"], linewidth = 0.5, alpha = 0.9) +
-        geom_vline(xintercept = hdi_hi,  linetype = "dashed", color = effort_colors["High"], linewidth = 0.5, alpha = 0.9) +
-        geom_segment(data = hdi_tbl,
-                     aes(x = lo, xend = hi, y = -Inf, yend = -Inf),
-                     color = "black", linewidth = 0.9, inherit.aes = FALSE) +
-        geom_point(data = hdi_tbl, aes(x = med, y = 0),
-                   shape = 21, fill = "white", color = "black", size = 1.5,
-                   inherit.aes = FALSE) +
-        labs(x = "Drift rate contrast: High - Low Effort (link scale)",
-             y = "Posterior density") +
-        theme_bw(base_size = 12) +
-        theme(panel.grid.minor = element_blank(),
-              axis.title = element_text(face = "bold"))
-      print(p_eff)
-      save_manuscript_fig(p_eff, "fig_effort_drift_posterior_h1", 6, 3)
-    } else {
-      message("Effort contrast coefficient not found in model draws; skipping plot.")
-      invisible(NULL)
-    }
-  }, error = function(e) {
-    message("Effort posterior diff plot failed: ", conditionMessage(e))
-    invisible(NULL)
-  })
-} else {
-  message("Model or required packages not found; skipping effort posterior diff plot.")
-  invisible(NULL)
-}
+#| out-width: "100%"
+include_graphics_safe(nhb_fig("fig2_central_result.png"))
 ```
 
 ```{r}
 #| label: fig-difficulty-contrasts
-#| fig-cap: "**Pairwise Difficulty Contrasts on Drift Rate (left) and Boundary Separation (right).** Each panel shows the posterior density of the named difference score extracted from the primary model, serving as the Bayesian manipulation check for difficulty. Vertical dashed lines mark zero; shaded bands show the 95% credible interval. No contrast crosses zero, confirming credible effects of difficulty on both parameters across all three pairwise comparisons."
+#| fig-cap: "Integrated parameter forest (NHB Fig 3). Panel A: effort contrasts H1–H4 on drift, boundary, and bias. Panel B: difficulty contrasts (Easy vs Standard, Hard vs Standard) on drift and boundary. Filled circles = 95% CrI excludes zero; open circles = CrI spans zero."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "90%"
-#| fig-height: 4
-
-library(brms); library(posterior); library(tidybayes); library(ggplot2); library(patchwork)
-
-model_path <- if (!is.null(params$run_dir) && length(params$run_dir) > 0) {
-  file.path(proj_root, params$run_dir, "models",
-            "additive__probe_onset_locked__thr0.20.rds")
-} else {
-  character(0)
-}
-
-if (length(model_path) > 0 && file.exists(model_path)) {
-  fit <- readRDS(model_path)
-  draws_df <- as_draws_df(fit)
-  nn <- names(draws_df)
-
-  # Detect drift rate difficulty columns (brms naming varies: difficulty_3, difficultylevel, difficulty_level)
-  v_easy_col <- intersect(c("b_difficulty_3Easy", "b_difficultylevelEasy", "b_difficulty_levelEasy"), nn)[1]
-  v_hard_col <- intersect(c("b_difficulty_3Hard", "b_difficultylevelHard", "b_difficulty_levelHard"), nn)[1]
-  a_easy_col <- intersect(c("b_bs_difficulty_3Easy", "b_bs_difficultylevelEasy", "b_bs_difficulty_levelEasy"), nn)[1]
-  a_hard_col <- intersect(c("b_bs_difficulty_3Hard", "b_bs_difficultylevelHard", "b_bs_difficulty_levelHard"), nn)[1]
-
-  if (!is.na(v_easy_col) && !is.na(v_hard_col) && !is.na(a_easy_col) && !is.na(a_hard_col)) {
-    # Drift rate difficulty contrasts (link scale)
-    easy_std_v  <- draws_df[[v_easy_col]]
-    hard_std_v  <- draws_df[[v_hard_col]]
-    easy_hard_v <- draws_df[[v_easy_col]] - draws_df[[v_hard_col]]
-
-    # Boundary separation difficulty contrasts (log link)
-    easy_std_a  <- draws_df[[a_easy_col]]
-    hard_std_a  <- draws_df[[a_hard_col]]
-    easy_hard_a <- draws_df[[a_easy_col]] - draws_df[[a_hard_col]]
-
-    contrast_data_v <- tibble::tibble(
-      contrast = rep(c("Easy vs. Standard", "Hard vs. Standard", "Easy vs. Hard"),
-                     each = length(easy_std_v)),
-      value    = c(easy_std_v, hard_std_v, easy_hard_v)
-    ) |> dplyr::mutate(contrast = factor(contrast,
-          levels = c("Easy vs. Standard", "Hard vs. Standard", "Easy vs. Hard")))
-
-    contrast_data_a <- tibble::tibble(
-      contrast = rep(c("Easy vs. Standard", "Hard vs. Standard", "Easy vs. Hard"),
-                     each = length(easy_std_a)),
-      value    = c(easy_std_a, hard_std_a, easy_hard_a)
-    ) |> dplyr::mutate(contrast = factor(contrast,
-          levels = c("Easy vs. Standard", "Hard vs. Standard", "Easy vs. Hard")))
-
-    p_v <- ggplot(contrast_data_v, aes(x = value, fill = contrast, color = contrast)) +
-      geom_density(alpha = 0.45, linewidth = 0.5) +
-      geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.7) +
-      facet_wrap(~contrast, scales = "free", ncol = 1) +
-      scale_fill_manual(values  = contrast_colors, guide = "none") +
-      scale_color_manual(values = contrast_colors, guide = "none") +
-      labs(x = "Posterior difference (link scale)", y = "Density",
-           title = expression(paste("Drift Rate ", italic(v), " Contrasts"))) +
-      theme_bw(base_size = 11) +
-      theme(panel.grid.minor = element_blank(), strip.text = element_text(size = 9))
-
-    p_a <- ggplot(contrast_data_a, aes(x = value, fill = contrast, color = contrast)) +
-      geom_density(alpha = 0.45, linewidth = 0.5) +
-      geom_vline(xintercept = 0, linetype = "dashed", color = "gray40", linewidth = 0.7) +
-      facet_wrap(~contrast, scales = "free", ncol = 1) +
-      scale_fill_manual(values  = contrast_colors, guide = "none") +
-      scale_color_manual(values = contrast_colors, guide = "none") +
-      labs(x = "Posterior difference (log scale)", y = "Density",
-           title = expression(paste("Boundary Sep. ", italic(a), " Contrasts"))) +
-      theme_bw(base_size = 11) +
-      theme(panel.grid.minor = element_blank(), strip.text = element_text(size = 9))
-
-    fig_diff_contrasts <- p_v + p_a + plot_layout(ncol = 2)
-    print(fig_diff_contrasts)
-    save_manuscript_fig(fig_diff_contrasts, "fig_difficulty_contrasts", 10, 4)
-  } else {
-    message("Difficulty contrast columns not found in model; skipping fig-difficulty-contrasts.")
-    invisible(NULL)
-  }
-} else {
-  message("Model path not available or file not found; skipping difficulty contrasts figure.")
-  invisible(NULL)
-}
+#| out-width: "100%"
+include_graphics_safe(nhb_fig("fig3_parameter_forest.png"))
 ```
 
 ```{r}
@@ -4560,91 +4382,13 @@ if (ch_table_available) {
 
 ```{r}
 #| label: fig-choice-history-posteriors
-#| fig-cap: "Posterior distributions for focal choice-history parameters (bias subformula). Each panel shows kernel density estimates of the posterior for a key parameter from the history model (darker fill) and the win-stay/lose-shift model (lighter fill). Vertical dashed lines mark zero. **Top left:** Previous-trial response main effect on bias — reliable perseveration (CrI excludes zero in both models). **Top right:** Previous-trial response × effort interaction — posterior centered on zero. **Bottom left:** Previous-trial response × accuracy interaction (WSLS model only) — marginal post-error repetition pattern. **Bottom right:** Previous-trial response effect on drift rate — small but reliable carry-over."
+#| fig-cap: "Choice history posteriors — Panel C of NHB Fig 4. See @fig-fatigue-posteriors for the complete three-panel temporal-dynamics figure."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "90%"
-#| echo: false
+#| out-width: "100%"
+include_graphics_safe(nhb_fig("fig4_temporal_dynamics.png"))
 
-if (ch_fits_available) {
-  tryCatch({
-    suppressPackageStartupMessages(library(ggplot2))
-    suppressPackageStartupMessages(library(tidyr))
-    suppressPackageStartupMessages(library(dplyr))
-
-    extract_focal <- function(fit, model_label) {
-      draws <- as_draws_df(fit)
-      focal_map <- c(
-        "Perseveration (bias)"         = "b_bias_prev_choice",
-        "Effort × History (bias)"      = "b_bias_prev_choice:effort_conditionLow_5_MVC",
-        "WSLS: Correct × History (bias)" = "b_bias_prev_choice:prev_correct",
-        "Perseveration (drift)"        = "b_prev_choice"
-      )
-      purrr::map_dfr(names(focal_map), function(label) {
-        col <- focal_map[[label]]
-        if (col %in% names(draws)) {
-          tibble(
-            parameter = label,
-            model     = model_label,
-            draw      = draws[[col]]
-          )
-        } else NULL
-      })
-    }
-
-    draws_hist <- extract_focal(ch_fit_hist, "M_hist")
-    draws_wsls <- extract_focal(ch_fit_wsls, "M_wsls")
-    draws_all  <- bind_rows(draws_hist, draws_wsls) |>
-      mutate(
-        parameter = factor(parameter, levels = c(
-          "Perseveration (bias)",
-          "Effort × History (bias)",
-          "WSLS: Correct × History (bias)",
-          "Perseveration (drift)"
-        )),
-        model = factor(model, levels = c("M_hist", "M_wsls"))
-      )
-
-    alpha_vals <- c("M_hist" = 0.65, "M_wsls" = 0.35)
-
-    p_ch <- ggplot(draws_all, aes(x = draw, fill = model, colour = model)) +
-      geom_density(alpha = 0.5, linewidth = 0.6) +
-      geom_vline(xintercept = 0, linetype = "dashed", colour = "grey40", linewidth = 0.7) +
-      facet_wrap(~ parameter, scales = "free", ncol = 2) +
-      scale_fill_manual(
-        values  = ch_model_colors,
-        labels  = c("M_hist" = "M_hist (base)", "M_wsls" = "M_wsls (WSLS)"),
-        name    = "Model"
-      ) +
-      scale_colour_manual(
-        values  = ch_model_colors,
-        labels  = c("M_hist" = "M_hist (base)", "M_wsls" = "M_wsls (WSLS)"),
-        name    = "Model"
-      ) +
-      labs(
-        x = "Posterior draw (logit scale for bias; identity for drift)",
-        y = "Density"
-      ) +
-      theme_minimal(base_size = 11) +
-      theme(
-        panel.grid.minor   = element_blank(),
-        panel.grid.major.y = element_blank(),
-        strip.text         = element_text(face = "bold", size = 10),
-        legend.position    = "bottom",
-        axis.title         = element_text(face = "bold"),
-        plot.margin        = margin(6, 6, 6, 6)
-      )
-
-    print(p_ch)
-    save_manuscript_fig(p_ch, "fig_choice_history_posteriors", 10, 8)
-  }, error = function(e) {
-    message("Choice history figure failed: ", e$message)
-    invisible(NULL)
-  })
-} else {
-  message("Choice history model fits not found; skipping figure.")
-  invisible(NULL)
-}
+invisible(NULL)
 ```
 
 
@@ -4852,18 +4596,11 @@ if (fat_fit_available && fat_table_available) {
 
 ```{r}
 #| label: fig-fatigue-posteriors
-#| fig-cap: "Within-session fatigue dynamics: focal posterior estimates. **Panel A** shows posterior medians (points) and 95% credible intervals (horizontal bars) for all focal parameters in the drift ($v$, blue) and boundary separation ($a$, red) submodels. Filled circles indicate parameters whose 95% CrI excludes zero; open circles span zero. The only credible effect is the within-run boundary decline in the second half ([*]). **Panel B** shows posterior median and 95% CrI for the population-average boundary separation (exp scale) in each of the four effort x session-half cells, derived from fixed-effects posterior draws. Both effort conditions show a small first-to-second-half decrease, but the decline is larger and credibly non-zero only under Low effort; under High effort the positive interaction term partially offsets the relaxation, leaving the second-half boundary nearly unchanged."
+#| fig-cap: "Temporal dynamics: fatigue + choice history (NHB Fig 4). Panel A: boundary trajectories 1st vs 2nd session half by effort. Panel B: focal fatigue coefficients forest (boundary decline credible [*]; effort × half interactions non-credible). Panel C: perseveration bias and effort × history posteriors from history and WSLS models."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| fig-width: 11
-#| fig-height: 7.5
 #| out-width: "100%"
-#| echo: false
-
-if (!is.null(p_fatigue_combined)) {
-  print(p_fatigue_combined)
-  save_manuscript_fig(p_fatigue_combined, "fig_fatigue_posteriors", 11, 7.5)
-}
+include_graphics_safe(nhb_fig("fig4_temporal_dynamics.png"))
 ```
 
 
@@ -5113,158 +4850,29 @@ save_manuscript_fig(p_loo, "fig_loo_comparison", 7, 4.5)
 
 ```{r}
 #| label: fig-subject-parameter-distribution
-#| fig-cap: "Subject-Level Parameter Distribution. Violin plots showing the distribution of subject-level random effects (deviations from group mean) for each DDM parameter. The boxplots within each violin show the median and interquartile range. Zero (dashed line) represents the group mean. This visualization highlights the substantial individual variability in decision-making parameters across our sample of 67 older adults."
+#| fig-cap: "Individual differences and robustness (NHB Fig 5). Panel A: Brinley plot (Hard vs Easy RT per participant; slope < 1 = disproportionate slowing). Panel B: Subject-level drift rate by effort condition (paired-slope plot; Δv annotation). Panel C: Caterpillar plot of drift estimates (sorted by magnitude; colour = age)."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "75%"
-# Dynamic: from model ranef when brms available
-model_path_re <- file.path(proj_root, params$run_dir, "models", "additive__probe_onset_locked__thr0.20.rds")
-if (file.exists(model_path_re) && requireNamespace("brms", quietly = TRUE)) {
-  tryCatch({
-    suppressPackageStartupMessages(library(brms))
-    fit_re <- readRDS(model_path_re)
-    re <- ranef(fit_re)
-    if (!is.null(re) && "subject_id" %in% names(re)) {
-      re_subj <- re$subject_id
-      par_names <- dimnames(re_subj)[[3]]
-      re_list <- list()
-      for (par in par_names) {
-        if ("Estimate" %in% dimnames(re_subj)[[2]]) {
-          re_est <- re_subj[, "Estimate", par]
-          re_list[[length(re_list) + 1]] <- tibble(subject_id = names(re_est), parameter = par, estimate = as.numeric(re_est))
-        }
-      }
-      if (length(re_list) > 0) {
-      re_df <- bind_rows(re_list) %>%
-        mutate(
-          parameter = case_when(
-            parameter == "Intercept" | (grepl("Intercept", parameter) & !grepl("bias|bs|ndt", parameter)) ~ "Drift (v)",
-            grepl("bs_|boundary", parameter, ignore.case = TRUE) ~ "Boundary (a)",
-            grepl("bias", parameter, ignore.case = TRUE) ~ "Bias (z)",
-            grepl("ndt", parameter, ignore.case = TRUE) ~ "Non-decision time (t0)",
-            TRUE ~ parameter
-          )
-        )
-      re_df$parameter <- factor(re_df$parameter, levels = c("Drift (v)", "Boundary (a)", "Bias (z)", "Non-decision time (t0)"))
-      re_df <- re_df %>% filter(!is.na(parameter))
-      if (nrow(re_df) > 0) {
-        p_re <- ggplot(re_df, aes(x = parameter, y = estimate, fill = parameter)) +
-          geom_violin(alpha = 0.3, trim = FALSE) +
-          geom_boxplot(width = 0.2, alpha = 0.7, outlier.shape = NA) +
-          geom_hline(yintercept = 0, linetype = "dashed", color = "gray50", linewidth = 0.5) +
-          scale_fill_manual(values = param_display_colors, guide = "none") +
-          labs(title = "Subject-Level Parameter Estimates (Random Effects)", subtitle = "Individual differences in DDM parameters",
-               x = "DDM Parameter", y = "Random Effect Estimate (link scale)", fill = "Parameter") +
-          theme_minimal(base_size = 12) +
-          theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5), legend.position = "none", panel.grid.minor = element_blank())
-        print(p_re)
-        save_manuscript_fig(p_re, "fig_subject_parameter_distribution", 8, 5)
-      } else { include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf")) }
-      } else { include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf")) }
-    } else { include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf")) }
-  }, error = function(e) { include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf")) })
-} else {
-include_graphics_safe(fig_path("fig_subject_parameter_distribution.pdf"))
-}
+#| out-width: "100%"
+include_graphics_safe(nhb_fig("fig5_individual_differences.png"))
 ```
 
 ```{r}
 #| label: fig-parameter-correlation
-#| fig-cap: !expr fig17_cap
+#| fig-cap: "Individual drift caterpillar (Panel C of NHB Fig 5). See @fig-subject-parameter-distribution for the complete three-panel individual-differences figure."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "70%"
-# Dynamic: from model coef when brms available
-model_path_cor <- file.path(proj_root, params$run_dir, "models", "additive__probe_onset_locked__thr0.20.rds")
-if (file.exists(model_path_cor) && requireNamespace("brms", quietly = TRUE)) {
-  tryCatch({
-    suppressPackageStartupMessages(library(brms))
-    fit_cor <- readRDS(model_path_cor)
-    coef_subj <- coef(fit_cor, summary = TRUE)
-    if (!is.null(coef_subj) && "subject_id" %in% names(coef_subj)) {
-      drift_coefs <- coef_subj$subject_id[, , "Intercept"]
-      bias_coefs <- coef_subj$subject_id[, , "bias_Intercept"]
-      if (!is.null(drift_coefs) && !is.null(bias_coefs)) {
-        subj_cor <- tibble(subject_id = rownames(drift_coefs), drift_intercept = drift_coefs[, "Estimate"], bias_intercept = bias_coefs[, "Estimate"])
-        # Update cor_val_fig17 with the live computed value (caption and body text use same variable)
-        cor_val_fig17 <<- cor(subj_cor$drift_intercept, subj_cor$bias_intercept, use = "complete.obs")
-        p_cor <- ggplot(subj_cor, aes(x = drift_intercept, y = bias_intercept)) +
-          geom_point(size = 1.8, alpha = 0.7, color = param_colors["v"]) +
-          geom_smooth(method = "lm", se = TRUE, color = param_colors["a"], linewidth = 0.8,
-                    fill = scales::alpha(param_colors["a"], 0.2), alpha = 0.3) +
-          labs(title = "Subject-Level Parameter Correlation", subtitle = sprintf("Drift Intercept vs. Bias Intercept (r = %.3f)", -0.205),
-               x = "Drift Intercept (Subject-Level)", y = "Bias Intercept (Subject-Level, logit scale)") +
-          theme_minimal(base_size = 12) +
-          theme(plot.title = element_text(face = "bold", hjust = 0.5), plot.subtitle = element_text(hjust = 0.5, color = "gray50"))
-        print(p_cor)
-        save_manuscript_fig(p_cor, "fig_parameter_correlation", 7, 5)
-      } else { include_graphics_safe(fig_path("plot4_parameter_correlation.png")) }
-    } else { include_graphics_safe(fig_path("plot4_parameter_correlation.png")) }
-  }, error = function(e) { include_graphics_safe(fig_path("plot4_parameter_correlation.png")) })
-} else {
-include_graphics_safe(fig_path("plot4_parameter_correlation.png"))
-}
+#| out-width: "100%"
+include_graphics_safe(nhb_fig("fig5_individual_differences.png"))
 ```
 
 ```{r}
 #| label: fig-brinley-plot
-#| fig-cap: "Brinley Plot: Reaction Time Relationships. Scatter plot showing mean RT for Hard trials (y-axis) versus Easy trials (x-axis) for each participant, colored by effort condition (blue = Low effort, crimson = High effort). Reaction times are displayed in milliseconds (ms). The dashed diagonal line (slope = 1) represents proportional slowing (equal RT increase in both conditions). The solid black regression line shows the actual relationship with 95% confidence interval (shaded ribbon), with slope > 1 indicating disproportionate slowing in Hard trials relative to Easy trials. Points above the diagonal indicate participants who slowed more in Hard relative to Easy trials. This visualization connects our DDM findings to the broader cognitive aging literature on generalized slowing [@brinley1965cognitive; @cerella1985; @salthouse1996]."
+#| fig-cap: "Brinley plot — Panel A of NHB Fig 5. See @fig-subject-parameter-distribution for the complete three-panel individual-differences figure."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "70%"
-# Dynamic: computed from behavioral_data
-if (!is.null(behavioral_data) && nrow(behavioral_data) > 0) {
-  subj_col <- intersect(c("subject_id", "sub"), names(behavioral_data))[1]
-  rt_col <- intersect(c("rt", "same_diff_resp_secs", "resp1RT"), names(behavioral_data))[1]
-  diff_col <- intersect(c("difficulty_level", "difficulty"), names(behavioral_data))[1]
-  effort_col <- intersect(c("effort_condition", "effort"), names(behavioral_data))[1]
-  if (!is.null(subj_col) && !is.null(rt_col) && !is.null(diff_col) && !is.null(effort_col)) {
-    brinley_data <- behavioral_data %>%
-      filter(!is.na(!!sym(rt_col)), !!sym(rt_col) > 0, !!sym(rt_col) < 10,
-             !is.na(!!sym(diff_col)), !is.na(!!sym(effort_col))) %>%
-      group_by(!!sym(subj_col), !!sym(diff_col), !!sym(effort_col)) %>%
-      summarise(mean_rt = mean(!!sym(rt_col), na.rm = TRUE), .groups = "drop") %>%
-      pivot_wider(names_from = !!sym(diff_col), values_from = mean_rt, names_prefix = "mean_rt_")
-    if ("mean_rt_Easy" %in% names(brinley_data) && "mean_rt_Hard" %in% names(brinley_data)) {
-      brinley_plot_data <- brinley_data %>%
-        filter(!is.na(mean_rt_Easy), !is.na(mean_rt_Hard)) %>%
-        mutate(
-          mean_rt_Easy_ms = mean_rt_Easy * 1000,
-          mean_rt_Hard_ms = mean_rt_Hard * 1000,
-          effort = !!sym(effort_col)
-        )
-      effort_levs <- unique(brinley_plot_data$effort)
-      high_eff <- effort_levs[grepl("High|40", as.character(effort_levs), ignore.case = TRUE)][1]
-      low_eff  <- effort_levs[grepl("Low|5", as.character(effort_levs), ignore.case = TRUE)][1]
-      if (is.na(high_eff)) high_eff <- effort_levs[1]
-      if (is.na(low_eff))  low_eff <- effort_levs[length(effort_levs)]
-      color_map <- setNames(c(effort_colors["High"], effort_colors["Low"]),
-                            c(as.character(high_eff), as.character(low_eff)))
-      fit_line <- lm(mean_rt_Hard_ms ~ mean_rt_Easy_ms, data = brinley_plot_data)
-      slope <- coef(fit_line)[2]
-      p_brinley <- ggplot(brinley_plot_data, aes(x = mean_rt_Easy_ms, y = mean_rt_Hard_ms)) +
-        geom_point(aes(color = effort), size = 1.5, alpha = 0.7) +
-        geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray50", linewidth = 0.5) +
-        geom_smooth(method = "lm", se = TRUE, color = "black", linewidth = 0.7, alpha = 0.2) +
-        scale_color_manual(values = color_map, labels = c("High Effort", "Low Effort")) +
-        labs(title = "Brinley Plot: Reaction Time Relationships",
-             subtitle = sprintf("Easy vs. Hard difficulty (slope = %.2f)", slope),
-             x = "Mean RT: Easy Trials (ms)", y = "Mean RT: Hard Trials (ms)", color = "Effort Condition") +
-        theme_minimal(base_size = 12) +
-        theme(plot.title = element_text(size = 13, face = "bold", hjust = 0.5),
-              plot.subtitle = element_text(size = 10, hjust = 0.5, color = "gray60"),
-              legend.position = "bottom", panel.grid.minor = element_blank())
-      print(p_brinley)
-      save_manuscript_fig(p_brinley, "fig_brinley_plot", 7, 6)
-    } else {
-include_graphics_safe(fig_path("fig_brinley_plot.pdf"))
-    }
-  } else {
-    include_graphics_safe(fig_path("fig_brinley_plot.pdf"))
-  }
-} else {
-  include_graphics_safe(fig_path("fig_brinley_plot.pdf"))
-}
+#| out-width: "100%"
+include_graphics_safe(nhb_fig("fig5_individual_differences.png"))
 ```
 
 ```{r}
