@@ -1,0 +1,39 @@
+NHB figure pipeline — coefficient name audit
+Generated: 2026-06-04
+Primary model: output/ddm_refits/runs/20260226_092110/models/additive__probe_onset_locked__thr0.20.rds
+N trials: 18097 (probe-onset-locked, thr 0.20, additive)
+
+=== Drift (mu) coefficients ===
+b_Intercept
+b_effort_conditionhigh
+b_difficulty_3Hard
+b_difficulty_3Easy
+
+=== Boundary (bs) coefficients ===
+b_bs_Intercept
+b_bs_effort_conditionhigh
+b_bs_difficulty_3Hard
+b_bs_difficulty_3Easy
+
+=== Bias coefficients ===
+b_bias_Intercept
+b_bias_taskVDT
+b_bias_effort_conditionhigh
+
+=== NDT coefficients ===
+b_ndt_Intercept
+
+---
+Exploratory models (for fig4/fig5):
+
+Fatigue: output/publish/fit_exploratory_fatigue_trajectory.rds (N=17834)
+History: output/publish/fit_exploratory_choice_history_hist.rds (N=17199)
+WSLS:    output/publish/fit_exploratory_choice_history_wsls.rds (N=17199)
+
+Behavioral CSV: data/ddm_ready_data_unthresholded.csv (N=18097 unthresholded)
+Columns: subject_id, trial_num, task, effort_condition, difficulty_level,
+         is_standard, stim_is_diff, resp_is_diff, choice_binary, rt,
+         rt_probe_offset_locked, rt_probe_onset_locked, rt_is_negative
+
+Note: effort/difficulty coding in primary model uses lowercase "high" and
+difficulty_3* factor names — map from behavioral CSV labels when joining.
