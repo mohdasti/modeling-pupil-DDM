@@ -44,7 +44,9 @@ This repository showcases advanced computational modeling techniques for analyzi
 This repository mirrors a working 7-step pipeline (01–07) from the BAP_DDM project into a clean, public-friendly structure. It provides:
 - A standardized seven-stage directory layout
 - Wrapper scripts inside stage folders that call core logic under `scripts/`
-- Selected, non-sensitive outputs (figures, tables, summaries) for demonstration
+- A centralized manuscript color system (`R/colors_manuscript.R`) used by all figure scripts and the Chapter 3 Quarto report
+- Versioned manuscript figure snapshots in `output/figures/manuscript_palette/` (PNG + PDF, tracked in git)
+- Selected, non-sensitive outputs (tables, summaries) for demonstration
 
 Raw data are not included. Use the wrapper scripts (under `02_` and `03_`) or call the core runners in `scripts/` directly.
 
@@ -93,6 +95,12 @@ modeling-pupil-DDM/
 │   ├── supplementary/                  # Supplementary materials
 │   └── tables/                         # Analysis tables
 │
+├── R/                                  # Shared R utilities (sourced by scripts & QMD)
+│   ├── colors_manuscript.R             # Manuscript color palette (single source of truth)
+│   ├── fig_save_utils.R                # save_manuscript_fig() helper
+│   ├── label_cleaning.R                # Factor/label normalization
+│   └── utils/                          # I/O and logging helpers
+│
 ├── config/                             # Configuration files
 │   ├── paths_config.R.example          # R path configuration template
 │   ├── paths_config.m.example          # MATLAB path configuration template
@@ -100,11 +108,16 @@ modeling-pupil-DDM/
 │   └── model_config.yaml               # Model parameters
 │
 ├── scripts/                            # Core analysis scripts
-│   ├── R/                              # R analysis scripts (consolidated)
+│   ├── render_manuscript_figures.R     # Batch-regenerate all manuscript figures
+│   ├── R/                              # R analysis & figure scripts (consolidated)
+│   │   ├── fig_*.R                     # Manuscript figures (CAF, PPC, QP, bias, etc.)
 │   │   ├── audit_design_coding.R       # Design-coding audit script
 │   │   ├── extract_*.R                 # Extraction scripts for QA, manipulation checks, LOO, PPC
 │   │   ├── run_extract_all.R           # Master runner for all extraction scripts
-│   │   └── [other R scripts]           # Additional analysis scripts
+│   │   ├── render_chap3_report.R       # Render reports/chap3_ddm_results.qmd
+│   │   └── [other R scripts]           # Model fitting, PPC export, validation
+│   ├── plot_decision_landscape.R       # 3D decision landscape figure
+│   ├── plot_pupil_waveforms_bap_reference_style.R
 │   ├── core/                           # Main model/analysis runners
 │   ├── 01_data_processing/             # Data processing & QC
 │   ├── 02_statistical_analysis/       # Statistical modeling
@@ -116,31 +129,32 @@ modeling-pupil-DDM/
 │   └── publish_commit.sh               # Git workflow for publishing outputs
 │
 ├── reports/                            # Comprehensive analysis reports
-│   └── chap3_ddm_results.qmd           # DDM chapter report (Quarto)
+│   └── chap3_ddm_results.qmd           # DDM chapter report (Quarto; sources R/colors_manuscript.R)
 │
 ├── tests/                              # Unit tests
 │   ├── test_data_processing.py         # Data processing tests
 │   ├── test_models.R                   # Model fitting tests
 │   └── test_visualization.py           # Visualization tests
 │
-│   ├── analysis_ready/                 # Processed data ready for analysis
-│   ├── derived/                        # Derived datasets
-│   ├── intermediate/                   # Intermediate processing files
-│   └── qc/                             # Quality control outputs
-│
-├── output/                             # Analysis outputs
-│   └── publish/                        # Published outputs (tracked in git)
+├── output/                             # Analysis outputs (mostly gitignored)
+│   ├── figures/
+│   │   └── manuscript_palette/         # Versioned manuscript figures (PNG + PDF; tracked in git)
+│   └── publish/                        # Published tables & audit artifacts
 │       └── audit/                      # Audit results (CSV, TXT, MD)
 │
 ├── logs/                               # Log files and status reports
 │   └── [*.log, *.csv]                  # Pipeline logs and status files
 │
-├── data/                               # Data directories
-│   ├── pupil_processed/                # Processed pupil data (analysis-ready)
-│   │   ├── analysis/                   # Analysis-ready datasets
-│   │   ├── analysis_ready/             # Chapter-specific trial-level data
-│   │   ├── merged/                     # Full merged datasets
-│   │   └── qc/                         # Quality control reports
+├── data/                               # Data directories (large files gitignored)
+│   ├── analysis_ready/                 # Trial-level analysis-ready datasets
+│   ├── derived/                        # Derived datasets
+│   ├── intermediate/                   # Intermediate processing files
+│   ├── qc/                             # Quality control outputs
+│   └── pupil_processed/                # Processed pupil data
+│       ├── analysis/                   # Analysis-ready datasets
+│       ├── analysis_ready/             # Chapter-specific trial-level data
+│       ├── merged/                     # Full merged datasets
+│       └── qc/                         # Quality control reports
 │
 ├── quick_share_archive/                 # Archived quick_share versions (v2-v6)
 │   └── [quick_share_v2 through v6]     # Historical versions
@@ -236,7 +250,14 @@ Rscript scripts/02_statistical_analysis/02_ddm_analysis.R
 Rscript scripts/02_statistical_analysis/06_pupil_ddm_integration.R
 Rscript scripts/02_statistical_analysis/07_pupil_ddm_finalize.R
 
-# Generate figures (canonical location)
+# Generate manuscript figures (centralized palette + batch runner)
+Rscript scripts/render_manuscript_figures.R
+
+# Or run individual figure scripts (each sources R/colors_manuscript.R)
+Rscript scripts/R/fig_caf.R
+Rscript scripts/R/fig_ppc_heatmaps.R
+
+# Other analysis figures
 Rscript scripts/create_condition_effects_forest_plot.R
 Rscript scripts/create_rt_sanity_check_plot.R
 ```
@@ -329,6 +350,44 @@ The QMD report integrates:
 
 See `docs/DDM_CHAPTER_INTEGRATION.md` for detailed integration guide.
 
+### Manuscript Figures
+
+All Chapter 3 figures share a single color palette defined in `R/colors_manuscript.R` (condition, task, parameter, and model colors). Figure scripts save PNG and PDF to `output/figures/manuscript_palette/` via `save_manuscript_fig()` in `R/fig_save_utils.R`.
+
+```bash
+# Regenerate the full manuscript figure set (~65 PNG/PDF files)
+Rscript scripts/render_manuscript_figures.R
+```
+
+**What the batch script runs**:
+- `scripts/R/fig_*.R` — standalone manuscript figures (DDM process, CAF, PPC heatmaps, QP, bias forest, etc.)
+- `scripts/plot_decision_landscape.R`, `scripts/plot_pupil_waveforms_bap_reference_style.R`
+- Inline-style figures mirrored from `reports/chap3_ddm_results.qmd` (parameter panels, TEPR, effort/difficulty contrasts, choice history, fatigue, Brinley, LOO, supplementary drift/boundary)
+- Static design assets copied into the palette folder (trial structure, DAG, matrix)
+
+**Outputs**: `output/figures/manuscript_palette/` (also mirrored to `output/figures/` for legacy paths). This folder is versioned in git so figure snapshots and their generating scripts stay in sync on GitHub.
+
+**Quarto-only figures**: Some figures are produced only when rendering the QMD (e.g., pupil–drift interaction, additivity check, sensitivity LOOIC). Run `quarto render reports/chap3_ddm_results.qmd` to regenerate those into the same palette folder.
+
+**Per-script reference** (for LLM or human inspection):
+
+| Script | Figure(s) |
+|--------|-----------|
+| `scripts/R/fig_ddm_process.R` | DDM process schematic |
+| `scripts/R/fig_ndt_prior_posterior.R` | NDT prior vs posterior |
+| `scripts/R/fig_caf.R` | Conditional accuracy function |
+| `scripts/R/fig_ppc_heatmaps.R` | PPC heatmaps (all models + primary) |
+| `scripts/R/fig_qp.R` | Quantile-probability plot |
+| `scripts/R/fig_ppc_rt_overlay.R` | RT density PPC overlay |
+| `scripts/R/fig_bias_forest.R` | Bias forest plot |
+| `scripts/R/fig_v_standard_posterior.R` | Standard-trial drift posterior |
+| `scripts/R/fig_ppc_small_multiples.R` | PPC small multiples (best/median/worst cells) |
+| `scripts/R/fig_pdiff_heatmap.R` | Observed vs predicted p(different) |
+| `scripts/R/fig_fixed_effects.R` | Fixed effects (ADT, VDT) |
+| `scripts/plot_decision_landscape.R` | 3D decision landscape |
+| `scripts/plot_pupil_waveforms_bap_reference_style.R` | Pupil waveforms (BAP reference style) |
+| `scripts/render_manuscript_figures.R` | All of the above + inline QMD figures |
+
 ### Publishing Workflow
 
 To commit and push analysis outputs for publication:
@@ -337,20 +396,23 @@ To commit and push analysis outputs for publication:
 # Run publish script (stages R scripts and output/publish/ files)
 ./scripts/publish_commit.sh
 
-# Or manually:
-git add scripts/R/*.R output/publish/**/*.{csv,txt,md}
+# Or manually (tables + manuscript figure snapshot):
+git add scripts/R/*.R R/colors_manuscript.R R/fig_save_utils.R scripts/render_manuscript_figures.R
+git add output/publish/**/*.{csv,txt,md}
+git add output/figures/manuscript_palette/
 git commit -m "Your commit message"
 git push origin HEAD
 ```
 
-**Note**: The `.gitignore` is configured to exclude heavy model files (`*.rds`, `output/models/`) while allowing published outputs in `output/publish/`. Log files and temporary files are stored in `logs/` and development notes in `docs/development_notes/`.
+**Note**: The `.gitignore` excludes heavy model files (`*.rds`, `output/models/`) and most of `output/`, but explicitly allows `output/figures/manuscript_palette/` (PNG/PDF) and published tables in `output/publish/`. Log files and temporary files are stored in `logs/` and development notes in `docs/development_notes/`.
 
 ## 📂 Repository Organization
 
 The repository has been reorganized for better structure and maintainability:
 
 - **Flat Structure**: No nested directories - all content is at the root level
-- **Consolidated Scripts**: All R scripts are in `scripts/R/` (previously in separate `R/` directory)
+- **Shared R Utilities**: Root `R/` holds cross-cutting helpers (`colors_manuscript.R`, `fig_save_utils.R`); analysis and figure scripts live in `scripts/R/`
+- **Manuscript Figures**: Centralized palette + `scripts/render_manuscript_figures.R` batch runner; versioned snapshots in `output/figures/manuscript_palette/`
 - **Organized Documentation**: Development notes and audit reports in `docs/development_notes/`
 - **Log Management**: All log files and status CSVs in `logs/` directory
 - **Data Organization**: Clear separation between `data/`, `output/`, and processed data in `data/pupil_processed/`
@@ -451,9 +513,10 @@ make clean-all  # Remove all generated outputs
 - Robustness and sensitivity checks
 
 ### 6. Visualization
-- Publication-ready figures
-- Interactive plots
-- Analysis summaries
+- Centralized manuscript color system (`R/colors_manuscript.R`)
+- Per-figure scripts in `scripts/R/fig_*.R` plus batch runner `scripts/render_manuscript_figures.R`
+- Versioned PNG/PDF snapshots in `output/figures/manuscript_palette/`
+- Interactive plots and analysis summaries
 
 ## 🧭 Seven-Step Pipeline (Directory → Primary Entry)
 
@@ -462,8 +525,8 @@ make clean-all  # Remove all generated outputs
 3. 03_behavioral_analysis → `Rscript 03_behavioral_analysis/reaction_time/run_rt_analysis.R`
 4. 04_computational_modeling → `Rscript scripts/core/run_analysis.R`
 5. 05_statistical_analysis → `Rscript scripts/02_statistical_analysis/02_ddm_analysis.R`
-6. 06_visualization → `Rscript scripts/create_condition_effects_forest_plot.R`
-7. 07_manuscript → `Rscript 07_manuscript/render_ddm_chapter.R` (generates `reports/chap3_ddm_results.qmd` HTML/DOCX)
+6. 06_visualization → `Rscript scripts/render_manuscript_figures.R` (manuscript figures) or `Rscript scripts/create_condition_effects_forest_plot.R`
+7. 07_manuscript → `Rscript 07_manuscript/render_ddm_chapter.R` (renders `reports/chap3_ddm_results.qmd` to HTML/DOCX)
 
 ## 🧪 Testing
 
@@ -541,6 +604,12 @@ If you use this code in your research, please cite:
 
 ## 🔄 Version History
 
+- **v1.3.0** (2026-06-04): Manuscript figure system & versioned outputs
+  - Added centralized color palette (`R/colors_manuscript.R`) and save helper (`R/fig_save_utils.R`)
+  - Updated all `scripts/R/fig_*.R` figure scripts and `reports/chap3_ddm_results.qmd` to use shared colors
+  - Added `scripts/render_manuscript_figures.R` batch runner for full manuscript figure regeneration
+  - Versioned manuscript figure snapshots in `output/figures/manuscript_palette/` (tracked in git)
+  - Fixed CAF and PPC RT overlay figure scripts; `.gitignore` updated to allow palette folder only
 - **v1.2.0** (2024-12-27): Pupil-DDM Integration & Chapter 3 Finalization
   - Added comprehensive pupil-DDM integration analysis pipeline
   - Implemented posterior correlation analysis with uncertainty propagation
