@@ -135,41 +135,44 @@ build_ddm_panel <- function() {
     annotate("rect", xmin = 0, xmax = ndt, ymin = -0.08, ymax = a + 0.12,
              fill = unname(param_colors["t0"]), alpha = 0.10, color = NA) +
     annotate("text", x = ndt / 2, y = 0.35,
-             label = "t\u2080", size = 2.4,
+             label = "t\u2080", size = 3.2,
              color = unname(param_colors["t0"]), fontface = "italic") +
-    geom_hline(yintercept = a, linewidth = 0.7, color = unname(param_colors["a"])) +
+    geom_hline(yintercept = a, linewidth = 0.85, color = unname(param_colors["a"])) +
+    annotate("text", x = 0.04, y = a + 0.03, label = "a",
+             size = 3.2, color = unname(param_colors["a"]),
+             fontface = "italic", hjust = 0, vjust = 0) +
     annotate("text", x = label_x, y = a + 0.02, label = '"Different"',
-             size = 2.2, color = unname(param_colors["a"]), fontface = "bold", hjust = 0, vjust = 0) +
-    geom_hline(yintercept = 0, linewidth = 0.7, color = "#4A5568") +
+             size = 3.0, color = unname(param_colors["a"]), fontface = "bold", hjust = 0, vjust = 0) +
+    geom_hline(yintercept = 0, linewidth = 0.85, color = "#4A5568") +
     annotate("text", x = label_x, y = -0.03, label = '"Same"',
-             size = 2.4, color = "#4A5568", fontface = "bold", hjust = 0, vjust = 1) +
+             size = 3.2, color = "#4A5568", fontface = "bold", hjust = 0, vjust = 1) +
     geom_line(
       data = data.frame(time = plot_time, evidence = plot_evidence),
       aes(x = time, y = evidence),
-      linewidth = 0.6, color = unname(stat_colors["empirical"])
+      linewidth = 0.75, color = unname(stat_colors["empirical"])
     ) +
-    geom_point(aes(x = ndt, y = z * a), size = 2.2,
-               color = unname(param_colors["z"]), fill = "white", stroke = 1.2, shape = 21) +
+    geom_point(aes(x = ndt, y = z * a), size = 2.8,
+               color = unname(param_colors["z"]), fill = "white", stroke = 1.3, shape = 21) +
     annotate("segment", x = ndt, xend = ndt, y = 0, yend = z * a,
-             linetype = "dashed", linewidth = 0.4, color = unname(param_colors["z"]), alpha = 0.7) +
+             linetype = "dashed", linewidth = 0.45, color = unname(param_colors["z"]), alpha = 0.7) +
     annotate("text", x = ndt - 0.04, y = z * a,
-             label = "z", size = 2.4, color = unname(param_colors["z"]),
+             label = "z", size = 3.2, color = unname(param_colors["z"]),
              fontface = "bold", hjust = 1, vjust = 0.5) +
     annotate("segment",
              x = arrow_start_x, xend = arrow_end_x,
              y = arrow_start_y, yend = arrow_end_y,
-             arrow = arrow(length = unit(2.5, "pt"), type = "closed"),
-             linewidth = 0.5, color = unname(param_colors["v"])) +
+             arrow = arrow(length = unit(2.8, "pt"), type = "closed"),
+             linewidth = 0.55, color = unname(param_colors["v"])) +
     annotate("text", x = arrow_end_x + 0.06, y = arrow_end_y + 0.02,
-             label = "v", size = 2.6, color = unname(param_colors["v"]),
+             label = "v", size = 3.4, color = unname(param_colors["v"]),
              fontface = "italic", hjust = 0, vjust = 0) +
-    geom_vline(xintercept = total_rt, linetype = "dashed", linewidth = 0.4,
+    geom_vline(xintercept = total_rt, linetype = "dashed", linewidth = 0.45,
                color = unname(param_colors["t0"]), alpha = 0.6) +
-    annotate("segment", x = 0, xend = 0, y = -0.08, yend = -0.12, linewidth = 0.35) +
-    annotate("text", x = 0, y = -0.16, label = "0", size = 2.1, hjust = 0.5, vjust = 0) +
-    annotate("segment", x = ndt, xend = ndt, y = -0.08, yend = -0.12, linewidth = 0.35) +
+    annotate("segment", x = 0, xend = 0, y = -0.08, yend = -0.12, linewidth = 0.4) +
+    annotate("text", x = 0, y = -0.16, label = "0", size = 2.8, hjust = 0.5, vjust = 0) +
+    annotate("segment", x = ndt, xend = ndt, y = -0.08, yend = -0.12, linewidth = 0.4) +
     annotate("text", x = ndt, y = -0.16,
-             label = sprintf("t\u2080\n(%.2fs)", ndt), size = 2.0, hjust = 0.5, vjust = 0) +
+             label = sprintf("t\u2080\n(%.2fs)", ndt), size = 2.7, hjust = 0.5, vjust = 0) +
     labs(title = "B", x = "Time (s)", y = "Evidence") +
     scale_x_continuous(limits = c(-0.02, 1.15), expand = c(0, 0),
                        breaks = seq(0, 1, by = 0.5)) +
@@ -177,9 +180,11 @@ build_ddm_panel <- function() {
                        breaks = seq(0, 1.5, by = 0.5)) +
     theme_manuscript() +
     theme(
+      axis.text  = element_text(size = 8),
+      axis.title = element_text(size = 9),
       axis.title.x = element_text(margin = margin(t = 3)),
       axis.title.y = element_text(margin = margin(r = 3)),
-      plot.margin = margin(3, 4, 3, 3, "pt")
+      plot.margin = margin(4, 5, 4, 4, "pt")
     )
 }
 
@@ -206,6 +211,7 @@ grid_df <- tidyr::crossing(
       predictor == "Difficulty" & param == "z"                        ~ "exclude",
       predictor == "Task"       & param %in% c("v", "a", "z")         ~ "check",
       predictor == "Effort"     & param %in% c("v", "z")              ~ "check",
+      predictor == "Effort"     & param == "a"                        ~ "dash", # not modeled
       TRUE                                                            ~ "dash"
     ),
     note = case_when(
@@ -241,14 +247,14 @@ panel_c <- ggplot(grid_df, aes(x = param_idx, y = pred_idx)) +
   scale_fill_identity() +
   geom_text(
     aes(label = cell_text, color = text_color),
-    size = 2.05, lineheight = 0.78, fontface = "bold"
+    size = 2.85, lineheight = 0.78, fontface = "bold"
   ) +
   geom_text(
     data = header_df,
     aes(x = param_idx, y = 0.44, label = label),
     inherit.aes = FALSE,
     color = unname(param_cols[header_df$param_idx]),
-    size = 2.1, fontface = "bold", vjust = 0
+    size = 2.95, fontface = "bold", vjust = 0
   ) +
   scale_color_manual(
     values = c(param_cols, dash = "#9CA3AF", exclude = "#B45309"),
@@ -264,33 +270,41 @@ panel_c <- ggplot(grid_df, aes(x = param_idx, y = pred_idx)) +
   ) +
   labs(
     title = "C", x = NULL, y = NULL,
-    caption = "*z excludes difficulty (pre-trial randomization). t\u2080 intercept-only."
+    caption = paste0(
+      "*Bias (z) excludes difficulty: randomized trials,\n",
+      "unknown before evidence onset. Boundary (a) excludes effort; t\u2080 intercept-only."
+    )
   ) +
   theme_manuscript() +
   theme(
     axis.line   = element_blank(),
     axis.ticks  = element_blank(),
     axis.text.x = element_blank(),
-    axis.text.y = element_text(size = 6.5, color = "black", face = "bold"),
+    axis.text.y = element_text(size = 8.5, color = "black", face = "bold"),
     plot.caption = element_text(
-      size = 4.8, color = "#6B7280", hjust = 0, lineheight = 0.95,
+      size = 5.4, color = "#6B7280", hjust = 0, lineheight = 0.92,
       margin = margin(t = 3)
     ),
-    plot.margin = margin(2, 3, 6, 3, "pt")
+    plot.margin = margin(3, 5, 16, 5, "pt")
   )
 
 
 # ── Combine ───────────────────────────────────────────────────────────────────
-# Panel A image is ~0.92 w/h; match composite aspect so it is not squeezed
+# Panel A (trial timeline) is portrait (~0.92 w/h); give it the full top row so
+# labels remain legible; B and C share the bottom row.
 fig1 <- panel_a + panel_b + panel_c +
-  plot_layout(widths = c(2.55, 1.2, 1.55)) +
+  plot_layout(
+    design   = "AA\nBC",
+    heights  = c(1.85, 1.35),
+    widths   = c(1.15, 1.45)
+  ) +
   plot_annotation(theme = theme(plot.margin = margin(2, 2, 2, 2, "pt")))
 
 out_dir <- here("output", "figures", "manuscript")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 fig_w_mm <- 180
-fig_h_mm <- 86
+fig_h_mm <- 148
 
 ggsave(
   filename = file.path(out_dir, "fig1_design_schematic.pdf"),

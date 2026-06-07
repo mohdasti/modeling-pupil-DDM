@@ -142,6 +142,10 @@ v_lo_mean <- effort_means$v_mean[effort_means$effort_label == "Low"]
 v_hi_mean <- effort_means$v_mean[effort_means$effort_label == "High"]
 y_arrow   <- mean(c(v_lo_mean, v_hi_mean))
 
+v_rng  <- range(subj_violin_df$v_subj, na.rm = TRUE)
+v_span <- diff(v_rng)
+ylim_b <- c(v_rng[1] - 0.06 * v_span, v_rng[2] + 0.10 * v_span)
+
 panel_b <- ggplot(subj_violin_df, aes(x = effort_label, y = v_subj, group = subject_id)) +
   geom_line(color = "#C9CDD3", linewidth = 0.28, alpha = 0.75) +
   geom_point(aes(color = effort_label), size = 1.15, alpha = 0.75) +
@@ -157,23 +161,26 @@ panel_b <- ggplot(subj_violin_df, aes(x = effort_label, y = v_subj, group = subj
     inherit.aes = FALSE,
     shape = 18, size = 2.2, color = label_color
   ) +
-  # Bracket arrow to the RIGHT of "High (40%)" column (x > 2)
   annotate(
     "segment",
-    x = 2.18, xend = 2.18,
+    x = 2.12, xend = 2.12,
     y = v_lo_mean, yend = v_hi_mean,
     linewidth = 0.5, color = unname(effort_colors["High"]),
     arrow = arrow(length = unit(1.5, "pt"), ends = "both")
   ) +
   annotate(
     "text",
-    x = 2.24, y = y_arrow,
+    x = 2.17, y = y_arrow,
     label = sprintf("\u0394v = %.2f", v_effort),
     size = 2.0, hjust = 0, color = unname(effort_colors["High"])
   ) +
   scale_color_manual(values = effort_colors) +
-  scale_x_discrete(labels = c("Low" = "Low (5%)", "High" = "High (40%)")) +
-  coord_cartesian(xlim = c(0.5, 2.7), clip = "off") +
+  scale_x_discrete(
+    labels = c("Low" = "Low (5%)", "High" = "High (40%)"),
+    expand = expansion(mult = c(0.12, 0.22))
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0.02, 0.02))) +
+  coord_cartesian(xlim = c(0.75, 2.35), ylim = ylim_b, clip = "on") +
   labs(
     title = "B",
     x = "Effort condition",
@@ -181,56 +188,31 @@ panel_b <- ggplot(subj_violin_df, aes(x = effort_label, y = v_subj, group = subj
     caption = "v < 0: same-boundary (response-side coding)"
   ) +
   theme_manuscript() +
-  theme(legend.position = "none")
-
-# ── Panel C: Caterpillar — subject-level drift estimates, sorted, age-colored ──
-# Note: pct_reduction vs v_Low was a mathematical identity (same Δv for all);
-# this caterpillar shows the actual heterogeneity in individual drift estimates.
-cat_df <- tibble(
-  subject_id = rownames(re_subj),
-  v_est  = v_intercept + re_subj[, "Estimate", "Intercept"],
-  v_lo95 = v_intercept + re_subj[, "Q2.5",     "Intercept"],
-  v_hi95 = v_intercept + re_subj[, "Q97.5",    "Intercept"]
-) %>%
-  left_join(load_subject_age(.$subject_id), by = "subject_id") %>%
-  arrange(v_est) %>%
-  mutate(rank = row_number())
-
-has_age <- sum(!is.na(cat_df$age)) >= 10
-
-panel_c <- ggplot(cat_df, aes(x = v_est, y = rank)) +
-  geom_vline(
-    xintercept = v_intercept,
-    color = stat_colors["zero_line"], linewidth = 0.35, linetype = "dotted"
-  ) +
-  geom_segment(
-    aes(x = v_lo95, xend = v_hi95, yend = rank),
-    color = "#C9CDD3", linewidth = 0.35
-  ) +
-  labs(
-    title = "C",
-    x = "Subject-level drift rate (v)",
-    y = "Participant (sorted)",
-    caption = "Sorted by baseline drift (Standard trials)"
-  ) +
-  theme_manuscript() +
   theme(
-    axis.text.y  = element_blank(),
-    axis.ticks.y = element_blank()
+    legend.position = "none",
+    plot.margin = margin(4, 10, 10, 4, "pt"),
+    axis.text.x = element_text(margin = margin(t = 4, unit = "pt"))
   )
 
-if (has_age) {
-  panel_c <- panel_c +
-    geom_point(aes(color = age), size = 1.3, alpha = 0.9) +
-    scale_color_gradient(low = age_lo, high = age_hi, name = "Age (y)") +
-    theme(legend.key.height = unit(0.35, "cm"),
-          legend.key.width  = unit(0.25, "cm"),
-          legend.title      = element_text(size = 6),
-          legend.position   = "right")
-} else {
-  panel_c <- panel_c +
-    geom_point(color = unname(effort_colors["High"]), size = 1.3, alpha = 0.9)
-}
+# ── Panel C: Per-person Low vs High effort drift scatter ─────────────────────
+scatter_df <- subj_violin_df %>%
+  select(subject_id, effort_label, v_subj) %>%
+  pivot_wider(names_from = effort_label, values_from = v_subj)
+
+panel_c <- ggplot(scatter_df, aes(x = Low, y = High)) +
+  geom_abline(
+    slope = 1, intercept = 0,
+    color = stat_colors["zero_line"], linewidth = 0.4, linetype = "dashed"
+  ) +
+  geom_point(color = label_color, size = 1.4, alpha = 0.7) +
+  coord_cartesian(xlim = c(-1.5, 0.5), ylim = c(-1.5, 0.5)) +
+  labs(
+    title = "C",
+    x = "Drift rate: Low effort (v)",
+    y = "Drift rate: High effort (v)",
+    caption = "Points below diagonal: lower drift under High effort"
+  ) +
+  theme_manuscript()
 
 # ── Combine & save ────────────────────────────────────────────────────────────
 fig5 <- panel_a | panel_b | panel_c
@@ -239,11 +221,11 @@ dir.create(PATH_FIG_OUT, recursive = TRUE, showWarnings = FALSE)
 
 ggsave(
   file.path(PATH_FIG_OUT, "fig5_individual_differences.pdf"),
-  fig5, width = 180, height = 80, units = "mm", device = cairo_pdf
+  fig5, width = 180, height = 85, units = "mm", device = cairo_pdf
 )
 ggsave(
   file.path(PATH_FIG_OUT, "fig5_individual_differences.png"),
-  fig5, width = 180, height = 80, units = "mm", dpi = 300
+  fig5, width = 180, height = 85, units = "mm", dpi = 300
 )
 
 message("Fig 5 saved.")

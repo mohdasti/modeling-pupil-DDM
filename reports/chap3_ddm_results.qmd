@@ -451,9 +451,9 @@ for (path in pupil_data_paths) {
             TRUE ~ "Standard"
           ))
       }
-      # Map cognitive_auc column name (cog_auc_w3 for Chapter 3 primary, or cog_auc, or cognitive_auc)
+      # Map cognitive_auc column name (using cog_auc_w3 for Chapter 3 primary analysis)
       if ("cog_auc_w3" %in% names(pupil_data) && !"cognitive_auc" %in% names(pupil_data)) {
-        # Chapter 3 uses Decision-Phase AUC (W3.0) window (cog_auc_w3) as primary TEPR metric
+        # Chapter 3 maps the Decision-Response AUC window (cog_auc_w3) as the primary TEPR predictor
         pupil_data <- pupil_data %>% mutate(cognitive_auc = cog_auc_w3)
       } else if ("cog_auc" %in% names(pupil_data) && !"cognitive_auc" %in% names(pupil_data)) {
         pupil_data <- pupil_data %>% mutate(cognitive_auc = cog_auc)
@@ -852,7 +852,7 @@ To understand the latent mechanisms underlying age-related slowing, we utilize t
 
 ```{r}
 #| label: fig-ddm-process
-#| fig-cap: "**Study design and DDM architecture.** **(A)** Response-signal trial timeline: jittered pre-cue, 3-s grip gauge (Low = 5% MVC; High = 40% MVC), standard→probe stimulus sequence, same/different response window, and confidence rating. **(B)** Drift-diffusion schematic with response-side coding (upper boundary = 'different'; lower = 'same'); parameters labelled: drift rate ($v$), boundary separation ($a$), starting-point bias ($z$), non-decision time ($t_0$). **(C)** Predictor-to-parameter map for the primary model (included predictors marked ✓; $z$ excludes difficulty because it is unknown pre-trial; $t_0$ intercept-only)."
+#| fig-cap: "**Older adults performed auditory and visual change-detection tasks under concurrent isometric grip while pupil diameter was continuously recorded, enabling trial-by-trial decomposition of decision processes via hierarchical drift-diffusion modeling.** **(A)** Response-signal trial timeline: jittered pre-cue (1.5--4.5 s), 3-s grip gauge (Low = 5% MVC; High = 40% MVC), standard$\\rightarrow$probe stimulus sequence, same/different response window (3 s), and confidence rating. **(B)** Drift-diffusion schematic with response-side coding (upper boundary = 'different'; lower = 'same'); parameters labelled: drift rate ($v$), boundary separation ($a$), starting-point bias ($z$), non-decision time ($t_0$). **(C)** Predictor-to-parameter map for the primary model: difficulty and effort predict $v$ and $a$; effort and task predict $z$; $t_0$ is intercept-only. Statistical note: $N$ = 67 older adults (age $M$ = 69.5 years, $SD$ = 6.4, range 60--87); 18,097 trials retained after RT exclusions."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
@@ -1275,24 +1275,17 @@ Analyses proceeded in three stages. First, **manipulation checks** confirmed tha
 
 **Recording and hardware.** Pupil diameter was continuously recorded using an MRI-compatible TRACKPixx binocular eye tracker (VPixx Technologies, Montreal, Canada) sampling at 2000 Hz. Raw eye-tracking data were exported as .mat files and processed through a multi-stage preprocessing pipeline designed to ensure high-quality pupillometry measurements.
 
-**Artifact correction and quality control.** Blink artifacts and invalid samples were removed using the ET-remove-artifacts MATLAB toolbox (Huang et al., 2020), which employs a velocity-based detection algorithm configured with a 100th-order low-pass filter (passband: 10 Hz, stopband: 12 Hz) and peak/trough threshold factors of 5 standard deviations above baseline. Artifacts exceeding 2 seconds in duration were replaced with missing values rather than interpolated, following best practices for handling extended periods of signal loss. All recordings then underwent manual inspection using the toolbox's interactive plot editor to identify and correct any remaining undetected artifacts.
+**Artifact correction and quality control.** Blink artifacts and invalid samples were removed using the ET-remove-artifacts MATLAB toolbox (Huang et al., 2020), which employs a velocity-based detection algorithm configured with a 100th-order low-pass filter (passband: 10 Hz, stopband: 12 Hz) and peak/trough threshold factors of 5 standard deviations above baseline. Artifacts exceeding 2 seconds in duration were replaced with missing values rather than interpolated, following established methodological guidelines indicating that linear reconstruction over extended durations artificially compresses natural physiological variance and introduces spurious data trends ([@kret2019preprocessing; @mathot2018]). All recordings then underwent manual inspection using the toolbox's interactive plot editor to identify and correct any remaining undetected artifacts.
 
 **Trial alignment and downsampling.** Cleaned pupil data were trial-aligned using event timestamps synchronized with behavioral event markers, then downsampled from 2000 Hz to 250 Hz using an 8th-order anti-aliasing filter to preserve signal quality while reducing computational demands. Baseline correction was applied by subtracting the mean pupil diameter during the baseline window (-0.5 s to 0 s relative to squeeze onset) from all timepoints in the trial.
 
-**Decision-Phase AUC (W3.0) and rationale.** We computed trial-wise cognitive AUC from baseline-corrected pupil diameter in a window anchored to **probe onset** (the second stimulus; evidence onset). The primary AUC window — hereafter the *Decision-Phase AUC* (W3.0) — is a 3.0-s window spanning probe + 0.3 s to probe + 3.3 s (4.65 s to 7.65 s relative to squeeze onset), using trapezoidal integration. The +0.3 s offset accounts for pupil latency, and the 3.0 s duration captures the bulk of the task-evoked pupil response (TEPR), which peaks at ~2.95 s after probe onset. Because the response prompt occurs 0.35 s after probe onset, most of the TEPR unfolds during the response period; accordingly, the Decision-Phase AUC should be interpreted as TEPR magnitude during decision/response rather than a strictly pre-response predictor. Notably, because the response prompt appeared at probe-onset + 0.35 s and mean response times were approximately 0.6 s (cue-locked), the Decision-Phase AUC window captures both pre-response (phasic arousal during evidence accumulation) and post-response (motor execution, decision confidence, post-decisional processing) pupil dynamics. To control for this, RT was included as a covariate in all pupil-DDM models (@sec-pupil-ddm-models).
+**Decision-Response AUC specification and rationale.** We quantified trial-wise phasic cognitive workload by calculating the baseline-corrected pupil area under the curve (AUC) via trapezoidal integration. This metric, functionally designated as the Decision-Response AUC, was extracted from a 3.0-second window anchored directly to evidence onset, spanning from 0.3 to 3.3 seconds post-probe. This placement corresponds to 4.65 to 7.65 seconds relative to the initial handgrip squeeze, capturing the transient, stimulus-locked phasic arousal fluctuation riding on top of the sustained tonic effort baseline. Delaying the window onset by 300 milliseconds directly accounts for the inherent neurophysiological lag of the pupillary efferent pathway. The 3.0-second window duration is highly specialized. It encapsulates the complete morphological profile of the transient task-evoked pupil response (TEPR), which characteristically peaks at approximately 2.95 seconds post-stimulus in this cohort. Because the explicit response prompt appeared 0.35 seconds post-probe and mean cue-locked response latencies averaged 0.6 seconds, this expansive window spans both pre-decision evidence accumulation and post-decision motor and confidence processing. We directly isolated these overlapping post-decisional dynamics by entering reaction time as a covariate in all primary downstream pupil-informed models. We also defined a **Truncated Decision-Response AUC**—a 1.0-second integration window from 0.3 to 1.3 s post-probe (4.65 to 5.65 s relative to handgrip onset)—as a narrower alternative that minimizes post-response contamination at the cost of capturing less of the full TEPR morphology; primary pupil-DDM models did not evaluate this truncated window.
 
-@fig-auc-timeline shows the response-signal timing structure used in analyses.
+Supplementary @fig-timing-supp shows the response-signal timing structure used in analyses.
 
-```{r}
-#| label: fig-auc-timeline
-#| fig-cap: "Response-signal timing used in analyses. Probe onset (2nd stimulus; evidence onset) precedes the response prompt by a fixed 0.35 s; Decision-Phase AUC (W3.0) is probe-anchored."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "70%"
-include_graphics_safe(fig_path("AUC_timeline_v2.png"))
-```
 
-**Confounds and sensitivity checks.** Because pupil diameter is sensitive to luminance, autonomic balance, and motor activity in addition to arousal [@beatty1982; @loewenfeld1999], TEPR is interpreted in this study as a relative index of phasic arousal [@beatty1982; @gilzenrat2010] within our controlled MRI environment — we acknowledge that TEPR reflects a mixture of cognitive, autonomic, and motor-related pupil dynamics (see Discussion for limitations of this interpretation). We addressed potential post-response and motor confounds through multiple approaches. In trial-level pupil–DDM coupling models, RT was included as a covariate to control for decision state and prevent RT-driven pupil confounds. We also defined an optional motor-buffered variant of the Decision-Phase AUC (W3.0) that truncates the window 150 ms before the button press ($t_{\mathrm{resp}} - 0.15\,\mathrm{s}$); these buffered AUCs require re-processing the flat files with RT-aligned pupil traces and were computed for sensitivity analyses. Primary analyses use the Decision-Phase AUC (W3.0).
+**Confounds and sensitivity checks.** To minimize potential confounds from luminance and viewing distance, the paradigm was executed within a controlled MRI environment characterized by constant background luminance and a fixed viewing distance. Motor-related autonomic activity was addressed by including reaction time as a covariate in subsequent pupil-informed models.
+
 
 ## DDM Overview and Parameter Definitions
 
@@ -1300,31 +1293,31 @@ The DDM framework and its four parameters ($v$, $a$, $z$, $t_0$) are introduced 
 
 ## Decision Coding and Parameterization
 
-**Response-side coding rationale.** We employed **response-side coding** (also called "stimulus coding" or "response coding") where the upper boundary corresponds to "different" responses and the lower boundary to "same" responses (see @fig-ddm-process, Panel B), rather than accuracy-based coding where boundaries represent correct/incorrect responses. This specification is necessary to disentangle *response bias* (a preference for one response alternative regardless of stimulus truth) from *discriminability* (drift rate) [@wiecki2013hddm; @ratcliff2008diffusion]. In accuracy-based coding, bias would imply a preference for being correct (which is conceptually trivial), whereas response-side coding allows us to model the meaningful response preference for the "same" option commonly observed in detection tasks. This is particularly important for same/different discrimination where participants often exhibit response-specific biases (e.g., a conservative "same" bias) rather than general accuracy biases. Previous work has demonstrated that phasic arousal reduces such response biases in detection tasks [@degee2020pupil], and capturing this effect requires mapping boundaries to response alternatives.
+**Response-side coding rationale.** We employed response-side coding (also termed stimulus coding) where the upper boundary maps to "different" choices and the lower boundary maps to "same" choices [@wiecki2013hddm; @ratcliff2008diffusion]. This configuration is mathematically required to independently isolate response-selection biases from true sensory discriminability (drift rate). Accuracy-based coding layouts (correct vs. incorrect boundaries) are structurally incapable of capturing these dynamics, as a bias parameter in an accuracy matrix merely reflects a trivial preference for being correct. Because individuals performing same–different discrimination paradigms frequently exhibit prominent response-specific heuristics (e.g., a conservative tendency to favor the "same" classification), anchoring boundaries directly to the physical response alternatives allows the model to estimate true pre-stimulus starting-point preferences. Under this parameterization, evidence accumulation directed toward a true "Standard" (same) stimulus is represented as a negative drift rate traveling toward the lower boundary, rather than a processing deficit.
 
-**Implementation and model leverage.** Response-side coding was implemented by creating a binary response indicator, coded as 1 for "different" responses and 0 for "same" responses, ensuring accurate mapping to DDM boundary assignments. Standard (Δ=0) trials provide critical leverage for identifying bias under this coding scheme, as they isolate response preference from evidence strength; descriptive choice proportions and model-implied patterns are reported in Results. Crucially, the data were modeled using Stimulus/Response coding via the `dec(response)` argument, where the upper boundary represents a "Different" response and the lower boundary represents a "Same" response. Accuracy coding (Correct vs. Incorrect) was intentionally avoided. Response coding uniquely allows the model to estimate true pre-stimulus starting-point bias ($z$) toward a specific physical response—a critical strategic shift often observed in cognitive aging. Because of this parameterization, accurate evidence accumulation for "Standard" (Same) trials is mathematically represented as a negative drift rate (moving toward the lower boundary), rather than a deficit in processing.
-
-Full link function specifications and the Wiener likelihood are provided in Appendix A6.
+**Implementation and model leverage.** Response-side coding was implemented by constructing a binary response vector, coded as 1 for "different" judgments and 0 for "same" judgments. Standard ($\Delta = 0$) trials provide critical mathematical leverage for identifying baseline starting-point bias ($z$) under this coding scheme. Because these baseline trials contain zero objective sensory evidence, they effectively isolate automatic response preferences from evidence accumulation speed. Full link function specifications and the underlying Wiener likelihood equations are detailed in Appendix A6.
 
 ## Model Specification: Standard-only Calibration and Primary Model {#sec-ddm-spec}
 
-**Standard-only bias calibration model.** To isolate starting-point bias from drift-rate estimation, we first fit a hierarchical Wiener DDM to Standard trials only (~3.6k trials under the primary filter). Starting-point bias ($z$) was allowed to vary by Task and Effort (known pre-trial) but constrained to be constant across Difficulty levels, as trial difficulty was randomized and unknown at decision onset. Full brms formula syntax is provided in Appendix A6.
+**Standard-only bias calibration model.** To structurally isolate baseline starting-point bias from active drift-rate estimation, we executed a two-stage modeling pipeline. The first stage fit a targeted calibration model restricted exclusively to Standard trials ($\approx$ 3,600 trials), which establishes an empirical baseline for choice preference in the complete absence of sensory evidence shifts. Starting-point bias ($z$) was allowed to vary as a function of task modality and effort condition—both of which were explicitly known to the participant pre-trial—but was constrained to be invariant across perceptual difficulty levels, as trial-wise difficulty was randomized and entirely unknown prior to evidence presentation. The full parameter estimates and descriptive levels resulting from this calibration step are detailed in Appendix A2.
 
-**Primary analysis model (behavioral DDM; no pupil).** Drift rate ($v$) and boundary separation ($a$) were each modeled as additive functions of difficulty (treatment-coded, Standard as reference) and effort condition (treatment-coded, Low as reference). Starting-point bias ($z$) was modeled as a function of task and effort but not difficulty, because trial difficulty is randomized and unknown before evidence accumulation begins [@fig-ddm-process, Panel C]. Non-decision time ($t_0$) was constrained to an intercept-only specification based on pilot analyses indicating poor identification of condition-specific estimates in the response-signal paradigm (see @sec-starting-point-bias). Random intercepts by participant were included for $v$, $a$, and $z$; $t_0$ was modeled as fixed-only to improve identifiability. Full brms formula syntax and hierarchical model structure are provided in Appendix A6.
+**Primary analysis model.** Our primary behavioral DDM integrated both testing domains by modeling the Auditory Discrimination Task (ADT) and Visual Discrimination Task (VDT) jointly within a single hierarchical Bayesian framework. This joint configuration enters task modality as a fixed effect on starting-point bias ($z$), allowing the model to isolate task-specific parameter offsets while sharing participant-level random-effect variance across sensory domains. This hierarchical design leverages partial pooling via shrinkage to stabilize individual parameter estimates and maximize statistical power for detecting our core effects of interest. 
 
-**RT timing convention.** RT was defined as the latency from response-screen onset to button press; probe-onset-locked RT was derived by adding the fixed 0.35-s post-probe delay to cue-locked RT, so that the accumulation window aligns with evidence onset at the probe stimulus. Probe-onset-locked RT was selected as the primary timing convention because it aligns non-decision time ($t_0$) with evidence onset at the probe stimulus (@fig-rt-distributions). This choice adds a fixed 0.35-s component to $t_0$ that captures encoding-through-motor overhead on the probe-onset scale, which can compress variance in peripheral timing estimates but keeps the diffusion process anchored to when sensory evidence becomes available [@ratcliff2007application; @voss2004interpreting]. Cue-locked RT isolates post-prompt execution but discards the forced-delay encoding epoch; given our focus on evidence accumulation under concurrent grip, probe-onset locking is the more appropriate primary convention.
+Within this joint model architecture, drift rate ($v$) and boundary separation ($a$) were estimated as additive functions of perceptual task difficulty (treatment-coded, Standard as reference) and tonic effort condition (treatment-coded, Low as reference). Starting-point bias ($z$) was modeled as a function of task and effort, but remained excluded from difficulty subformulas because trial difficulty cannot be anticipated before evidence accumulation begins (see @fig-ddm-process, Panel C for a visual summary of predictor mappings). Non-decision time ($t_0$) was set to an intercept-only specification based on pilot identification constraints inherent to the gated response-signal design. Random intercepts by participant were comprehensively estimated for $v$, $a$, and $z$, while $t_0$ was retained as a fixed population parameter to ensure strict model identifiability. Task-separated parameter profiles are provided as an explicit sensitivity check in Appendix A4.3 to validate that joint pooling did not obscure modality-specific trends.
 
-Sensitivity analyses using cue-locked RT and alternative lower-bound cutoffs (0.15 s and 0.25 s) are reported in Appendix A4.
+**RT timing convention.** In this response-signal design, reaction time was defined as the latency from response-screen onset to the button press. However, because perceptual evidence becomes available immediately at probe onset, modeling distributions strictly from the execution cue presents a chronological misalignment between evidence availability and the mathematical integration start point. To ensure the diffusion window encompasses the entire information-processing timeline, probe-onset-locked RT was derived by adding the fixed 0.35-s post-probe delay (0.10-s probe duration plus 0.25-s grip-relaxation period) to the raw cue-locked value. 
 
-@fig-ddm-process (Panel C) provides a visual summary of how experimental predictors map onto each DDM parameter in the primary model, highlighting the key constraint that starting-point bias ($z$) does not vary by difficulty because trial difficulty is randomized and unknown before evidence accumulation begins.
+Probe-onset-locked RT served as our primary timing convention because it correctly aligns the diffusion process with evidence onset (@fig-rt-distributions). Under this convention, the non-decision time parameter ($t_0$) absorbs the fixed 0.35-s response-gating delay alongside standard encoding and motor execution overhead [@ratcliff2007application; @voss2004interpreting]. While this constant addition can compress parameter variance in peripheral timing estimates, anchoring the model timeline to evidence onset is more theoretically appropriate for isolating accumulation dynamics under concurrent motor load. Raw cue-locked latency profiles and alternative lower-bound filtering cutoffs (0.15 s and 0.25 s) were retained for sensitivity analyses, which are reported in Appendix A4.
 
-To confirm that the difficulty and effort manipulations affected behavioral performance as intended — independent of DDM assumptions — we conducted mixed-effects models for accuracy (GLMM, binomial) and median reaction time (LMM), each including fixed effects for difficulty, effort, and task, with random intercepts for participant. Analyses were restricted to Easy and Hard trials; full model details and results are reported in Appendix A7.
+**Behavioral validation checks.** To confirm that our perceptual difficulty and physical effort manipulations systematically altered gross behavioral performance independent of DDM assumptions, we conducted baseline mixed-effects model checks restricted to active discrimination trials (Easy and Hard conditions). Perceptual accuracy was evaluated using a generalized linear mixed model (GLMM, binomial logistic link), and median reaction times were evaluated using a linear mixed model (LMM). Both validation frameworks entered task modality, perceptual difficulty, and physical effort as fixed effects, alongside random participant intercepts. Full model parameters and frequentist significance metrics for these baseline checks are reported transparently in Appendix A7.
 
-## Pupil-Linked DDM Extensions {#sec-pupil-ddm-models}
+### Pupil-Linked DDM Extensions {#sec-pupil-ddm-models}
 
-**Pupil-linked DDM extensions (trial-level phasic arousal).** To test whether momentary arousal modulates evidence accumulation or response bias, we extended the behavioral DDM by adding a trial-level pupil predictor interpreted as an index of phasic arousal. The primary pupil metric was a cleaned, baseline-corrected, and participant-standardized response (interpreted here as a phasic arousal signal) summarized per trial and z-scored within participant (`pupil_scaled`). We evaluated a nested sequence of pupil-linked models: (i) behavioral baseline (no pupil predictor), (ii) pupil predicting starting-point bias, and (iii) pupil predicting both drift and bias. Competing pupil models were compared using Pareto-smoothed importance sampling leave-one-out cross-validation (PSIS‑LOO; an efficient approximation to standard LOO-CV), and inference focused on posterior distributions of pupil coefficients on the link scale as well as condition-level posterior predictions. Results from these pupil-linked models are reported in the Results section.
+Building upon the baseline behavioral model, we implemented hierarchical, pupil-informed regression extensions to evaluate whether within-person physiological fluctuations modulate parameters of choice on a trial-by-trial basis [@wiecki2013hddm]. The physical metric used for these extensions was the baseline-corrected Decision-Response AUC. To isolate true intra-individual variation from stable, between-participant differences in eye morphology, these trial-wise integration values were z-scored individually within each participant's complete timecourse profile. This localized transformation yielded a standardized single-trial metric that serves as our functional physiological proxy for transient arousal fluctuations during the decision window. 
 
-**Pupil × Difficulty interaction model.** To evaluate the Yerkes–Dodson prediction that arousal effects on decision-making should diverge by difficulty — with optimal arousal shifting as a function of task demands — `pupil_scaled` was additionally entered as an interaction with task `difficulty` for both drift rate ($v$) and boundary separation ($a$): `pupil_scaled * difficulty_3`. This specification allows the model to test whether momentary arousal differentially predicts evidence accumulation across difficulty levels — for example, providing a performance boost on Easy trials (where arousal may elevate an already positive drift) while causing overload on Hard or Standard trials (where supra-optimal arousal may further degrade a low or negative drift). Subject-level variability in the arousal–difficulty coupling was captured by including the full interaction in the random-effects structure: `(1 + pupil_scaled * difficulty_3 | subject_id)`. Non-decision time and starting-point bias formulas were held constant across difficulty, consistent with the primary model.
+To explicitly adjudicate between alternative mechanisms of state-dependent cognitive control, we evaluated a nested sequence of model configurations [@de2017dynamic]. The baseline behavioral model excluded all trial-level physiological inputs, establishing a structural reference point where parameter variance was governed solely by categorical task conditions. A bias-only model allowed this standardized pupil metric to modulate starting-point bias ($z$) through a logistic link function, testing the hypothesis that momentary arousal suppresses pre-existing response preferences and drives the initial decision architecture toward neutrality ($z = 0.5$). Finally, a dual-dependency model allowed the pupil metric to simultaneously modulate both bias and drift rate ($v$), testing whether momentary arousal additionally alters the efficiency of central sensory processing under a sustained motor load. We compared the relative predictive success of these architectures using Pareto-smoothed importance sampling leave-one-out cross-validation (PSIS-LOO; @vehtari2017loo), focusing population-level inference on the posterior regression coefficients ($\beta$) estimated on the link scale.
+
+**Pupil × Perceptual Difficulty interaction model.** To evaluate the classic Yerkes–Dodson prediction that the effects of arousal on decision-making diverge as a function of immediate cognitive demands—with the optimal arousal threshold shifting according to task complexity—we implemented an interaction model crossing the standardized pupil metric with perceptual task difficulty. This specification directly evaluates the integrated resource-arousal framework established in our introduction, examining whether within-person fluctuations in phasic arousal differentially modulate parameter dynamics across sensory difficulty levels. For instance, momentary arousal bursts may provide a processing boost on perceptually easy trials but induce systemic cognitive overload during high-difficulty conditions where accumulation signals are already obscured by background somatic noise. This interaction was evaluated for both the drift rate ($v$) and boundary separation ($a$) parameters, with subject-level variability in the psychophysiological-difficulty coupling accounted for by including the full interaction within the hierarchical random-effects structure. Non-decision time and starting-point bias formulations were held invariant across difficulty levels, maintaining structural symmetry with the primary model variants.
 
 ## Priors, Computation, and Diagnostics {#sec-ddm-priors}
 
@@ -2912,7 +2905,6 @@ All models met convergence criteria ($\hat{R}$ < 1.01, bulk ESS > 400, zero dive
 We compared nested specifications with PSIS-LOO (@vehtari2017loo). The additive model — difficulty and effort as independent predictors of drift rate and boundary separation — outperformed a difficulty-only baseline ($\Delta$ELPD $>$ 4). A difficulty × effort interaction did not improve fit ($|\Delta$ELPD$|$ $<$ 4). Full ELPD values are in Appendix A1 (@tbl-loo-comparison). The additive probe-onset-locked specification was used for all primary analyses below. Pupil-augmented models are compared separately in @sec-pupil-ddm-integration.
 
 ```{r}
-#| label: tbl-loo-comparison
 #| tbl-cap: !expr sprintf("Model Comparison via Leave-One-Out Cross-Validation. Comparison of baseline (intercept-only) and additive (difficulty + effort) DDM specifications fitted to %s trials. The additive model is strongly favored.", format(if (is.null(primary_n_trials) || is.na(primary_n_trials)) 18097L else primary_n_trials, big.mark = ","))
 #| tbl-pos: "htbp"
 #| include: false
@@ -3069,7 +3061,7 @@ if (!is.null(pred_params) && nrow(pred_params) > 0) {
 
 ## Behavioral DDM parameter estimates {#sec-behavioral-ddm}
 
-Posterior estimates of drift rate ($v$), boundary separation ($a$), and non-decision time ($t_0$) across conditions are summarized in @tbl-ddm-core-by-difficulty-effort and @fig-ddm-parameters-combined. Hypothesis tests (H1–H4) are in @sec-key-contrasts; starting-point bias calibration is in @sec-starting-point-bias.
+Posterior estimates of drift rate ($v$), boundary separation ($a$), and non-decision time ($t_0$) across conditions are summarized in @tbl-ddm-core-by-difficulty-effort and @fig-central-result. Hypothesis tests (H1–H4) are in @sec-key-contrasts; starting-point bias calibration is in @sec-starting-point-bias.
 
 ```{r}
 #| label: tbl-ddm-core-by-difficulty-effort
@@ -3120,19 +3112,19 @@ ddm_core %>%
 
 
 ```{r}
-#| label: fig-ddm-parameters-combined
-#| fig-cap: "**Selective effort effect on drift — the central result.** **(A)** Posterior median drift rate ($v$) by Difficulty $\\times$ Effort (95% CrI; Low = blue, High = magenta), pooled across tasks; dashed line at $v = 0$. **(B)** H1: posterior density of the High $-$ Low effort contrast on $v$; shaded band = 95% CrI (excludes zero). **(C)** Posterior median boundary separation ($a$) by Difficulty $\\times$ Effort. **(D)** H2: posterior density of the High $-$ Low effort contrast on $a$ (log scale); 95% CrI spans zero."
+#| label: fig-central-result
+#| fig-cap: "**High-effort handgrip selectively degraded evidence accumulation quality but did not alter decision caution, localizing the cost of physical effort to the drift-rate parameter.** **(A)** Posterior median drift rate ($v$) by Difficulty $\\times$ Effort condition (95% CrI; Low effort = blue, High effort = magenta), pooled across tasks; dashed reference line at $v = 0$ separates accumulation toward 'different' (positive) vs. 'same' (negative) boundaries. **(B)** H1 test: posterior density of the High $-$ Low effort contrast on $v$; the shaded band marks the 95% CrI, which excludes zero entirely, indicating a highly credible negative effort effect. **(C)** Posterior median boundary separation ($a$) by Difficulty $\\times$ Effort (95% CrI); conditions are nearly overlapping, consistent with no detectable effort-related caution adjustment. **(D)** H2 test: posterior density of the High $-$ Low effort contrast on $a$ (log scale); the dashed outline and lighter fill signal a null result --- the 95% CrI spans zero. The asymmetry between Panels B and D makes the selectivity of the effort effect visible without recourse to the text. Statistical note: H1 effort contrast on $v$: $\\beta = -0.070$, 95% CrI [$-0.109$, $-0.032$], $P(\\beta < 0) > .999$. H2 effort contrast on $a$: $\\beta = 0.008$, 95% CrI [$-0.005$, $0.021$], $P$(CrI includes 0) = 1; $>$90% of posterior mass within $\\pm$0.05 log-scale ROPE."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
 include_graphics_safe(main_fig("fig2_central_result.png"))
 ```
 
-Because Effort is a within-subject manipulation, visual overlap in marginal means is misleading. Panel B of @fig-ddm-parameters-combined plots the posterior distribution of the difference score (High $-$ Low Effort) and shows that the 95% CrI does not cross zero, confirming a highly credible reduction in drift rate.
+Because Effort is a within-subject manipulation, visual overlap in marginal means is misleading. Panel B of @fig-central-result plots the posterior distribution of the difference score (High $-$ Low Effort) and shows that the 95% CrI does not cross zero, confirming a highly credible reduction in drift rate.
 
 ```{r}
-#| label: fig-difficulty-contrasts
-#| fig-cap: "**Integrated parameter forest.** **(A)** High $-$ Low effort contrasts for H1 (drift $v$), H2 (boundary $a$), and H4 (bias $z$); filled circles = 95% CrI excludes zero, open circles = CrI spans zero. **(B)** Pairwise difficulty contrasts on drift ($v$; identity scale) and boundary ($a$; log scale): Easy vs Standard, Hard vs Standard, and Easy vs Hard."
+#| label: fig-parameter-forest
+#| fig-cap: "**Only drift rate showed a credible effort effect; boundary separation and starting-point bias both had 95% credible intervals spanning zero, while difficulty produced large, credible contrasts on all parameters.** **(A)** High $-$ Low effort contrasts (posterior median $\\pm$ 95% CrI) for H1 (drift $v$), H2 (boundary $a$), and H4 (starting-point bias $z$). Filled circles indicate that the 95% CrI excludes zero; open circles indicate that the CrI spans zero. **(B)** Pairwise difficulty contrasts on drift $v$ (identity scale) and boundary $a$ (log scale): Easy vs. Standard, Hard vs. Standard, and Easy vs. Hard. Statistical note: H1 $\\beta = -0.070$ [$-0.109$, $-0.032$]; H2 $\\beta = 0.008$ [$-0.005$, $0.021$]; H4 $\\Delta z = -0.005$ [$-0.023$, $0.012$]. Difficulty contrasts on drift: Easy vs. Standard $\\beta \\approx +2.04$; Hard vs. Standard $\\beta \\approx -0.32$; all 95% CrIs exclude zero."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
@@ -3204,176 +3196,8 @@ pupil_quality_text <- if (n_subj_pupil > 0 && n_trials_total > 0) {
 }
 ```
 
-`r pupil_quality_text` Baseline pupil descriptives by condition are reported in Appendix A2 (Table 7). TEPR descriptives by condition are shown in Table 8 (@sec-pupil-ddm-integration).
+`r pupil_quality_text` Baseline pupil descriptives by condition are reported in Appendix A2 (@tbl-baseline-pupil). TEPR descriptives by condition are shown in @tbl-tepr (@sec-pupil-ddm-integration). Grand-average TEPR time courses by condition are shown in Supplementary @fig-tepr-timecourse-supp.
 
-```{r}
-#| label: fig-tepr-timecourse
-#| fig-cap: "Task-Evoked Pupil Response (TEPR) Time Course. Grand-average pupil traces (baseline-corrected, mean ± 95% CI) aligned to squeeze onset for four conditions (Easy/Low, Easy/High, Hard/Low, Hard/High), separately for ADT (top) and VDT (bottom). The shaded region indicates the cognitive AUC window used for TEPR quantification (4.65s to 7.65s relative to squeeze onset, extending from 300ms after target stimulus onset until ~3s post-target). Baseline-corrected traces converge at 0 during the baseline period (-0.5 to 0s). Vertical dashed lines indicate key events: trial start (0s), target stimulus onset (4.35s), and response signal onset (4.7s)."
-#| fig-align: center
-#| out-width: "85%"
-#| echo: false
-# Generate TEPR time course figure
-if (!is.null(pupil_data)) {
-  # Try to load waveform summary data
-  waveform_file <- c(
-    file.path(proj_root, "data/pupil_processed/analysis/pupil_waveforms_condition_mean.csv"),
-    file.path(proj_root, "quick_share_v7/analysis/pupil_waveforms_condition_mean.csv")
-  )
-  waveform_file <- waveform_file[file.exists(waveform_file)][1]
-  
-  if (!is.na(waveform_file) && file.exists(waveform_file)) {
-    waveform_data <- read_csv(waveform_file, show_col_types = FALSE)
-    
-    # Filter to chapter 3 data and keep all 4 conditions (effort × difficulty)
-    waveform_ch3 <- waveform_data %>%
-      filter(chapter == "ch3") %>%
-      # Map difficulty level from stimulus_intensity and isOddball
-      mutate(
-        difficulty_level = case_when(
-          isOddball == 0 | (is.na(isOddball) & (!is.na(stimulus_intensity) & stimulus_intensity == 0)) ~ "Standard",
-          !is.na(stimulus_intensity) & stimulus_intensity %in% c(1, 2) ~ "Hard",
-          !is.na(stimulus_intensity) & stimulus_intensity %in% c(3, 4) ~ "Easy",
-          isOddball == 1 & is.na(stimulus_intensity) ~ "Easy",
-          TRUE ~ NA_character_
-        ),
-        effort_level = case_when(
-          effort == "Low" | effort == "Low_Force_5pct" ~ "Low",
-          effort == "High" | effort == "High_Force_40pct" ~ "High",
-          TRUE ~ NA_character_
-        ),
-        # Create condition label (Difficulty / Effort)
-        condition = case_when(
-          !is.na(difficulty_level) & !is.na(effort_level) ~ 
-            paste0(difficulty_level, " / ", effort_level),
-          TRUE ~ "Unknown"
-        )
-      ) %>%
-      mutate(
-        difficulty_level = gsub("\u2013", "-", difficulty_level),
-        effort_level = gsub("\u2013", "-", effort_level),
-        condition = gsub("\u2013", "-", condition)
-      ) %>%
-      # Filter out Standard trials (we want Easy/Hard only) and Unknown
-      filter(condition != "Unknown", !grepl("Standard", condition)) %>%
-      # Use mean_pupil_full (baseline-corrected, B0-corrected) - this converges at 0 in baseline period
-      # Per plot_pupil_waveforms.R line 134: mean_pupil_full is the B0-corrected (full baseline correction)
-      rename(mean_pupil_isolated = mean_pupil_full) %>%
-      # Group by task, condition, and time to get per-condition means
-      group_by(task, condition, t_rel) %>%
-      summarise(
-        # Weighted mean across any duplicate entries (weight by n_trials)
-        total_trials = sum(n_trials, na.rm = TRUE),
-        mean_pupil_isolated = sum(mean_pupil_isolated * n_trials, na.rm = TRUE) / total_trials,
-        n_trials = total_trials,
-        .groups = "drop"
-      ) %>%
-      filter(!is.na(task), !is.na(condition), !is.na(t_rel), !is.na(mean_pupil_isolated)) %>%
-      arrange(task, condition, t_rel)
-    
-    if (nrow(waveform_ch3) > 0) {
-      # Define event markers and cognitive AUC window
-      # Based on Methods section: cognitive AUC window is 4.65s to 7.65s (300ms after target until 3.3s post-target)
-      trial_start <- 0.0  # Trial start (squeeze onset)
-      target_onset <- 4.35  # Target stimulus onset
-      response_signal_onset <- 4.7  # Response signal onset
-      cognitive_auc_start <- 4.65  # 300ms after target onset (4.35 + 0.3)
-      cognitive_auc_end <- 7.65  # 3.3s post-target (4.35 + 3.3), which is the Decision-Phase AUC (W3.0) window
-      
-      # Get conditions actually present in data
-      conditions_present <- unique(waveform_ch3$condition)
-      conditions_present <- conditions_present[!is.na(conditions_present)]
-      colors_for_plot <- cond_colors_spaced[names(cond_colors_spaced) %in% conditions_present]
-      if (length(colors_for_plot) == 0) {
-        # Fallback: use default colors if no matches
-        colors_for_plot <- scales::hue_pal()(length(conditions_present))
-        names(colors_for_plot) <- conditions_present
-      }
-      
-      # Calculate y-limits from data (use full range to show all curves, add padding for labels)
-      y_vals <- waveform_ch3$mean_pupil_isolated[!is.na(waveform_ch3$mean_pupil_isolated)]
-      if (length(y_vals) > 0) {
-        # Use full range to ensure all curves are visible
-        y_range <- range(y_vals, na.rm = TRUE)
-        y_range_span <- diff(y_range)
-        if (!is.finite(y_range_span) || y_range_span == 0) {
-          y_range_span <- max(abs(y_range), na.rm = TRUE)
-          if (!is.finite(y_range_span) || y_range_span == 0) y_range_span <- 1
-        }
-        # Add padding (12% top, 8% bottom) to accommodate labels and ensure visibility
-        y_upper_limit <- y_range[2] + y_range_span * 0.12  # Extra space for labels
-        y_lower_limit <- y_range[1] - y_range_span * 0.08  # Padding at bottom
-      } else {
-        y_upper_limit <- 0.5
-        y_lower_limit <- -0.5
-        y_range_span <- 1  # Default span for label positioning
-      }
-      
-      # Event markers with staggered y positions to avoid overlap (vertical text)
-      event_markers <- tibble(
-        event = c("Trial Start", "Target", "Response"),
-        time = c(trial_start, target_onset, response_signal_onset),
-        label_y = y_upper_limit - y_range_span * c(0.05, 0.10, 0.15)  # Stagger vertically
-      )
-      
-      # Create plot
-      p_tepr <- ggplot(waveform_ch3, aes(x = t_rel, y = mean_pupil_isolated, 
-                                         color = condition, fill = condition)) +
-        # Cognitive AUC window shading
-        geom_rect(aes(xmin = cognitive_auc_start, xmax = cognitive_auc_end, ymin = -Inf, ymax = Inf),
-                  inherit.aes = FALSE, fill = "grey90", alpha = 0.3) +
-        # GAM smoothed lines with confidence intervals
-        geom_smooth(se = TRUE, method = "gam", formula = y ~ s(x, k = 20), 
-                    linewidth = 1.2, alpha = 0.3) +
-        # Event markers (vertical dashed lines)
-        geom_vline(data = event_markers, aes(xintercept = time), 
-                   inherit.aes = FALSE, linetype = "dashed", color = "grey40", linewidth = 0.6) +
-        # Event labels (vertical text to avoid overlap)
-        geom_text(data = event_markers, aes(x = time, y = label_y, label = event),
-                  inherit.aes = FALSE, angle = 90, hjust = 0, vjust = 0.9,
-                  size = 3.5, color = "grey20", fontface = "bold") +
-        # Facet by task (stacked vertically)
-        facet_wrap(~task, ncol = 1, labeller = labeller(task = c("ADT" = "ADT", 
-                                                                  "VDT" = "VDT"))) +
-        # Scales
-        scale_color_manual(values = colors_for_plot, name = "Condition") +
-        scale_fill_manual(values = colors_for_plot, name = "Condition") +
-        scale_x_continuous(breaks = seq(-0.5, 8, 1), expand = c(0, 0.1)) +
-        coord_cartesian(ylim = c(y_lower_limit, y_upper_limit)) +
-        # Labels and theme
-        labs(
-          x = "Time (s, relative to squeeze onset)",
-          y = "Baseline-Corrected Pupil Diameter (AU)",
-          title = NULL
-        ) +
-        theme_minimal(base_size = 12) +
-        theme(
-          panel.grid.minor = element_blank(),
-          panel.grid.major = element_line(color = "grey90", linewidth = 0.5),
-          strip.text = element_text(face = "bold", size = 12),
-          strip.background = element_rect(fill = "grey95", color = NA),
-          legend.position = "bottom",
-          legend.title = element_text(face = "bold"),
-          axis.title = element_text(face = "bold"),
-          plot.margin = margin(10, 10, 10, 10)
-        )
-      
-      print(p_tepr)
-      save_manuscript_fig(p_tepr, "fig_tepr_timecourse", 10, 8)
-    } else {
-      # Placeholder if no data
-      # Waveform data not available - ensure label still resolves
-      invisible(NULL)
-    }
-  } else {
-    # Placeholder if file not found
-    # Waveform file not found - ensure label still resolves
-    invisible(NULL)
-  }
-} else {
-  # Placeholder if pupil_data not loaded - use invisible output to ensure label resolves
-  invisible(NULL)
-}
-```
 
 ### Hypothesis tests (H1–H4) {#sec-key-contrasts}
 
@@ -3381,7 +3205,7 @@ To evaluate our a priori predictions about how effort and difficulty modulate de
 
 Contrasts on the link scale confirmed large effects of difficulty on drift rate ($v$), with Easy $>$ Hard $>$ Standard, and consistent effects of effort on $v$. Boundary separation ($a$) and starting-point bias ($z$) showed more modest modulation by difficulty and effort.
 
-For each hypothesis, inference rests on the posterior distribution of the High − Low effort contrast ($\delta$), extracted from posterior draws. We report the posterior median, 95% credible interval (CrI), and the posterior probability $P(\delta < 0)$. When a 95% CrI excludes zero, essentially all posterior mass is on one side of zero. The effort–drift contrast is visualized in @fig-ddm-parameters-combined (Panel B) and summarized with H2 and H4 in @fig-difficulty-contrasts (Panel A). Difficulty contrasts are in @fig-difficulty-contrasts (Panel B). All hypothesis results are in @tbl-hyp-summary.
+For each hypothesis, inference rests on the posterior distribution of the High − Low effort contrast ($\delta$), extracted from posterior draws. We report the posterior median, 95% credible interval (CrI), and the posterior probability $P(\delta < 0)$. When a 95% CrI excludes zero, essentially all posterior mass is on one side of zero. The effort–drift contrast is visualized in @fig-central-result (Panel B) and summarized with H2 and H4 in @fig-parameter-forest (Panel A). Difficulty contrasts are in @fig-parameter-forest (Panel B). All hypothesis results are in @tbl-hyp-summary.
 
 **H1 (drift rate, $v$).** High effort (40% MVC) produced lower drift rates than Low effort (5% MVC): `r h1_beta_str`, `r h1_cri_str``r h1_p0_str`. The 95% CrI excludes zero.
 
@@ -3395,7 +3219,7 @@ The four hypotheses sit in different inferential positions. H1 is **supported**:
 
 ```{r}
 #| label: tbl-hyp-summary
-#| tbl-cap: "Unified hypothesis summary: effort and pupil effects on DDM parameters, classified by inferential status. Estimates and 95% CrIs are on the link scale (identity for drift $v$; log for boundary $a$; logit for bias $z$; log for exploratory H3 $t_0$). P(in ROPE): auxiliary project-convention thresholds ($\\pm$0.05 log/logit; $\\pm$0.02 identity link); not formal equivalence testing (see footnote [b]). n/a = not applicable for design-constrained or measurement-limited effects. Conditional-slope estimates for TEPR $\\times$ difficulty appear in @tbl-pupil-key-effects. Note a: H3 $t_0$ fixed to intercept-only (response-signal design); exploratory estimate only. Note b: ROPE = project pipeline convention, not a published SESOI. Note c: Pareto-$k$ = 0.91; PSIS-LOO unreliable; conclusions rest on posterior coefficients."
+#| tbl-cap: "Unified hypothesis summary: effort and pupil effects on DDM parameters (link-scale estimates and graded evidence). Estimates use identity link for drift $v$, log for boundary $a$, logit for bias $z$. Conditional TEPR $\\times$ difficulty slopes are in @tbl-pupil-key-effects."
 #| tbl-pos: "htbp"
 
 # ── Build display table from null_evidence_for_table ──────────────────────────
@@ -3424,13 +3248,13 @@ The four hypotheses sit in different inferential positions. H1 is **supported**:
   grepl("^H3:", null_evidence_for_table$label) ~ "Not directly testable [a]",
   null_evidence_for_table$meas_limited         ~ "Inconclusive [c]",
   grepl(">=90|.90.", null_evidence_for_table$evidence_label) ~
-    "Near-zero; >90% in ROPE [b]",
+    "Near-zero [b]",
   grepl("majority",   null_evidence_for_table$evidence_label) ~
-    "Near-zero; >75% in ROPE [b]",
-  TRUE ~ "Near-zero; CrI spans zero"
+    "Near-zero [b]",
+  TRUE ~ "Near-zero"
 )
 
-.tbl_out <- tibble::tibble(
+.tbl_body <- tibble::tibble(
   Effect        = .hyp_labels,
   Estimate      = null_evidence_for_table$est_fmt,
   `95% CrI`     = null_evidence_for_table$cri_fmt,
@@ -3439,66 +3263,90 @@ The four hypotheses sit in different inferential positions. H1 is **supported**:
   Evidence      = .ev_labels_display
 )
 
-# Section separator rows for readability (inserted manually, no pack_rows)
 .n_ddm   <- sum(grepl("^H[1-4]:", null_evidence_for_table$label))
-.n_pupil <- nrow(.tbl_out) - .n_ddm
+.n_pupil <- nrow(.tbl_body) - .n_ddm
 
-# Row background highlights via kableExtra::row_spec
-.ddm_rows   <- seq_len(.n_ddm)
-.pupil_rows <- seq(.n_ddm + 1, nrow(.tbl_out))
+.blank_cells <- function(label) {
+  tibble::tibble(
+    Effect        = label,
+    Estimate      = "",
+    `95% CrI`     = "",
+    `CrI incl. 0` = "",
+    `P(in ROPE)`  = "",
+    Evidence      = ""
+  )
+}
 
-.tbl_out %>%
+.tbl_out <- dplyr::bind_rows(
+  .blank_cells(if (.is_pdf) {
+    "\\textbf{Behavioral DDM --- primary model}"
+  } else {
+    "**Behavioral DDM — primary model**"
+  }),
+  .tbl_body[seq_len(.n_ddm), ],
+  .blank_cells(if (.is_pdf) {
+    "\\textbf{Pupil-augmented models {[}c{]}}"
+  } else {
+    "**Pupil-augmented models [c]**"
+  }),
+  .tbl_body[seq(.n_ddm + 1, nrow(.tbl_body)), ]
+)
+
+if (.is_pdf) {
+  .tex_cell <- function(x) gsub("%", "\\\\%", x, fixed = TRUE)
+  .tbl_out <- dplyr::mutate(
+    .tbl_out,
+    dplyr::across(-Effect, .tex_cell)
+  )
+}
+
+if (.is_pdf) {
+  names(.tbl_out) <- c(
+    "Effect", "Est.", "95\\% CrI", "Incl.~0", "ROPE", "Evidence"
+  )
+}
+
+.ddm_rows   <- c(1L, seq(2L, .n_ddm + 1L))
+.pupil_rows <- c(.n_ddm + 2L, seq(.n_ddm + 3L, nrow(.tbl_out)))
+
+.hyp_tbl <- .tbl_out %>%
   knitr::kable(
     format   = ifelse(.is_pdf, "latex", "html"),
     booktabs = TRUE,
     linesep  = "",
-    escape   = TRUE,     # always escape for safety; math goes in tbl-cap only
+    escape   = if (.is_pdf) FALSE else TRUE,
     align    = c("l", "r", "l", "c", "r", "l")
   ) %>%
   kableExtra::kable_styling(
-    latex_options     = c("hold_position", "scale_down"),
-    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    latex_options     = if (.is_pdf) "hold_position" else c("striped", "hover", "condensed", "responsive"),
+    bootstrap_options = if (.is_pdf) NULL else c("striped", "hover", "condensed", "responsive"),
     full_width        = FALSE,
-    font_size         = if (.is_pdf) 9 else NULL
+    font_size         = if (.is_pdf) 9 else NULL,
+    position          = "center"
   ) %>%
+  { if (.is_pdf) kableExtra::column_spec(., 1, width = "3.4cm") else . } %>%
+  { if (.is_pdf) kableExtra::column_spec(., 3, width = "2.0cm") else . } %>%
+  { if (.is_pdf) kableExtra::column_spec(., 6, width = "1.5cm") else . } %>%
   kableExtra::row_spec(0, bold = TRUE) %>%
-  kableExtra::row_spec(.ddm_rows,   background = if (.is_pdf) NULL else "#f7f7f7") %>%
-  kableExtra::row_spec(.pupil_rows, background = if (.is_pdf) NULL else "#eef4fb") %>%
-  kableExtra::group_rows(
-    group_label = "Behavioral DDM — Primary Model",
-    start_row   = 1, end_row = .n_ddm,
-    bold = TRUE, italic = FALSE, hline_before = FALSE, hline_after = FALSE
-  ) %>%
-  kableExtra::group_rows(
-    group_label = "Pupil-Augmented Models (@sec-pupil-ddm-integration) [c]",
-    start_row   = .n_ddm + 1, end_row = nrow(.tbl_out),
-    bold = TRUE, italic = FALSE, hline_before = TRUE, hline_after = FALSE
-  ) %>%
-  kableExtra::footnote(
-    general = paste0(
-      "Auxiliary ROPE thresholds (project convention [b]): ",
-      "drift +/-0.02 (identity); boundary +/-0.05 (log); bias +/-0.05 (logit). ",
-      "P(in ROPE) approximated from CrI via Gaussian approximation. ",
-      "n/a = not applicable."),
-    alphabet = c(
-      paste0("[a] H3: t0 fixed to intercept-only (response-signal design). ",
-             "Exploratory estimate only; not a valid H3 test."),
-      paste0("[b] ROPE mass = auxiliary sensitivity summary using project-convention ",
-             "widths from the analysis pipeline; not a preregistered SESOI and not a ",
-             "formal equivalence test. Inferential status follows CrIs and graded language above."),
-      paste0("[c] Pupil rows inconclusive: PSIS-LOO unreliable (Pareto-k = 0.91); ",
-             "TEPR window conflates motor-autonomic and cognitive arousal under sustained grip.")),
-    escape         = TRUE,
-    general_title  = "Note.",
-    alphabet_title = ""
-  )
+  { if (.is_pdf) . else kableExtra::row_spec(., .ddm_rows,   background = "#f7f7f7") } %>%
+  { if (.is_pdf) . else kableExtra::row_spec(., .pupil_rows, background = "#eef4fb") }
+
+.hyp_tbl
 ```
+
+*Note.* ROPE thresholds [b]: drift ±0.02; boundary ±0.05 (log); bias ±0.05 (logit). P(in ROPE) from CrI (Gaussian approximation). n/a = not applicable.
+
+^a^ H3: *t*~0~ intercept-only (response-signal design); exploratory estimate only.
+
+^b^ ROPE mass is a pipeline convention, not a preregistered SESOI; not a formal equivalence test.
+
+^c^ Pupil rows inconclusive: PSIS-LOO unreliable (max Pareto-*k* = 0.91).
 
 The Effort → Drift effect was robust to task inclusion: the Effort × Task interaction was negligible (Appendix A4.3). Primary findings were also robust to alternative RT cutoffs (0.15 s and 0.25 s; Appendix A4.2).
 
 ### Starting-point bias {#sec-starting-point-bias}
 
-In a standard-only calibration model, starting-point bias ($z$) was estimated independently of drift rate ($v$). Bias values were consistently above 0.5. VDT showed lower bias toward "different" responses than ADT ($\Delta z = -0.04$, 95% CrI [−0.06, −0.02]; @fig-bias-by-task). The effort contrast was small and uncertain (Low−High: `r h4_beta_str`, `r h4_cri_str``r h4_p0_str`). Bias was modeled as a function of task and effort only — participants had no advance knowledge of trial difficulty [@farell1985; @nosofsky1997palmeri]. H4 effort results are in @sec-key-contrasts.
+In a standard-only calibration model, starting-point bias ($z$) was estimated independently of drift rate ($v$). Bias values were consistently above 0.5. VDT showed lower bias toward "different" responses than ADT ($\Delta z = -0.04$, 95% CrI [−0.06, −0.02]). The effort contrast was small and uncertain (Low−High: `r h4_beta_str`, `r h4_cri_str``r h4_p0_str`). Bias was modeled as a function of task and effort only — participants had no advance knowledge of trial difficulty [@farell1985; @nosofsky1997palmeri]. H4 effort results are in @sec-key-contrasts.
 
 ```{r drift-standard-compute}
 #| echo: false
@@ -3514,40 +3362,16 @@ if (!is.null(pred_params) && nrow(pred_params) > 0) {
 }
 ```
 
+The standard-only bias estimate ($z = 0.63$, 95% CrI [0.60, 0.66]; @tbl-standard-only-bias-levels) exceeded primary-model estimates ($z \approx 0.52$–$0.55$; @tbl-ddm-core-by-difficulty-effort), reflecting the $v$–$z$ trade-off when drift and bias are estimated jointly across difficulty levels. Substantial between-subject variability in drift rate and its effort sensitivity is shown in @fig-individual-diffs.
+
 ```{r}
-#| label: fig-bias-by-task
-#| fig-cap: "Starting-point bias ($z$) by Task Modality. Bar plot showing mean bias estimates with 95% credible intervals (error bars) for ADT and VDT tasks. Values above 0.5 indicate bias toward 'different' responses (upper boundary)."
+#| label: fig-individual-diffs
+#| fig-cap: "**The effort-induced reduction in drift rate was consistent across all 67 participants, confirming that evidence accumulation quality degraded under high physical demand at the individual level.** **(A)** Brinley plot: mean RT on Hard trials vs. mean RT on Easy trials per participant (pooled across effort conditions); dashed diagonal = proportional slowing; slope $< 1$ indicates disproportionate slowing on Hard relative to Easy trials. Each point represents one participant; separate regression lines are fit by effort condition (Low = blue, High = magenta) to show whether hard-trial slowing was amplified under high effort. **(B)** Within-subject paired drift rates by effort condition (Low vs. High); thin lines connect each participant's Low and High effort drift estimates; diamond markers show group means; $\\Delta v$ annotates the fixed-effect shift. **(C)** Per-person scatter of drift rate under Low effort (x-axis) vs. High effort (y-axis); the diagonal line represents equality; points below the diagonal indicate lower drift under High effort. Statistical note: 67/67 participants fall below the equality diagonal in Panel C. Group-level effort contrast: $\\beta = -0.070$, 95% CrI [$-0.109$, $-0.032$]. Subject-level drift estimates derived from the hierarchical Bayesian model; uncertainty not shown for clarity."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "70%"
-#| out-height: "3.5in"
-# Inline figure from run_dir data (std_bias_levels) to ensure consistency with tables
-bias_by_task_data <- std_bias_levels %>%
-  filter(threshold == PRIMARY_THR, rt_type == PRIMARY_RT) %>%
-  group_by(task) %>%
-  summarise(
-    z_mean = mean(z_mean),
-    z_q2.5 = min(z_q2.5),
-    z_q97.5 = max(z_q97.5),
-    .groups = "drop"
-  ) %>%
-  mutate(task = factor(task, levels = c("ADT", "VDT")))
-
-p_bias_task <- ggplot(bias_by_task_data, aes(x = task, y = z_mean, fill = task)) +
-  geom_hline(yintercept = 0.5, linetype = "dashed", color = stat_colors["zero_line"], linewidth = 0.8) +
-  geom_col(width = 0.6, alpha = 0.8) +
-  geom_errorbar(aes(ymin = z_q2.5, ymax = z_q97.5),
-                width = 0.25, linewidth = 0.7, color = "black") +
-  scale_fill_manual(values = task_colors, guide = "none") +
-  scale_y_continuous(limits = c(0, 0.7), breaks = seq(0, 0.7, 0.1), expand = expansion(mult = c(0, 0.05))) +
-  labs(x = "Task Modality", y = "Bias (z)", title = NULL) +
-  theme_minimal(base_size = 12) +
-  theme(axis.title = element_text(face = "bold"), panel.grid.minor = element_blank())
-print(p_bias_task)
-save_manuscript_fig(p_bias_task, "fig_bias_by_task", 5, 3.5)
+#| out-width: "100%"
+include_graphics_safe(main_fig("fig5_individual_differences.png"))
 ```
-
-The standard-only bias estimate ($z = 0.63$, 95% CrI [0.60, 0.66]; @tbl-standard-only-bias-levels) exceeded primary-model estimates ($z \approx 0.52$–$0.55$; @tbl-ddm-core-by-difficulty-effort), reflecting the $v$–$z$ trade-off when drift and bias are estimated jointly across difficulty levels. Substantial between-subject variability in drift rate and its effort sensitivity is shown in Appendix A2 (@fig-subject-parameter-distribution).
 
 ## Pupil-linked DDM models {#sec-pupil-ddm-integration}
 
@@ -3559,7 +3383,7 @@ To examine whether trial-wise arousal fluctuations modulate decision parameters,
 #| label: tbl-tepr
 #| tbl-cap: "Task-Evoked Pupil Response (TEPR) by Condition"
 #| tbl-pos: "htbp"
-# Compute TEPR (cognitive AUC) by task, difficulty, and effort
+# Compute TEPR (Decision-Response AUC) by task, difficulty, and effort
 if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in% names(pupil_data) && "effort_condition" %in% names(pupil_data) && "difficulty_level" %in% names(pupil_data)) {
   tepr_summary <- pupil_data %>%
     filter(!is.na(cognitive_auc), !is.na(task), !is.na(effort_condition), !is.na(difficulty_level)) %>%
@@ -3623,7 +3447,7 @@ if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in
       row_group.padding = px(8)
     ) %>%
     tab_footnote(
-      footnote = "TEPR (phasic arousal) quantified as Cognitive AUC (Area Under the Curve) from baseline-corrected pupil data using the Decision-Phase AUC (W3.0) window (4.65s to 7.65s, target+0.3s to target+3.3s). AUC in units of AU·s.",
+      footnote = "TEPR (phasic arousal) quantified as the Decision-Response AUC from baseline-corrected pupil profiles using a 3.0-second integration window (4.65 to 7.65 s relative to handgrip onset, corresponding to 0.3 to 3.3 s post-probe). AUC expressed in units of AU·s.",
       locations = cells_column_labels(columns = `Mean AUC`)
     )
 } else {
@@ -3771,7 +3595,7 @@ if (!is.null(pupil_fixef_obj) && nrow(pupil_fixef_obj) > 0) {
 }
 ```
 
-A supplementary model added a difficulty × TEPR interaction to test whether the trial-wise arousal–drift association differed across perceptual load conditions. Difficulty-conditional posterior slopes are visualized in @fig-pupil-drift-difficulty-interaction.
+A supplementary model added a difficulty × TEPR interaction to test whether the trial-wise arousal–drift association differed across perceptual load conditions. Difficulty-conditional posterior slopes are visualized in Supplementary @fig-tepr-slopes-supp.
 
 Pooled posterior coefficients for the trial-wise TEPR predictor were near zero for both drift rate ($v$; `r pupil_drift_beta_str`, `r pupil_drift_cri_str`) and pre-stimulus response bias ($z$; `r pupil_bias_beta_str`, `r pupil_bias_cri_str`), with 95% CrIs spanning zero (@tbl-pupil-key-effects). Pupil-augmented models were fit to trials with valid pupil data (N $\approx$ `r format(n_trials_total, big.mark = ",")` trials) and are not directly comparable to the full-sample behavioral models. Full fixed-effects tables are in Appendix A5.
 
@@ -3781,7 +3605,7 @@ Pooled posterior coefficients for the trial-wise TEPR predictor were near zero f
 ```{r pupil-interaction-stats}
 #| echo: false
 #| include: false
-# Compute caption choice and p_gt0 for fig-pupil-drift-difficulty-interaction and tbl-pupil-key-effects
+# Compute caption choice and p_gt0 for fig-tepr-slopes-supp and tbl-pupil-key-effects
 pupil_fig_caption <- "Difficulty-Conditional TEPR Slopes on Drift Rate. Posterior distributions of the difficulty-conditional TEPR slope on drift rate $v$ for Standard, Hard, and Easy trials, from the pupil_scaled * difficulty interaction model. All three 95% credible intervals include zero, and the posteriors show minimal separation across difficulty levels, providing no clear evidence that trial-by-trial arousal fluctuations (indexed by TEPR) reliably predicted changes in evidence accumulation at any difficulty level. The absence of divergence across conditions is consistent with a null difficulty-conditional pattern, but interpretation is limited by the TEPR measurement confounds documented in the text (AUC window conflating motor-autonomic and cognitive components; see @sec-pupil-ddm-integration). Shaded regions show the 95% HDI; vertical dashed lines mark zero."
 p_gt0_easy <- p_gt0_hard <- p_gt0_standard <- NA_real_
 pupil_diff_mean_std <- pupil_diff_mean_hard <- pupil_diff_mean_easy <- NA_real_
@@ -3856,6 +3680,11 @@ if (file.exists(pupil_int_model_path) && requireNamespace("brms", quietly = TRUE
     }
   }
 }
+pupil_fig_caption <- paste0(
+  "**Supplementary Figure A5.2.** ",
+  pupil_fig_caption,
+  " PSIS-LOO model comparison was unreliable (max Pareto-$k$ = 0.91; see @sec-pupil-ddm-integration); conclusions rest on posterior coefficient distributions."
+)
 ```
 
 ```{r null-evidence-pupil-apply}
@@ -4088,120 +3917,15 @@ if (file.exists(pupil_key_terms_file)) {
 }
 ```
 
-```{r}
-#| label: fig-pupil-drift-difficulty-interaction
-#| fig-cap: !expr pupil_fig_caption
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "90%"
 
-# Load the pupil interaction model
-pupil_int_model_path <- file.path(
-  proj_root, params$run_dir, "models",
-  "pupil_interaction__probe_onset_locked__thr0.20.rds"
-)
-
-if (file.exists(pupil_int_model_path) &&
-    requireNamespace("brms", quietly = TRUE)) {
-
-  fit_pupil_int <- tryCatch(readRDS(pupil_int_model_path), error = function(e) NULL)
-
-  if (!is.null(fit_pupil_int) && inherits(fit_pupil_int, "brmsfit")) {
-    draws_int <- tryCatch({
-      all_draws <- brms::as_draws_df(fit_pupil_int)
-      nn <- names(all_draws)
-      # Find main slope (Standard reference): brms may prefix with b_mu_ for Wiener family
-      std_c <- intersect(c("b_pupil_scaled", "b_mu_pupil_scaled"), nn)[1]
-      if (is.na(std_c)) stop("No pupil_scaled main-effect column found in draws")
-      # Find interaction columns: must contain pupil_scaled AND the difficulty level
-      # Exclude bs/ndt/bias dpars and random-effect draws
-      hard_c <- grep("pupil_scaled.*[Hh]ard|[Hh]ard.*pupil_scaled", nn, value = TRUE)
-      hard_c <- hard_c[!grepl("^b_bs_|^b_ndt_|^b_bias_|sd_|cor_|r_", hard_c)][1]
-      easy_c <- grep("pupil_scaled.*[Ee]asy|[Ee]asy.*pupil_scaled", nn, value = TRUE)
-      easy_c <- easy_c[!grepl("^b_bs_|^b_ndt_|^b_bias_|sd_|cor_|r_", easy_c)][1]
-      message(sprintf("[fig-pupil-drift] std=%s | hard=%s | easy=%s",
-                      std_c,
-                      if (is.na(hard_c)) "NOT FOUND" else hard_c,
-                      if (is.na(easy_c)) "NOT FOUND" else easy_c))
-      if (!is.na(hard_c)) message(sprintf(
-        "[fig-pupil-drift] Raw interaction Hard term mean: %.4f", mean(all_draws[[hard_c]])))
-      if (!is.na(easy_c)) message(sprintf(
-        "[fig-pupil-drift] Raw interaction Easy term mean: %.4f", mean(all_draws[[easy_c]])))
-      # Build difficulty-conditional slopes: Standard = main; Hard/Easy = main + interaction
-      std_draws  <- all_draws[[std_c]]
-      hard_draws <- if (!is.na(hard_c)) std_draws + all_draws[[hard_c]] else std_draws
-      easy_draws <- if (!is.na(easy_c)) std_draws + all_draws[[easy_c]] else std_draws
-      message(sprintf("[fig-pupil-drift] Conditional slope means: Std=%.4f Hard=%.4f Easy=%.4f",
-                      mean(std_draws), mean(hard_draws), mean(easy_draws)))
-      tibble::tibble(
-        difficulty = factor(
-          rep(c("Standard", "Hard", "Easy"), each = length(std_draws)),
-          levels = c("Standard", "Hard", "Easy")
-        ),
-        slope = c(std_draws, hard_draws, easy_draws)
-      )
-    }, error = function(e) { message("draws extraction failed: ", e$message); NULL })
-
-    if (!is.null(draws_int) && nrow(draws_int) > 0) {
-      # Compute 95% quantile intervals per difficulty level
-      hdi_int <- draws_int %>%
-        dplyr::group_by(difficulty) %>%
-        dplyr::summarise(
-          lo  = quantile(slope, 0.025),
-          hi  = quantile(slope, 0.975),
-          med = median(slope),
-          .groups = "drop"
-        )
-
-      p_pupil_interact <- ggplot(draws_int, aes(x = slope)) +
-        geom_density(aes(fill = difficulty), alpha = 0.75, color = "black", linewidth = 0.4) +
-        geom_vline(xintercept = 0, linetype = "dashed", color = "grey30") +
-        geom_segment(
-          data = hdi_int,
-          aes(x = lo, xend = hi, y = -Inf, yend = -Inf),
-          color = "black", linewidth = 1.2
-        ) +
-        geom_point(
-          data = hdi_int,
-          aes(x = med, y = 0),
-          shape = 21, fill = "white", color = "black", size = 1.5
-        ) +
-        facet_wrap(~ difficulty, nrow = 1) +
-        scale_fill_manual(values = diff_colors, guide = "none") +
-        labs(
-          x = "Posterior slope: pupil_scaled on drift rate (v)",
-          y = "Posterior density"
-        ) +
-        theme_bw(base_size = 12) +
-        theme(
-          strip.background = element_rect(fill = "grey92"),
-          strip.text       = element_text(face = "bold"),
-          panel.grid.minor = element_blank()
-        )
-      print(p_pupil_interact)
-      save_manuscript_fig(p_pupil_interact, "fig_pupil_drift_difficulty_interaction", 9, 3.5)
-    } else {
-      message("Pupil interaction draws could not be extracted.")
-      invisible(NULL)
-    }
-  } else {
-    message("Pupil interaction model not available (NULL or non-brmsfit).")
-    invisible(NULL)
-  }
-} else {
-  message("Pupil interaction model file or brms package not found; skipping figure.")
-  invisible(NULL)
-}
-```
-
-@fig-pupil-drift-difficulty-interaction shows the posterior distribution of the trial-wise arousal–drift coupling coefficient at each difficulty level. All three 95% CrIs include zero. Posterior probability $P(\beta_\text{pupil} > 0)$ for each difficulty level is in @tbl-pupil-key-effects.
+Supplementary @fig-tepr-slopes-supp shows the posterior distribution of the trial-wise arousal–drift coupling coefficient at each difficulty level. All three 95% CrIs include zero. Posterior probability $P(\beta_\text{pupil} > 0)$ for each difficulty level is in @tbl-pupil-key-effects.
 
 ```{r}
 #| label: fig-difficulty-posterior-diffs
 #| eval: false
 #| include: false
-# REMOVED: duplicate of fig-difficulty-contrasts (Section 3.4). Pairwise difficulty contrast
-# posterior distributions are shown once in @fig-difficulty-contrasts.
+# REMOVED: duplicate of fig-parameter-forest (Section 3.4). Pairwise difficulty contrast
+# posterior distributions are shown once in @fig-parameter-forest.
 #| fig-cap: "Posterior distributions of pairwise difficulty contrasts on drift rate ($v$, left panel) and boundary separation ($a$, right panel). Each density shows the posterior of the named difference score. Vertical dashed lines mark zero; the shaded band is the 95% credible interval. Contrasts not crossing zero confirm statistically credible effects of difficulty on both parameters."
 #| fig-align: center
 #| fig-pos: "htbp"
@@ -4300,7 +4024,7 @@ To probe whether high somatic load promotes reliance on automatic choice heurist
 
 **History effect on drift rate.** A small positive coefficient emerged for previous-trial response as a predictor of current-trial drift rate — present in both models ($\hat{\beta}$ = 0.054 [0.008, 0.100], P($\beta$ > 0) = 99.1%). Drift rate was slightly elevated when the current response direction matched the previous trial's.
 
-All focal parameter estimates from both models are visualized in @fig-fatigue-posteriors (Panel C).
+All focal parameter estimates from both models are visualized in @fig-temporal-dynamics (Panel C).
 
 ```{r choice-history-load}
 #| include: false
@@ -4328,7 +4052,7 @@ if (ch_table_available) {
 
 To examine whether processing efficiency or decision caution dynamically changes over the course of a testing run, we fit a supplementary hierarchical Wiener DDM (N = 17,834 trials, 67 participants) that incorporated a within-run temporal factor. Each 30-trial run was split at the median trial position within each participant × task × run combination, yielding first-half and second-half labels (maximum 1-trial imbalance across runs). The drift rate subformula included a three-way interaction of effort, run half, and continuous age (z-scored; 1 unit ≈ 6.4 years) to test whether temporal drift-rate decline was exacerbated in older-within-cohort participants under high somatic load. Boundary separation used a two-way effort × run-half interaction plus continuous age as a main effect. The model converged satisfactorily (max $\hat{R}$ = 1.004; 0 divergent transitions).
 
-**Within-run boundary relaxation.** The only parameter contrast with a 95% CrI excluding zero was the second-half change in boundary separation: $\hat{\beta}$ = −0.022 (95% CrI [−0.040, −0.004], P($\beta$ < 0) = 99.3%). On the exponentiated scale this corresponds to an estimated drop from approximately 2.04 to 1.99 across the two halves under Low effort (5% MVC). The effort × run-half interaction was positive but non-credible ($\hat{\beta}$ = +0.011, 95% CrI [−0.014, 0.037]): the expected boundary under High effort (40% MVC) in the second half (≈ 2.03) was close to the first-half value. Boundary trajectories for all four condition cells are shown in @fig-fatigue-posteriors (Panel A).
+**Within-run boundary relaxation.** The only parameter contrast with a 95% CrI excluding zero was the second-half change in boundary separation: $\hat{\beta}$ = −0.022 (95% CrI [−0.040, −0.004], P($\beta$ < 0) = 99.3%). On the exponentiated scale this corresponds to an estimated drop from approximately 2.04 to 1.99 across the two halves under Low effort (5% MVC). The effort × run-half interaction was positive but non-credible ($\hat{\beta}$ = +0.011, 95% CrI [−0.014, 0.037]): the expected boundary under High effort (40% MVC) in the second half (≈ 2.03) was close to the first-half value. Boundary trajectories for all four condition cells are shown in @fig-temporal-dynamics (Panel A).
 
 **No credible drift-rate decline.** The effort × run-half interaction on drift was negative but spanned zero: $\hat{\beta}$ = −0.035 (95% CrI [−0.100, 0.032], P($\beta$ < 0) = 85.3%). There is no credible evidence that drift rate decays in the second half of a run under High effort. The effort main effect on drift was directionally consistent with the primary model ($\hat{\beta}$ = −0.038, 95% CrI [−0.085, 0.008], P($\beta$ < 0) = 94.8%) but non-credible under the expanded parameterization.
 
@@ -4336,7 +4060,7 @@ To examine whether processing efficiency or decision caution dynamically changes
 
 **Secondary pattern.** The run-half × age interaction on drift was positive and 95.8% probable ($\hat{\beta}$ = +0.048, 95% CrI [−0.006, 0.102]), with the CrI just including zero. Older-within-cohort participants tended toward slightly higher drift rates in the second half under Low effort. This should be treated as exploratory.
 
-Focal fatigue coefficients are plotted in @fig-fatigue-posteriors (Panel B).
+Focal fatigue coefficients are plotted in @fig-temporal-dynamics (Panel B).
 
 ```{r fatigue-trajectory-load}
 #| include: false
@@ -4527,8 +4251,8 @@ if (fat_fit_available && fat_table_available) {
 ```
 
 ```{r}
-#| label: fig-fatigue-posteriors
-#| fig-cap: "**Temporal dynamics: within-session fatigue and choice history.** **(A)** Population-average boundary separation ($a$) across session halves (1st vs 2nd) by effort condition (95% CrI). **(B)** Focal fatigue-model coefficients; only the 2nd-vs-1st-half boundary decline [*] has a 95% CrI excluding zero. **(C)** Choice-history posteriors for perseveration on bias and the effort $\\times$ history interaction (history model vs WSLS model)."
+#| label: fig-temporal-dynamics
+#| fig-cap: "**Effort degraded evidence quality upstream but did not amplify heuristic responding or produce within-run accumulation-stage exhaustion; the only credible temporal effect was a modest boundary relaxation across run halves.** **(A)** Population-average boundary separation ($a$, exponentiated scale) across the first and second halves of each 30-trial run, by effort condition (95% CrI). **(B)** Focal coefficients from the within-run fatigue model; only the 2nd-vs-1st-half boundary decline (marked *) has a 95% CrI excluding zero; the effort $\\times$ run-half interaction on $a$ and the effort $\\times$ run-half interaction on $v$ both span zero. **(C)** Posterior distributions of the perseveration-on-bias coefficient and the effort $\\times$ previous-response interaction on bias, from the history model (teal) and WSLS model (gold), plotted on the logit scale. Statistical note: Boundary decline, 2nd vs. 1st half: $\\hat{\\beta} = -0.022$, 95% CrI [$-0.040$, $-0.004$], $P(\\beta < 0) = 99.3$%. Effort $\\times$ run-half on boundary: $\\hat{\\beta} = +0.011$ [$-0.014$, $0.037$]. Effort $\\times$ previous-response on bias: $\\hat{\\beta} = -0.001$ [$-0.065$, $0.064$]. Perseveration on bias: $\\hat{\\beta} = 0.065$ [$0.005$, $0.125$], $P(\\beta > 0) = 98.2$%."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "100%"
@@ -4552,15 +4276,6 @@ Results confirmed Hypothesis 1 (H1): High effort reduced drift rate, consistent 
 
 The reduction in drift rate under High effort (40% MVC) relative to Low effort is the central finding and directly supports H1. Interpreted through Adaptive Gain Theory [@astonjones2005], this pattern is consistent with supra-optimal arousal under sustained grip: noise in neural representations degrades the signal-to-noise ratio driving evidence accumulation [@mather2016; @mikneviciute2022]. The DDM localizes this cost to evidence quality ($v$) rather than to compensatory shifts in boundary separation or starting-point bias (@sec-key-contrasts). Non-decision time ($t_0$) could not be tested in the primary model (@sec-ddm-spec).
 
-```{r}
-#| label: fig-decision-landscape
-#| fig-cap: "The Decision Landscape: Effect of Drift Rate on RT Distribution. This 3D surface visualizes the theoretical 'Crunch Point' observed in our data. The vertical axis (Z) represents the probability density of a response. As drift rate ($v$, Y-axis) decreases from Easy levels ($\\approx 2.0$) to Hard/Standard levels ($\\approx 0$ to $-1.0$), the sharp peak of timely responses collapses into a flat, spread-out distribution. This visualizes why older adults' reaction times become disproportionately variable and slow when physical effort or task difficulty degrades the quality of evidence accumulation ($v$)."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "75%"
-include_graphics_safe(fig_path("fig_decision_landscape_3d.png"))
-```
-
 ## Boundary separation and strategic rigidity
 
 The H2 posterior is near-zero and potentially, though not definitively, theoretically informative. The effort contrast on $a$ was concentrated near zero with the 95% CrI spanning zero (`r h2_beta_str`, `r h2_cri_str``r h2_null_note`), consistent with at most a small caution adjustment — but because no pre-specified equivalence threshold was used, the appropriate reading is "no credible evidence of a compensatory increase" rather than strong disconfirmation. In natural-scale terms, the posterior median corresponds to `r h2_natural_pct_str` of baseline boundary separation ($\hat{a} \approx$ `r a_standard` in the Standard condition; @tbl-ddm-core-by-difficulty-effort) — smaller than the routine variation in $a$ across difficulty levels ($\hat{a}$ ranging from `r a_hard` to `r a_standard`). Adaptive Gain Theory [@astonjones2005] predicts that phasic locus coeruleus–norepinephrine (LC-NE) activation promotes a shift toward *exploitation* of current task strategy, manifest as widening of the decision criterion. Empirical support for this prediction comes from @cavanagh2014, who showed that pupil-indexed arousal during high-conflict choices predicted increased boundary separation — though that manipulation targeted transient cognitive conflict rather than sustained physical effort. Why the prediction may not extend to sustained grip is open: one possibility is that aging compresses or blunts the phasic LC-NE response under high metabolic load [@mather2016; @huang2024]; another is that the sustained nature of the grip manipulation simply does not engage the phasic LC-NE gain mechanism that drives criterion widening in conflict paradigms. Resolving these accounts requires direct measurement of LC integrity and phasic NE dynamics — precisely the aim of the broader LC-BAP project of which this chapter is a part.
@@ -4574,6 +4289,8 @@ A potential concern with response-side coding is whether the Wiener DDM misinter
 This is not a contradiction. The two parameters reflect adjustments occurring at different timescales. Starting-point bias $z$ represents a true pre-stimulus strategic choice — where participants position themselves before evidence accumulation begins — and can only be set based on information available before the trial (task modality, effort condition). Boundary separation $a$, by contrast, is not a pre-trial strategic decision but rather an effective decision threshold inferred by the model from the shape of the empirical RT distribution within each condition. Participants do not "set" this boundary in advance; rather, the model recovers it as the latent parameter that best explains the observed RT variance under diffusion process assumptions [@ratcliff1985; @voss2004interpreting]. Over many trials, difficulty-dependent differences in RT dispersion and accuracy produce systematically different $a$ estimates even though individual participants are unaware of upcoming difficulty.
 
 The larger $a$ on Standard trials reflects the model's accommodation of the characteristically broader, more right-skewed RT distribution observed on those trials — a distributional signature of the exhaustive comparison process required to confirm perfect sameness [@farell1985; @voss2004interpreting]. In this sense, $a$ captures the mechanistic consequence of within-trial processing demands, while $z$ captures a pre-trial strategic bias. Both are legitimate sources of condition-specific variation, but only $z$ requires advance knowledge of the trial type.
+
+In interpreting the TEPR as a relative index of phasic arousal, we acknowledge the inherent sensitivity of pupil diameter to extraneous variables such as ambient luminance, viewing distance, and motor activity [@beatty1982; @loewenfeld1999]. Our experimental design mitigated these confounds through a strictly regulated MRI environment, which justifies the interpretation of transient TEPR fluctuations as a functional index of phasic arousal within the context of our study.
 
 ```{r bias-inline-compute}
 #| echo: false
@@ -4601,7 +4318,7 @@ Critically, this pattern reflects a **liberal** response bias in Signal Detectio
 
 The liberal detection strategy is consistent with the "Different-as-default heuristic" documented in same-different paradigms [@farell1985; @nosofsky1997palmeri]: detecting any mismatch is self-terminating (the comparison can stop at the first discrepant feature), whereas confirming sameness requires exhaustive feature comparison. Under concurrent grip load at 40% MVC, adopting a liberal "Different" starting point reduces the cognitive expense of Standard (Same) trials at the cost of reduced discrimination accuracy — a sensible tradeoff when both arousal and response-time pressure are elevated. The absence of a credible effort contrast on starting-point bias is consistent with this being a deeply habituated task strategy rather than a state-dependent adjustment to momentary arousal, though this interpretation is not uniquely supported given the graded nature of the null.
 
-The absence of a detectable phasic bias-resetting effect stands in contrast to prior work showing that pupil-indexed arousal can shift response criterion in younger adults [@degee2020pupil], and may reflect age-related attenuation of phasic LC-NE signals [@huang2024]. The pupil-linked findings in this chapter, however, must be classified as inconclusive rather than informative nulls. As detailed in @sec-pupil-ddm-integration, three overlapping limitations constrain interpretation: (1) posterior coefficients for TEPR on both drift rate and bias were near zero; (2) PSIS-LOO model comparison was unreliable (max Pareto-$k = 0.91$), precluding valid ELPD-based model selection; and (3) the unexpected reversal of TEPR magnitude under High relative to Low effort (@tbl-tepr) suggests that the Decision-Phase AUC window conflates motor-autonomic with cognitive dilation under sustained grip. These limitations collectively mean the current data cannot distinguish a genuine absence of pupil-parameter coupling from a failure of the TEPR measure to isolate cognitive arousal. Future work using a non-motor effort manipulation or a temporally sharper pupil window would be needed to resolve this. The task-level bias difference is robust to these concerns: older adults showed a reliably stronger tendency toward "different" responses in the ADT than the VDT ($\Delta z = -0.04$, 95% CrI [−0.06, −0.02]; @fig-bias-by-task), a contrast excluding zero. Whether LC integrity moderates this task-specific liberal bias — given the LC's role in sensory gating [@mather2016; @huang2024] — is a question for future work.
+The absence of a detectable phasic bias-resetting effect stands in contrast to prior work showing that pupil-indexed arousal can shift response criterion in younger adults [@degee2020pupil], and may reflect age-related attenuation of phasic LC-NE signals [@huang2024]. The pupil-linked findings in this chapter, however, must be classified as inconclusive rather than informative nulls. As detailed in @sec-pupil-ddm-integration, three overlapping limitations constrain interpretation: (1) posterior coefficients for TEPR on both drift rate and bias were near zero; (2) PSIS-LOO model comparison was unreliable (max Pareto-$k = 0.91$), precluding valid ELPD-based model selection; and (3) the unexpected reversal of TEPR magnitude under High relative to Low effort (@tbl-tepr) suggests that the Decision-Response AUC window conflates motor-autonomic with cognitive dilation under sustained grip. These limitations collectively mean the current data cannot distinguish a genuine absence of pupil-parameter coupling from a failure of the TEPR measure to isolate cognitive arousal. Future work using a non-motor effort manipulation or the **Truncated Decision-Response AUC** window would be needed to resolve this. The task-level bias difference is robust to these concerns: older adults showed a reliably stronger tendency toward "different" responses in the ADT than the VDT ($\Delta z = -0.04$, 95% CrI [−0.06, −0.02]), a contrast excluding zero. Whether LC integrity moderates this task-specific liberal bias — given the LC's role in sensory gating [@mather2016; @huang2024] — is a question for future work.
 
 ## Temporal dynamics across trials {#sec-temporal-dynamics}
 
@@ -4619,7 +4336,7 @@ Several limitations constrain the interpretation of these findings. First, the s
 
 Second, the response-signal paradigm imposes structural constraints on parameter estimation. Because the response window is externally gated, non-decision time $t_0$ could not be estimated with condition-specific variation without instability (@sec-ddm-spec and the H3 discussion above), limiting the direct test of H3. Reaction times are measured from response-screen onset rather than stimulus onset, confining the interpretation of $t_0$ to motor execution and response selection rather than early perceptual encoding. These design choices were necessary given the MRI-compatible grip-force paradigm but limit generalizability to free-response paradigms where $t_0$ reflects the full encoding-decision-motor chain.
 
-Third, the trial-wise pupil predictor (Decision-Phase AUC; W3.0) spans both pre- and post-response epochs, making it difficult to isolate phasic arousal during evidence accumulation from post-decisional pupil dynamics. Although RT was included as a covariate in all pupil-DDM models to partial out response-timing confounds, we did not test sensitivity to AUC window definition (e.g., a pre-response W1.3 window). Additionally, PSIS-LOO estimates for pupil-augmented models were unreliable (Pareto-$k > 0.7$), so model comparison was limited; conclusions about pupil effects are based on posterior coefficient distributions rather than LOO-based model selection [@vehtari2017loo].
+Third, the primary trial-wise pupil predictor—the **Decision-Response AUC**—spans both pre- and post-response epochs, so it cannot cleanly isolate phasic arousal during evidence accumulation from post-decisional and motor-related pupil dynamics. Although RT was included as a covariate in all pupil-DDM models to partial out response-timing confounds, we did not test sensitivity to the **Truncated Decision-Response AUC** window. Additionally, PSIS-LOO estimates for pupil-augmented models were unreliable (Pareto-$k > 0.7$), so model comparison was limited and conclusions about pupil effects rest on posterior coefficient distributions rather than LOO-based model selection [@vehtari2017loo].
 
 Fourth, the concurrent isometric handgrip manipulation (40% MVC) may interact with motor execution in ways not fully captured by small fixed effects on $t_0$; future work integrating EMG or kinematic measures could disentangle central resource competition from peripheral motor interference. Linear Ballistic Accumulator or race models may also better accommodate the fast-tail RT dynamics observed in Easy-difficulty conditions, and future work could explore whether these model families yield the same substantive pattern of effort and difficulty effects on decision parameters.
 
@@ -4642,7 +4359,8 @@ All analysis code and de-identified data are available in the project repository
 
 ## A1. Model Diagnostics and Priors {.unnumbered}
 
-```{r tbl-loo-comparison-appendix-display}
+```{r}
+#| label: tbl-loo-comparison
 #| tbl-cap: !expr sprintf("Model Comparison via Leave-One-Out Cross-Validation. Comparison of baseline (intercept-only) and additive (difficulty + effort) DDM specifications fitted to %s trials. The additive model is strongly favored.", format(if (is.null(primary_n_trials) || is.na(primary_n_trials)) 18097L else primary_n_trials, big.mark = ","))
 #| tbl-pos: "htbp"
 #| echo: false
@@ -4780,14 +4498,7 @@ save_manuscript_fig(p_loo, "fig_loo_comparison", 7, 4.5)
 
 ## A2. Individual Differences and Parameter Relationships {.unnumbered}
 
-```{r}
-#| label: fig-subject-parameter-distribution
-#| fig-cap: "**Individual differences and robustness** ($N$ = 67). **(A)** Brinley plot: mean Hard vs Easy RT per participant (pooled across effort); dashed diagonal = proportional slowing (slope $< 1$ = disproportionate slowing on Hard trials). **(B)** Within-subject paired drift rates by effort (Low vs High); thin lines connect participants; diamond markers = group means; $\\Delta v$ annotates the fixed-effect shift. **(C)** Caterpillar plot of subject-level drift estimates sorted by magnitude (95% CrI bars; points coloured by age)."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "100%"
-include_graphics_safe(main_fig("fig5_individual_differences.png"))
-```
+The individual-level drift rate comparison (Brinley plot, paired drift by effort, and per-person Low vs. High effort scatter) is shown in @fig-individual-diffs in the main text (Figure 5).
 
 ```{r}
 #| label: tbl-standard-only-bias-levels
@@ -4858,11 +4569,11 @@ print(p_bias_std)
 save_manuscript_fig(p_bias_std, "fig_standard_only_bias_by_task_effort", 8, 4)
 ```
 
-@fig-a2-3-bias-primary shows primary-model estimates of starting-point bias across tasks and effort conditions, complementing the canonical standard-only estimates reported in the main text (@fig-bias-by-task, @sec-starting-point-bias).
+@fig-a2-3-bias-primary shows primary-model estimates of starting-point bias across tasks and effort conditions, complementing the canonical standard-only estimates reported in the main text (@sec-starting-point-bias, @tbl-standard-only-bias-levels).
 
 ```{r}
 #| label: fig-a2-3-bias-primary
-#| fig-cap: "Starting-point bias ($z$) by Task and Effort from the primary model. Points show posterior medians with 95% credible intervals. Dashed line marks $z = 0.5$ (no bias). These estimates reflect bias jointly identified with drift rate across all trial types; the standard-only canonical estimates are shown in Figure 9 (main text). Effort contrasts on $z$ are near-zero in both tasks (H4; 95% CrI spans zero); see @tbl-hyp-summary for the graded evidence classification."
+#| fig-cap: "Starting-point bias ($z$) by Task and Effort from the primary model. Points show posterior medians with 95% credible intervals. Dashed line marks $z = 0.5$ (no bias). These estimates reflect bias jointly identified with drift rate across all trial types; the standard-only canonical estimates are shown in @fig-ddm-process (Panel C) and @tbl-standard-only-bias-levels. Effort contrasts on $z$ are near-zero in both tasks (H4; 95% CrI spans zero); see @tbl-hyp-summary for the graded evidence classification."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "70%"
@@ -4944,7 +4655,7 @@ if (!is.null(tbl_sob_fixef)) {
 }
 ```
 
-Table 7 reports descriptive baseline pupil diameter by Task and Effort condition, reflecting tonic arousal state prior to evidence accumulation onset.
+@tbl-baseline-pupil reports descriptive baseline pupil diameter by Task and Effort condition, reflecting tonic arousal state prior to evidence accumulation onset.
 
 ```{r}
 #| label: tbl-baseline-pupil
@@ -5618,7 +5329,7 @@ save_manuscript_fig(p_drift_forest_a42, "fig_a4_2a_drift_by_difficulty", 7, 4)
 
 ### A4.3 Task Modality Effects: Sensitivity Analysis {.unnumbered}
 
-The primary model (Table 8) excluded Task (ADT vs. VDT) as a predictor for drift rate ($v$) and boundary separation ($a$) to reduce model complexity. We additionally examined whether absolute drift rates differed between auditory and visual tasks, as pooling these modalities could potentially mask Task main effects or Effort × Task interactions. To address this, we fit a **task-sensitivity model** with:
+The primary model excluded Task (ADT vs. VDT) as a predictor for drift rate ($v$) and boundary separation ($a$) to reduce model complexity. We additionally examined whether absolute drift rates differed between auditory and visual tasks, as pooling these modalities could potentially mask Task main effects or Effort × Task interactions. To address this, we fit a **task-sensitivity model** with:
 
 - Drift rate ($v$): `~ difficulty + effort * task` (with interaction)
 - Boundary separation ($a$): `~ difficulty + effort + task` (main effects only)
@@ -5825,9 +5536,284 @@ if (file.exists(pdf_file)) {
 ```
 
 
-## A5. Pupil-DDM Fixed Effects (Link Scale) {#app-pupil-fixef .unnumbered}
+## A5. Pupil-DDM Fixed Effects and TEPR Visualization {#app-pupil-fixef .unnumbered}
 
-Full parameter tables for the pupil-linked DDM confirm that global TEPR effects on drift rate and starting-point bias were near zero (95% CrIs include zero; @tbl-pupil-key-effects). PSIS-LOO model comparison was unreliable (Pareto-$k$ max = 0.91), so conclusions rest on posterior coefficient distributions. The primary inferential figure for difficulty-conditional slopes is @fig-pupil-drift-difficulty-interaction. Complete coefficient tables are available in the online supplement at [https://github.com/mohdasti/modeling-pupil-DDM](https://github.com/mohdasti/modeling-pupil-DDM).
+This appendix reports full fixed-effects tables for the pupil-augmented DDM (@tbl-pupil-loo-appendix, @tbl-pupil-key-effects-appendix) and displays the TEPR time course and difficulty-conditional arousal–drift coupling posteriors. Model comparison via PSIS-LOO was unreliable for all pupil-augmented models (max Pareto-$k$ = 0.91); conclusions rest on posterior coefficient distributions as reported in @sec-pupil-ddm-integration.
+
+```{r}
+#| label: fig-tepr-timecourse-supp
+#| fig-cap: "**Supplementary Figure A5.1.** Task-Evoked Pupil Response (TEPR) time course. Grand-average pupil traces (baseline-corrected, mean $\\pm$ 95% CI) aligned to squeeze onset for four conditions (Easy/Low, Easy/High, Hard/Low, Hard/High), displayed separately for the ADT (top) and VDT (bottom). The shaded region marks the Decision-Response AUC window utilized for trial-wise feature extraction (4.65 to 7.65 s relative to initial motor onset, spanning from 300 ms after probe delivery to 3.3 s post-probe). Baseline-corrected trajectories converge at zero during the pre-trial epoch ($-0.5$ to 0 s). Vertical dashed markers isolate structural trial milestones: motor contraction onset (0 s), probe stimulus delivery (4.35 s), and response cue prompt (4.7 s)."
+#| fig-align: center
+#| out-width: "85%"
+#| echo: false
+# Generate TEPR time course figure
+if (!is.null(pupil_data)) {
+  # Try to load waveform summary data
+  waveform_file <- c(
+    file.path(proj_root, "data/pupil_processed/analysis/pupil_waveforms_condition_mean.csv"),
+    file.path(proj_root, "quick_share_v7/analysis/pupil_waveforms_condition_mean.csv")
+  )
+  waveform_file <- waveform_file[file.exists(waveform_file)][1]
+  
+  if (!is.na(waveform_file) && file.exists(waveform_file)) {
+    waveform_data <- read_csv(waveform_file, show_col_types = FALSE)
+    
+    # Filter to chapter 3 data and keep all 4 conditions (effort × difficulty)
+    waveform_ch3 <- waveform_data %>%
+      filter(chapter == "ch3") %>%
+      # Map difficulty level from stimulus_intensity and isOddball
+      mutate(
+        difficulty_level = case_when(
+          isOddball == 0 | (is.na(isOddball) & (!is.na(stimulus_intensity) & stimulus_intensity == 0)) ~ "Standard",
+          !is.na(stimulus_intensity) & stimulus_intensity %in% c(1, 2) ~ "Hard",
+          !is.na(stimulus_intensity) & stimulus_intensity %in% c(3, 4) ~ "Easy",
+          isOddball == 1 & is.na(stimulus_intensity) ~ "Easy",
+          TRUE ~ NA_character_
+        ),
+        effort_level = case_when(
+          effort == "Low" | effort == "Low_Force_5pct" ~ "Low",
+          effort == "High" | effort == "High_Force_40pct" ~ "High",
+          TRUE ~ NA_character_
+        ),
+        # Create condition label (Difficulty / Effort)
+        condition = case_when(
+          !is.na(difficulty_level) & !is.na(effort_level) ~ 
+            paste0(difficulty_level, " / ", effort_level),
+          TRUE ~ "Unknown"
+        )
+      ) %>%
+      mutate(
+        difficulty_level = gsub("\u2013", "-", difficulty_level),
+        effort_level = gsub("\u2013", "-", effort_level),
+        condition = gsub("\u2013", "-", condition)
+      ) %>%
+      # Filter out Standard trials (we want Easy/Hard only) and Unknown
+      filter(condition != "Unknown", !grepl("Standard", condition)) %>%
+      # Use mean_pupil_full (baseline-corrected, B0-corrected) - this converges at 0 in baseline period
+      # Per plot_pupil_waveforms.R line 134: mean_pupil_full is the B0-corrected (full baseline correction)
+      rename(mean_pupil_isolated = mean_pupil_full) %>%
+      # Group by task, condition, and time to get per-condition means
+      group_by(task, condition, t_rel) %>%
+      summarise(
+        # Weighted mean across any duplicate entries (weight by n_trials)
+        total_trials = sum(n_trials, na.rm = TRUE),
+        mean_pupil_isolated = sum(mean_pupil_isolated * n_trials, na.rm = TRUE) / total_trials,
+        n_trials = total_trials,
+        .groups = "drop"
+      ) %>%
+      filter(!is.na(task), !is.na(condition), !is.na(t_rel), !is.na(mean_pupil_isolated)) %>%
+      arrange(task, condition, t_rel)
+    
+    if (nrow(waveform_ch3) > 0) {
+      # Define event markers and Decision-Response AUC window
+      # Based on Methods section: Decision-Response AUC window is 4.65s to 7.65s (300ms post-probe until 3.3s post-probe)
+      trial_start <- 0.0  # Trial start (squeeze onset)
+      target_onset <- 4.35  # Probe stimulus onset
+      response_signal_onset <- 4.7  # Response cue prompt
+      cognitive_auc_start <- 4.65  # 300ms after probe onset (4.35 + 0.3)
+      cognitive_auc_end <- 7.65  # 3.3s post-probe (4.35 + 3.3), corresponding to the Decision-Response AUC window
+      
+      # Get conditions actually present in data
+      conditions_present <- unique(waveform_ch3$condition)
+      conditions_present <- conditions_present[!is.na(conditions_present)]
+      colors_for_plot <- cond_colors_spaced[names(cond_colors_spaced) %in% conditions_present]
+      if (length(colors_for_plot) == 0) {
+        # Fallback: use default colors if no matches
+        colors_for_plot <- scales::hue_pal()(length(conditions_present))
+        names(colors_for_plot) <- conditions_present
+      }
+      
+      # Calculate y-limits from data (use full range to show all curves, add padding for labels)
+      y_vals <- waveform_ch3$mean_pupil_isolated[!is.na(waveform_ch3$mean_pupil_isolated)]
+      if (length(y_vals) > 0) {
+        # Use full range to ensure all curves are visible
+        y_range <- range(y_vals, na.rm = TRUE)
+        y_range_span <- diff(y_range)
+        if (!is.finite(y_range_span) || y_range_span == 0) {
+          y_range_span <- max(abs(y_range), na.rm = TRUE)
+          if (!is.finite(y_range_span) || y_range_span == 0) y_range_span <- 1
+        }
+        # Add padding (12% top, 8% bottom) to accommodate labels and ensure visibility
+        y_upper_limit <- y_range[2] + y_range_span * 0.12  # Extra space for labels
+        y_lower_limit <- y_range[1] - y_range_span * 0.08  # Padding at bottom
+      } else {
+        y_upper_limit <- 0.5
+        y_lower_limit <- -0.5
+        y_range_span <- 1  # Default span for label positioning
+      }
+      
+      # Event markers with staggered y positions to avoid overlap (vertical text)
+      event_markers <- tibble(
+        event = c("Trial Start", "Target", "Response"),
+        time = c(trial_start, target_onset, response_signal_onset),
+        label_y = y_upper_limit - y_range_span * c(0.05, 0.10, 0.15)  # Stagger vertically
+      )
+      
+      # Create plot
+      p_tepr <- ggplot(waveform_ch3, aes(x = t_rel, y = mean_pupil_isolated, 
+                                         color = condition, fill = condition)) +
+        # Decision-Response AUC window shading
+        geom_rect(aes(xmin = cognitive_auc_start, xmax = cognitive_auc_end, ymin = -Inf, ymax = Inf),
+                  inherit.aes = FALSE, fill = "grey90", alpha = 0.3) +
+        # GAM smoothed lines with confidence intervals
+        geom_smooth(se = TRUE, method = "gam", formula = y ~ s(x, k = 20), 
+                    linewidth = 1.2, alpha = 0.3) +
+        # Event markers (vertical dashed lines)
+        geom_vline(data = event_markers, aes(xintercept = time), 
+                   inherit.aes = FALSE, linetype = "dashed", color = "grey40", linewidth = 0.6) +
+        # Event labels (vertical text to avoid overlap)
+        geom_text(data = event_markers, aes(x = time, y = label_y, label = event),
+                  inherit.aes = FALSE, angle = 90, hjust = 0, vjust = 0.9,
+                  size = 3.5, color = "grey20", fontface = "bold") +
+        # Facet by task (stacked vertically)
+        facet_wrap(~task, ncol = 1, labeller = labeller(task = c("ADT" = "ADT", 
+                                                                  "VDT" = "VDT"))) +
+        # Scales
+        scale_color_manual(values = colors_for_plot, name = "Condition") +
+        scale_fill_manual(values = colors_for_plot, name = "Condition") +
+        scale_x_continuous(breaks = seq(-0.5, 8, 1), expand = c(0, 0.1)) +
+        coord_cartesian(ylim = c(y_lower_limit, y_upper_limit)) +
+        # Labels and theme
+        labs(
+          x = "Time (s, relative to squeeze onset)",
+          y = "Baseline-Corrected Pupil Diameter (AU)",
+          title = NULL
+        ) +
+        theme_minimal(base_size = 12) +
+        theme(
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_line(color = "grey90", linewidth = 0.5),
+          strip.text = element_text(face = "bold", size = 12),
+          strip.background = element_rect(fill = "grey95", color = NA),
+          legend.position = "bottom",
+          legend.title = element_text(face = "bold"),
+          axis.title = element_text(face = "bold"),
+          plot.margin = margin(10, 10, 10, 10)
+        )
+      
+      print(p_tepr)
+      save_manuscript_fig(p_tepr, "fig_tepr_timecourse", 10, 8)
+    } else {
+      # Placeholder if no data
+      # Waveform data not available - ensure label still resolves
+      invisible(NULL)
+    }
+  } else {
+    # Placeholder if file not found
+    # Waveform file not found - ensure label still resolves
+    invisible(NULL)
+  }
+} else {
+  # Placeholder if pupil_data not loaded - use invisible output to ensure label resolves
+  invisible(NULL)
+}
+```
+
+```{r}
+#| label: fig-tepr-slopes-supp
+#| fig-cap: !expr pupil_fig_caption
+#| fig-align: center
+#| fig-pos: "htbp"
+#| out-width: "90%"
+
+# Load the pupil interaction model
+pupil_int_model_path <- file.path(
+  proj_root, params$run_dir, "models",
+  "pupil_interaction__probe_onset_locked__thr0.20.rds"
+)
+
+if (file.exists(pupil_int_model_path) &&
+    requireNamespace("brms", quietly = TRUE)) {
+
+  fit_pupil_int <- tryCatch(readRDS(pupil_int_model_path), error = function(e) NULL)
+
+  if (!is.null(fit_pupil_int) && inherits(fit_pupil_int, "brmsfit")) {
+    draws_int <- tryCatch({
+      all_draws <- brms::as_draws_df(fit_pupil_int)
+      nn <- names(all_draws)
+      # Find main slope (Standard reference): brms may prefix with b_mu_ for Wiener family
+      std_c <- intersect(c("b_pupil_scaled", "b_mu_pupil_scaled"), nn)[1]
+      if (is.na(std_c)) stop("No pupil_scaled main-effect column found in draws")
+      # Find interaction columns: must contain pupil_scaled AND the difficulty level
+      # Exclude bs/ndt/bias dpars and random-effect draws
+      hard_c <- grep("pupil_scaled.*[Hh]ard|[Hh]ard.*pupil_scaled", nn, value = TRUE)
+      hard_c <- hard_c[!grepl("^b_bs_|^b_ndt_|^b_bias_|sd_|cor_|r_", hard_c)][1]
+      easy_c <- grep("pupil_scaled.*[Ee]asy|[Ee]asy.*pupil_scaled", nn, value = TRUE)
+      easy_c <- easy_c[!grepl("^b_bs_|^b_ndt_|^b_bias_|sd_|cor_|r_", easy_c)][1]
+      message(sprintf("[fig-pupil-drift] std=%s | hard=%s | easy=%s",
+                      std_c,
+                      if (is.na(hard_c)) "NOT FOUND" else hard_c,
+                      if (is.na(easy_c)) "NOT FOUND" else easy_c))
+      if (!is.na(hard_c)) message(sprintf(
+        "[fig-pupil-drift] Raw interaction Hard term mean: %.4f", mean(all_draws[[hard_c]])))
+      if (!is.na(easy_c)) message(sprintf(
+        "[fig-pupil-drift] Raw interaction Easy term mean: %.4f", mean(all_draws[[easy_c]])))
+      # Build difficulty-conditional slopes: Standard = main; Hard/Easy = main + interaction
+      std_draws  <- all_draws[[std_c]]
+      hard_draws <- if (!is.na(hard_c)) std_draws + all_draws[[hard_c]] else std_draws
+      easy_draws <- if (!is.na(easy_c)) std_draws + all_draws[[easy_c]] else std_draws
+      message(sprintf("[fig-pupil-drift] Conditional slope means: Std=%.4f Hard=%.4f Easy=%.4f",
+                      mean(std_draws), mean(hard_draws), mean(easy_draws)))
+      tibble::tibble(
+        difficulty = factor(
+          rep(c("Standard", "Hard", "Easy"), each = length(std_draws)),
+          levels = c("Standard", "Hard", "Easy")
+        ),
+        slope = c(std_draws, hard_draws, easy_draws)
+      )
+    }, error = function(e) { message("draws extraction failed: ", e$message); NULL })
+
+    if (!is.null(draws_int) && nrow(draws_int) > 0) {
+      # Compute 95% quantile intervals per difficulty level
+      hdi_int <- draws_int %>%
+        dplyr::group_by(difficulty) %>%
+        dplyr::summarise(
+          lo  = quantile(slope, 0.025),
+          hi  = quantile(slope, 0.975),
+          med = median(slope),
+          .groups = "drop"
+        )
+
+      p_pupil_interact <- ggplot(draws_int, aes(x = slope)) +
+        geom_density(aes(fill = difficulty), alpha = 0.75, color = "black", linewidth = 0.4) +
+        geom_vline(xintercept = 0, linetype = "dashed", color = "grey30") +
+        geom_segment(
+          data = hdi_int,
+          aes(x = lo, xend = hi, y = -Inf, yend = -Inf),
+          color = "black", linewidth = 1.2
+        ) +
+        geom_point(
+          data = hdi_int,
+          aes(x = med, y = 0),
+          shape = 21, fill = "white", color = "black", size = 1.5
+        ) +
+        facet_wrap(~ difficulty, nrow = 1) +
+        scale_fill_manual(values = diff_colors, guide = "none") +
+        labs(
+          x = "Posterior slope: pupil_scaled on drift rate (v)",
+          y = "Posterior density"
+        ) +
+        theme_bw(base_size = 12) +
+        theme(
+          strip.background = element_rect(fill = "grey92"),
+          strip.text       = element_text(face = "bold"),
+          panel.grid.minor = element_blank()
+        )
+      print(p_pupil_interact)
+      save_manuscript_fig(p_pupil_interact, "fig_pupil_drift_difficulty_interaction", 9, 3.5)
+    } else {
+      message("Pupil interaction draws could not be extracted.")
+      invisible(NULL)
+    }
+  } else {
+    message("Pupil interaction model not available (NULL or non-brmsfit).")
+    invisible(NULL)
+  }
+} else {
+  message("Pupil interaction model file or brms package not found; skipping figure.")
+  invisible(NULL)
+}
+```
 
 ```{r}
 #| label: tbl-pupil-loo-appendix
@@ -5904,6 +5890,17 @@ if (file.exists(pupil_key_file_a6)) {
 ## A6. Detailed DDM Model Specification {#sec-appendix-a6 .unnumbered}
 
 This appendix provides the full mathematical specification of the hierarchical Wiener DDM, including link functions, prior distributions, and computational details omitted from the main Methods for brevity.
+
+### A6.0 Response-Signal Timing Structure {.unnumbered}
+
+```{r}
+#| label: fig-timing-supp
+#| fig-cap: "Structural schematic of a single trial timeline and task-evoked pupil response (TEPR) integration windows. The full timeline is anchored to initial somatic contraction (Squeeze Onset at 0.00 s). Perceptual evidence becomes available at Probe Onset (4.35 s), followed by the execution prompt (Response Prompt at 4.70 s). Phasic arousal features are extracted using two baseline-corrected windows opening at 4.65 s (probe onset + 300 ms neurophysiological lag). The primary Decision-Response AUC window spans a full 3.0 seconds to capture the complete late-peaking morphology of the older cohort's pupillary response, intentionally encompassing both choice formation and post-decisional processing. The Truncated Decision-Response AUC window spans 1.3 seconds, serving as a targeted sensitivity control that captures the immediate execution phase while systematically clipping the post-decisional tail."
+#| fig-align: center
+#| fig-pos: "htbp"
+#| out-width: "70%"
+include_graphics_safe(fig_path("AUC_timeline_v2.png"))
+```
 
 ### A6.1 Link Functions and Parameter Constraints {.unnumbered}
 
