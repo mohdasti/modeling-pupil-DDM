@@ -97,7 +97,14 @@ panel_a <- ggplot(draws_v,
   ) +
   labs(title = "A", x = "Difficulty", y = "Drift rate (v)", color = "Effort") +
   theme_manuscript() +
-  theme(legend.position = c(0.25, 0.88))
+  theme(
+    legend.position    = "top",
+    legend.justification = "left",
+    legend.direction   = "horizontal",
+    legend.margin      = margin(b = 2, unit = "pt"),
+    legend.background  = element_rect(fill = "white", color = NA),
+    plot.margin        = margin(2, 4, 4, 4, "pt")
+  )
 
 # ── Panel B: H1 contrast posterior ───────────────────────────────────────────
 dens_v <- density(contrast_v$delta)
@@ -143,6 +150,11 @@ panel_c <- ggplot(draws_a,
 # ── Panel D: H2 contrast posterior ───────────────────────────────────────────
 dens_a <- density(contrast_a$delta)
 cri_a  <- quantile(contrast_a$delta, c(0.025, 0.975))
+p_pos_a <- mean(contrast_a$delta > 0)
+xr_a    <- range(contrast_a$delta)
+x_pad_a <- max(0.35 * diff(xr_a), 0.003)
+x_left_d <- xr_a[1] - x_pad_a
+x_annot_d <- x_left_d + 0.08 * x_pad_a
 
 panel_d <- ggplot(contrast_a, aes(x = delta)) +
   geom_vline(xintercept = 0, color = stat_colors["zero_line"],
@@ -156,11 +168,15 @@ panel_d <- ggplot(contrast_a, aes(x = delta)) +
   geom_density(color = effort_colors["High"], linewidth = 0.7, linetype = "dashed") +
   annotate(
     "text",
-    x = max(contrast_a$delta) * 0.5,
+    x = x_annot_d,
     y = max(dens_a$y) * 0.9,
-    label = sprintf("\u03b2 = %.3f\n95%% CrI spans 0", median(contrast_a$delta)),
+    label = sprintf(
+      "\u03b2 = %.3f\nP(\u03b2>0) = %.3f",
+      median(contrast_a$delta), p_pos_a
+    ),
     size = 2.2, hjust = 0, color = stat_colors["empirical"]
   ) +
+  coord_cartesian(xlim = c(x_left_d, xr_a[2] + 0.05 * diff(xr_a))) +
   labs(title = "D", x = "High \u2212 Low effort on a (log scale)", y = "Posterior density") +
   theme_manuscript()
 

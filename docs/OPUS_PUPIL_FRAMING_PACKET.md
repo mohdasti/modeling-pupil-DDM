@@ -1,7 +1,7 @@
 # Opus Audit Packet — Pupil Framing vs. Appendix Placement
 **Chapter:** Physical Effort Reduces Evidence Accumulation Quality in Older Adults (hierarchical DDM + pupillometry)  
 **Run ID:** `20260226_092110`  
-**Date:** 2026-06-07  
+**Date:** 2026-06-05 (refreshed after Phase B pupil fits)  
 **Note:** Full PDF not attached (figure count limits). Use this packet + optional CSVs.
 
 ---
@@ -27,8 +27,8 @@
 - **Sample:** 67 older adults (ADT *N*≈64, VDT *N*≈65 after task-specific exclusions).
 - **Task:** Response-signal auditory/visual same–different under concurrent isometric grip (Low 5% vs High 40% MVC).
 - **Primary DDM:** probe-onset-locked RT; additive model (difficulty + effort → *v*, *a*; effort + task → *z*; *t₀* intercept-only).
-- **Pupil metric:** Decision-Response AUC (baseline-corrected; 3.0 s window, 0.3–3.3 s post-probe); within-subject *z*-scored for pupil-DDM models.
-- **Pupil models (nested):** (1) behavioral baseline, (2) pupil→bias, (3) pupil→drift+bias, (4) pupil×difficulty on *v*.
+- **Pupil metric:** Decision-Response AUC (baseline-corrected; 3.0 s window, 0.3–3.3 s post-probe); within-subject *z*-scored for pupil-DDM models (`pupil_z` / `pupil_scaled`).
+- **Pupil models (nested, same-*N* subset):** (1) behavioral baseline, (2) pupil→bias, (3) pupil→drift+bias, (4) pupil×difficulty on *v* only.
 
 ---
 
@@ -61,7 +61,7 @@
 |------------|-----------------|--------|---------|
 | **H1** effort → drift *v* | β ≈ −0.057 | [−0.097, −0.017] | Supported (excludes 0) |
 | **H2** effort → boundary *a* | β ≈ +0.017 (log) | [0.004, 0.029] | Small credible increase (CrI excludes 0) |
-| **H4** effort → bias *z* (primary) | β ≈ −0.005 (logit) | [−0.046, 0.036] | Near zero; CrI spans 0 |
+| **H4** effort → bias *z* (primary) | β ≈ −0.005 (logit) | [−0.023, 0.012] | Near zero; CrI spans 0 |
 | H4 standard-only calibration | Δ*z* ≈ −0.005 | spans 0 | Reported separately (§3.2.2 / A2) |
 
 Difficulty contrasts on drift (examples): Easy−Standard β ≈ +2.07; Hard−Standard β ≈ +0.57 (all CrIs exclude 0).
@@ -72,12 +72,36 @@ Difficulty contrasts on drift (examples): Easy−Standard β ≈ +2.07; Hard−S
 - Max KS (conditional PPC) ≈ 0.343; max QP ≈ 0.225.
 - Interpretation in manuscript: fast-tail / Easy–VDT misfit; does not overturn H1.
 
-### Pupil-linked DDM
+### Pupil-linked DDM (Phase B complete — `output/ddm_pupil/`)
 
-- Trial subset with valid pupil: **~5,000 trials** (not 17,857) — cross-*N* ELPD vs full behavioral model is **invalid**.
-- Pooled TEPR → drift and TEPR → bias: posterior coefficients **near zero**, CrIs span zero.
-- PSIS-LOO: max Pareto-*k* ≈ **0.91** for pupil-augmented models → **unreliable for model ranking**.
-- Descriptive TEPR often **lower under High than Low effort** (motor/autonomic confound under sustained grip).
+| Quantity | Value |
+|----------|-------|
+| *N* trials (pupil subset) | **12,287** |
+| *N* subjects | **59** |
+| Comparison type | **Same-*N* nested** (all four models on identical subset) |
+| Max R̂ (pupil models) | ≈ 1.003–1.007 |
+| Cross-*N* ELPD vs full 17,857-trial behavioral model | **Invalid — do not report** |
+
+**Pooled coefficients** (`pupil_effects_key_terms.csv`):
+
+| Model | Parameter | β | 95% CrI |
+|-------|-----------|---|---------|
+| model_1 pupil→bias | *z* (pupil_z) | +0.004 | [−0.027, 0.034] |
+| model_2 pupil→drift+bias | *v* (pupil_z) | +0.011 | [−0.025, 0.045] |
+| model_3 pupil×difficulty | *v* slopes (all levels) | near 0 | all CrIs span 0 |
+
+**PSIS-LOO** (`pupil_loo_summary.csv`, same-*N*):
+
+| Model | ΔELPD vs m0 | max Pareto-*k* | Reliable? |
+|-------|-------------|----------------|-----------|
+| model_0 behavioral | 0 | 0.68 | Yes |
+| model_1 pupil→bias | −0.10 | 0.42 | Yes |
+| model_2 pupil→drift+bias | −2.15 | 0.50 | Yes |
+| model_3 pupil×difficulty | −2.59 | 0.46 | Yes |
+
+All `loo_reliable = TRUE`; no observation exceeded *k* = 0.7. Pupil predictors did not improve out-of-sample fit (all |ΔELPD| < 4).
+
+**Descriptive TEPR:** In five of six task × difficulty cells, mean TEPR was **lower under High than Low effort** — inconsistent with monotonic cognitive arousal under heavier grip; supports measurement-limited interpretation (motor-autonomic confound in Decision-Response AUC under sustained isometric load).
 
 ---
 
@@ -89,7 +113,7 @@ Difficulty contrasts on drift (examples): Easy−Standard β ≈ +2.07; Hard−S
 
 ### Methods
 - Full pupillometry preprocessing; Decision-Response AUC specification.
-- `@sec-pupil-ddm-models`: nested pupil-augmented specifications.
+- `@sec-pupil-ddm-models`: nested pupil-augmented specifications (pupil×difficulty on *v* only; Cavanagh-style pupil→*a* not fitted).
 
 ### Results
 | Section | Content |
@@ -106,13 +130,19 @@ Difficulty contrasts on drift (examples): Easy−Standard β ≈ +2.07; Hard−S
 
 ### Discussion
 - Primary claim: effort degrades evidence accumulation (drift).
-- Pupil: **inconclusive** (measurement-limited), contrast with de Gee et al. (phasic pupil bias reset in younger adults).
+- Pupil: **inconclusive / measurement-limited** (reliable same-*N* LOO shows no predictive gain; coefficients near zero; TEPR confound under grip), contrast with de Gee et al. (phasic pupil bias reset in younger adults).
 
 ---
 
-## 6. Results §3.3 opening (current prose excerpt)
+## 6. Results §3.3 opening (current prose — four paragraphs)
 
-> To examine whether trial-wise arousal fluctuations modulate decision parameters, we compared a nested sequence of four pupil-augmented DDM specifications: (1) behavioral baseline; (2) pupil→bias; (3) pupil→drift+bias; (4) pupil×difficulty. Pareto-*k* exceeded 0.7 for all pupil-augmented models (max *k* = 0.91), so ELPD differences are not a reliable basis for model selection; we interpret pupil effects primarily from posterior coefficients. Pooled TEPR coefficients were near zero with CrIs spanning zero.
+**P1 (design):** Pre-registered multimodal extension; four nested models on pupil-available subset (12,287 trials, 59 participants); not comparable to full behavioral *N* = 17,857.
+
+**P2 (LOO):** PSIS-LOO reliable (max Pareto-*k* = 0.68); ΔELPD vs behavioral baseline = −0.10 (pupil→*z*), −2.15 (pupil→*v*+*z*), −2.59 (pupil×difficulty); none near ±4.
+
+**P3 (coefficients):** Pooled TEPR → *v*: β = 0.011, 95% CrI [−0.025, 0.045]; TEPR → *z*: β = 0.004, [−0.027, 0.034]; difficulty-conditional slopes near zero. Extends tonic H4 null; contrasts with de Gee phasic bias reset.
+
+**P4 (measurement):** @tbl-tepr — High < Low TEPR in 5/6 cells; Decision-Response AUC spans pre/post-response epochs under sustained grip → **measurement-limited**, not definitive null coupling.
 
 ---
 
@@ -123,8 +153,8 @@ Difficulty contrasts on drift (examples): Easy−Standard β ≈ +2.07; Hard−S
 3. **Abstract template:** 2–3 sentences behavioral + 2–3 pupil (≤250 words total chapter abstract).
 4. **Discussion template:** one paragraph on pupil contribution without overclaiming.
 5. Should **H4** (effort→bias) be integrated with pupil bias-reset narrative in §3.3 or stay in §3.2.2?
-6. Any **remaining integrity red flags** given Phase A fixes?
-7. **Phase B priorities** (top 3) if pupil stays in main Results.
+6. Any **remaining integrity red flags** given Phase A + B fixes?
+7. **Phase C priorities** (top 3) after pupil main-text integration.
 
 ---
 
@@ -137,6 +167,12 @@ output/ddm_refits/runs/20260226_092110/tables/
   table_effect_contrasts.csv
   loo_summary.csv
 
+output/ddm_pupil/tables/
+  pupil_loo_summary.csv
+  pupil_effects_key_terms.csv
+  model_info.csv
+  pupil_fixef_link_scale_pupil_only.csv
+
 output/publish/
   table3_ppc_primary_subjectwise_censored.csv
   publish_gate_primary_censored.csv
@@ -144,8 +180,11 @@ output/publish/
 
 ---
 
-## 9. Phase B still open (not required for placement advice)
+## 9. Phase B status (completed)
 
-- Reframe pupil LOO text (drop invalid cross-*N* ΔELPD claims).
-- Export real pupil convergence + interaction fixef tables.
-- Truncated Decision-Response AUC sensitivity analysis.
+- [x] Fit nested pupil models on same-*N* subset (m0–m3; GCP VM `lcanalysis-mdast`)
+- [x] Postprocess LOO, key-term tables, figures (`output/ddm_pupil/`)
+- [x] Reframe pupil LOO text (reliable same-*N* comparison; drop invalid cross-*N* ΔELPD)
+- [x] Draft §3.3 four-paragraph Opus structure in QMD
+- [ ] Truncated Decision-Response AUC sensitivity analysis (future work)
+- [ ] Non-motor effort manipulation (future work)

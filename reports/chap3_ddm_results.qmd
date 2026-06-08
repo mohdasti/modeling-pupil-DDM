@@ -1280,7 +1280,7 @@ demographics_table %>%
     bold = FALSE
   ) %>%
   kableExtra::column_spec(
-    column = 2:3,
+    column = 2,
     width = "2.5cm"
   ) %>%
   kableExtra::add_indent(
@@ -2755,17 +2755,33 @@ for (.pcf in c(
   .q9c <- intersect(c("Q97.5","q97.5"), names(.pkt))[1]
   .tc  <- intersect(c("term","parameter","Parameter"), names(.pkt))[1]
   if (!is.na(.ec) && !is.na(.tc)) {
-    .dr <- .pkt %>%
-      dplyr::filter(!grepl("^bs_|^bias_|^ndt_", .data[[.tc]], ignore.case = TRUE),
-                    grepl("pupil|tepr|auc",       .data[[.tc]], ignore.case = TRUE)) %>%
-      dplyr::slice(1)
+    if ("dpar" %in% names(.pkt)) {
+      .dr <- .pkt %>%
+        dplyr::filter(.data$dpar == "v",
+                      grepl("pupil|tepr|auc", .data[[.tc]], ignore.case = TRUE),
+                      !grepl(":", .data[[.tc]])) %>%
+        { if ("model" %in% names(.pkt)) dplyr::filter(., grepl("model_2", .data$model)) else . } %>%
+        dplyr::slice(1)
+      .br <- .pkt %>%
+        dplyr::filter(.data$dpar == "bias",
+                      grepl("pupil|tepr|auc", .data[[.tc]], ignore.case = TRUE),
+                      !grepl(":", .data[[.tc]])) %>%
+        { if ("model" %in% names(.pkt)) dplyr::filter(., grepl("model_1", .data$model)) else . } %>%
+        dplyr::slice(1)
+    } else {
+      .dr <- .pkt %>%
+        dplyr::filter(!grepl("^bs_|^bias_|^ndt_", .data[[.tc]], ignore.case = TRUE),
+                      grepl("pupil|tepr|auc", .data[[.tc]], ignore.case = TRUE),
+                      !grepl(":", .data[[.tc]])) %>%
+        dplyr::slice(1)
+      .br <- .pkt %>%
+        dplyr::filter(grepl("^bias_", .data[[.tc]], ignore.case = TRUE),
+                      grepl("pupil|tepr|auc", .data[[.tc]], ignore.case = TRUE)) %>%
+        dplyr::slice(1)
+    }
     if (nrow(.dr) == 1) {
       .pd_est_e <- .dr[[.ec]]; .pd_lo_e <- .dr[[.q2c]]; .pd_hi_e <- .dr[[.q9c]]
     }
-    .br <- .pkt %>%
-      dplyr::filter(grepl("^bias_", .data[[.tc]], ignore.case = TRUE),
-                    grepl("pupil|tepr|auc", .data[[.tc]], ignore.case = TRUE)) %>%
-      dplyr::slice(1)
     if (nrow(.br) == 1) {
       .pb_est_e <- .br[[.ec]]; .pb_lo_e <- .br[[.q2c]]; .pb_hi_e <- .br[[.q9c]]
     }
@@ -2795,16 +2811,62 @@ for (.plf in c(
   }
   break
 }
+pupil_n_trials_model <- 12287L
+pupil_n_subj_model   <- 59L
+for (.mif in c(
+    file.path(proj_root, "output", "ddm_pupil", "tables", "model_info.csv"),
+    file.path(proj_root, "output", "pupil_ddm", "tables", "model_info.csv")
+  )) {
+  if (!file.exists(.mif)) next
+  .mi <- readr::read_csv(.mif, show_col_types = FALSE)
+  if (nrow(.mi) > 0 && "n_trials" %in% names(.mi)) {
+    pupil_n_trials_model <- as.integer(.mi$n_trials[1])
+    pupil_n_subj_model   <- as.integer(.mi$n_subjects[1])
+  }
+  break
+}
+pupil_loo_delta_m1_str <- if (is.finite(pupil_loo_delta_m1)) sprintf("%.2f", pupil_loo_delta_m1) else "\u2014"
+pupil_loo_delta_m2_str <- if (is.finite(pupil_loo_delta_m2)) sprintf("%.2f", pupil_loo_delta_m2) else "\u2014"
+pupil_loo_delta_m3_str <- if (is.finite(pupil_loo_delta_m3)) sprintf("%.2f", pupil_loo_delta_m3) else "\u2014"
 pupil_loo_max_k_str <- if (is.finite(pupil_loo_max_k)) sprintf("%.2f", pupil_loo_max_k) else "\u2014"
 pupil_loo_reliable  <- is.finite(pupil_loo_max_k) && pupil_loo_max_k <= 0.7
+pupil_loo_reliability_str <- if (pupil_loo_reliable) {
+  sprintf(
+    "PSIS-LOO on this subset was reliable (max Pareto-$k$ = %s; all $k \\leq 0.7$).",
+    pupil_loo_max_k_str
+  )
+} else {
+  "PSIS-LOO diagnostics should be verified in @tbl-pupil-loo-appendix before interpreting $\\Delta$ELPD."
+}
 pupil_loo_framing <- if (pupil_loo_reliable) {
   sprintf(
-    "On the pupil-available subset (12,287 trials), PSIS-LOO was reliable (max Pareto-$k$ = %s; no observation exceeded $k = 0.7$). Pupil-augmented models did not improve out-of-sample fit relative to the behavioral baseline ($|\\Delta$ELPD$|$ $<$ 4 for all comparisons), consistent with null mechanistic coupling.",
+    "On the pupil-available subset (%s trials), PSIS-LOO was reliable (max Pareto-$k$ = %s; no observation exceeded $k = 0.7$). Pupil-augmented models did not improve out-of-sample fit relative to the behavioral baseline ($|\\Delta$ELPD$|$ $<$ 4 for all comparisons), consistent with null mechanistic coupling.",
+    format(pupil_n_trials_model, big.mark = ","),
     pupil_loo_max_k_str
   )
 } else {
   "PSIS-LOO on the pupil-available subset should be checked against @tbl-pupil-loo-appendix before interpreting $\\Delta$ELPD."
 }
+fmt_pupil_inline <- function(est, lo, hi) {
+  list(
+    beta = if (is.finite(est)) sprintf("$\\beta = %.3f$", est) else "[see @tbl-pupil-key-effects]",
+    cri  = if (is.finite(lo) && is.finite(hi)) {
+      sprintf("95%% CrI $[%.3f,\\; %.3f]$", lo, hi)
+    } else "",
+    null = if (is.finite(lo) && is.finite(hi) && lo < 0 && hi > 0) {
+      "; 95% CrI includes zero"
+    } else ""
+  )
+}
+.pupil_d_fm <- fmt_pupil_inline(.pd_est_e, .pd_lo_e, .pd_hi_e)
+.pupil_b_fm <- fmt_pupil_inline(.pb_est_e, .pb_lo_e, .pb_hi_e)
+pupil_drift_beta_str <- .pupil_d_fm$beta
+pupil_drift_cri_str  <- .pupil_d_fm$cri
+pupil_drift_null     <- .pupil_d_fm$null
+pupil_bias_beta_str  <- .pupil_b_fm$beta
+pupil_bias_cri_str   <- .pupil_b_fm$cri
+pupil_bias_null      <- .pupil_b_fm$null
+rm(.pupil_d_fm, .pupil_b_fm, fmt_pupil_inline)
 pupil_meas_limit_note <- "Near-zero posterior coefficients; TEPR likely conflates motor-autonomic and cognitive dilation under sustained grip (@tbl-tepr)."
 
 null_ev_pupil_drift_early <- safe_rope_summary(
@@ -3642,9 +3704,13 @@ include_graphics_safe(main_fig("fig5_individual_differences.png"))
 
 ## Pupil-linked DDM models {#sec-pupil-ddm-integration}
 
-To examine whether trial-wise arousal fluctuations modulate decision parameters, we compared a nested sequence of four pupil-augmented DDM specifications (see @sec-pupil-ddm-models): (1) a **behavioral baseline** model with no pupil predictor; (2) a **pupil → bias** model, testing whether TEPR predicts starting-point bias $z$ — directly relevant to H4 (bias neutrality under arousal); (3) a **pupil → drift + bias** model, testing whether TEPR also modulates drift rate $v$ — an exploratory extension of the phasic arousal–evidence accumulation hypothesis; and (4) a **pupil × Difficulty** interaction model on drift, testing whether arousal effects on $v$ diverge across difficulty levels. All four models were fit on the same pupil-available subset (12,287 trials; 59 participants). `r pupil_loo_framing` Posterior coefficients for pooled TEPR effects were centered near zero with CrIs spanning zero (@tbl-pupil-key-effects, below). **Caution:** the Decision-Response AUC window likely conflates motor-autonomic and cognitive dilation under sustained grip (@tbl-tepr), so these are measurement-limited inferences rather than informative nulls.
+As a pre-registered multimodal extension, we asked whether trial-wise task-evoked pupil responses (TEPR; within-subject *z*-scored Decision-Response AUC) modulate latent decision parameters during concurrent grip. On the pupil-available subset (`r format(pupil_n_trials_model, big.mark = ",")` trials, `r pupil_n_subj_model` participants), we fit a nested sequence of four hierarchical Wiener models (@sec-pupil-ddm-models): (1) a **behavioral baseline** without pupil predictors; (2) **pupil → bias** ($z$), directly relevant to phasic bias-reset accounts linked to H4; (3) **pupil → drift + bias** ($v$ and $z$); and (4) **pupil × difficulty** on drift (Yerkes–Dodson-style interaction on $v$). All four models used the identical trial set and additive difficulty/effort structure as the primary behavioral model. This subset excludes trials without valid pupil data and is **not** comparable to the full behavioral analysis ($N = 17{,}857$ trials); pupil-model comparisons are restricted to the nested same-$N$ set.
 
-@tbl-tepr summarizes trial-evoked pupil response (TEPR) magnitude by difficulty and effort, providing descriptive context for the pupil predictor entered into the models below.
+`r pupil_loo_reliability_str` Relative to the behavioral baseline on this subset, $\Delta$ELPD was `r pupil_loo_delta_m1_str` (pupil → $z$), `r pupil_loo_delta_m2_str` (pupil → $v$ + $z$), and `r pupil_loo_delta_m3_str` (pupil × difficulty); none approached the $\pm 4$ benchmark for meaningful predictive improvement. Full PSIS-LOO values are in Appendix A5 (@tbl-pupil-loo-appendix).
+
+@tbl-pupil-key-effects summarizes the key pupil coefficients. Pooled TEPR did not credibly predict drift rate ($v$; `r sprintf('%s, %s%s', pupil_drift_beta_str, pupil_drift_cri_str, pupil_drift_null)`) or starting-point bias ($z$; `r sprintf('%s, %s%s', pupil_bias_beta_str, pupil_bias_cri_str, pupil_bias_null)`). The supplementary pupil × difficulty model showed the same pattern: difficulty-conditional TEPR slopes on $v$ were centered near zero with CrIs spanning zero (Supplementary @fig-tepr-slopes-supp). Together with the tonic effort → bias null in @sec-key-contrasts, these results provide no credible evidence that concurrent grip or trial-wise TEPR shifted pre-stimulus bias in this sample — in contrast to phasic pupil-linked criterion reset reported in younger adults [@degee2020pupil] — though equivalence was not established and interpretation is limited by measurement constraints below.
+
+Descriptive TEPR magnitudes are in @tbl-tepr. In five of six task × difficulty cells, mean TEPR was **lower** under High (40% MVC) than Low (5% MVC) effort — inconsistent with a simple monotonic increase in cognitive arousal under heavier grip. Combined with the Decision-Response AUC window (which spans pre- and post-response epochs and therefore likely mixes motor-autonomic with cognitive dilation under sustained isometric load), we treat the pupil-linked DDM estimates as **measurement-limited**: they document a rigorously tested multimodal null under the current TEPR specification, not a definitive absence of arousal–parameter coupling. Sensitivity to a truncated Decision-Response AUC and non-motor effort manipulations is needed to resolve this limitation.
 
 ```{r}
 #| label: tbl-tepr
@@ -3779,95 +3845,14 @@ if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in
 #| include: false
 #| echo: false
 
-# Extract pupil → drift coefficient from the pupil DDM model
-pupil_drift_beta_str <- "[see tbl-pupil-ddm-fixef]"
-pupil_drift_cri_str  <- ""
-pupil_drift_null     <- "; credible interval includes zero"
-
-pupil_bias_beta_str  <- "[see tbl-pupil-ddm-fixef]"
-pupil_bias_cri_str   <- ""
-pupil_bias_null      <- "; credible interval includes zero"
-
-# Try to load the pupil fixed-effects table
-pupil_fixef_obj <- NULL
-for (obj_name in c("tblpupilcoef", "tblpupilfixef",
-                   "pupilcoef", "pupil_fixef")) {
-  if (exists(obj_name) && !is.null(get(obj_name))) {
-    pupil_fixef_obj <- get(obj_name)
-    break
-  }
+# Sync inline coefficient strings for downstream chunks (loaded in setup chunk)
+if (exists(".pd_est_e") && is.finite(.pd_est_e)) {
+  pd_est <- .pd_est_e; pd_lo <- .pd_lo_e; pd_hi <- .pd_hi_e
 }
-
-# If not already in environment, try loading from tables dir
-if (is.null(pupil_fixef_obj)) {
-  pupil_csv_candidates <- c(
-    "pupilmodelfixef.csv",
-    "pupilddmfixef.csv",
-    "pupilfixedeffects.csv",
-    "pupilcoefficients.csv"
-  )
-  for (csv_name in pupil_csv_candidates) {
-    csv_path <- file.path(tables_dir, csv_name)
-    if (file.exists(csv_path)) {
-      pupil_fixef_obj <- readr::read_csv(csv_path,
-                                         show_col_types = FALSE)
-      break
-    }
-  }
-}
-
-# Extract pupil → drift row
-if (!is.null(pupil_fixef_obj) && nrow(pupil_fixef_obj) > 0) {
-
-  pdrift_row <- pupil_fixef_obj |>
-    dplyr::filter(
-      !grepl("^bs_|^bias_|^ndt_", term, ignore.case = TRUE),
-      grepl("pupil|tepr|auc", term, ignore.case = TRUE)
-    ) |>
-    dplyr::slice(1)
-
-  if (nrow(pdrift_row) == 1) {
-    pd_est <- pdrift_row$Estimate
-    pd_lo  <- pdrift_row$Q2.5
-    pd_hi  <- pdrift_row$Q97.5
-    pupil_drift_beta_str <- sprintf("$\\beta = %.3f$", pd_est)
-    pupil_drift_cri_str  <- sprintf("95%% CrI $[%.3f,\\; %.3f]$",
-                                    pd_lo, pd_hi)
-    pupil_drift_null     <- if (!is.na(pd_lo) && !is.na(pd_hi) &&
-                                pd_lo < 0 && pd_hi > 0)
-                              "; credible interval includes zero"
-                            else ""
-  }
-
-  # Extract pupil → bias row
-  pbias_row <- pupil_fixef_obj |>
-    dplyr::filter(
-      grepl("^bias_", term, ignore.case = TRUE),
-      grepl("pupil|tepr|auc", term, ignore.case = TRUE)
-    ) |>
-    dplyr::slice(1)
-
-  if (nrow(pbias_row) == 1) {
-    pb_est <- pbias_row$Estimate
-    pb_lo  <- pbias_row$Q2.5
-    pb_hi  <- pbias_row$Q97.5
-    pupil_bias_beta_str <- sprintf("$\\beta = %.3f$", pb_est)
-    pupil_bias_cri_str  <- sprintf("95%% CrI $[%.3f,\\; %.3f]$",
-                                   pb_lo, pb_hi)
-    pupil_bias_null     <- if (!is.na(pb_lo) && !is.na(pb_hi) &&
-                               pb_lo < 0 && pb_hi > 0)
-                             "; credible interval includes zero"
-                           else ""
-  }
+if (exists(".pb_est_e") && is.finite(.pb_est_e)) {
+  pb_est <- .pb_est_e; pb_lo <- .pb_lo_e; pb_hi <- .pb_hi_e
 }
 ```
-
-A supplementary model added a difficulty × TEPR interaction to test whether the trial-wise arousal–drift association differed across perceptual load conditions. Difficulty-conditional posterior slopes are visualized in Supplementary @fig-tepr-slopes-supp.
-
-Pooled posterior coefficients for the trial-wise TEPR predictor were near zero for both drift rate ($v$; `r pupil_drift_beta_str`, `r pupil_drift_cri_str`) and pre-stimulus response bias ($z$; `r pupil_bias_beta_str`, `r pupil_bias_cri_str`), with 95% CrIs spanning zero (@tbl-pupil-key-effects). Pupil-augmented models were fit to trials with valid pupil data (N $\approx$ `r format(n_trials_total, big.mark = ",")` trials) and are not directly comparable to the full-sample behavioral models. Full fixed-effects tables are in Appendix A5.
-
-**Descriptive TEPR means.** In five of six cells, mean TEPR magnitude was lower under High effort than under Low effort (@tbl-tepr). This reversal is discussed in the context of TEPR measurement limitations in the Discussion.
-
 
 ```{r pupil-interaction-stats}
 #| echo: false
@@ -4189,7 +4174,7 @@ if (file.exists(pupil_key_terms_file)) {
 ```
 
 
-Supplementary @fig-tepr-slopes-supp shows the posterior distribution of the trial-wise arousal–drift coupling coefficient at each difficulty level. All three 95% CrIs include zero. Posterior probability $P(\beta_\text{pupil} > 0)$ for each difficulty level is in @tbl-pupil-key-effects.
+Full pupil fixed-effects tables and convergence diagnostics are in Appendix A5 (@tbl-pupil-loo-appendix, @tbl-pupil-key-effects-appendix).
 
 ```{r}
 #| label: fig-difficulty-posterior-diffs
