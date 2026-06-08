@@ -597,12 +597,12 @@ apply_rt_filters <- function(df, rt_floor = 0, rt_ceiling = 3.0) {
 }
 
 # Apply threshold and create rt_model column
-# C) Apply threshold to the correct RT variable *per RT definition*
+# Lower-bound exclusion is always applied to cue-locked RT (Methods), regardless of
+# which RT column enters the DDM likelihood (probe-onset-locked, etc.).
 apply_threshold_and_rt_def <- function(df, threshold, rt_def) {
   # First apply ceiling filter (on rt_cue)
   df_filtered <- apply_rt_filters(df, rt_floor = 0, rt_ceiling = 3.0)
   
-  # C) Map rt_def to the correct RT column for filtering
   if (rt_def == "cue_locked") {
     rt_col <- "rt_cue"
   } else if (rt_def == "probe_onset_locked") {
@@ -615,26 +615,34 @@ apply_threshold_and_rt_def <- function(df, threshold, rt_def) {
     stop("Unknown rt_def")
   }
   
-  # Verify RT column exists
+  if (!"rt_cue" %in% names(df_filtered)) {
+    log_error(paste("RT column 'rt_cue' not found. Available columns:",
+                    paste(names(df_filtered), collapse = ", ")))
+    stop("RT column not found")
+  }
   if (!rt_col %in% names(df_filtered)) {
-    log_error(paste("RT column '", rt_col, "' not found. Available columns:", 
+    log_error(paste("RT column '", rt_col, "' not found. Available columns:",
                     paste(names(df_filtered), collapse = ", ")))
     stop("RT column not found")
   }
   
-  # Apply threshold to the correct RT column
+  # Always threshold on cue-locked RT; rt_model follows rt_def
   n_before_thresh <- nrow(df_filtered)
-  df_thr <- df_filtered %>% filter(.data[[rt_col]] >= threshold)
+  df_thr <- df_filtered %>% filter(rt_cue >= threshold)
   n_after_thresh <- nrow(df_thr)
   
   # D) Log immediately after filtering
+  min_rt_cue_after <- min(df_thr$rt_cue, na.rm = TRUE)
+  p01_rt_cue_after <- quantile(df_thr$rt_cue, 0.01, na.rm = TRUE)
+  median_rt_cue_after <- median(df_thr$rt_cue, na.rm = TRUE)
   min_rt_after <- min(df_thr[[rt_col]], na.rm = TRUE)
   p01_rt_after <- quantile(df_thr[[rt_col]], 0.01, na.rm = TRUE)
   median_rt_after <- median(df_thr[[rt_col]], na.rm = TRUE)
   
-  log_info(paste("Threshold", threshold, "s (applied to", rt_col, "):"))
+  log_info(paste("Threshold", threshold, "s (applied to cue-locked RT; model RT =", rt_col, "):"))
   log_info(paste("  - n_trials before:", n_before_thresh))
   log_info(paste("  - n_trials after:", n_after_thresh))
+  log_info(paste("  - min rt_cue after filtering:", round(min_rt_cue_after, 4), "s"))
   log_info(paste("  - min", rt_col, "after filtering:", round(min_rt_after, 4), "s"))
   log_info(paste("  - 1% quantile", rt_col, "after filtering:", round(p01_rt_after, 4), "s"))
   log_info(paste("  - median", rt_col, "after filtering:", round(median_rt_after, 4), "s"))

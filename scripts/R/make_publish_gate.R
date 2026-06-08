@@ -20,9 +20,31 @@ suppressPackageStartupMessages({
 
 
 
-PUBLISH_DIR <- "output/publish"
+detect_project_root <- function() {
+  candidates <- unique(c(
+    getwd(),
+    normalizePath(file.path(getwd(), ".."), mustWork = FALSE),
+    normalizePath(file.path(getwd(), "../.."), mustWork = FALSE)
+  ))
+  for (root in candidates) {
+    if (dir.exists(file.path(root, "output", "publish"))) {
+      return(normalizePath(root))
+    }
+  }
+  normalizePath(getwd())
+}
 
+PROJECT_ROOT <- detect_project_root()
+PUBLISH_DIR  <- file.path(PROJECT_ROOT, "output", "publish")
 dir.create(PUBLISH_DIR, showWarnings = FALSE, recursive = TRUE)
+
+alias_ppc_cols <- function(ppc) {
+  if ("qp_rmse_subj" %in% names(ppc) && !"qp_rmse" %in% names(ppc)) ppc$qp_rmse <- ppc$qp_rmse_subj
+  if ("ks_subj" %in% names(ppc) && !"ks_mean" %in% names(ppc)) ppc$ks_mean <- ppc$ks_subj
+  if ("qp_rmse_cond" %in% names(ppc) && !"qp_rmse" %in% names(ppc)) ppc$qp_rmse <- ppc$qp_rmse_cond
+  if ("ks_cond" %in% names(ppc) && !"ks_mean" %in% names(ppc)) ppc$ks_mean <- ppc$ks_cond
+  ppc
+}
 
 
 
@@ -50,6 +72,12 @@ log_msg("Creating publish gate summary for primary model")
 
 # ---- Load fit ----
 
+RUN_ID <- Sys.getenv("DDM_RUN_ID", "20260226_092110")
+RUN_DIR_MODEL <- file.path(
+  PROJECT_ROOT, "output", "ddm_refits", "runs", RUN_ID,
+  "models", "additive__probe_onset_locked__thr0.20.rds"
+)
+
 # Check for censored model first if requested, otherwise use primary
 
 use_censored <- as.logical(Sys.getenv("USE_CENSORED_FIT", "FALSE"))
@@ -57,6 +85,8 @@ use_censored <- as.logical(Sys.getenv("USE_CENSORED_FIT", "FALSE"))
 if (use_censored) {
 
   fit_paths <- c(
+
+    RUN_DIR_MODEL,
 
     file.path(PUBLISH_DIR, "fit_primary_vza_vEff_censored.rds"),
 
@@ -77,6 +107,8 @@ if (use_censored) {
 } else {
 
   fit_paths <- c(
+
+    RUN_DIR_MODEL,
 
     file.path(PUBLISH_DIR, "fit_primary_vza_vEff.rds"),
 
@@ -116,25 +148,53 @@ is_censored <- grepl("censored", basename(fit_path), ignore.case = TRUE)
 
 log_msg("Computing convergence diagnostics...")
 
-rhat_vals <- rhat(fit)
+conv_csv <- file.path(
+  PROJECT_ROOT, "output", "ddm_refits", "runs", RUN_ID,
+  "tables", "convergence_summary.csv"
+)
 
-ess_bulk_vals <- ess_bulk(fit)
+conv_from_run <- NULL
+if (file.exists(conv_csv)) {
+  conv_from_run <- tryCatch({
+    conv_tbl <- read_csv(conv_csv, show_col_types = FALSE)
+    if ("rt_def" %in% names(conv_tbl) && !"rt_type" %in% names(conv_tbl)) {
+      conv_tbl <- dplyr::rename(conv_tbl, rt_type = rt_def)
+    }
+    conv_tbl %>%
+      dplyr::filter(
+        .data$model_name == "additive",
+        .data$rt_type == "probe_onset_locked",
+        .data$threshold == 0.2
+      ) %>%
+      dplyr::slice(1)
+  }, error = function(e) NULL)
+}
 
-ess_tail_vals <- ess_tail(fit)
-
-nuts_params <- nuts_params(fit)
-
-divergences <- sum(nuts_params$Parameter == "divergent__" & nuts_params$Value == 1, na.rm = TRUE)
-
-
-
-max_rhat <- max(rhat_vals, na.rm = TRUE)
-
-min_bulk_ess <- min(ess_bulk_vals, na.rm = TRUE)
-
-min_tail_ess <- min(ess_tail_vals[is.finite(ess_tail_vals)], na.rm = TRUE)
-
-if (is.infinite(min_tail_ess) || is.na(min_tail_ess)) min_tail_ess <- NA_real_
+if (!is.null(conv_from_run) && nrow(conv_from_run) == 1) {
+  log_msg("Using convergence_summary.csv from run_dir")
+  max_rhat     <- conv_from_run$max_rhat
+  min_bulk_ess <- conv_from_run$min_bulk_ess
+  divergences  <- conv_from_run$divergences
+  min_tail_ess <- NA_real_
+} else {
+  log_msg("Falling back to brms::rhat / brms::neff_ratio on fit object")
+  rhat_vals <- brms::rhat(fit)
+  neff_rat  <- brms::neff_ratio(fit)
+  max_rhat  <- suppressWarnings(max(rhat_vals, na.rm = TRUE))
+  total_draws <- fit$fit@sim$iter - fit$fit@sim$warmup
+  if (is.null(total_draws) || is.na(total_draws) || total_draws <= 0) {
+    total_draws <- 4000L
+  }
+  min_bulk_ess <- suppressWarnings(min(neff_rat * total_draws, na.rm = TRUE))
+  min_tail_ess <- NA_real_
+  divergences <- tryCatch({
+    sampler_params <- brms::nuts_params(fit)
+    sum(sampler_params$divergent__ == 1, na.rm = TRUE)
+  }, error = function(e) {
+    log_msg(sprintf("Could not extract divergences: %s", e$message))
+    NA_integer_
+  })
+}
 
 
 
@@ -160,52 +220,65 @@ log_msg(sprintf("Convergence PASS: %s", ifelse(conv_pass, "YES", "NO")))
 
 log_msg("Computing LOO diagnostics...")
 
-loo_result <- tryCatch({
+loo_csv <- file.path(
+  PROJECT_ROOT, "output", "ddm_refits", "runs", RUN_ID,
+  "tables", "loo_summary.csv"
+)
 
-  loo(fit, moment_match = FALSE)
+loo_from_run <- NULL
+if (file.exists(loo_csv)) {
+  loo_from_run <- tryCatch({
+    loo_tbl <- read_csv(loo_csv, show_col_types = FALSE)
+    if ("rt_def" %in% names(loo_tbl) && !"rt_type" %in% names(loo_tbl)) {
+      loo_tbl <- dplyr::rename(loo_tbl, rt_type = rt_def)
+    }
+    loo_tbl %>%
+      dplyr::filter(
+        .data$model_name == "additive",
+        .data$rt_type == "probe_onset_locked",
+        .data$threshold == 0.2
+      ) %>%
+      dplyr::slice(1)
+  }, error = function(e) NULL)
+}
 
-}, error = function(e) {
-
-  log_msg(sprintf("LOO computation failed: %s", e$message))
-
-  NULL
-
-})
-
-
-
-if (!is.null(loo_result)) {
-
-  loo_elpd <- loo_result$estimates["elpd_loo", "Estimate"]
-
-  loo_se <- loo_result$estimates["elpd_loo", "SE"]
-
-  loo_pareto_k <- if ("pareto_k" %in% names(loo_result)) {
-
-    max(loo_result$pareto_k$k, na.rm = TRUE)
-
-  } else {
-
-    NA_real_
-
-  }
-
-  loo_high_k <- if (!is.na(loo_pareto_k)) sum(loo_result$pareto_k$k > 0.7, na.rm = TRUE) else NA_real_
-
-  log_msg(sprintf("LOO: elpd_loo=%.2f (SE=%.2f), max_pareto_k=%.3f, n_high_k=%s",
-
-                  loo_elpd, loo_se, loo_pareto_k, ifelse(is.na(loo_high_k), "NA", sprintf("%d", loo_high_k))))
-
-} else {
-
-  loo_elpd <- NA_real_
-
-  loo_se <- NA_real_
-
+if (!is.null(loo_from_run) && nrow(loo_from_run) == 1) {
+  log_msg("Using loo_summary.csv from run_dir")
+  loo_elpd <- -loo_from_run$loo_ic / 2
+  loo_se   <- loo_from_run$loo_se / 2
   loo_pareto_k <- NA_real_
+  loo_high_k   <- NA_real_
+  log_msg(sprintf("LOO: elpd_loo=%.2f (SE=%.2f) from exported LOOIC", loo_elpd, loo_se))
+} else {
+  loo_result <- tryCatch({
+    loo::loo(fit, moment_match = FALSE)
+  }, error = function(e) {
+    log_msg(sprintf("LOO computation failed: %s", e$message))
+    NULL
+  })
 
-  loo_high_k <- NA_real_
-
+  if (!is.null(loo_result)) {
+    loo_elpd <- loo_result$estimates["elpd_loo", "Estimate"]
+    loo_se <- loo_result$estimates["elpd_loo", "SE"]
+    loo_pareto_k <- if ("pareto_k" %in% names(loo_result)) {
+      max(loo_result$pareto_k$k, na.rm = TRUE)
+    } else {
+      NA_real_
+    }
+    loo_high_k <- if (!is.na(loo_pareto_k)) {
+      sum(loo_result$pareto_k$k > 0.7, na.rm = TRUE)
+    } else {
+      NA_real_
+    }
+    log_msg(sprintf("LOO: elpd_loo=%.2f (SE=%.2f), max_pareto_k=%.3f, n_high_k=%s",
+                    loo_elpd, loo_se, loo_pareto_k,
+                    ifelse(is.na(loo_high_k), "NA", sprintf("%d", loo_high_k))))
+  } else {
+    loo_elpd <- NA_real_
+    loo_se <- NA_real_
+    loo_pareto_k <- NA_real_
+    loo_high_k <- NA_real_
+  }
 }
 
 
@@ -229,6 +302,7 @@ ppc_subj_path <- if (is_censored && file.exists(file.path(PUBLISH_DIR, "table3_p
 if (file.exists(ppc_subj_path)) {
 
   ppc_subj <- read_csv(ppc_subj_path, show_col_types = FALSE)
+  ppc_subj <- alias_ppc_cols(ppc_subj)
 
   
 
@@ -240,7 +314,11 @@ if (file.exists(ppc_subj_path)) {
 
   n_flagged_ks <- sum(ppc_subj$ks_flag, na.rm = TRUE)
 
-  n_flagged_midbody <- sum(ppc_subj$midbody_flag, na.rm = TRUE)
+  n_flagged_midbody <- if ("midbody_flag" %in% names(ppc_subj)) {
+    sum(ppc_subj$midbody_flag, na.rm = TRUE)
+  } else {
+    NA_integer_
+  }
 
   n_flagged_any <- sum(ppc_subj$any_flag, na.rm = TRUE)
 
@@ -250,7 +328,11 @@ if (file.exists(ppc_subj_path)) {
 
   pct_flagged_ks <- (n_flagged_ks / n_cells) * 100
 
-  pct_flagged_midbody <- (n_flagged_midbody / n_cells) * 100
+  pct_flagged_midbody <- if (!is.na(n_flagged_midbody)) {
+    (n_flagged_midbody / n_cells) * 100
+  } else {
+    NA_real_
+  }
 
   pct_flagged_any <- (n_flagged_any / n_cells) * 100
 
@@ -260,7 +342,11 @@ if (file.exists(ppc_subj_path)) {
 
   max_ks <- max(ppc_subj$ks_mean, na.rm = TRUE)
 
-  max_midbody <- max(ppc_subj$qp_rmse_midbody, na.rm = TRUE)
+  max_midbody <- if ("qp_rmse_midbody" %in% names(ppc_subj)) {
+    max(ppc_subj$qp_rmse_midbody, na.rm = TRUE)
+  } else {
+    NA_real_
+  }
 
   
 
@@ -286,11 +372,11 @@ if (file.exists(ppc_subj_path)) {
 
   
 
-  ppc_subj_pass <- (pct_flagged_midbody <= 15) && 
-
-                   (max_midbody <= 0.12) &&
-
-                   (max_ks <= 0.20)
+  ppc_subj_pass <- if (!is.na(pct_flagged_midbody) && !is.na(max_midbody)) {
+    (pct_flagged_midbody <= 15) && (max_midbody <= 0.12) && (max_ks <= 0.20)
+  } else {
+    FALSE
+  }
 
   
 
@@ -349,6 +435,7 @@ ppc_cond_path <- if (is_censored && file.exists(file.path(PUBLISH_DIR, "table3_p
 if (file.exists(ppc_cond_path)) {
 
   ppc_cond <- read_csv(ppc_cond_path, show_col_types = FALSE)
+  ppc_cond <- alias_ppc_cols(ppc_cond)
 
   n_flagged_cond <- sum(ppc_cond$any_flag, na.rm = TRUE)
 
@@ -461,6 +548,8 @@ gate_summary <- tibble(
 gate_path <- file.path(PUBLISH_DIR, if (is_censored) "publish_gate_primary_censored.csv" else "publish_gate_primary.csv")
 
 write_csv(gate_summary, gate_path)
+# chap3_ddm_results.qmd reads publish_gate_primary_censored.csv
+write_csv(gate_summary, file.path(PUBLISH_DIR, "publish_gate_primary_censored.csv"))
 
 log_msg("")
 

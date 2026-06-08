@@ -66,12 +66,14 @@ log_msg("This script computes: (1) Conditional PPC, (2) Unconditional PPC, (3) S
 
 # ---- Load fit and data ----
 # Prefer run_dir additive model (matches main chapter); fallback to publish variants
-RUN_ID <- Sys.getenv("DDM_RUN_ID", "20260214_045745")
+RUN_ID <- Sys.getenv("DDM_RUN_ID", "20260226_092110")
+PRIMARY_THR <- 0.20
+PROBE_ONSET_TO_PROMPT_SEC <- 0.35
 RUN_DIR_MODEL <- file.path("output", "ddm_refits", "runs", RUN_ID, "models", "additive__probe_onset_locked__thr0.20.rds")
 
 fit_paths <- c(
-  file.path(PUBLISH_DIR, "fit_primary_vza.rds"),           # Primary (run_dir copy)
-  RUN_DIR_MODEL,                                           # Run dir additive model
+  RUN_DIR_MODEL,                                           # Run dir additive model (primary)
+  file.path(PUBLISH_DIR, "fit_primary_vza.rds"),
   file.path(PUBLISH_DIR, "fit_primary_vza_biasintx.rds"),
   file.path(PUBLISH_DIR, "fit_primary_vza_bsintx.rds"),
   file.path(PUBLISH_DIR, "fit_primary_vza_vINTX.rds"),
@@ -95,10 +97,133 @@ log_msg(sprintf("Model loaded successfully: %s", basename(fit_path)))
 
 
 
-# Prefer bap_ddm_only_ready (matches main chapter); fallback to bap_ddm_ready
+# Align PPC trial set with ddm_refit_with_new_threshold.R (probe-onset model):
+# cue-locked RT exclusion, then probe-onset-locked RT for posterior_predict().
+prepare_ppc_data <- function(df, threshold = PRIMARY_THR, use_probe_onset_rt = TRUE) {
+  out <- df
+
+  if ("rt_cue_locked" %in% names(out)) {
+    out$rt_cue <- as.numeric(out$rt_cue_locked)
+  } else if ("rt_cue" %in% names(out)) {
+    out$rt_cue <- as.numeric(out$rt_cue)
+  } else if ("rt" %in% names(out)) {
+    out$rt_cue <- as.numeric(out$rt)
+  } else {
+    stop("No cue-locked RT column found (expected rt, rt_cue, or rt_cue_locked).")
+  }
+
+  if ("rt_probe_onset_locked" %in% names(out)) {
+    out$rt_probe_onset <- as.numeric(out$rt_probe_onset_locked)
+  } else if ("rt_probe_onset" %in% names(out)) {
+    out$rt_probe_onset <- as.numeric(out$rt_probe_onset)
+  } else {
+    out$rt_probe_onset <- out$rt_cue + PROBE_ONSET_TO_PROMPT_SEC
+  }
+
+  if (!"choice_binary" %in% names(out)) {
+    if ("resp_is_diff" %in% names(out)) {
+      out$choice_binary <- as.integer(out$resp_is_diff)
+    } else if ("choice" %in% names(out)) {
+      out$choice_binary <- as.integer(out$choice)
+    } else {
+      stop("Missing choice_binary (or resp_is_diff / choice).")
+    }
+  } else {
+    out$choice_binary <- as.integer(out$choice_binary)
+  }
+
+  if (!"decision" %in% names(out)) {
+    if ("iscorr" %in% names(out)) {
+      out$decision <- as.integer(out$iscorr)
+    } else if ("correct" %in% names(out)) {
+      out$decision <- as.integer(out$correct)
+    } else if ("is_correct" %in% names(out)) {
+      out$decision <- as.integer(out$is_correct)
+    } else if (all(c("stim_is_diff", "resp_is_diff") %in% names(out))) {
+      out$decision <- as.integer(out$stim_is_diff == out$resp_is_diff)
+    } else if ("accuracy" %in% names(out) || "acc" %in% names(out)) {
+      col_name <- ifelse("accuracy" %in% names(out), "accuracy", "acc")
+      out$decision <- as.integer(out[[col_name]])
+    } else {
+      stop("Missing decision (or iscorr / stim_is_diff+resp_is_diff).")
+    }
+  } else {
+    out$decision <- as.integer(out$decision)
+  }
+
+  out$task <- tolower(as.character(out$task))
+  out$task <- dplyr::case_when(
+    grepl("^a", out$task) ~ "ADT",
+    grepl("^v", out$task) ~ "VDT",
+    out$task %in% c("adt", "aud", "auditory") ~ "ADT",
+    out$task %in% c("vdt", "vis", "visual") ~ "VDT",
+    TRUE ~ toupper(out$task)
+  )
+  out$task <- factor(out$task, levels = c("ADT", "VDT"))
+
+  out$effort_condition <- tolower(as.character(out$effort_condition))
+  out$effort_condition <- dplyr::case_when(
+    grepl("low|5_mvc|0\\.05", out$effort_condition) ~ "low",
+    grepl("high|40_mvc|0\\.4", out$effort_condition) ~ "high",
+    TRUE ~ out$effort_condition
+  )
+  out$effort_condition <- factor(out$effort_condition, levels = c("low", "high"))
+
+  if ("difficulty_3" %in% names(out)) {
+    out$difficulty_3 <- as.character(out$difficulty_3)
+  } else if ("difficulty_level" %in% names(out)) {
+    if (is.numeric(out$difficulty_level)) {
+      out$difficulty_3 <- dplyr::case_when(
+        out$difficulty_level == 0 ~ "Standard",
+        out$difficulty_level %in% c(1, 2) ~ "Hard",
+        out$difficulty_level %in% c(3, 4) ~ "Easy",
+        TRUE ~ "Standard"
+      )
+    } else {
+      out$difficulty_3 <- dplyr::case_when(
+        grepl("standard|baseline|0", out$difficulty_level, ignore.case = TRUE) ~ "Standard",
+        grepl("easy|3|4", out$difficulty_level, ignore.case = TRUE) ~ "Easy",
+        grepl("hard|1|2", out$difficulty_level, ignore.case = TRUE) ~ "Hard",
+        TRUE ~ as.character(out$difficulty_level)
+      )
+    }
+  } else {
+    stop("Missing difficulty_3 / difficulty_level.")
+  }
+  out$difficulty_3 <- factor(out$difficulty_3, levels = c("Standard", "Hard", "Easy"))
+  out$difficulty_level <- out$difficulty_3
+
+  n_before <- nrow(out)
+  out <- out %>%
+    dplyr::filter(
+      !is.na(rt_cue), is.finite(rt_cue),
+      rt_cue > 0,
+      rt_cue <= 3.0,
+      rt_cue >= threshold,
+      !is.na(rt_probe_onset), is.finite(rt_probe_onset),
+      choice_binary %in% c(0L, 1L),
+      !is.na(subject_id),
+      !is.na(task),
+      !is.na(effort_condition),
+      !is.na(difficulty_3)
+    )
+
+  out$rt <- if (use_probe_onset_rt) out$rt_probe_onset else out$rt_cue
+
+  out %>%
+    dplyr::mutate(
+      subject_id = factor(subject_id),
+      choice_binary = as.integer(choice_binary),
+      decision = as.integer(decision)
+    ) %>%
+    dplyr::filter(!is.na(rt), is.finite(rt))
+}
+
+data_override <- Sys.getenv("DDM_DATA_UNTHR", unset = Sys.getenv("DDM_INPUT_FILE", unset = ""))
 data_paths <- c(
+  if (nzchar(data_override)) data_override else character(0),
+  "data/ddm_ready_data_unthresholded.csv",
   "data/analysis_ready/bap_ddm_only_ready.csv",
-  "data/analysis_ready/ddm_ready_data_unthresholded.csv",
   "data/analysis_ready/bap_ddm_ready.csv"
 )
 data_path <- data_paths[file.exists(data_paths)][1]
@@ -106,88 +231,26 @@ if (is.na(data_path)) {
   stop(sprintf("No data file found. Checked: %s", paste(data_paths, collapse = ", ")))
 }
 log_msg("Loading data:", data_path)
-
-dd <- readr::read_csv(data_path, show_col_types = FALSE)
-
-# Standardize RT column (model expects rt)
-if (!"rt" %in% names(dd)) {
-  rt_col <- intersect(c("rt", "resp1RT", "same_diff_resp_secs", "rt_cue_locked"), names(dd))[1]
-  if (!is.na(rt_col)) dd$rt <- as.numeric(dd[[rt_col]])
+if (!grepl("ddm_ready_data_unthresholded", data_path, fixed = TRUE)) {
+  log_msg("WARNING: Using legacy PPC data file; prefer data/ddm_ready_data_unthresholded.csv for refit alignment.")
 }
 
-# Derive decision column (1 = correct)
+dd_raw <- readr::read_csv(data_path, show_col_types = FALSE)
+use_probe_onset_rt <- grepl("probe_onset", basename(fit_path), fixed = TRUE) ||
+  grepl("ddm_ready_data_unthresholded", data_path, fixed = TRUE)
+dd <- prepare_ppc_data(dd_raw, threshold = PRIMARY_THR, use_probe_onset_rt = use_probe_onset_rt)
 
-if (!"decision" %in% names(dd)) {
-
-  if ("iscorr" %in% names(dd)) {
-
-    dd$decision <- as.integer(dd$iscorr)
-
-  } else if ("correct" %in% names(dd)) {
-
-    dd$decision <- as.integer(dd$correct)
-
-  } else if ("is_correct" %in% names(dd)) {
-
-    dd$decision <- as.integer(dd$is_correct)
-
-  } else if ("accuracy" %in% names(dd) || "acc" %in% names(dd)) {
-
-    col_name <- ifelse("accuracy" %in% names(dd), "accuracy", "acc")
-
-    dd$decision <- as.integer(dd[[col_name]])
-
-  } else {
-
-    stop("Missing 'decision' (or equivalent).")
-
-  }
-
-}
-
-
-
-# Map effort_condition to model's expected levels (low/high)
-# Run_dir additive model was fit with effort_condition = c("low", "high")
-dd$effort_condition <- as.character(dd$effort_condition)
-dd$effort_condition <- case_when(
-  grepl("low|5_mvc|0\\.05", tolower(dd$effort_condition)) ~ "low",
-  grepl("high|40_mvc|0\\.4", tolower(dd$effort_condition)) ~ "high",
-  TRUE ~ dd$effort_condition
-)
-dd$effort_condition <- factor(dd$effort_condition, levels = c("low", "high"))
-
-# difficulty_3: run_dir model uses this name (same as difficulty_level)
-diff_levels <- c("Standard", "Easy", "Hard")
-diff_present <- intersect(diff_levels, unique(na.omit(dd$difficulty_level)))
-dd$difficulty_level <- factor(dd$difficulty_level, levels = diff_present)
-dd$difficulty_3 <- dd$difficulty_level  # Model expects difficulty_3
-
-# choice_binary: model uses dec(choice_binary); bap_ddm_only_ready has resp_is_diff or choice_binary
-if (!"choice_binary" %in% names(dd)) {
-  if ("resp_is_diff" %in% names(dd)) dd$choice_binary <- as.integer(dd$resp_is_diff)
-  else if ("choice" %in% names(dd)) dd$choice_binary <- as.integer(dd$choice)
-  else dd$choice_binary <- as.integer(dd$decision)  # Fallback: decision (iscorr) may differ from boundary
-}
-
-dd <- dd %>%
-
-  filter(!is.na(rt), is.finite(rt), rt >= 0.2, rt <= 4) %>%
-
-  mutate(
-
-    subject_id = factor(subject_id),
-
-    task = factor(task),
-
-    choice_binary = as.integer(choice_binary),
-
-    decision = as.integer(decision)
-
-  )
-
-log_msg(sprintf("Data loaded. N=%d (after RT filter 0.2-4s). Effort: %s. Difficulty: %s", 
-                nrow(dd), paste(levels(dd$effort_condition), collapse = ", "), paste(levels(dd$difficulty_3), collapse = ", ")))
+log_msg(sprintf(
+  "Data loaded. N=%d after cue-locked RT >= %.2f s exclusion; model RT = %s [%.3f, %.3f] s.",
+  nrow(dd),
+  PRIMARY_THR,
+  if (use_probe_onset_rt) "probe-onset-locked" else "cue-locked",
+  min(dd$rt, na.rm = TRUE),
+  max(dd$rt, na.rm = TRUE)
+))
+log_msg(sprintf("Effort: %s. Difficulty: %s",
+                paste(levels(dd$effort_condition), collapse = ", "),
+                paste(levels(dd$difficulty_3), collapse = ", ")))
 
 
 
@@ -754,7 +817,9 @@ readr::write_csv(res_subj, file.path(PUBLISH_DIR, "table3_ppc_primary_subjectwis
 
 readr::write_csv(res_combined, file.path(PUBLISH_DIR, "table3_ppc_primary_diagnostic_combined.csv"))
 
-# Write subjectwise as _censored alias for appendix (ch03_appA expects table3_ppc_primary_subjectwise_censored.csv)
+# _censored aliases for chap3_ddm_results.qmd / appendix PPC tables
+readr::write_csv(res_cond, file.path(PUBLISH_DIR, "table3_ppc_primary_conditional_censored.csv"))
+readr::write_csv(res_uncond, file.path(PUBLISH_DIR, "table3_ppc_primary_unconditional_censored.csv"))
 readr::write_csv(res_subj, file.path(PUBLISH_DIR, "table3_ppc_primary_subjectwise_censored.csv"))
 
 # PPC gate summary (for appendix and extract_ppc_gates compatibility)

@@ -2,31 +2,29 @@
 # Produce wide and long tables for heatmap figure (KS and QP)
 # Feeds quick visuals and a 1-row gate
 
-source("R/_helpers_extract.R")
+helper_path <- if (file.exists("scripts/R/_helpers_extract.R")) {
+  "scripts/R/_helpers_extract.R"
+} else if (file.exists("R/_helpers_extract.R")) {
+  "R/_helpers_extract.R"
+} else {
+  stop("Cannot find _helpers_extract.R (run from project root or scripts/).")
+}
+source(helper_path)
 
 suppressPackageStartupMessages({
   library(dplyr)
   library(tidyr)
 })
 
-# Set working directory if needed
-if (basename(getwd()) == "R") {
-  setwd("..")
-}
-
 # Prefer unconditional if available, otherwise use main
-ppc <- safe_read_csv(PPC_UNCOND) %||% safe_read_csv(PPC_MAIN)
-
-# Check for alternative column names
-if (!all(c("ks_mean_max", "qp_rmse_max") %in% names(ppc))) {
-  # Try alternative names
-  if ("ks_mean" %in% names(ppc) && !"ks_mean_max" %in% names(ppc)) {
-    ppc$ks_mean_max <- ppc$ks_mean
-  }
-  if ("qp_rmse" %in% names(ppc) && !"qp_rmse_max" %in% names(ppc)) {
-    ppc$qp_rmse_max <- ppc$qp_rmse
-  }
+ppc <- if (file.exists(PPC_UNCOND)) {
+  safe_read_csv(PPC_UNCOND)
+} else if (file.exists(PPC_MAIN)) {
+  safe_read_csv(PPC_MAIN)
+} else {
+  stop("No PPC CSV found in ", PUBLISH_DIR)
 }
+ppc <- normalize_ppc_metric_cols(ppc)
 
 # Ensure required columns exist
 stopifnot(all(c("task", "effort_condition", "difficulty_level") %in% names(ppc)))
@@ -48,7 +46,7 @@ heat_long <- ppc |>
   ) |>
   pivot_longer(cols = c(KS, QP), names_to = "metric", values_to = "value")
 
-write_clean(heat_long, "output/publish/ppc_heatmap_long.csv")
+write_clean(heat_long, file.path(PUBLISH_DIR, "ppc_heatmap_long.csv"))
 cat("✓ Long format written.\n")
 
 # Wide format (for quick reference table)
@@ -61,7 +59,7 @@ heat_wide <- ppc |>
     qp_rmse_max = all_of(qp_col)
   )
 
-write_clean(heat_wide, "output/publish/ppc_heatmap_wide.csv")
+write_clean(heat_wide, file.path(PUBLISH_DIR, "ppc_heatmap_wide.csv"))
 cat("✓ Wide format written.\n")
 
 message("✓ PPC heatmap tables written.")
