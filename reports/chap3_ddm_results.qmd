@@ -1059,7 +1059,7 @@ if (file.exists(qa_inclusion_path) && file.exists(demo_path_ext)) {
 
 Participants were recruited from communities surrounding the University of California, Riverside, through multiple channels including direct mail, posted flyers, social media advertisements, and word-of-mouth referrals. Eligibility criteria required participants to be aged 60–90 years, possess normal or corrected-to-normal vision and hearing, demonstrate sufficient English language comprehension to follow experimental instructions, and exhibit right-hand dominance. Exclusion criteria comprised contraindications for magnetic resonance imaging (MRI), current use of psychotropic medications, clinically significant neurological disorders, and major systemic health conditions including diabetes mellitus. 
 
-Sixty-nine individuals initially enrolled in the study. Two participants were excluded following enrollment: one due to suspected mild cognitive impairment (MCI) and another due to possible essential tremor, yielding a final sample of `r methods_n_sample` older adults (age *M* = `r methods_age_mean` years, *SD* = `r methods_age_sd`, range = `r methods_age_range` years). Table 1 reports baseline demographics for the full sample. Three participants contributed data to only one task due to insufficient valid trial counts after applying the RT threshold and quality criteria (fewer than 100 analyzable trials in a given task), yielding task-specific analytic samples of *N* = 64 (Auditory) and *N* = 65 (Visual). Sample size was determined via a priori power analysis (G\*Power 3.1; [@faul2007g]). For a repeated-measures ANOVA with two within-subject conditions, medium effect size ($f = 0.25$), $\alpha = .05$, and power = .80, a minimum of 34 participants was required. The achieved sample of $N = 67$ exceeds this threshold by approximately 2$\times$ and is consistent with published hierarchical DDM studies reliably detecting group-level condition effects with $N = 30$–$60$ [@ratcliff2004aging; @wiecki2013hddm]. Twelve participants performed at or near chance level ($\leq$ 55% accuracy, compared to the 50% two-alternative forced-choice chance baseline) in some experimental conditions but were retained in analyses to maximize sample size, as hierarchical modeling approaches borrow statistical strength across participants to stabilize individual-level parameter estimates.
+Sixty-nine individuals initially enrolled in the study. Two participants were excluded following enrollment: one due to suspected mild cognitive impairment (MCI) and another due to possible essential tremor, yielding a final sample of `r methods_n_sample` older adults (age *M* = `r methods_age_mean` years, *SD* = `r methods_age_sd`, range = `r methods_age_range` years). Table 1 reports baseline demographics for the full sample; the extended neuropsychological battery and additional baseline descriptives are provided in Appendix A9. Three participants contributed data to only one task due to insufficient valid trial counts after applying the RT threshold and quality criteria (fewer than 100 analyzable trials in a given task), yielding task-specific analytic samples of *N* = 64 (Auditory) and *N* = 65 (Visual). Sample size was determined via a priori power analysis (G\*Power 3.1; [@faul2007g]). For a repeated-measures ANOVA with two within-subject conditions, medium effect size ($f = 0.25$), $\alpha = .05$, and power = .80, a minimum of 34 participants was required. The achieved sample of $N = 67$ exceeds this threshold by approximately 2$\times$ and is consistent with published hierarchical DDM studies reliably detecting group-level condition effects with $N = 30$–$60$ [@ratcliff2004aging; @wiecki2013hddm]. Twelve participants performed at or near chance level ($\leq$ 55% accuracy, compared to the 50% two-alternative forced-choice chance baseline) in some experimental conditions but were retained in analyses to maximize sample size, as hierarchical modeling approaches borrow statistical strength across participants to stabilize individual-level parameter estimates.
 
 All participants provided written informed consent and received either course credit or monetary compensation for their participation. Study procedures were approved by the Institutional Review Board of the University of California, Riverside, and all experimental procedures were conducted in accordance with approved guidelines and regulations.
 
@@ -1382,7 +1382,7 @@ trial_exclusions_summary %>%
 
 ## Statistical Analysis Overview {#sec-stats-overview}
 
-Analyses proceeded in three stages. First, **manipulation checks** confirmed that difficulty and effort affected behavioral performance (accuracy and RT) as intended, using generalized linear mixed-effects models (GLMM, binomial family) for accuracy and linear mixed-effects models (LMM) for median RT, each with fixed effects for Difficulty, Effort, and Task and random intercepts for participant; these results are reported in Appendix A7. Second, the **primary DDM analysis** used a hierarchical Bayesian Wiener diffusion model fit via `brms` [@burkner2017brms] in R [@R], with model comparison via Pareto-smoothed importance sampling LOO cross-validation (PSIS-LOO; [@vehtari2017loo]); full model specification is described in @sec-ddm-spec. Third, **pupil-linked DDM extensions** tested whether trial-wise task-evoked pupil responses (TEPR) modulated drift rate or response bias, using a nested sequence of pupil-augmented models compared via PSIS-LOO (@sec-pupil-ddm-models). Sensitivity analyses across RT cutoff thresholds are reported in Appendix A4.2.
+Analyses proceeded in three stages. First, **manipulation checks** confirmed that difficulty and effort affected behavioral performance (accuracy and RT) as intended, using generalized linear mixed-effects models (GLMM, binomial family) for accuracy and linear mixed-effects models (LMM) for median RT, each with fixed effects for Difficulty, Effort, and Task and random intercepts for participant; these results are reported in Appendix A7. Second, the **primary DDM analysis** used a hierarchical Bayesian Wiener diffusion model fit via `brms` [@burkner2017brms] in R [@R], with model comparison via Pareto-smoothed importance sampling LOO cross-validation (PSIS-LOO; [@vehtari2017loo]); full model specification is described in @sec-ddm-spec. Third, **pupil-linked DDM extensions** tested whether trial-wise task-evoked pupil responses (TEPR) modulated drift rate or response bias, using a nested sequence of pupil-augmented models compared via PSIS-LOO (@sec-pupil-ddm-models). Sensitivity analyses across RT cutoff thresholds are reported in Appendix A4.2. **Exploratory individual-differences analyses** examined whether LC structural MRI metrics (Appendix A8; [@bennett2024lc]) and neuropsychological test scores (Appendix A9) related to DDM parameters or behavioral effort costs; these analyses were not used for model selection or primary hypothesis testing.
 
 ## Pupillometry Preprocessing and AUC Features {#sec-pupil-preprocessing}
 
@@ -4589,10 +4589,12 @@ Fourth, Hard-trial accuracy fell near or below chance for many participants (App
 
 Fifth, the concurrent isometric handgrip manipulation (40% MVC) may interact with motor execution in ways not fully captured by small fixed effects on $t_0$; future work integrating EMG or kinematic measures could disentangle central resource competition from peripheral motor interference. Linear Ballistic Accumulator or race models may also better accommodate the fast-tail RT dynamics observed in Easy-difficulty conditions, and future work could explore whether these model families yield the same substantive pattern of effort and difficulty effects on decision parameters.
 
+Sixth, exploratory LC-MRI and neuropsychological correlates (Appendices A8 and A9) were underpowered for individual-differences moderation and did not enter the primary inferential framework; they are reported as descriptive context for sample characterization and do not alter the group-level DDM conclusions below.
+
 
 ## Conclusions
 
-This chapter provides mechanistic evidence that the clearest supported locus of effort-induced interference in older adults is the quality of perceptual evidence accumulation. The DDM decomposition localizes the primary 40% MVC handgrip cost to drift rate $v$ — the signal-to-noise ratio of evidence integration — with a credible interval excluding zero. The evidence hierarchy is as follows. First and strongest: drift rate was reliably reduced under High effort (small but directionally certain). Second: boundary separation showed a small credible increase under High effort, whereas starting-point bias did not shift credibly — inconsistent with large strategic reconfiguration but compatible with modest caution adjustment alongside degraded evidence quality. Third and most uncertain: non-decision time could not be tested in the primary model due to the response-signal design constraint, and the exploratory estimate was too imprecise to support conclusions in either direction; pupil-linked mechanisms remain inconclusive: LOO showed no predictive benefit from pupil predictors on the pupil-available subset, and TEPR measurement likely conflates cognitive and motor-autonomic signals under sustained grip. These findings set the stage for Chapter 4, which directly tests whether locus coeruleus–norepinephrine (LC-NE) integrity — quantified via neuromelanin-sensitive MRI — moderates the effort-induced drift rate reduction observed here, and whether individuals with higher LC integrity are buffered against the perceptual costs of high physical demand.
+This chapter provides mechanistic evidence that the clearest supported locus of effort-induced interference in older adults is the quality of perceptual evidence accumulation. The DDM decomposition localizes the primary 40% MVC handgrip cost to drift rate $v$ — the signal-to-noise ratio of evidence integration — with a credible interval excluding zero. The evidence hierarchy is as follows. First and strongest: drift rate was reliably reduced under High effort (small but directionally certain). Second: boundary separation showed a small credible increase under High effort, whereas starting-point bias did not shift credibly — inconsistent with large strategic reconfiguration but compatible with modest caution adjustment alongside degraded evidence quality. Third and most uncertain: non-decision time could not be tested in the primary model due to the response-signal design constraint, and the exploratory estimate was too imprecise to support conclusions in either direction; pupil-linked mechanisms remain inconclusive: LOO showed no predictive benefit from pupil predictors on the pupil-available subset, and TEPR measurement likely conflates cognitive and motor-autonomic signals under sustained grip. Exploratory LC-MRI analyses in an overlapping subset of this cohort (Appendix A8; [@bennett2024lc]) indicated that LC microstructure was more closely related to behavioral *consistency* and baseline boundary settings than to mean perceptual sensitivity, trial-wise TEPR, or the group-level effort effect on drift — leaving the primary DDM inferences unchanged.
 
 # Reproducibility Note {.unnumbered .unlisted}
 
@@ -7307,6 +7309,227 @@ if (file.exists(rt_data_file)) {
   save_manuscript_fig(p_rt_dist, "fig_rt_distributions", 7, 5)
 } else {
   invisible(NULL)
+}
+```
+
+## A8. Exploratory LC Structural Correlates {#sec-appendix-a8 .unnumbered}
+
+```{r}
+#| label: lc-a8-setup
+#| include: false
+lc_stats_path <- file.path(proj_root, "output/lc_integrity/lc_supplement_inline_stats.rds")
+lc_tbl_path <- file.path(proj_root, "output/lc_integrity/lc_supplement_summary_table.csv")
+if (!file.exists(lc_stats_path)) {
+  source(file.path(proj_root, "scripts/lc_integrity_supplement_analysis.R"), local = TRUE)
+}
+lc_stats <- if (file.exists(lc_stats_path)) readRDS(lc_stats_path) else list()
+lc_n_merged <- lc_stats$n_merged %||% "—"
+lc_n_complete <- lc_stats$n_lc %||% "—"
+lc_fiso_dprimevar_r <- if (!is.null(lc_stats$fiso_dprimevar_r)) sprintf("%.2f", lc_stats$fiso_dprimevar_r) else "—"
+lc_fiso_dprimevar_p <- if (!is.null(lc_stats$fiso_dprimevar_p)) sprintf("%.3f", lc_stats$fiso_dprimevar_p) else "—"
+lc_fiso_dprimevar_n <- lc_stats$fiso_dprimevar_n %||% "—"
+lc_fiso_dprime_mean_p <- if (!is.null(lc_stats$fiso_dprime_mean_p)) sprintf("%.2f", lc_stats$fiso_dprime_mean_p) else "—"
+lc_fiso_a_r <- if (!is.null(lc_stats$fiso_a_r)) sprintf("%.2f", lc_stats$fiso_a_r) else "—"
+lc_fiso_a_p <- if (!is.null(lc_stats$fiso_a_p)) sprintf("%.3f", lc_stats$fiso_a_p) else "—"
+lc_fiso_v_p <- if (!is.null(lc_stats$fiso_v_p)) sprintf("%.2f", lc_stats$fiso_v_p) else "—"
+lc_fiso_tepr_p <- if (!is.null(lc_stats$fiso_tepr_p)) sprintf("%.2f", lc_stats$fiso_tepr_p) else "—"
+lc_cnr_tepr_p <- if (!is.null(lc_stats$cnr_tepr_p)) sprintf("%.2f", lc_stats$cnr_tepr_p) else "—"
+```
+
+LC MRI metrics were acquired in a subset of participants using the magnetization-transfer and NODDI pipeline described in [@bennett2024lc]. That published sample overlaps with the present BAP cohort (expanded here with additional dual-task sessions). These analyses are **exploratory**: they do not enter primary hypothesis tests, model selection, or LOO comparisons.
+
+**Sample.** Of `r lc_n_merged` participants with both LC metrics and primary-model DDM random effects, `r lc_n_complete` had complete NODDI diffusion metrics. The LC-MRI subset did not differ from participants without LC scans on mean accuracy, RT, effort cost, or age (all *p* > .19).
+
+**Metrics.** We examined LC contrast (CNR~max~), NODDI free-water (fISO) and restricted (fICVF) fractions, and multivariate composites (Composite~v2~, PC1~v2~). Behavioral outcomes included cross-intensity d′ variability (SD across the four stimulus levels), mean d′, absolute RT effort cost (|RT~High~ − RT~Low~|), subject-level baseline DDM parameters (*v*, *a*, *z* from primary-model random intercepts), and mean TEPR. Associations were partial correlations controlling for age and sex.
+
+**Variability, not mean performance.** Higher LC fISO predicted greater cross-intensity d′ variability (partial *r* = `r lc_fiso_dprimevar_r`, *p* = `r lc_fiso_dprimevar_p`, *n* = `r lc_fiso_dprimevar_n`) but not mean d′ (*p* = `r lc_fiso_dprime_mean_p`). This pattern parallels [@bennett2024lc], who reported that LC restricted diffusion related to recall *variability* rather than mean recall in an overlapping older-adult sample — here expressed in perceptual sensitivity consistency during concurrent grip.
+
+**DDM and pupil.** LC fISO was associated with lower baseline boundary separation (*a*; partial *r* = `r lc_fiso_a_r`, *p* = `r lc_fiso_a_p`) but not with baseline drift (*p* = `r lc_fiso_v_p`), bias (*z*; *p* > .80), or mean TEPR (*p* = `r lc_fiso_tepr_p`; LC CNR~max~ vs. TEPR: *p* = `r lc_cnr_tepr_p`). Thus LC structure did not credibly track trial-wise phasic pupil responses or the latent drift-rate individual differences that carry the primary effort effect.
+
+@tbl-lc-exploratory-correlations summarizes the targeted associations. @fig-lc-fiso-dprime-variability shows the headline variability result; @fig-lc-fiso-four-panel contrasts variability, mean performance, baseline *a*, and TEPR as a function of LC fISO.
+
+These exploratory findings do **not** alter the primary inference that High effort reduces drift rate at the group level. They suggest that LC microstructure — particularly free-water diffusion — may relate to between-person consistency in perceptual sensitivity and baseline decision thresholds in dual-task older adults.
+
+```{r}
+#| label: tbl-lc-exploratory-correlations
+#| tbl-cap: "Exploratory partial correlations between LC metrics and behavioral/DDM outcomes (age and sex partialled)."
+#| tbl-pos: "htbp"
+#| echo: false
+if (file.exists(lc_tbl_path)) {
+  lc_supp_tbl <- read_csv(lc_tbl_path, show_col_types = FALSE) %>%
+    mutate(
+      `Partial r` = r,
+      `p` = as.character(p),
+      `FDR q` = as.character(fdr),
+      Predictor = case_when(
+        predictor == "LC_fISO" ~ "LC fISO (free water)",
+        predictor == "LC_CNR_max" ~ "LC CNR (max)",
+        TRUE ~ predictor
+      ),
+      Outcome = case_when(
+        outcome == "dprime_variability" ~ "d′ variability",
+        outcome == "dprime_mean" ~ "Mean d′",
+        outcome == "v_mean" ~ "Baseline drift (v)",
+        outcome == "a_mean" ~ "Baseline boundary (a)",
+        outcome == "z_mean" ~ "Baseline bias (z)",
+        outcome == "tepr_mean" ~ "Mean TEPR",
+        outcome == "rt_diff_abs" ~ "|RT cost| (High − Low)",
+        TRUE ~ outcome
+      )
+    ) %>%
+    select(Predictor, Outcome, `Partial r`, `p`, `FDR q`, n)
+
+  lc_supp_tbl %>%
+    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+                 booktabs = TRUE, linesep = "") %>%
+    kableExtra::kable_styling(
+      latex_options = c("striped", "hold_position"),
+      bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+      full_width = FALSE
+    )
+} else {
+  knitr::kable(data.frame(Note = "Run scripts/lc_integrity_supplement_analysis.R to generate table."))
+}
+```
+
+```{r}
+#| label: fig-lc-fiso-dprime-variability
+#| fig-cap: "Exploratory association between LC free-water fraction (fISO) and cross-intensity d′ variability, controlling for age and sex. Higher fISO predicted greater sensitivity variability across stimulus levels but not mean d′ (see Appendix A8)."
+#| fig-align: center
+#| out-width: "72%"
+#| echo: false
+if (file.exists(file.path(proj_root, "output/figures/fig_lc_fiso_dprime_variability.pdf"))) {
+  include_graphics_safe(fig_path("fig_lc_fiso_dprime_variability.pdf"))
+} else {
+  plot.new()
+  text(0.5, 0.5, "Run scripts/lc_integrity_supplement_analysis.R")
+}
+```
+
+```{r}
+#| label: fig-lc-fiso-four-panel
+#| fig-cap: "LC fISO in relation to behavioral variability, mean d′, baseline DDM boundary separation (a), and mean TEPR. Partial correlations control for age and sex. Only variability and baseline a showed associations at p < .05."
+#| fig-align: center
+#| out-width: "92%"
+#| echo: false
+if (file.exists(file.path(proj_root, "output/figures/fig_lc_fiso_four_panel.pdf"))) {
+  include_graphics_safe(fig_path("fig_lc_fiso_four_panel.pdf"))
+} else {
+  plot.new()
+  text(0.5, 0.5, "Run scripts/lc_integrity_supplement_analysis.R")
+}
+```
+
+## A9. Extended Baseline Characteristics and Neuropsychological Profile {#sec-appendix-a9 .unnumbered}
+
+```{r}
+#| label: np-a9-setup
+#| include: false
+np_stats_path <- file.path(proj_root, "output/neuropsych_demographics/neuropsych_supplement_inline_stats.rds")
+np_cont_path <- file.path(proj_root, "output/neuropsych_demographics/extended_baseline_continuous.csv")
+np_cat_path <- file.path(proj_root, "output/neuropsych_demographics/extended_baseline_categorical.csv")
+np_cor_path <- file.path(proj_root, "output/neuropsych_demographics/neuropsych_ddm_summary_correlations.csv")
+if (!file.exists(np_stats_path)) {
+  source(file.path(proj_root, "scripts/neuropsych_demographics_supplement.R"), local = TRUE)
+}
+np_stats <- if (file.exists(np_stats_path)) readRDS(np_stats_path) else list()
+np_n_ddm <- np_stats$n_ddm %||% "—"
+np_moca_n <- np_stats$moca_n %||% "—"
+np_moca_mean <- np_stats$moca_mean %||% "—"
+np_moca_v_p <- if (!is.null(np_stats$moca_v_p)) sprintf("%.2f", np_stats$moca_v_p) else "—"
+np_moca_rt_p <- if (!is.null(np_stats$moca_rtcost_p)) sprintf("%.2f", np_stats$moca_rtcost_p) else "—"
+np_gds_var_r <- if (!is.null(np_stats$gds_dprimevar_r)) sprintf("%.2f", np_stats$gds_dprimevar_r) else "—"
+np_gds_var_p <- if (!is.null(np_stats$gds_dprimevar_p)) sprintf("%.3f", np_stats$gds_dprimevar_p) else "—"
+```
+
+Table 1 in the main text summarizes core demographics. Appendix A9 reports the **extended baseline profile** for the DDM analytic sample (*N* = `r np_n_ddm`), including the neuropsychological battery administered as part of the broader LC Aging study protocol.
+
+**Sample composition.** Participants were older adults with high educational attainment and intact global cognition. Telephone MoCA scores (`r np_moca_mean`; *n* = `r np_moca_n`) were above the study exclusion threshold (< 17). All DDM participants were right-handed; 34 (50.7%) were female and 49 (73.1%) identified as White (see @tbl-extended-baseline-categorical).
+
+**Neuropsychological battery.** @tbl-extended-baseline reports continuous descriptives for executive function (Trail Making Test), language (Boston Naming, SILS), and self-report affect/memory measures (GDS, GAD-7, EMQ). Performance was generally within expected ranges for healthy older adults (e.g., Boston Naming *M* = 20.6/23; SILS *M* = 33.0/40), with low affective symptom burden (GDS *M* = 1.7/15).
+
+**Exploratory associations with DDM.** Partial correlations (age and sex partialled) did not link global cognition (MoCA) to baseline drift (*v*; *p* = `r np_moca_v_p`), RT effort cost (*p* = `r np_moca_rt_p`), or other primary DDM contrasts (@tbl-neuropsych-ddm-exploratory). This confirms that gross cognitive impairment does not account for the group-level effort → drift effect. Exploratory associations (*p* < .05, none FDR *q* < .05) included higher SILS scores with better accuracy and faster RT, and lower GDS with more stable cross-intensity d′ (partial *r* = `r np_gds_var_r`, *p* = `r np_gds_var_p`). These are secondary individual-differences context and do not alter primary inferences.
+
+```{r}
+#| label: tbl-extended-baseline-categorical
+#| tbl-cap: "Extended baseline characteristics: categorical demographics (DDM analytic sample)."
+#| tbl-pos: "htbp"
+#| echo: false
+if (file.exists(np_cat_path)) {
+  read_csv(np_cat_path, show_col_types = FALSE) %>%
+    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+                 booktabs = TRUE, col.names = c("Characteristic", "Value"), linesep = "") %>%
+    kableExtra::kable_styling(
+      latex_options = c("striped", "hold_position"),
+      bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+      full_width = FALSE
+    )
+} else {
+  knitr::kable(data.frame(Note = "Run scripts/neuropsych_demographics_supplement.R"))
+}
+```
+
+```{r}
+#| label: tbl-extended-baseline
+#| tbl-cap: "Extended baseline characteristics: neuropsychological and demographic continuous measures (DDM analytic sample)."
+#| tbl-pos: "htbp"
+#| echo: false
+if (file.exists(np_cont_path)) {
+  read_csv(np_cont_path, show_col_types = FALSE) %>%
+    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+                 booktabs = TRUE,
+                 col.names = c("Measure", "M (SD)", "Range", "n"),
+                 linesep = "") %>%
+    kableExtra::kable_styling(
+      latex_options = c("striped", "hold_position"),
+      bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+      full_width = FALSE
+    )
+} else {
+  knitr::kable(data.frame(Note = "Run scripts/neuropsych_demographics_supplement.R"))
+}
+```
+
+```{r}
+#| label: tbl-neuropsych-ddm-exploratory
+#| tbl-cap: "Exploratory partial correlations between neuropsychological measures and DDM/behavioral outcomes (age and sex partialled). MoCA null effects and selected p < .05 associations shown; none survived FDR correction at q < .05."
+#| tbl-pos: "htbp"
+#| echo: false
+if (file.exists(np_cor_path)) {
+  read_csv(np_cor_path, show_col_types = FALSE) %>%
+    mutate(
+      Predictor = case_when(
+        predictor == "moca" ~ "MoCA",
+        predictor == "sils" ~ "SILS",
+        predictor == "gds" ~ "GDS",
+        predictor == "edu" ~ "Education (years)",
+        TRUE ~ predictor
+      ),
+      Outcome = case_when(
+        outcome == "v_mean" ~ "Baseline drift (v)",
+        outcome == "z_mean" ~ "Baseline bias (z)",
+        outcome == "accuracy" ~ "Mean accuracy",
+        outcome == "rt_mean" ~ "Mean RT",
+        outcome == "accuracy_diff_abs" ~ "|Accuracy cost|",
+        outcome == "rt_diff_abs" ~ "|RT cost|",
+        outcome == "dprime_var" ~ "d′ variability",
+        TRUE ~ outcome
+      ),
+      `Partial r` = r,
+      `p` = as.character(p),
+      `FDR q` = as.character(fdr),
+      n = n
+    ) %>%
+    select(Predictor, Outcome, `Partial r`, `p`, `FDR q`, n) %>%
+    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+                 booktabs = TRUE, linesep = "") %>%
+    kableExtra::kable_styling(
+      latex_options = c("striped", "hold_position"),
+      bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+      full_width = FALSE
+    )
+} else {
+  knitr::kable(data.frame(Note = "Run scripts/neuropsych_demographics_supplement.R"))
 }
 ```
 

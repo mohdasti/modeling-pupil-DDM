@@ -77,6 +77,7 @@ cat(strrep("=", 80), "\n\n")
 
 # (A) LC CSV file
 lc_paths <- c(
+  "data/raw/bap_beh_subjxtaskdata_v2.csv",
   "data/LC_Grant_Updated_LC_values.2026.csv",
   "LC_Grant_Updated_LC_values.2026.csv",
   file.path(getwd(), "data", "LC_Grant_Updated_LC_values.2026.csv"),
