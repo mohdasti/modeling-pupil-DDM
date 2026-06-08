@@ -1,687 +1,271 @@
-# Modeling Pupil-DDM: Computational Modeling of Pupillometry and Decision-Making
+# modeling-pupil-DDM
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![DOI](https://zenodo.org/badge/1065131176.svg)](https://doi.org/10.5281/zenodo.18205122)
 [![R](https://img.shields.io/badge/R-4.0+-blue.svg)](https://www.r-project.org/)
-[![Python](https://img.shields.io/badge/Python-3.8+-green.svg)](https://www.python.org/)
-[![MATLAB](https://img.shields.io/badge/MATLAB-R2020a+-orange.svg)](https://www.mathworks.com/products/matlab.html)
-[![Quarto](https://img.shields.io/badge/Quarto-1.7.33-0F4C75?logo=quarto&logoColor=white)](https://quarto.org/)
+[![Quarto](https://img.shields.io/badge/Quarto-1.7+-0F4C75?logo=quarto&logoColor=white)](https://quarto.org/)
+[![Release](https://img.shields.io/github/v/release/mohdasti/modeling-pupil-DDM?include_prereleases&label=Pre-publication)](https://github.com/mohdasti/modeling-pupil-DDM/releases/tag/Pre-publication)
 
-A comprehensive computational modeling pipeline integrating pupillometry, behavioral data, and drift diffusion models (DDM) to understand the relationship between brain arousal and decision-making processes.
+Hierarchical Bayesian drift-diffusion modeling (DDM) with concurrent pupillometry in older adults performing auditory/visual change-detection under low vs. high isometric handgrip (5% vs. 40% MVC). This repo holds the **Chapter 3 analysis pipeline**, manuscript source, and figure scripts for the BAP effort–arousal–decision project.
 
-## 🧠 Overview
-
-This repository showcases advanced computational modeling techniques for analyzing the relationship between pupillometry (a proxy for brain arousal) and decision-making processes using drift diffusion models. The pipeline demonstrates expertise in:
-
-- **Multi-language Programming**: R, Python, and MATLAB integration
-- **Hierarchical Bayesian Modeling**: Advanced statistical modeling with brms and Stan
-- **Computational Neuroscience**: Drift diffusion models and decision-making theory
-- **Data Science**: Comprehensive data preprocessing, quality control, and visualization
-- **Reproducible Research**: Automated pipelines with comprehensive logging and documentation
-
-## 🚀 Key Features
-
-### Computational Modeling
-- **Hierarchical Drift Diffusion Models**: Subject-level and trial-level parameter estimation
-- **Bayesian Inference**: Stan-based modeling with brms for robust parameter estimation
-- **Model Comparison**: AIC/BIC-based model selection and multiverse analysis
-- **Robustness Checks**: VIF analysis, outlier detection, and sensitivity analysis
-
-### Data Analysis Pipeline
-- **Pupillometry Processing**: Event-related pupil response extraction and feature engineering
-- **Behavioral Modeling**: Mixed-effects models for reaction time and accuracy
-- **Statistical Analysis**: Mediation analysis, individual differences, and correlation analysis
-- **Quality Control**: Comprehensive data validation and preprocessing
-
-### Advanced Programming
-- **Automated Workflows**: End-to-end analysis pipelines with error handling
-- **Multi-language Integration**: Seamless R-Python-MATLAB workflow
-- **Cloud Deployment**: Google Cloud Platform integration for scalable computing
-- **Reproducibility**: Version control, comprehensive logging, and documentation
-
-## ℹ️ About
-
-This repository mirrors a working 7-step pipeline (01–07) from the BAP_DDM project into a clean, public-friendly structure. It provides:
-- A standardized seven-stage directory layout
-- Wrapper scripts inside stage folders that call core logic under `scripts/`
-- A centralized manuscript color system (`R/colors_manuscript.R`) used by all figure scripts and the Chapter 3 Quarto report
-- Five consolidated main figures (`06_visualization/publication_figures/fig1`–`fig5`) written to `output/figures/manuscript/` and embedded in `reports/chap3_ddm_results.qmd`
-- Versioned supplementary figure snapshots in `output/figures/manuscript_palette/` (PNG + PDF, tracked in git)
-- Selected, non-sensitive outputs (tables, summaries) for demonstration
-
-Raw data are not included. Use the wrapper scripts (under `02_` and `03_`) or call the core runners in `scripts/` directly.
-
-## 📁 Repository Structure
-
-```
-modeling-pupil-DDM/
-├── README.md                           # This file
-├── requirements.txt                    # Python dependencies
-├── environment.yml                     # Conda environment
-├── .gitignore                          # Git ignore rules
-├── LICENSE                             # GPL-3.0 License
-│
-├── 01_data_preprocessing/              # Data cleaning and preparation
-│   ├── matlab/                         # MATLAB preprocessing scripts
-│   ├── python/                         # Python data analysis scripts
-│   └── r/                              # R data processing scripts
-│
-├── 02_pupillometry_analysis/           # Pupillometry-specific analysis
-│   ├── feature_extraction/             # Pupil feature extraction
-│   ├── quality_control/                # Data quality assessment
-│   └── visualization/                  # Pupillometry plots
-│
-├── 03_behavioral_analysis/             # Behavioral data analysis
-│   ├── reaction_time/                  # RT analysis and modeling
-│   ├── accuracy/                       # Accuracy analysis
-│   └── mixed_effects/                  # Mixed-effects models
-│
-├── 04_computational_modeling/          # DDM and computational models
-│   ├── drift_diffusion/                # DDM implementation
-│   ├── hierarchical_bayesian/          # Bayesian modeling
-│   └── model_comparison/               # Model selection and comparison
-│
-├── 05_statistical_analysis/            # Advanced statistical analysis
-│   ├── mediation/                      # Mediation analysis
-│   ├── individual_differences/         # Between-person analysis
-│   └── robustness/                     # Sensitivity and robustness checks
-│
-├── 06_visualization/                   # Data visualization
-│   ├── publication_figures/            # Five main multi-panel figures (fig1–fig5)
-│   │   ├── manuscript_paths.R          # Model/data paths for main figures
-│   │   ├── fig1_design_schematic.R     # Design + DDM architecture
-│   │   ├── fig2_central_result.R       # Effort effect on drift (central claim)
-│   │   ├── fig3_parameter_forest.R     # Effort + difficulty contrast forests
-│   │   ├── fig4_temporal_dynamics.R    # Fatigue + choice history
-│   │   └── fig5_individual_differences.R
-│   ├── interactive_plots/              # Interactive visualizations
-│   └── summary_plots/                  # Analysis summary plots
-│
-├── 07_manuscript/                      # Manuscript preparation
-│   ├── main_text/                      # Main manuscript content
-│   ├── supplementary/                  # Supplementary materials
-│   └── tables/                         # Analysis tables
-│
-├── R/                                  # Shared R utilities (sourced by scripts & QMD)
-│   ├── colors_manuscript.R             # Manuscript color palette (single source of truth)
-│   ├── fig_save_utils.R                # save_manuscript_fig() helper
-│   ├── label_cleaning.R                # Factor/label normalization
-│   └── utils/                          # I/O and logging helpers
-│
-├── config/                             # Configuration files
-│   ├── paths_config.R.example          # R path configuration template
-│   ├── paths_config.m.example          # MATLAB path configuration template
-│   ├── pipeline_config.R               # Pipeline settings
-│   └── model_config.yaml               # Model parameters
-│
-├── scripts/                            # Core analysis scripts
-│   ├── render_manuscript_figures.R     # Batch-regenerate all manuscript figures
-│   ├── R/                              # R analysis & figure scripts (consolidated)
-│   │   ├── fig_*.R                     # Manuscript figures (CAF, PPC, QP, bias, etc.)
-│   │   ├── audit_design_coding.R       # Design-coding audit script
-│   │   ├── extract_*.R                 # Extraction scripts for QA, manipulation checks, LOO, PPC
-│   │   ├── run_extract_all.R           # Master runner for all extraction scripts
-│   │   ├── render_chap3_report.R       # Render reports/chap3_ddm_results.qmd
-│   │   └── [other R scripts]           # Model fitting, PPC export, validation
-│   ├── plot_decision_landscape.R       # 3D decision landscape figure
-│   ├── plot_pupil_waveforms_bap_reference_style.R
-│   ├── core/                           # Main model/analysis runners
-│   ├── 01_data_processing/             # Data processing & QC
-│   ├── 02_statistical_analysis/       # Statistical modeling
-│   │   ├── 06_pupil_ddm_integration.R  # Pupil-DDM correlation analysis (posterior draws)
-│   │   └── 07_pupil_ddm_finalize.R     # Finalize pupil-DDM outputs for dissertation
-│   ├── advanced/                       # Advanced analyses
-│   ├── intermediary/                   # Development/test scripts
-│   ├── utilities/                      # Helpers (integration, extraction)
-│   └── publish_commit.sh               # Git workflow for publishing outputs
-│
-├── reports/                            # Comprehensive analysis reports
-│   └── chap3_ddm_results.qmd           # DDM chapter report (Quarto; sources R/colors_manuscript.R)
-│
-├── tests/                              # Unit tests
-│   ├── test_data_processing.py         # Data processing tests
-│   ├── test_models.R                   # Model fitting tests
-│   └── test_visualization.py           # Visualization tests
-│
-├── output/                             # Analysis outputs (mostly gitignored)
-│   ├── figures/
-│   │   ├── manuscript/                 # Five consolidated main figures (regenerated locally)
-│   │   └── manuscript_palette/         # Supplementary figures (PNG + PDF; tracked in git)
-│   └── publish/                        # Published tables & audit artifacts
-│       └── audit/                      # Audit results (CSV, TXT, MD)
-│
-├── logs/                               # Log files and status reports
-│   └── [*.log, *.csv]                  # Pipeline logs and status files
-│
-├── data/                               # Data directories (large files gitignored)
-│   ├── analysis_ready/                 # Trial-level analysis-ready datasets
-│   ├── derived/                        # Derived datasets
-│   ├── intermediate/                   # Intermediate processing files
-│   ├── qc/                             # Quality control outputs
-│   └── pupil_processed/                # Processed pupil data
-│       ├── analysis/                   # Analysis-ready datasets
-│       ├── analysis_ready/             # Chapter-specific trial-level data
-│       ├── merged/                     # Full merged datasets
-│       └── qc/                         # Quality control reports
-│
-├── quick_share_archive/                 # Archived quick_share versions (v2-v6)
-│   └── [quick_share_v2 through v6]     # Historical versions
-│
-└── docs/                               # Documentation
-    ├── development_notes/              # Development documentation and audit reports
-    ├── pipeline_README.md              # Pipeline documentation
-    ├── model_documentation.md          # DDM implementation details
-    ├── api_reference.md                # Function documentation
-    └── DDM_CHAPTER_INTEGRATION.md     # DDM chapter integration guide
-```
-
-## 🛠️ Installation
-
-### Prerequisites
-
-- **R** (≥ 4.0.0) with required packages
-- **Python** (≥ 3.8) with scientific computing libraries
-- **MATLAB** (≥ R2020a) for preprocessing
-- **Git** for version control
-
-### Quick Setup
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/mohdasti/modeling-pupil-DDM.git
-   cd modeling-pupil-DDM
-   ```
-
-2. **Set up Python environment**:
-   ```bash
-   # Using conda (recommended)
-   conda env create -f environment.yml
-   conda activate modeling-pupil-ddm
-
-   # Or using pip
-   pip install -r requirements.txt
-   ```
-
-3. **Install R packages**:
-   ```r
-   # Run the R setup script
-   Rscript scripts/setup/install_r_packages.R
-   ```
-
-## 🚀 Quick Start
-
-### Repository Structure and Entry Points
-
-**Canonical Scripts Location**: All core analysis scripts are located in the `scripts/` directory. The numbered stage directories (`01_data_preprocessing/`, `02_pupillometry_analysis/`, etc.) contain thin wrappers that delegate to the canonical scripts.
-
-**Main Entry Points**:
-- **Core Analysis**: `scripts/core/run_analysis.R` - Main computational modeling pipeline
-- **Complete Workflow**: `scripts/comprehensive_bap_ddm_workflow.R` - Full analysis workflow
-- **Individual Components**: Access specific analyses via scripts in `scripts/` subdirectories
-
-### Run Complete Pipeline
-
-```bash
-# Via stage wrapper (recommended for stage-based workflow)
-Rscript 04_computational_modeling/run_pipeline.R
-
-# Direct access to core analysis (recommended for advanced users)
-Rscript scripts/core/run_analysis.R
-
-# Complete comprehensive workflow
-Rscript scripts/comprehensive_bap_ddm_workflow.R
-```
-
-### Run Individual Analyses
-
-```bash
-# MATLAB preprocessing (see MATLAB Setup below)
-# First configure paths in config/paths_config.m.example
-matlab -r "addpath('01_data_preprocessing/matlab'); BAP_Pupillometry_Pipeline(); exit;"
-
-# Python data preprocessing
-python 01_data_preprocessing/python/analyze_behavioral_data.py
-
-# Pupillometry analysis
-Rscript 02_pupillometry_analysis/feature_extraction/run_feature_extraction.R
-
-# Behavioral analysis
-Rscript 03_behavioral_analysis/reaction_time/run_rt_analysis.R
-
-# DDM modeling (canonical location)
-Rscript scripts/core/run_analysis.R
-
-# Statistical analysis
-Rscript scripts/02_statistical_analysis/02_ddm_analysis.R
-
-# Pupil-DDM integration analysis
-Rscript scripts/02_statistical_analysis/06_pupil_ddm_integration.R
-Rscript scripts/02_statistical_analysis/07_pupil_ddm_finalize.R
-
-# Generate manuscript figures (centralized palette + batch runner)
-Rscript scripts/render_manuscript_figures.R
-
-# Or run individual figure scripts (each sources R/colors_manuscript.R)
-Rscript scripts/R/fig_caf.R
-Rscript scripts/R/fig_ppc_heatmaps.R
-
-# Other analysis figures
-Rscript scripts/create_condition_effects_forest_plot.R
-Rscript scripts/create_rt_sanity_check_plot.R
-```
-
-### MATLAB Preprocessing Setup
-
-The MATLAB pipeline requires path configuration before first use:
-
-1. **Configure paths**:
-   ```bash
-   # Copy the example config file
-   cp config/paths_config.m.example config/paths_config.m
-   
-   # Edit config/paths_config.m and update paths for your system
-   # Or the pipeline will use relative paths from repo root
-   ```
-
-2. **Run the pipeline**:
-   ```matlab
-   % In MATLAB
-   cd('path/to/modeling-pupil-DDM')
-   addpath('01_data_preprocessing/matlab')
-   BAP_Pupillometry_Pipeline()
-   ```
-
-3. **Verify outputs**:
-   - Flat CSV files: `data/BAP_processed/build_*/[SUBJECT]_[TASK]_flat.csv`
-   - QC files: `data/BAP_processed/build_*/qc_matlab/`
-     - `qc_matlab_run_trial_counts.csv` - Run-level statistics
-     - `qc_matlab_falsification_by_run.csv` - Alignment metrics
-     - `qc_matlab_excluded_files.csv` - Excluded files log
-     - `falsification_validation_summary.md` - Validation report
-
-**Note**: The pipeline automatically:
-- Filters out OutsideScanner and practice runs
-- Only processes sessions 2-3 (InsideScanner tasks)
-- Tracks session inference when session number is missing
-- Validates alignment between event-codes and logP files
-- Generates comprehensive QC artifacts
-
-See `QUICK_START_MATLAB.md` for detailed instructions.
-
-### Quality Assurance & Auditing
-
-Before finalizing analyses, run the design-coding audit to verify data integrity:
-
-```bash
-# Run design-coding audit (verifies decision coding, RT floors, factor levels)
-Rscript scripts/R/audit_design_coding.R
-
-# Review outputs in output/publish/audit/
-# - audit_summary.md: Main audit summary
-# - decision_coding_check.csv: Accuracy verification per cell
-# - rt_floor_check_by_cell.csv: RT floor checks
-# - drift_model_matrix_cols.txt: Model matrix column names
-# - factor_contrasts.txt: Factor levels and contrasts
-```
-
-The audit script performs:
-- **Decision coding verification**: Compares decision column vs. empirical accuracy per task×effort×difficulty
-- **RT floor checks**: Detects double-flooring/clamping near 250 ms threshold
-- **Factor structure validation**: Confirms factor levels and contrasts match expectations
-- **Model matrix inspection**: Prints drift fixed-effect design columns for verification
-
-### Comprehensive DDM Chapter Report
-
-Generate the complete DDM chapter report (Step 7 of the pipeline):
-
-```bash
-# Generate complete report (extracts all tables and renders QMD)
-Rscript 07_manuscript/render_ddm_chapter.R
-
-# Or run extraction and rendering separately:
-Rscript scripts/R/run_extract_all.R              # Extract all tables to output/publish/
-Rscript scripts/R/render_chap3_report.R          # Render reports/chap3_ddm_results.qmd
-```
-
-**Outputs**:
-- `reports/chap3_ddm_results.html` - Interactive HTML report
-- `reports/chap3_ddm_results.docx` - Word document for manuscript
-- `output/publish/*.csv` - All extracted tables (QA, manipulation checks, LOO, PPC, contrasts)
-
-The QMD report integrates:
-- Design & data quality assurance
-- Manipulation checks (independent of DDM)
-- Model comparison (LOO-CV)
-- Fixed effects and posterior contrasts
-- Posterior predictive checks
-- Complete interpretation and limitations
-
-See `docs/DDM_CHAPTER_INTEGRATION.md` for detailed integration guide.
-
-### Manuscript Figures
-
-All Chapter 3 figures share a single color palette defined in `R/colors_manuscript.R` (condition, task, parameter, and model colors).
-
-The figure workflow has two tiers:
-
-| Tier | Scripts | Output | Used in QMD |
-|------|---------|--------|-------------|
-| **Main figures** (5 multi-panel) | `06_visualization/publication_figures/fig*.R` | `output/figures/manuscript/` | Embedded via `main_fig()` in `chap3_ddm_results.qmd` |
-| **Supplementary figures** | `scripts/R/fig_*.R`, batch runner | `output/figures/manuscript_palette/` | Appendix / inline via `fig_path()` |
-
-#### Main figures (consolidated)
-
-Regenerate the five main figures after model or palette changes. Each script sources `manuscript_paths.R` (model `.rds` paths and behavioral data) and writes PNG + PDF to `output/figures/manuscript/`.
-
-```bash
-# Run all five in order (requires fitted models on disk; see manuscript_paths.R)
-Rscript -e 'library(here); source(here("06_visualization/publication_figures/fig1_design_schematic.R"))'
-Rscript -e 'library(here); source(here("06_visualization/publication_figures/fig2_central_result.R"))'
-Rscript -e 'library(here); source(here("06_visualization/publication_figures/fig3_parameter_forest.R"))'
-Rscript -e 'library(here); source(here("06_visualization/publication_figures/fig4_temporal_dynamics.R"))'
-Rscript -e 'library(here); source(here("06_visualization/publication_figures/fig5_individual_differences.R"))'
-```
-
-| Script | Content |
-|--------|---------|
-| `fig1_design_schematic.R` | Trial timeline, DDM schematic, predictor map |
-| `fig2_central_result.R` | Drift/boundary by condition + H1/H2 effort posteriors |
-| `fig3_parameter_forest.R` | Effort contrast forest (H1/H2/H4) + difficulty contrasts |
-| `fig4_temporal_dynamics.R` | Fatigue boundary trajectories, coefficients, choice history |
-| `fig5_individual_differences.R` | Brinley plot, paired drift by effort, caterpillar plot |
-
-See `06_visualization/publication_figures/README.md` for path placeholders and constraints.
-
-#### Supplementary figures (batch runner)
-
-Supplementary and appendix figures save to `output/figures/manuscript_palette/` via `save_manuscript_fig()` in `R/fig_save_utils.R`.
-
-```bash
-# Regenerate the full supplementary figure set (~65 PNG/PDF files)
-Rscript scripts/render_manuscript_figures.R
-```
-
-**What the batch script runs**:
-- `scripts/R/fig_*.R` — standalone manuscript figures (DDM process, CAF, PPC heatmaps, QP, bias forest, etc.)
-- `scripts/plot_decision_landscape.R`, `scripts/plot_pupil_waveforms_bap_reference_style.R`
-- Inline-style figures mirrored from `reports/chap3_ddm_results.qmd` (parameter panels, TEPR, effort/difficulty contrasts, choice history, fatigue, Brinley, LOO, supplementary drift/boundary)
-- Static design assets copied into the palette folder (trial structure, DAG, matrix)
-
-**Outputs**: `output/figures/manuscript_palette/` (also mirrored to `output/figures/` for legacy paths). This folder is versioned in git so supplementary figure snapshots and their generating scripts stay in sync on GitHub. Main figures in `output/figures/manuscript/` are regenerated locally (gitignored) before rendering the QMD.
-
-**Quarto report**: `reports/chap3_ddm_results.qmd` embeds the five main figures from `output/figures/manuscript/` and supplementary figures from `manuscript_palette/`. Regenerate main figures first, then render:
-
-```bash
-quarto render reports/chap3_ddm_results.qmd
-```
-
-Some figures are still produced only during QMD render (e.g., pupil–drift interaction, additivity check, sensitivity LOOIC) and are saved into `manuscript_palette/`.
-
-**Per-script reference** (for LLM or human inspection):
-
-| Script | Figure(s) |
-|--------|-----------|
-| `scripts/R/fig_ddm_process.R` | DDM process schematic |
-| `scripts/R/fig_ndt_prior_posterior.R` | NDT prior vs posterior |
-| `scripts/R/fig_caf.R` | Conditional accuracy function |
-| `scripts/R/fig_ppc_heatmaps.R` | PPC heatmaps (all models + primary) |
-| `scripts/R/fig_qp.R` | Quantile-probability plot |
-| `scripts/R/fig_ppc_rt_overlay.R` | RT density PPC overlay |
-| `scripts/R/fig_bias_forest.R` | Bias forest plot |
-| `scripts/R/fig_v_standard_posterior.R` | Standard-trial drift posterior |
-| `scripts/R/fig_ppc_small_multiples.R` | PPC small multiples (best/median/worst cells) |
-| `scripts/R/fig_pdiff_heatmap.R` | Observed vs predicted p(different) |
-| `scripts/R/fig_fixed_effects.R` | Fixed effects (ADT, VDT) |
-| `scripts/plot_decision_landscape.R` | 3D decision landscape |
-| `scripts/plot_pupil_waveforms_bap_reference_style.R` | Pupil waveforms (BAP reference style) |
-| `scripts/render_manuscript_figures.R` | All of the above + inline QMD figures |
-
-### Publishing Workflow
-
-To commit and push analysis outputs for publication:
-
-```bash
-# Run publish script (stages R scripts and output/publish/ files)
-./scripts/publish_commit.sh
-
-# Or manually (tables + manuscript figure snapshot):
-git add scripts/R/*.R R/colors_manuscript.R R/fig_save_utils.R scripts/render_manuscript_figures.R
-git add output/publish/**/*.{csv,txt,md}
-git add output/figures/manuscript_palette/
-git commit -m "Your commit message"
-git push origin HEAD
-```
-
-**Note**: The `.gitignore` excludes heavy model files (`*.rds`, `output/models/`) and most of `output/`, but explicitly allows `output/figures/manuscript_palette/` (PNG/PDF) and published tables in `output/publish/`. Log files and temporary files are stored in `logs/` and development notes in `docs/development_notes/`.
-
-## 📂 Repository Organization
-
-The repository has been reorganized for better structure and maintainability:
-
-- **Flat Structure**: No nested directories - all content is at the root level
-- **Shared R Utilities**: Root `R/` holds cross-cutting helpers (`colors_manuscript.R`, `fig_save_utils.R`); analysis and figure scripts live in `scripts/R/`
-- **Manuscript Figures**: Main multi-panel figures (`06_visualization/publication_figures/`) plus supplementary batch runner (`scripts/render_manuscript_figures.R`); outputs in `output/figures/manuscript/` and `manuscript_palette/` respectively
-- **Organized Documentation**: Development notes and audit reports in `docs/development_notes/`
-- **Log Management**: All log files and status CSVs in `logs/` directory
-- **Data Organization**: Clear separation between `data/`, `output/`, and processed data in `data/pupil_processed/`
-- **Version Archive**: Old quick_share versions (v2-v6) archived in `quick_share_archive/`
-
-### Using the Makefile (Quick Targets)
-
-For convenient one-liner commands to run analysis stages, use the provided Makefile:
-
-```bash
-# Show available targets
-make help
-
-# Main pipeline targets
-make features   # Compute phasic/tonic pupil features
-make fit        # Run core DDM fits
-make compare    # LOO/AIC model comparisons
-make tonic      # Tonic→alpha models & plots
-make report     # Generate reports and manuscript tables
-
-# Run complete pipeline
-make all
-
-# Individual analysis targets
-make ppc        # Posterior predictive checks
-make attrition  # Compute attrition rates
-make lapse      # Lapse sensitivity check
-make power      # Power simulation
-make test       # Run model contract tests
-
-# Utility targets
-make validate   # Validate output files
-make clean      # Clean intermediate files
-make clean-all  # Remove all generated outputs
-```
-
-## 🔬 Key Methodological Contributions
-
-### Drift Diffusion Modeling
-- **Hierarchical Bayesian DDM**: Subject-level and trial-level parameter estimation using Stan
-- **Pupillometry Integration**: Linking arousal measures to decision parameters
-- **Robustness Checks**: Comprehensive sensitivity analysis and model validation
-
-### DDM–Pupil Mapping (Tested via LOO & PPC)
-**Drift rate (v)**: Negative correlations observed between tonic baseline and phasic task-evoked pupil responses with drift rate, consistent with supra-optimal arousal effects in older adults. Strongest effects observed for early phasic window (W1.3: target+0.3s → target+1.3s). [Murphy+2014; de Gee+2020]
-
-**Boundary separation (α/bs)**: Small positive correlation with phasic arousal (W3.0 window), directionally consistent with "hold your horses" account [Cavanagh+2014] but minimal in magnitude. Tested with tonic baseline (within-person linear + quadratic terms, plus between-person trait effects) to capture inverted-U relationships; models adjust response caution as a function of sustained arousal. [Mækelæ+2024]
-
-**Starting point (bias)**: Weak/ambiguous correlations with both tonic and phasic measures, not credibly different from zero. Previous work suggests bias suppression toward neutral on trials with larger evoked pupil [de Gee+2017/2020], but evidence in this sample is limited.
-
-**History controls**: Previous choice/outcome included so pupil effects are not confounded by sequential biases. [Urai+2019]
-
-**Analysis Method**: Subject-level posterior correlations computed draw-wise from hierarchical Bayesian DDM estimates, propagating uncertainty through both DDM parameters and pupil measures. Robustness checks include leave-one-out sensitivity, trial-count thresholds, and task-stratified analyses.
-
-### Statistical Approaches
-- **Mixed-Effects Models**: Accounting for individual differences with lme4 and brms
-- **Mediation Analysis**: Understanding causal pathways between arousal and behavior
-- **Multiverse Analysis**: Testing analysis robustness across different approaches
-
-### Data Processing
-- **Automated Pipeline**: End-to-end analysis automation with comprehensive logging
-- **Quality Control**: Comprehensive data validation and preprocessing
-- **Reproducibility**: Version control, documentation, and cloud deployment
-
-## 📊 Analysis Pipeline
-
-### 1. Data Preprocessing
-- **MATLAB**: Raw pupillometry data preprocessing and cleaning
-  - Configurable paths via `config/paths_config.m.example`
-  - Automatic contamination filtering (OutsideScanner, practice, session 1)
-  - Dual-mode segmentation (event-codes with logP fallback)
-  - Comprehensive QC outputs (falsification metrics, excluded files)
-- **Python**: Behavioral data analysis and quality control
-- **R**: Data merging and preparation for analysis
-
-### 2. Pupillometry Analysis
-- Event-related pupil response extraction
-- Tonic and phasic arousal feature computation
-- Data quality assessment and validation
-
-### 3. Behavioral Analysis
-- Reaction time distribution analysis
-- Accuracy modeling with mixed-effects models
-- Individual differences assessment
-
-### 4. Computational Modeling
-- Hierarchical drift diffusion models
-- Bayesian parameter estimation
-- Model comparison and selection
-- **Pupil-DDM Integration**: Subject-level correlations between pupillometry measures (tonic baseline, phasic task-evoked responses) and DDM parameters (drift rate, boundary separation, starting-point bias)
-  - Posterior correlation analysis with uncertainty propagation
-  - Robustness checks (leave-one-out, trial-count sensitivity, task-stratified)
-  - Publication-ready figures and tables
-
-### 5. Statistical Analysis
-- Mediation analysis
-- Between-person differences
-- Robustness and sensitivity checks
-
-### 6. Visualization
-- Centralized manuscript color system (`R/colors_manuscript.R`)
-- Five consolidated main figures in `06_visualization/publication_figures/` → `output/figures/manuscript/`
-- Supplementary per-figure scripts in `scripts/R/fig_*.R` plus batch runner `scripts/render_manuscript_figures.R` → `output/figures/manuscript_palette/`
-- Interactive plots and analysis summaries
-
-## 🧭 Seven-Step Pipeline (Directory → Primary Entry)
-
-1. 01_data_preprocessing → `python 01_data_preprocessing/python/analyze_behavioral_data.py`
-2. 02_pupillometry_analysis → `Rscript 02_pupillometry_analysis/feature_extraction/run_feature_extraction.R`
-3. 03_behavioral_analysis → `Rscript 03_behavioral_analysis/reaction_time/run_rt_analysis.R`
-4. 04_computational_modeling → `Rscript scripts/core/run_analysis.R`
-5. 05_statistical_analysis → `Rscript scripts/02_statistical_analysis/02_ddm_analysis.R`
-6. 06_visualization → `Rscript scripts/render_manuscript_figures.R` (manuscript figures) or `Rscript scripts/create_condition_effects_forest_plot.R`
-7. 07_manuscript → `Rscript 07_manuscript/render_ddm_chapter.R` (renders `reports/chap3_ddm_results.qmd` to HTML/DOCX)
-
-## 🧪 Testing
-
-Run the test suite to ensure everything works correctly:
-
-```bash
-# Python tests
-python -m pytest tests/test_data_processing.py -v
-
-# R tests
-Rscript tests/test_models.R
-
-# Integration tests
-bash scripts/utilities/run_integration_tests.sh
-```
-
-## 📚 Documentation
-
-- **[Pipeline Documentation](docs/pipeline_README.md)**: Detailed pipeline description
-- **[Model Documentation](docs/model_documentation.md)**: DDM implementation details
-- **[API Reference](docs/api_reference.md)**: Function documentation
-- **[DDM Chapter Integration](docs/DDM_CHAPTER_INTEGRATION.md)**: How the comprehensive DDM report fits into the pipeline
-- **[Tutorials](docs/tutorials/)**: Step-by-step guides
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-### Development Setup
-```bash
-# Fork and clone the repository
-git clone https://github.com/mohdasti/modeling-pupil-DDM.git
-cd modeling-pupil-DDM
-
-# Create a development branch
-git checkout -b feature/your-feature-name
-
-# Make your changes and test
-python -m pytest tests/
-Rscript tests/test_models.R
-
-# Submit a pull request
-git push origin feature/your-feature-name
-```
-
-## 📄 License
-
-This project is licensed under the GNU General Public License v3.0 (GPL-3.0) – see the [LICENSE](LICENSE) file for details. By contributing, you agree that your contributions will be licensed under GPL-3.0.
-
-## 🙏 Acknowledgments
-
-- **Research Team**: Collaborators and research assistants
-
-## 📞 Contact
-
-- **Lead Researcher**: [Mohammad Dastgheib](mailto:mdast003@ucr.edu)
-- **Institution**: UC Riverside
-- **Project Repository**: [GitHub](https://github.com/mohdasti/modeling-pupil-DDM)
-- **DOI**: [10.5281/zenodo.18205122](https://doi.org/10.5281/zenodo.18205122)
-
-## 📊 Citation
-
-If you use this code in your research, please cite:
-
-```bibtex
-@software{modeling_pupil_ddm,
-  title={Modeling Pupil-DDM: Computational Modeling of Pupillometry and Decision-Making},
-  author={Dastgheib, Mohammad},
-  year={2024},
-  url={https://github.com/mohdasti/modeling-pupil-DDM},
-  doi={10.5281/zenodo.18205122},
-  note={Computational modeling pipeline for pupillometry and behavioral analysis}
-}
-```
-
-## 🔄 Version History
-
-- **v1.3.1** (2026-06-05): Consolidated main manuscript figures
-  - Added five multi-panel figure scripts under `06_visualization/publication_figures/` (`fig1`–`fig5`)
-  - Main figures output to `output/figures/manuscript/`; embedded in `chap3_ddm_results.qmd` via `main_fig()`
-  - Renamed path helper to `manuscript_paths.R`; journal-neutral naming throughout
-- **v1.3.0** (2026-06-04): Manuscript figure system & versioned outputs
-  - Added centralized color palette (`R/colors_manuscript.R`) and save helper (`R/fig_save_utils.R`)
-  - Updated all `scripts/R/fig_*.R` figure scripts and `reports/chap3_ddm_results.qmd` to use shared colors
-  - Added `scripts/render_manuscript_figures.R` batch runner for full manuscript figure regeneration
-  - Versioned manuscript figure snapshots in `output/figures/manuscript_palette/` (tracked in git)
-  - Fixed CAF and PPC RT overlay figure scripts; `.gitignore` updated to allow palette folder only
-- **v1.2.0** (2024-12-27): Pupil-DDM Integration & Chapter 3 Finalization
-  - Added comprehensive pupil-DDM integration analysis pipeline
-  - Implemented posterior correlation analysis with uncertainty propagation
-  - Added robustness checks (LOO, trial-count sensitivity, task-stratified)
-  - Integrated pupil-DDM results into Chapter 3 dissertation report
-  - Fixed LaTeX rendering issues for PDF output
-  - Improved figure layouts for better readability (6×2 facet arrangement)
-  - Generated publication-ready figures and tables for dissertation
-  - Added scripts: `06_pupil_ddm_integration.R` and `07_pupil_ddm_finalize.R`
-- **v1.1.0** (2024-12-27): Major repository reorganization
-  - Flattened nested directory structure
-  - Consolidated R scripts into `scripts/R/`
-  - Organized documentation into `docs/development_notes/`
-  - Archived old quick_share versions (v2-v6) to `quick_share_archive/`
-  - Added `logs/` directory for log files and status reports
-  - Improved overall repository structure and organization
-- **v1.0.0** (2024-01-01): Initial release with complete pipeline
-- **v0.9.0** (2023-12-01): Beta release with core functionality
-- **v0.8.0** (2023-11-01): Alpha release with basic features
+> **Pre-publication checkpoint:** [`Pre-publication`](https://github.com/mohdasti/modeling-pupil-DDM/releases/tag/Pre-publication) → `master` @ `c46f8e9` (June 2026). Raw trial data and large `.rds` fits are **not** in git; see [Reproducing results](#reproducing-results).
 
 ---
 
-**Note**: This repository contains research code demonstrating advanced computational modeling techniques. While we strive for accuracy and reproducibility, please verify results and adapt code for your specific use case.
+## Study & current results (primary run)
+
+| Item | Value |
+|------|--------|
+| **Primary run ID** | `20260226_092110` |
+| **RT convention** | Probe-onset–locked; cue-locked RT ≥ 0.20 s exclusion |
+| **Behavioral *N*** | 17,857 trials · 67 participants |
+| **Primary model** | Additive difficulty + effort on *v* and *a*; effort + task on *z*; *t₀* intercept-only |
+| **Pupil subset *N*** | 12,287 trials · 59 participants (same-*N* nested pupil models) |
+
+**Registered hypotheses (primary additive model):**
+
+| Hypothesis | Result (link scale) |
+|------------|---------------------|
+| **H1** effort → drift *v* | Supported — β ≈ −0.057, 95% CrI excludes 0 |
+| **H2** effort → boundary *a* | Small credible increase — β ≈ +0.017 (log), CrI excludes 0 |
+| **H4** effort → bias *z* | Near-zero null — CrI spans 0 |
+| **H3** effort → *t₀* | Not testable in primary model (response-signal design) |
+| **Pupil → *v* / *z*** | Near-zero coefficients; same-*N* LOO shows no predictive gain; measurement-limited under sustained grip |
+
+Full prose, tables, and appendix diagnostics: [`reports/chap3_ddm_results.qmd`](reports/chap3_ddm_results.qmd) → render to HTML/PDF.
+
+---
+
+## Reproducing results
+
+### Minimal path (manuscript only)
+
+If you already have fitted models and tables on disk (from a colleague, GCP download, or prior local run):
+
+```bash
+git clone https://github.com/mohdasti/modeling-pupil-DDM.git
+cd modeling-pupil-DDM
+
+# Regenerate five main figures (requires .rds paths in manuscript_paths.R)
+Rscript 06_visualization/publication_figures/fig2_central_result.R   # or all fig1–fig5
+
+# Render Chapter 3 report
+quarto render reports/chap3_ddm_results.qmd
+```
+
+Outputs: `reports/chap3_ddm_results.html` (and PDF/DOCX if configured).
+
+### Full path (from trial-level data)
+
+1. **Behavioral DDM refit** — primary run under `output/ddm_refits/runs/20260226_092110/` (see `scripts/ddm_refit_gcp.R` for GCP workflow).
+2. **Pupil trial table** — `scripts/build_ddm_pupil_ready_data.R` → merged behavioral + pupil features.
+3. **Pupil-DDM fits** — `scripts/fit_pupil_ddm_models.R` (nested m0–m3 on pupil subset).
+4. **Postprocess** — `scripts/postprocess_pupil_ddm_models.R` → `output/ddm_pupil/tables/`.
+5. **Pack for transfer** — `scripts/pack_pupil_ddm_for_download.sh` (VM → local).
+
+GCP details: [`docs/GCP_PUPIL_FIT_GUIDE.md`](docs/GCP_PUPIL_FIT_GUIDE.md), [`docs/GCP_UPLOAD_GUIDE.md`](docs/GCP_UPLOAD_GUIDE.md).
+
+### What is (and is not) versioned
+
+| Tracked in git | Local / GCP only (`.gitignore`) |
+|----------------|----------------------------------|
+| QMD, R scripts, configs | `*.rds` model objects |
+| `output/ddm_refits/runs/*/tables/*.csv` (when committed) | Most of `output/ddm_pupil/models/` |
+| `output/figures/manuscript_palette/` (supplementary PNG/PDF) | `output/figures/manuscript/` (main figs; regenerate) |
+| `output/publish/*.csv` audit tables | Raw BAP behavioral/pupil files |
+
+---
+
+## Key paths
+
+```
+output/ddm_refits/runs/20260226_092110/
+├── models/additive__probe_onset_locked__thr0.20.rds   # primary behavioral fit
+├── models/pupil_interaction__probe_onset_locked__thr0.20.rds
+└── tables/                                            # fixef, LOO, contrasts, PPC
+
+output/ddm_pupil/tables/
+├── pupil_loo_summary.csv
+├── pupil_effects_key_terms.csv
+├── model_info.csv
+└── pupil_fixef_link_scale_pupil_only.csv
+
+reports/chap3_ddm_results.qmd                          # Chapter 3 manuscript (Quarto)
+06_visualization/publication_figures/                  # fig1–fig5 scripts
+R/colors_manuscript.R                                  # shared palette
+```
+
+---
+
+## Manuscript figures
+
+Two tiers:
+
+| Tier | Scripts | Output | In QMD |
+|------|---------|--------|--------|
+| **Main** (5 multi-panel) | `06_visualization/publication_figures/fig{1–5}_*.R` | `output/figures/manuscript/` | `main_fig()` |
+| **Supplementary** | `scripts/R/fig_*.R`, `scripts/render_manuscript_figures.R` | `output/figures/manuscript_palette/` | `fig_path()` / appendix |
+
+```bash
+# Run each main figure script (paths in manuscript_paths.R)
+Rscript 06_visualization/publication_figures/fig1_design_schematic.R
+Rscript 06_visualization/publication_figures/fig2_central_result.R
+Rscript 06_visualization/publication_figures/fig3_parameter_forest.R
+Rscript 06_visualization/publication_figures/fig4_temporal_dynamics.R
+Rscript 06_visualization/publication_figures/fig5_individual_differences.R
+
+# Supplementary batch
+Rscript scripts/render_manuscript_figures.R
+```
+
+| Figure | Content |
+|--------|---------|
+| Fig 1 | Trial timeline, DDM schematic, predictor map |
+| Fig 2 | Drift/boundary by difficulty × effort; H1/H2 effort posteriors |
+| Fig 3 | Effort + difficulty contrast forests |
+| Fig 4 | Fatigue trajectories + choice-history coefficients |
+| Fig 5 | Brinley plot, paired drift, caterpillar |
+
+See [`06_visualization/publication_figures/README.md`](06_visualization/publication_figures/README.md).
+
+---
+
+## Pupil-linked DDM (nested trial-level models)
+
+Four models on the **same** pupil-available trial set:
+
+1. **m0** — behavioral baseline (no pupil)
+2. **m1** — pupil → bias *z*
+3. **m2** — pupil → drift *v* + bias *z*
+4. **m3** — pupil × difficulty on *v*
+
+```bash
+Rscript scripts/fit_pupil_ddm_models.R          # fit (long; use GCP VM)
+Rscript scripts/postprocess_pupil_ddm_models.R  # LOO, tables, figures
+```
+
+Interpretation framing: [`docs/OPUS_PUPIL_FRAMING_PACKET.md`](docs/OPUS_PUPIL_FRAMING_PACKET.md).
+
+---
+
+## Repository layout (abbreviated)
+
+```
+modeling-pupil-DDM/
+├── reports/chap3_ddm_results.qmd      # Chapter 3 Quarto source
+├── 06_visualization/publication_figures/  # Main fig scripts + manuscript_paths.R
+├── R/colors_manuscript.R              # Manuscript color system
+├── scripts/
+│   ├── fit_pupil_ddm_models.R
+│   ├── postprocess_pupil_ddm_models.R
+│   ├── build_ddm_pupil_ready_data.R
+│   ├── ddm_refit_gcp.R
+│   ├── render_manuscript_figures.R
+│   └── R/                             # Supplementary fig + extract scripts
+├── output/
+│   ├── ddm_refits/runs/20260226_092110/
+│   ├── ddm_pupil/
+│   ├── figures/manuscript_palette/    # tracked supplementary figures
+│   └── publish/                       # audit & publish tables
+├── docs/                              # GCP guides, integration notes, framing packet
+├── 01_data_preprocessing/ … 07_manuscript/   # staged pipeline wrappers
+└── data/                              # analysis-ready CSVs (large files gitignored)
+```
+
+Numbered folders (`01_`–`07_`) are thin wrappers around `scripts/`; canonical logic lives in `scripts/`.
+
+---
+
+## Installation
+
+**Prerequisites:** R ≥ 4.0, [Quarto](https://quarto.org/), optional Python/MATLAB for upstream preprocessing.
+
+```bash
+git clone https://github.com/mohdasti/modeling-pupil-DDM.git
+cd modeling-pupil-DDM
+
+conda env create -f environment.yml   # or: pip install -r requirements.txt
+Rscript scripts/setup/install_r_packages.R   # if present
+```
+
+**Core R packages:** `brms`, `tidyverse`, `tidybayes`, `ggplot2`, `patchwork`, `here`, `knitr`, `gt`, `kableExtra`, `quarto`.
+
+Copy path templates before first local run:
+
+```bash
+cp config/paths_config.R.example config/paths_config.R   # edit for your machine
+```
+
+---
+
+## Quality assurance
+
+```bash
+# Design coding, RT floors, factor levels
+Rscript scripts/R/audit_design_coding.R
+# → output/publish/audit/
+
+# Extract publish tables then render
+Rscript scripts/R/run_extract_all.R
+Rscript scripts/R/render_chap3_report.R
+```
+
+---
+
+## Documentation
+
+| Doc | Purpose |
+|-----|---------|
+| [`docs/OPUS_PUPIL_FRAMING_PACKET.md`](docs/OPUS_PUPIL_FRAMING_PACKET.md) | Pupil Results §3.3 framing + key numbers |
+| [`docs/GCP_PUPIL_FIT_GUIDE.md`](docs/GCP_PUPIL_FIT_GUIDE.md) | Fit pupil models on GCP VM |
+| [`docs/GCP_UPLOAD_GUIDE.md`](docs/GCP_UPLOAD_GUIDE.md) | Upload/download run artifacts |
+| [`docs/DDM_CHAPTER_INTEGRATION.md`](docs/DDM_CHAPTER_INTEGRATION.md) | QMD integration notes |
+| [`docs/PIPELINE_README.md`](docs/PIPELINE_README.md) | Legacy pipeline overview |
+| [`06_visualization/publication_figures/README.md`](06_visualization/publication_figures/README.md) | Main figure paths & run order |
+
+---
+
+## Makefile (optional shortcuts)
+
+```bash
+make help      # list targets
+make report    # generate reports / tables
+make all       # full pipeline (if configured)
+```
+
+---
+
+## Citation & contact
+
+**Software (Zenodo):** [10.5281/zenodo.18205122](https://doi.org/10.5281/zenodo.18205122)
+
+```bibtex
+@software{modeling_pupil_ddm,
+  title  = {modeling-pupil-DDM: Hierarchical DDM and pupillometry in older adults under physical effort},
+  author = {Dastgheib, Mohammad},
+  year   = {2026},
+  url    = {https://github.com/mohdasti/modeling-pupil-DDM},
+  doi    = {10.5281/zenodo.18205122},
+  note   = {Release Pre-publication, commit c46f8e9}
+}
+```
+
+**Contact:** Mohammad Dastgheib · [mdast003@ucr.edu](mailto:mdast003@ucr.edu) · UC Riverside
+
+**License:** [GPL-3.0](LICENSE)
+
+---
+
+## Version history
+
+| Version | Date | Notes |
+|---------|------|-------|
+| **Pre-publication** | 2026-06 | Tag on `c46f8e9`: primary run locked, pupil-DDM Phase B complete, §3.3 prose, Opus audit fixes, clean QMD render |
+| v1.3.1 | 2026-06-05 | Consolidated main figures `fig1`–`fig5`; `manuscript_paths.R` |
+| v1.3.0 | 2026-06-04 | Centralized `colors_manuscript.R`; `manuscript_palette/` versioning |
+| v1.2.0 | 2024-12 | Early pupil–DDM integration scripts; Chapter 3 QMD expansion |
+| v1.0.0 | 2024-01 | Initial public pipeline |
+
+---
+
+**Note:** This is research code for a dissertation chapter moving toward journal submission. Verify paths and model artifacts after clone; regenerate fits or obtain `output/ddm_refits/` and `output/ddm_pupil/` from the release maintainer if needed.
