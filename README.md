@@ -258,7 +258,7 @@ make all       # full pipeline (if configured)
 
 ## Citation & contact
 
-**Software (Zenodo):** [10.5281/zenodo.18205122](https://doi.org/10.5281/zenodo.18205122)
+**Software (Zenodo):** [10.5281/zenodo.18205122](https://doi.org/10.5281/zenodo.18205122) (concept; always latest) · [10.5281/zenodo.20621752](https://doi.org/10.5281/zenodo.20621752) (this `Pre-publication` snapshot)
 
 ```bibtex
 @software{modeling_pupil_ddm,
@@ -266,7 +266,7 @@ make all       # full pipeline (if configured)
   author = {Dastgheib, Mohammad},
   year   = {2026},
   url    = {https://github.com/mohdasti/modeling-pupil-DDM},
-  doi    = {10.5281/zenodo.18205122},
+  doi    = {10.5281/zenodo.20621752},
   note   = {Release Pre-publication (June 2026); concept DOI 10.5281/zenodo.18205122}
 }
 ```
