@@ -8,7 +8,7 @@
 
 Hierarchical Bayesian drift-diffusion modeling (DDM) with concurrent pupillometry in older adults performing auditory/visual change-detection under low vs. high isometric handgrip (5% vs. 40% MVC). This repo holds the **Chapter 3 analysis pipeline**, manuscript source, and figure scripts for the BAP effort–arousal–decision project.
 
-> **Pre-publication checkpoint:** [`Pre-publication`](https://github.com/mohdasti/modeling-pupil-DDM/releases/tag/Pre-publication) → `master` @ `c46f8e9` (June 2026). Raw trial data and large `.rds` fits are **not** in git; see [Reproducing results](#reproducing-results).
+> **Pre-publication checkpoint:** [`Pre-publication`](https://github.com/mohdasti/modeling-pupil-DDM/releases/tag/Pre-publication) → `master` @ `428428e` (June 2026). Raw trial data and large `.rds` fits are **not** in git; see [Reproducing results](#reproducing-results).
 
 ---
 
@@ -267,7 +267,7 @@ make all       # full pipeline (if configured)
   year   = {2026},
   url    = {https://github.com/mohdasti/modeling-pupil-DDM},
   doi    = {10.5281/zenodo.18205122},
-  note   = {Release Pre-publication, commit c46f8e9}
+  note   = {Release Pre-publication, commit 428428e}
 }
 ```
 
@@ -281,7 +281,8 @@ make all       # full pipeline (if configured)
 
 | Version | Date | Notes |
 |---------|------|-------|
-| **Pre-publication** | 2026-06 | Tag on `c46f8e9`: primary run locked, pupil-DDM Phase B complete, §3.3 prose, Opus audit fixes, clean QMD render |
+| **Pre-publication** | 2026-06 | Tag on `428428e`: canonical run `20260226_092110` locked, Chapter 3 peer-review consistency fixes, publish sync workflow, H2 ROPE framing, appendix/demographics harmonization |
+| Pre-publication (v1) | 2026-06 | Tag on `c46f8e9`: pupil-DDM Phase B complete, §3.3 prose, Opus audit fixes |
 | v1.3.1 | 2026-06-05 | Consolidated main figures `fig1`–`fig5`; `manuscript_paths.R` |
 | v1.3.0 | 2026-06-04 | Centralized `colors_manuscript.R`; `manuscript_palette/` versioning |
 | v1.2.0 | 2024-12 | Early pupil–DDM integration scripts; Chapter 3 QMD expansion |
