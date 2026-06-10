@@ -27,7 +27,7 @@ Hierarchical Bayesian drift-diffusion modeling (DDM) with concurrent pupillometr
 | Hypothesis | Result (link scale) |
 |------------|---------------------|
 | **H1** effort → drift *v* | Supported — β ≈ −0.057, 95% CrI excludes 0 |
-| **H2** effort → boundary *a* | Small credible increase — β ≈ +0.017 (log), CrI excludes 0 |
+| **H2** effort → boundary *a* | Directionally positive but ROPE-negligible (100% mass within ±0.05 log-scale ROPE); not interpreted as strategic caution |
 | **H4** effort → bias *z* | Near-zero null — CrI spans 0 |
 | **H3** effort → *t₀* | Not testable in primary model (response-signal design) |
 | **Pupil → *v* / *z*** | Near-zero coefficients; same-*N* LOO shows no predictive gain; measurement-limited under sustained grip |
@@ -46,10 +46,15 @@ If you already have fitted models and tables on disk (from a colleague, GCP down
 git clone https://github.com/mohdasti/modeling-pupil-DDM.git
 cd modeling-pupil-DDM
 
+# Ensure run_dir tables exist (download from GCP or prior local run), then sync publish PPC/QA exports:
+DDM_RUN_ID=20260226_092110 Rscript scripts/sync_publish_from_run.R
+DDM_RUN_ID=20260226_092110 Rscript scripts/R/make_publish_gate.R
+Rscript scripts/regenerate_task_sensitivity_table.R
+
 # Regenerate five main figures (requires .rds paths in manuscript_paths.R)
 Rscript 06_visualization/publication_figures/fig2_central_result.R   # or all fig1–fig5
 
-# Render Chapter 3 report
+# Render Chapter 3 report (reads DDM tables from params$run_dir in the QMD)
 quarto render reports/chap3_ddm_results.qmd
 ```
 
@@ -76,9 +81,10 @@ GCP details: [`docs/GCP_PUPIL_FIT_GUIDE.md`](docs/GCP_PUPIL_FIT_GUIDE.md), [`doc
 | Tracked in git | Local / GCP only (`.gitignore`) |
 |----------------|----------------------------------|
 | QMD, R scripts, configs | `*.rds` model objects |
-| `output/ddm_refits/runs/*/tables/*.csv` (when committed) | Most of `output/ddm_pupil/models/` |
-| `output/figures/manuscript_palette/` (supplementary PNG/PDF) | `output/figures/manuscript/` (main figs; regenerate) |
-| `output/publish/*.csv` audit tables | Raw BAP behavioral/pupil files |
+| `output/figures/manuscript_palette/` (supplementary PNG/PDF) | `output/ddm_refits/runs/*/models/` |
+| | `output/ddm_refits/runs/*/tables/` (sync via `scripts/sync_publish_from_run.R`) |
+| | `output/publish/` (PPC/QA exports; regenerate after each refit) |
+| | Raw BAP behavioral/pupil files |
 
 ---
 
@@ -162,12 +168,14 @@ modeling-pupil-DDM/
 ├── 06_visualization/publication_figures/  # Main fig scripts + manuscript_paths.R
 ├── R/colors_manuscript.R              # Manuscript color system
 ├── scripts/
+│   ├── sync_publish_from_run.R        # copy run_dir tables → output/publish + manifest
+│   ├── regenerate_task_sensitivity_table.R
 │   ├── fit_pupil_ddm_models.R
 │   ├── postprocess_pupil_ddm_models.R
 │   ├── build_ddm_pupil_ready_data.R
 │   ├── ddm_refit_gcp.R
 │   ├── render_manuscript_figures.R
-│   └── R/                             # Supplementary fig + extract scripts
+│   └── R/                             # Supplementary fig + extract scripts (incl. make_publish_gate.R)
 ├── output/
 │   ├── ddm_refits/runs/20260226_092110/
 │   ├── ddm_pupil/
@@ -206,14 +214,21 @@ cp config/paths_config.R.example config/paths_config.R   # edit for your machine
 
 ## Quality assurance
 
-```bash
-# Design coding, RT floors, factor levels
-Rscript scripts/R/audit_design_coding.R
-# → output/publish/audit/
+After a behavioral refit or before rendering the manuscript:
 
-# Extract publish tables then render
-Rscript scripts/R/run_extract_all.R
-Rscript scripts/R/render_chap3_report.R
+```bash
+DDM_RUN_ID=20260226_092110 Rscript scripts/sync_publish_from_run.R
+DDM_RUN_ID=20260226_092110 Rscript scripts/R/make_publish_gate.R
+Rscript scripts/regenerate_task_sensitivity_table.R
+quarto render reports/chap3_ddm_results.qmd
+```
+
+Check `output/publish/ddm_run_manifest.csv` — `run_id` must match `params$run_dir` in the QMD.
+
+Legacy design/audit scripts (optional):
+
+```bash
+Rscript scripts/R/audit_design_coding.R   # → output/publish/audit/
 ```
 
 ---
