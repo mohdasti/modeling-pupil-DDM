@@ -57,7 +57,13 @@ Outputs: `reports/chap3_ddm_results.html` (and PDF/DOCX if configured).
 
 ### Full path (from trial-level data)
 
-1. **Behavioral DDM refit** — primary run under `output/ddm_refits/runs/20260226_092110/` (see `scripts/ddm_refit_gcp.R` for GCP workflow).
+1. **Behavioral DDM refit** — primary run under `output/ddm_refits/runs/20260226_092110/` (see `scripts/ddm_refit_gcp.R` for GCP workflow). After each refit, sync publish artifacts and PPC gates:
+   ```bash
+   DDM_RUN_ID=20260226_092110 Rscript scripts/sync_publish_from_run.R
+   DDM_RUN_ID=20260226_092110 Rscript scripts/R/make_publish_gate.R
+   Rscript scripts/regenerate_task_sensitivity_table.R
+   ```
+   The QMD reads DDM tables from `params$run_dir` only; `output/publish/` holds PPC/QA/exploratory exports (see `output/publish/ddm_run_manifest.csv`).
 2. **Pupil trial table** — `scripts/build_ddm_pupil_ready_data.R` → merged behavioral + pupil features.
 3. **Pupil-DDM fits** — `scripts/fit_pupil_ddm_models.R` (nested m0–m3 on pupil subset).
 4. **Postprocess** — `scripts/postprocess_pupil_ddm_models.R` → `output/ddm_pupil/tables/`.

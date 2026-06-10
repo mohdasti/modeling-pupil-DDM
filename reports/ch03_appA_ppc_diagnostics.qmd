@@ -81,9 +81,8 @@ if (file.exists(pf_subj_rds)) {
   }
 }
 
-# Load tbl_sens from the DDM refits run directory
-# This should match the RUN_ID used in the main chapter (params$run_dir)
-RUN_ID <- "20260214_045745"  # Matches main chapter run_dir
+# Load tbl_sens from the DDM refits run directory (must match main chapter params$run_dir)
+RUN_ID <- Sys.getenv("DDM_RUN_ID", "20260226_092110")
 RUN_DIR <- here::here("output", "ddm_refits", "runs", RUN_ID)
 TABLE_DIR <- file.path(RUN_DIR, "tables")
 tbl_sens <- NULL

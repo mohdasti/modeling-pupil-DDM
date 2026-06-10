@@ -10,7 +10,17 @@ suppressPackageStartupMessages({
 
 DEMO_FILE <- "data/raw/LC Aging Subject Data master spreadsheet - demographics.csv"
 NP_FILE <- "data/raw/LC Aging Subject Data master spreadsheet - neuropsych.csv"
-DDM_FIT <- "output/models/primary_vza.rds"
+DDM_RUN_DIR <- Sys.getenv("DDM_RUN_DIR", "output/ddm_refits/runs/20260226_092110")
+DDM_FIT <- file.path(DDM_RUN_DIR, "models/additive__probe_onset_locked__thr0.20.rds")
+if (!file.exists(DDM_FIT)) {
+  legacy <- "output/models/primary_vza.rds"
+  if (file.exists(legacy)) {
+    warning("Using legacy model ", legacy, " — set DDM_RUN_DIR to the canonical refit run.")
+    DDM_FIT <- legacy
+  } else {
+    stop("DDM model not found at ", DDM_FIT, " or ", legacy)
+  }
+}
 OUT_DIR <- "output/neuropsych_demographics"
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
@@ -136,6 +146,14 @@ desc_tbl <- desc_specs %>%
   ) %>%
   select(Measure = measure, `M (SD)`, Range, n)
 
+# Race coding matches Table 1 / calc_demographics() in chap3_ddm_results.qmd
+race_clean <- dat$race
+has_white <- grepl("white", race_clean, ignore.case = TRUE)
+has_black <- grepl("black|african", race_clean, ignore.case = TRUE)
+has_asian <- grepl("^asian$|^asian,", race_clean, ignore.case = TRUE) & !has_white
+white_count <- sum(has_white, na.rm = TRUE)
+white_pct <- 100 * white_count / nrow(dat)
+
 demo_categorical <- tibble(
   Characteristic = c(
     "Female, n (%)",
@@ -148,8 +166,7 @@ demo_categorical <- tibble(
             100 * mean(dat$sex == "female", na.rm = TRUE)),
     sprintf("%d (%.1f%%)", sum(grepl("^R$", dat$hand, ignore.case = TRUE), na.rm = TRUE),
             100 * mean(grepl("^R$", dat$hand, ignore.case = TRUE), na.rm = TRUE)),
-    sprintf("%d (%.1f%%)", sum(grepl("^White$", dat$race, ignore.case = TRUE), na.rm = TRUE),
-            100 * mean(grepl("^White$", dat$race, ignore.case = TRUE), na.rm = TRUE)),
+    sprintf("%d (%.1f%%)", white_count, white_pct),
     sprintf(
       "%d (%.1f%%)",
       sum(dat$ethnicity == "Hispanic or Latino", na.rm = TRUE),
