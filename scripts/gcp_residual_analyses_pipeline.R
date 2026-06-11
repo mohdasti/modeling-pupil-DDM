@@ -50,17 +50,28 @@ run_step <- function(step_name, expr) {
   invisible(ok)
 }
 
-fit_boundary <- function(output_base, z_col, metric_label, baseline_loo_dir) {
-  Sys.setenv(
+fit_boundary <- function(step_name, output_base, z_col, metric_label, baseline_loo_dir) {
+  step_log <- file.path(STATUS_DIR, paste0(step_name, ".log"))
+  fit_script <- file.path(ROOT, "scripts", "fit_pupil_boundary_model.R")
+  post_script <- file.path(ROOT, "scripts", "postprocess_pupil_boundary_model.R")
+  env <- c(
+    Sys.getenv(),
     PUPIL_OUTPUT_BASE = output_base,
     PUPIL_Z_COL = z_col,
     PUPIL_METRIC_LABEL = metric_label,
     PUPIL_BASELINE_LOO_DIR = baseline_loo_dir,
-    PUPIL_REFIT = Sys.getenv("PUPIL_REFIT", "on_change"),
-    DDM_RUN_ID = RUN_ID
+    PUPIL_REFIT = Sys.getenv("PUPIL_REFIT", "on_change")
   )
-  source(file.path(ROOT, "scripts", "fit_pupil_boundary_model.R"), local = new.env())
-  source(file.path(ROOT, "scripts", "postprocess_pupil_boundary_model.R"), local = new.env())
+  status_fit <- system2("Rscript", fit_script, stdout = step_log, stderr = step_log, env = env)
+  if (!identical(status_fit, 0L)) {
+    tail_lines <- if (file.exists(step_log)) paste(tail(readLines(step_log, warn = FALSE), 30), collapse = "\n") else "(no log)"
+    stop("fit_pupil_boundary_model.R failed (", step_name, ")\n", tail_lines)
+  }
+  status_post <- system2("Rscript", post_script, stdout = paste0(step_log, ".post"), stderr = paste0(step_log, ".post"), env = env)
+  if (!identical(status_post, 0L)) {
+    tail_lines <- if (file.exists(step_log)) paste(tail(readLines(step_log, warn = FALSE), 30), collapse = "\n") else "(no log)"
+    stop("postprocess_pupil_boundary_model.R failed (", step_name, ")\n", tail_lines)
+  }
 }
 
 cat("", file = STATUS_FILE)
@@ -111,6 +122,7 @@ if (!SKIP_PPC) {
 # ── 3. Cavanagh pupil → boundary (primary TEPR window) ───────────────────────
 if (!SKIP_BOUNDARY) {
   run_step("boundary_primary", fit_boundary(
+    step_name = "boundary_primary",
     output_base = "output/ddm_pupil_boundary",
     z_col = "pupil_metric_primary_z",
     metric_label = "Decision-Response AUC (0.3–3.3 s post-probe)",
@@ -128,6 +140,7 @@ if (!SKIP_BOUNDARY_W1P3) {
     write_status("boundary_w1p3", paste("SKIP — only", n_w1, "non-NA pupil_w1p3_z in sample head"))
   } else {
     run_step("boundary_w1p3", fit_boundary(
+      step_name = "boundary_w1p3",
       output_base = "output/ddm_pupil_boundary_w1p3",
       z_col = "pupil_w1p3_z",
       metric_label = "Truncated Decision-Response AUC (0.3–1.3 s post-probe)",

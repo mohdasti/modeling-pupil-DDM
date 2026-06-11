@@ -37,14 +37,10 @@ LOG_DIR <- file.path(OUTPUT_BASE, "logs")
 for (d in c(MODELS_DIR, TABLES_DIR, LOG_DIR)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 LOG_FILE <- file.path(LOG_DIR, "fit_pupil_boundary_model.log")
-log_con <- file(LOG_FILE, open = "wt")
-on.exit(close(log_con), add = TRUE)
-
 log_msg <- function(..., level = "INFO") {
   line <- sprintf("[%s] [%s] %s", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), level, paste(..., collapse = " "))
   cat(line, "\n")
-  cat(line, "\n", file = log_con)
-  flush(log_con)
+  cat(line, "\n", file = LOG_FILE, append = TRUE)
 }
 
 N_CHAINS <- 4L
@@ -56,6 +52,7 @@ MAX_TREEDEPTH <- 12L
 log_msg(strrep("=", 80))
 log_msg("FIT PUPIL → BOUNDARY (Cavanagh-style)")
 log_msg("OUTPUT:", OUTPUT_BASE, "| z_col:", PUPIL_Z_COL, "| data:", DATA_FILE)
+log_msg("cmdstan path:", tryCatch(cmdstanr::cmdstan_path(), error = function(e) paste("ERROR:", e$message)))
 
 if (!file.exists(DATA_FILE)) stop("Missing data: ", DATA_FILE)
 if (!PUPIL_Z_COL %in% names(read_csv(DATA_FILE, n_max = 1, show_col_types = FALSE))) {
@@ -78,7 +75,11 @@ model_data <- ddm_data %>%
 log_msg("Trials with valid pupil:", nrow(model_data), "| Subjects:", n_distinct(model_data$subject_id))
 
 min_rt <- min(model_data$rt, na.rm = TRUE)
-ndt_ub <- log(min_rt - 0.02)
+ndt_ub_val <- as.numeric(min_rt - 0.01)
+if (!is.finite(ndt_ub_val) || ndt_ub_val <= 0.05) {
+  stop("Invalid ndt upper bound: ", ndt_ub_val, " (min_rt=", min_rt, ")")
+}
+ndt_ub <- as.numeric(log(ndt_ub_val))
 
 formula_m1p <- bf(
   rt | dec(dec_upper) ~ difficulty_3 + effort_condition + (1 | subject_id),
@@ -93,12 +94,26 @@ priors <- c(
   prior(normal(log(1.3), 0.25), class = "Intercept", dpar = "bs", lb = log(0.3), ub = log(5)),
   prior(normal(0, 0.20), class = "b", dpar = "bs"),
   prior(normal(0, 0.20), class = "b", dpar = "bs", coef = "pupil_z"),
-  prior(normal(log(0.35), 0.15), class = "Intercept", dpar = "ndt", lb = log(0.02), ub = ndt_ub),
+  eval(substitute(
+    prior(normal(log(0.35), 0.15), class = "Intercept", dpar = "ndt", lb = log(0.02), ub = UB_VAL),
+    list(UB_VAL = ndt_ub)
+  )),
   prior(normal(0, 0.5), class = "Intercept", dpar = "bias"),
   prior(normal(0, 0.5), class = "b", dpar = "bias"),
   prior(exponential(5), class = "sd"),
   prior(exponential(5), class = "sd", dpar = "bias")
 )
+
+safe_init <- function(chain_id = 1) {
+  list(
+    Intercept = 0,
+    Intercept_bs = log(1.3),
+    Intercept_ndt = log(0.30),
+    Intercept_bias = 0,
+    sd_subject_id__Intercept = 0.1,
+    sd_subject_id__bias_Intercept = 0.1
+  )
+}
 
 log_msg("Fitting model_1p_pupil_boundary ...")
 t0 <- Sys.time()
@@ -111,11 +126,14 @@ fit <- brm(
   iter = N_ITER,
   warmup = N_WARMUP,
   cores = N_CHAINS,
-  backend = "cmdstanr",
+  init = safe_init,
   control = list(adapt_delta = ADAPT_DELTA, max_treedepth = MAX_TREEDEPTH),
+  backend = "cmdstanr",
   seed = 12345,
   file = file.path(MODELS_DIR, "model_1p_pupil_boundary"),
-  file_refit = Sys.getenv("PUPIL_REFIT", "on_change")
+  file_refit = Sys.getenv("PUPIL_REFIT", "on_change"),
+  refresh = 100,
+  silent = 0
 )
 mins <- round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1)
 log_msg("Done in", mins, "min | max Rhat:", sprintf("%.4f", max(brms::rhat(fit), na.rm = TRUE)))
