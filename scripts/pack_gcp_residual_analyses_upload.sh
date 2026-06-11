@@ -17,6 +17,9 @@ BUNDLE="gcp_residual_analyses_upload.tar.gz"
 REQUIRED=(
   scripts/gcp_residual_analyses_pipeline.R
   scripts/run_gcp_residual_detached.sh
+  scripts/run_gcp_residual_resume.sh
+  scripts/run_pupil_boundary_env.sh
+  scripts/run_boundary_only.sh
   scripts/fit_ddm_difficultyonly.R
   scripts/fit_pupil_boundary_model.R
   scripts/postprocess_pupil_boundary_model.R
@@ -44,5 +47,5 @@ echo "Created: $ROOT/$BUNDLE ($(du -h "$BUNDLE" | cut -f1))"
 echo ""
 echo "Upload to VM ~/Feb2026/ then:"
 echo "  tar -xzvf gcp_residual_analyses_upload.tar.gz"
-echo "  chmod +x scripts/run_gcp_residual_detached.sh"
-echo "  bash scripts/run_gcp_residual_detached.sh"
+echo "  chmod +x scripts/run_gcp_residual_detached.sh scripts/run_gcp_residual_resume.sh"
+echo "  bash scripts/run_gcp_residual_resume.sh   # if difficulty-only + PPC already done"

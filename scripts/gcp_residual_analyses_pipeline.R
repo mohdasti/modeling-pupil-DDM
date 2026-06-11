@@ -50,31 +50,35 @@ run_step <- function(step_name, expr) {
   invisible(ok)
 }
 
-fit_boundary <- function(step_name, output_base, z_col, metric_label, baseline_loo_dir) {
+fit_boundary <- function(step_name, output_base, z_col, baseline_loo_dir) {
   step_log <- file.path(STATUS_DIR, paste0(step_name, ".log"))
-  fit_script <- file.path(ROOT, "scripts", "fit_pupil_boundary_model.R")
-  post_script <- file.path(ROOT, "scripts", "postprocess_pupil_boundary_model.R")
-  env <- c(
-    Sys.getenv(),
-    PUPIL_OUTPUT_BASE = output_base,
-    PUPIL_Z_COL = z_col,
-    PUPIL_METRIC_LABEL = metric_label,
-    PUPIL_BASELINE_LOO_DIR = baseline_loo_dir,
-    PUPIL_REFIT = Sys.getenv("PUPIL_REFIT", "on_change")
-  )
-  status_fit <- system2("Rscript", fit_script, stdout = step_log, stderr = step_log, env = env)
-  if (!identical(status_fit, 0L)) {
-    tail_lines <- if (file.exists(step_log)) paste(tail(readLines(step_log, warn = FALSE), 30), collapse = "\n") else "(no log)"
-    stop("fit_pupil_boundary_model.R failed (", step_name, ")\n", tail_lines)
+  runner <- file.path(ROOT, "scripts", "run_pupil_boundary_env.sh")
+  if (!file.exists(runner)) {
+    stop("Missing helper script: ", runner)
   }
-  status_post <- system2("Rscript", post_script, stdout = paste0(step_log, ".post"), stderr = paste0(step_log, ".post"), env = env)
-  if (!identical(status_post, 0L)) {
-    tail_lines <- if (file.exists(step_log)) paste(tail(readLines(step_log, warn = FALSE), 30), collapse = "\n") else "(no log)"
-    stop("postprocess_pupil_boundary_model.R failed (", step_name, ")\n", tail_lines)
+  cmd <- sprintf(
+    "bash %s %s %s %s %s %s",
+    shQuote(runner),
+    shQuote(step_name),
+    shQuote(output_base),
+    shQuote(z_col),
+    shQuote(baseline_loo_dir),
+    shQuote(step_log)
+  )
+  status <- system(cmd)
+  if (!identical(status, 0L)) {
+    tail_lines <- if (file.exists(step_log)) {
+      paste(tail(readLines(step_log, warn = FALSE), 40), collapse = "\n")
+    } else {
+      "(no log captured)"
+    }
+    stop("run_pupil_boundary_env.sh failed (", step_name, ")\n", tail_lines)
   }
 }
 
-cat("", file = STATUS_FILE)
+if (!tolower(Sys.getenv("RESUME_PIPELINE", "false")) %in% c("1", "true", "yes")) {
+  cat("", file = STATUS_FILE)
+}
 write_status("INIT", paste("ROOT =", ROOT, "| RUN_ID =", RUN_ID))
 
 # ── 0. Sanity ────────────────────────────────────────────────────────────────
@@ -125,7 +129,6 @@ if (!SKIP_BOUNDARY) {
     step_name = "boundary_primary",
     output_base = "output/ddm_pupil_boundary",
     z_col = "pupil_metric_primary_z",
-    metric_label = "Decision-Response AUC (0.3–3.3 s post-probe)",
     baseline_loo_dir = "output/ddm_pupil"
   ))
 } else {
@@ -143,7 +146,6 @@ if (!SKIP_BOUNDARY_W1P3) {
       step_name = "boundary_w1p3",
       output_base = "output/ddm_pupil_boundary_w1p3",
       z_col = "pupil_w1p3_z",
-      metric_label = "Truncated Decision-Response AUC (0.3–1.3 s post-probe)",
       baseline_loo_dir = "output/ddm_pupil_w1p3"
     ))
   }

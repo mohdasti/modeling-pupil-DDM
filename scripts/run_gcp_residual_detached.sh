@@ -19,8 +19,21 @@ mkdir -p "$(dirname "$LOG")"
 
 export DDM_RUN_ID="${DDM_RUN_ID:-20260226_092110}"
 export PUPIL_REFIT="${PUPIL_REFIT:-on_change}"
+export SKIP_DIFFICULTY_ONLY="${SKIP_DIFFICULTY_ONLY:-false}"
+export SKIP_PPC="${SKIP_PPC:-false}"
+export SKIP_BOUNDARY="${SKIP_BOUNDARY:-false}"
+export SKIP_BOUNDARY_W1P3="${SKIP_BOUNDARY_W1P3:-false}"
+export RESUME_PIPELINE="${RESUME_PIPELINE:-false}"
 
-CMD="cd '$ROOT' && Rscript scripts/gcp_residual_analyses_pipeline.R 2>&1 | tee -a '$LOG'"
+CMD="cd '$ROOT' && \
+SKIP_DIFFICULTY_ONLY='$SKIP_DIFFICULTY_ONLY' \
+SKIP_PPC='$SKIP_PPC' \
+SKIP_BOUNDARY='$SKIP_BOUNDARY' \
+SKIP_BOUNDARY_W1P3='$SKIP_BOUNDARY_W1P3' \
+RESUME_PIPELINE='$RESUME_PIPELINE' \
+DDM_RUN_ID='$DDM_RUN_ID' \
+PUPIL_REFIT='$PUPIL_REFIT' \
+Rscript scripts/gcp_residual_analyses_pipeline.R 2>&1 | tee -a '$LOG'"
 
 if command -v tmux >/dev/null 2>&1; then
   if tmux has-session -t "$SESSION" 2>/dev/null; then
