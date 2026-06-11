@@ -24,7 +24,8 @@ suppressPackageStartupMessages({
 # Setup logging
 # ==============================================================================
 
-LOG_FILE <- here::here("output", "ddm_pupil", "logs", "postprocess_pupil_ddm_models.log")
+OUTPUT_BASE <- here::here(Sys.getenv("PUPIL_OUTPUT_BASE", "output/ddm_pupil"))
+LOG_FILE <- file.path(OUTPUT_BASE, "logs", "postprocess_pupil_ddm_models.log")
 dir.create(dirname(LOG_FILE), recursive = TRUE, showWarnings = FALSE)
 
 log_msg <- function(..., level = "INFO") {
@@ -46,9 +47,9 @@ log_msg("")
 # Setup paths
 # ==============================================================================
 
-MODELS_DIR <- here::here("output", "ddm_pupil", "models")
-TABLES_DIR <- here::here("output", "ddm_pupil", "tables")
-FIGS_DIR <- here::here("output", "ddm_pupil", "figs")
+MODELS_DIR <- file.path(OUTPUT_BASE, "models")
+TABLES_DIR <- file.path(OUTPUT_BASE, "tables")
+FIGS_DIR <- file.path(OUTPUT_BASE, "figs")
 
 # Create output directories
 for (dir in c(TABLES_DIR, FIGS_DIR)) {

@@ -1076,6 +1076,7 @@ merged_v4 <- merged_base %>%
 
 # COALESCE .x/.y columns BEFORE dropping them (CRITICAL FIX)
 coalesce_fields <- c("total_auc", "cog_auc", "cog_auc_w3", "cog_auc_respwin",
+                     "cog_auc_w1p3", "cog_mean_w1p3",
                      # Gap-aware QC metrics for cognitive AUC
                      "cog_auc_n_valid", "cog_window_duration", "cog_auc_prop_valid", 
                      "cog_auc_max_gap_ms", "cog_auc_n_segments",

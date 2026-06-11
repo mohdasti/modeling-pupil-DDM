@@ -38,12 +38,19 @@ suppressPackageStartupMessages({
 SCRIPT_NAME <- "fit_pupil_ddm_models.R"
 START_TIME <- Sys.time()
 
-# Create output directories
-OUTPUT_BASE <- here::here("output", "ddm_pupil")
+# Output layout (override for w1p3 sensitivity: PUPIL_OUTPUT_BASE=output/ddm_pupil_w1p3)
+OUTPUT_BASE <- here::here(Sys.getenv("PUPIL_OUTPUT_BASE", "output/ddm_pupil"))
+PUPIL_Z_COL <- Sys.getenv("PUPIL_Z_COL", "pupil_metric_primary_z")
+PUPIL_METRIC_LABEL <- Sys.getenv("PUPIL_METRIC_LABEL", "pupil_metric_primary_z")
 MODELS_DIR <- file.path(OUTPUT_BASE, "models")
 TABLES_DIR <- file.path(OUTPUT_BASE, "tables")
 FIGS_DIR <- file.path(OUTPUT_BASE, "figs")
 LOG_DIR <- file.path(OUTPUT_BASE, "logs")
+
+DATA_FILE <- Sys.getenv(
+  "PUPIL_DATA_FILE",
+  here::here("output", "ddm_pupil", "ddm_pupil_ready_thr0.20_probe_onset_locked.csv")
+)
 
 for (dir in c(MODELS_DIR, TABLES_DIR, FIGS_DIR, LOG_DIR)) {
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
@@ -72,6 +79,8 @@ log_msg(strrep("=", 80))
 log_msg("Script:", SCRIPT_NAME)
 log_msg("Start time:", format(START_TIME, "%Y-%m-%d %H:%M:%S"))
 log_msg("Output directory:", OUTPUT_BASE)
+log_msg("Pupil z column:", PUPIL_Z_COL, "(", PUPIL_METRIC_LABEL, ")")
+log_msg("Data file:", DATA_FILE)
 log_msg("")
 
 # ==============================================================================
@@ -106,8 +115,6 @@ log_msg("")
 
 log_msg("STEP 1: Loading data...")
 
-DATA_FILE <- here::here("output", "ddm_pupil", "ddm_pupil_ready_thr0.20_probe_onset_locked.csv")
-
 if (!file.exists(DATA_FILE)) {
   log_msg("ERROR: Data file not found:", DATA_FILE, level = "ERROR")
   close(log_con)
@@ -115,6 +122,14 @@ if (!file.exists(DATA_FILE)) {
 }
 
 ddm_data <- read_csv(DATA_FILE, show_col_types = FALSE)
+
+if (!PUPIL_Z_COL %in% names(ddm_data)) {
+  log_msg("ERROR: Pupil column not found:", PUPIL_Z_COL, level = "ERROR")
+  log_msg("Available pupil columns:", paste(grep("^pupil", names(ddm_data), value = TRUE), collapse = ", "),
+          level = "ERROR")
+  close(log_con)
+  stop("Missing pupil column: ", PUPIL_Z_COL)
+}
 
 log_msg("  ✓ Loaded:", DATA_FILE)
 log_msg("  Rows:", nrow(ddm_data))
@@ -152,8 +167,8 @@ model_data_all <- ddm_data %>%
     effort_condition = factor(effort_condition, levels = c("Low", "High")),
     dec_upper = as.integer(choice_binary),
     rt = rt_primary,
-    pupil_z = pupil_metric_primary_z,
-    pupil_scaled = pupil_metric_primary_z
+    pupil_z = .data[[PUPIL_Z_COL]],
+    pupil_scaled = .data[[PUPIL_Z_COL]]
   ) %>%
   filter(!is.na(rt), !is.na(dec_upper), rt > 0) %>%
   select(subject_id, task, difficulty_3, effort_condition, rt, dec_upper,
@@ -193,7 +208,7 @@ log_msg(sprintf("  Max: %.3f s", max(model_data$rt, na.rm = TRUE)))
 log_msg("")
 
 # Pupil statistics
-log_msg("Pupil statistics (pupil_metric_primary_z):")
+log_msg("Pupil statistics (", PUPIL_Z_COL, "):")
 log_msg(sprintf("  Mean: %.3f", mean(model_data$pupil_z, na.rm = TRUE)))
 log_msg(sprintf("  SD: %.3f", sd(model_data$pupil_z, na.rm = TRUE)))
 log_msg(sprintf("  Min: %.3f", min(model_data$pupil_z, na.rm = TRUE)))

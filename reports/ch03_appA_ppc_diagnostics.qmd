@@ -81,29 +81,7 @@ if (file.exists(pf_subj_rds)) {
   }
 }
 
-# Load tbl_sens from the DDM refits run directory (must match main chapter params$run_dir)
-RUN_ID <- Sys.getenv("DDM_RUN_ID", "20260226_092110")
-RUN_DIR <- here::here("output", "ddm_refits", "runs", RUN_ID)
-TABLE_DIR <- file.path(RUN_DIR, "tables")
-tbl_sens <- NULL
-if (file.exists(file.path(TABLE_DIR, "ddm_sensitivity_thresholds.csv"))) {
-  tbl_sens <- read_csv(file.path(TABLE_DIR, "ddm_sensitivity_thresholds.csv"), show_col_types = FALSE)
-  
-  # Standardize column names (same as main chapter)
-  if ("loo_ic" %in% names(tbl_sens) && !"looic" %in% names(tbl_sens)) {
-    tbl_sens <- tbl_sens %>% rename(looic = loo_ic)
-  }
-  if ("loo_se" %in% names(tbl_sens) && !"looic_se" %in% names(tbl_sens)) {
-    tbl_sens <- tbl_sens %>% rename(looic_se = loo_se)
-  }
-  if ("LOOIC" %in% names(tbl_sens) && !"looic" %in% names(tbl_sens)) {
-    tbl_sens <- tbl_sens %>% rename(looic = LOOIC)
-  }
-  if (("LOOIC_SE" %in% names(tbl_sens) || "looic_SE" %in% names(tbl_sens)) && !"looic_se" %in% names(tbl_sens)) {
-    se_col <- if ("LOOIC_SE" %in% names(tbl_sens)) "LOOIC_SE" else "looic_SE"
-    tbl_sens <- tbl_sens %>% rename(looic_se = !!sym(se_col))
-  }
-}
+# tbl_sens is loaded in the main chapter (ddm-paths-and-imports); do not reload here
 ```
 
 ### A3.1 PPC Validation Method {#sec-ch3-ppc-method .unnumbered}

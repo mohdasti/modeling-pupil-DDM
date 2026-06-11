@@ -65,7 +65,7 @@ cat("Pipeline completed!\n\n")
 cat("STEP 2: Verifying new features\n")
 cat("-------------------------------------\n")
 
-ch3_file <- "quick_share_v7/analysis_ready/ch3_triallevel.csv"
+ch3_file <- "data/pupil_processed/analysis_ready/ch3_triallevel.csv"
 if (file.exists(ch3_file)) {
   cat("Checking ch3_triallevel.csv for new features...\n")
   ch3_data <- readr::read_csv(ch3_file, n_max = 100, show_col_types = FALSE)
@@ -90,7 +90,7 @@ if (file.exists(ch3_file)) {
   warning("WARNING: ch3_triallevel.csv not found at: ", ch3_file, "\n")
 }
 
-merged_file <- "quick_share_v7/merged/BAP_triallevel_merged_v4.csv"
+merged_file <- "data/pupil_processed/merged/BAP_triallevel_merged_v4.csv"
 if (file.exists(merged_file)) {
   cat("\nChecking merged_v4.csv for new features...\n")
   merged_data <- readr::read_csv(merged_file, n_max = 100, show_col_types = FALSE)

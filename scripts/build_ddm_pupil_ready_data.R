@@ -193,6 +193,8 @@ if (nrow(many_to_many) > 0) {
       pupil_phasic = mean(pupil_phasic, na.rm = TRUE),
       pupil_metric_primary = mean(pupil_metric_primary, na.rm = TRUE),
       pupil_metric_primary_z = mean(pupil_metric_primary_z, na.rm = TRUE),
+      pupil_w1p3 = mean(pupil_w1p3, na.rm = TRUE),
+      pupil_w1p3_z = mean(pupil_w1p3_z, na.rm = TRUE),
       
       # Logical: TRUE if ANY session/run is missing
       pupil_missing = any(pupil_missing, na.rm = TRUE),

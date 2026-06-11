@@ -366,6 +366,35 @@ sread <- function(path) {
   }
 }
 
+# Posterior P/CrI formatting — avoid rounding high probabilities to "1.00"
+.fmt_cri <- function(lo, hi, digits = 2L) {
+  if (is.na(lo) || is.na(hi)) return("")
+  if (digits == 2L && max(abs(c(lo, hi))) < 0.15 && (hi - lo) < 0.08) digits <- 3L
+  fmt <- paste0("%.", digits, "f")
+  sprintf("95%% CrI $[%s,\\; %s]$", sprintf(fmt, lo), sprintf(fmt, hi))
+}
+
+.fmt_posterior_p <- function(p, dir = c("lt", "gt")) {
+  if (is.na(p)) return("")
+  sym <- if (dir[1] == "lt") "<" else ">"
+  if (p >= 0.999) return(sprintf("; $P(\\beta %s 0) > .999$", sym))
+  if (p <= 0.001) return(sprintf("; $P(\\beta %s 0) < .001$", sym))
+  sprintf("; $P(\\beta %s 0) = %.3f$", sym, p)
+}
+
+.lmm_term <- function(tbl, pattern) {
+  if (is.null(tbl) || nrow(tbl) == 0) return(NULL)
+  row <- tbl %>%
+    dplyr::filter(.data$effect == "fixed", grepl(pattern, .data$term, ignore.case = TRUE)) %>%
+    dplyr::slice(1)
+  if (nrow(row) == 0) return(NULL)
+  list(
+    beta = row$estimate,
+    lo   = row$conf.low,
+    hi   = row$conf.high
+  )
+}
+
 # --- Load all data files ---
 # QA files
 qa_exclusions <- sread(file.path(p, "qa_trial_exclusions.csv"))
@@ -749,15 +778,15 @@ if (!is.null(behavioral_data) && nrow(behavioral_data) > 0 &&
 }
 
 # RT LMM effort contrast strings (for A7 narrative + Discussion)
-rt_effort_beta_str <- "0.02 s"
-rt_effort_ci_str   <- "[−0.02, 0.05]"
+rt_effort_beta_str <- "0.011 s"
+rt_effort_ci_str   <- "[−0.019, 0.041]"
 if (!is.null(rt_lmm) && nrow(rt_lmm) > 0) {
   .rt_eff <- rt_lmm %>%
     dplyr::filter(effect == "fixed", grepl("High|40", term, ignore.case = TRUE)) %>%
     dplyr::slice(1)
   if (nrow(.rt_eff) == 1) {
-    rt_effort_beta_str <- sprintf("%.2f s", .rt_eff$estimate)
-    rt_effort_ci_str   <- sprintf("[%.2f, %.2f]",
+    rt_effort_beta_str <- sprintf("%.3f s", .rt_eff$estimate)
+    rt_effort_ci_str   <- sprintf("[%.3f, %.3f]",
                                   .rt_eff$conf.low, .rt_eff$conf.high)
   }
 }
@@ -852,13 +881,9 @@ if (!is.null(fixef_link_abstract) && nrow(fixef_link_abstract) > 0) {
     h1_se  <- if ("Est.Error" %in% names(h1_row)) h1_row$Est.Error else NA_real_
 
     h1_beta_str  <- sprintf("$\\beta = %.2f$", h1_est)
-    h1_cri_str   <- sprintf("95%% CrI $[%.2f,\\; %.2f]$", h1_lo, h1_hi)
+    h1_cri_str   <- .fmt_cri(h1_lo, h1_hi, 2L)
     h1_p0_val    <- if (!is.na(h1_se) && h1_se > 0) pnorm(0, mean = h1_est, sd = h1_se) else NA_real_
-    h1_p0_str    <- if (!is.na(h1_p0_val)) {
-      if (h1_p0_val >= 0.999) "; $P(\\beta < 0) > .999$"
-      else if (h1_p0_val <= 0.001) "; $P(\\beta < 0) < .001$"
-      else sprintf("; $P(\\beta < 0) = %.2f$", h1_p0_val)
-    } else ""
+    h1_p0_str    <- .fmt_posterior_p(h1_p0_val, "lt")
   }
 
   h2_row <- fl |>
@@ -878,13 +903,9 @@ if (!is.null(fixef_link_abstract) && nrow(fixef_link_abstract) > 0) {
     h2_hi  <- h2_row$Q97.5
     h2_se  <- if ("Est.Error" %in% names(h2_row)) h2_row$Est.Error else NA_real_
     h2_beta_str <- sprintf("$\\beta = %.2f$", h2_est)
-    h2_cri_str  <- sprintf("95%% CrI $[%.2f,\\; %.2f]$", h2_lo, h2_hi)
+    h2_cri_str  <- .fmt_cri(h2_lo, h2_hi, 3L)
     h2_p0_val   <- if (!is.na(h2_se) && h2_se > 0) 1 - pnorm(0, mean = h2_est, sd = h2_se) else NA_real_
-    h2_p0_str   <- if (!is.na(h2_p0_val)) {
-      if (h2_p0_val >= 0.999) "; $P(\\beta > 0) > .999$"
-      else if (h2_p0_val <= 0.001) "; $P(\\beta > 0) < .001$"
-      else sprintf("; $P(\\beta > 0) = %.2f$", h2_p0_val)
-    } else ""
+    h2_p0_str   <- .fmt_posterior_p(h2_p0_val, "gt")
   }
 
   h4_row <- fl |>
@@ -907,11 +928,7 @@ if (!is.null(fixef_link_abstract) && nrow(fixef_link_abstract) > 0) {
     h4_cri_str  <- sprintf("95%% CrI $[%.3f,\\; %.3f]$", h4_lo, h4_hi)
     h4_p_lt0_val <- if (!is.na(h4_se) && h4_se > 0) pnorm(0, mean = h4_est, sd = h4_se) else NA_real_
     h4_p0_val    <- if (!is.na(h4_p_lt0_val)) 1 - h4_p_lt0_val else NA_real_
-    h4_p0_str    <- if (!is.na(h4_p0_val)) {
-      if (h4_p0_val >= 0.999) "; $P(\\beta > 0) > .999$"
-      else if (h4_p0_val <= 0.001) "; $P(\\beta > 0) < .001$"
-      else sprintf("; $P(\\beta > 0) = %.2f$", h4_p0_val)
-    } else ""
+    h4_p0_str    <- .fmt_posterior_p(h4_p0_val, "gt")
   }
 }
 
@@ -965,7 +982,7 @@ Sixty-seven older adults completed auditory and visual same–different judgment
 
 High effort lowered drift relative to low (`r h1_beta_str`, `r h1_cri_str``r h1_p0_str`). High effort produced a directionally positive boundary-separation contrast that was practically negligible under the project ROPE (`r h2_beta_str`, `r h2_cri_str``r h2_p0_str`). Effort did not credibly change bias (`r h4_beta_str`, `r h4_cri_str``r h4_p0_str`). Non-decision time ($t_0$) was group-level only in the primary model, so effort on peripheral timing was not tested there; an exploratory log-$t_0$ effort term was small and wide ($\hat{\beta} = 0.02$, 95% CrI [−0.05, 0.09]).
 
-Trial-wise TEPR showed near-zero posterior links to drift and bias. Pupil-augmented models did not beat the behavioral baseline on the pupil subset (|$Δ$ELPD| < 4), but grip-related pupil change limits interpretation. A pupil × difficulty interaction model did not support demand-dependent arousal effects on drift.
+Exploratory pupil-linked models showed near-zero TEPR associations with drift and bias and no predictive gain over the behavioral baseline on the pupil subset (@sec-pupil-ddm-integration). A pupil × difficulty interaction on drift did not support demand-dependent arousal effects (@sec-pupil-ddm-integration).
 
 Primary contrasts held under alternative RT cutoffs and when task modality was included as a sensitivity check. Under concurrent grip, older adults mainly accumulated less evidence per unit time; caution and pre-response bias changed little.
 
@@ -1451,7 +1468,7 @@ Analyses proceeded in three stages. First, **manipulation checks** confirmed tha
 
 **Trial alignment and downsampling.** Cleaned pupil data were trial-aligned using event timestamps synchronized with behavioral event markers, then downsampled from 2000 Hz to 250 Hz using an 8th-order anti-aliasing filter to preserve signal quality while reducing computational demands. Baseline correction was applied by subtracting the mean pupil diameter during the baseline window (-0.5 s to 0 s relative to squeeze onset) from all timepoints in the trial.
 
-**Decision-Response AUC specification and rationale.** We quantified trial-wise phasic cognitive workload by calculating the baseline-corrected pupil area under the curve (AUC) via trapezoidal integration. This metric, functionally designated as the Decision-Response AUC, was extracted from a 3.0-second window anchored directly to evidence onset, spanning from 0.3 to 3.3 seconds post-probe. This placement corresponds to 4.65 to 7.65 seconds relative to the initial handgrip squeeze, capturing the transient, stimulus-locked phasic arousal fluctuation riding on top of the sustained tonic effort baseline. Delaying the window onset by 300 milliseconds directly accounts for the inherent neurophysiological lag of the pupillary efferent pathway. The 3.0-second window duration is highly specialized. It encapsulates the complete morphological profile of the transient task-evoked pupil response (TEPR), which characteristically peaks at approximately 2.95 seconds post-stimulus in this cohort. Because the explicit response prompt appeared 0.35 seconds post-probe and mean cue-locked response latencies averaged 0.6 seconds, this expansive window spans both pre-decision evidence accumulation and post-decision motor and confidence processing. We directly isolated these overlapping post-decisional dynamics by entering reaction time as a covariate in all primary downstream pupil-informed models. We also defined a **Truncated Decision-Response AUC**—a 1.0-second integration window from 0.3 to 1.3 s post-probe (4.65 to 5.65 s relative to handgrip onset)—as a narrower alternative that minimizes post-response contamination at the cost of capturing less of the full TEPR morphology; primary pupil-DDM models did not evaluate this truncated window.
+**Decision-Response AUC specification and rationale.** We quantified trial-wise phasic cognitive workload by calculating the baseline-corrected pupil area under the curve (AUC) via trapezoidal integration. This metric, functionally designated as the Decision-Response AUC, was extracted from a 3.0-second window anchored directly to evidence onset, spanning from 0.3 to 3.3 seconds post-probe. This placement corresponds to 4.65 to 7.65 seconds relative to the initial handgrip squeeze, capturing the transient, stimulus-locked phasic arousal fluctuation riding on top of the sustained tonic effort baseline. Delaying the window onset by 300 milliseconds directly accounts for the inherent neurophysiological lag of the pupillary efferent pathway. The 3.0-second window duration is highly specialized. It encapsulates the complete morphological profile of the transient task-evoked pupil response (TEPR), which characteristically peaks at approximately 2.95 seconds post-stimulus in this cohort. Because the explicit response prompt appeared 0.35 seconds post-probe and mean cue-locked response latencies averaged 0.6 seconds, this expansive window spans both pre-decision evidence accumulation and post-decision motor and confidence processing. We directly isolated these overlapping post-decisional dynamics by entering reaction time as a covariate in all primary downstream pupil-informed models. We also defined a **Truncated Decision-Response AUC**—a 1.0-second integration window from 0.3 to 1.3 s post-probe (4.65 to 5.65 s relative to handgrip onset)—as a narrower alternative that minimizes post-response contamination at the cost of capturing less of the full TEPR morphology; the same nested pupil-DDM sequence was refit on this metric as a sensitivity analysis (@sec-pupil-ddm-integration).
 
 Supplementary @fig-timing-supp shows the response-signal timing structure used in analyses.
 
@@ -1495,7 +1512,7 @@ To explicitly adjudicate between alternative mechanisms of state-dependent cogni
 
 Priors were weakly informative and specified on the link scale. The boundary separation intercept used $\mathcal{N}(\log 1.3,\; 0.25)$ (corresponding to $a \approx 1.3$ at baseline), the non-decision time intercept used $\mathcal{N}(\log 0.35,\; 0.15)$ ($t_0 \approx 0.35$ s, probe-onset-locked), the drift rate intercept used $\mathcal{N}(0, 1)$, and the starting-point bias intercept used $\mathcal{N}(0, 0.5)$ ($z \approx 0.5$, no bias). Full prior specifications for slopes and random effects are provided in Appendix A6.
 
-Convergence was assessed using $\hat{R} < 1.01$ and minimum bulk ESS $> 400$; all primary behavioral models satisfied these criteria (exploratory serial-dependency models: WSLS max $\hat{R} = 1.014$). Model comparison used Pareto-smoothed importance sampling LOO cross-validation (PSIS-LOO; @vehtari2017loo), with ELPD differences exceeding 4 considered meaningful; results are in @sec-results-sample.
+Convergence was assessed using $\hat{R} < 1.01$ and minimum bulk ESS $> 400$; all primary behavioral models satisfied these criteria. Exploratory choice-history models met the criterion for the history variant (max $\hat{R}$ = 1.003); the WSLS variant showed a slightly elevated maximum $\hat{R}$ (1.014) but zero divergent transitions (@sec-choice-history). Model comparison used Pareto-smoothed importance sampling LOO cross-validation (PSIS-LOO; @vehtari2017loo), with ELPD differences exceeding 4 considered meaningful; results are in @sec-results-sample.
 
 Model fit was evaluated using posterior predictive checks (PPC), including subject-level quantile-probability plots, Kolmogorov-Smirnov statistics, and residual heatmaps (full PPC diagnostics in Appendix A3). PPC deviations in fast-tail regions — a known limitation of standard Wiener DDM — did not affect inference on key parameter contrasts.
 
@@ -2301,15 +2318,11 @@ if (!is.null(fixef_link) && nrow(fixef_link) > 0) {
                 h1_row$Est.Error else NA_real_
 
     h1_beta_str  <- sprintf("$\\beta = %.2f$", h1_est)
-    h1_cri_str   <- sprintf("95%% CrI $[%.2f,\\; %.2f]$", h1_lo, h1_hi)
+    h1_cri_str   <- .fmt_cri(h1_lo, h1_hi, 2L)
     h1_p0_val    <- if (!is.na(h1_se) && h1_se > 0)
                       pnorm(0, mean = h1_est, sd = h1_se)
                     else NA_real_
-    h1_p0_str    <- if (!is.na(h1_p0_val)) {
-                      if (h1_p0_val >= 0.999) "; $P(\\beta < 0) > .999$"
-                      else if (h1_p0_val <= 0.001) "; $P(\\beta < 0) < .001$"
-                      else sprintf("; $P(\\beta < 0) = %.2f$", h1_p0_val)
-                    } else ""
+    h1_p0_str    <- .fmt_posterior_p(h1_p0_val, "lt")
     h1_supported <- !is.na(h1_hi) && h1_hi < 0
   }
 }
@@ -2338,16 +2351,12 @@ if (!is.null(fixef_link) && nrow(fixef_link) > 0) {
     h2_hi  <- h2_row$Q97.5
 
     h2_beta_str  <- sprintf("$\\beta = %.2f$", h2_est)
-    h2_cri_str   <- sprintf("95%% CrI $[%.2f,\\; %.2f]$", h2_lo, h2_hi)
+    h2_cri_str   <- .fmt_cri(h2_lo, h2_hi, 3L)
     h2_se        <- if ("Est.Error" %in% names(h2_row)) h2_row$Est.Error else NA_real_
     h2_p0_val    <- if (!is.na(h2_se) && h2_se > 0)
                       1 - pnorm(0, mean = h2_est, sd = h2_se)
                     else NA_real_
-    h2_p0_str    <- if (!is.na(h2_p0_val)) {
-                      if (h2_p0_val >= 0.999) "; $P(\\beta > 0) > .999$"
-                      else if (h2_p0_val <= 0.001) "; $P(\\beta > 0) < .001$"
-                      else sprintf("; $P(\\beta > 0) = %.2f$", h2_p0_val)
-                    } else ""
+    h2_p0_str    <- .fmt_posterior_p(h2_p0_val, "gt")
     h2_supported <- !is.na(h2_lo) && h2_lo > 0
     h2_null_note <- if (!is.na(h2_lo) && !is.na(h2_hi) &&
                         h2_lo < 0 && h2_hi > 0)
@@ -2397,11 +2406,7 @@ if (!is.null(fixef_link) && nrow(fixef_link) > 0) {
                       pnorm(0, mean = h4_est, sd = h4_se)
                     else NA_real_
     h4_p0_val    <- if (!is.na(h4_p_lt0_val)) 1 - h4_p_lt0_val else NA_real_
-    h4_p0_str    <- if (!is.na(h4_p0_val)) {
-                      if (h4_p0_val >= 0.999) "; $P(\\beta > 0) > .999$"
-                      else if (h4_p0_val <= 0.001) "; $P(\\beta > 0) < .001$"
-                      else sprintf("; $P(\\beta > 0) = %.2f$", h4_p0_val)
-                    } else ""
+    h4_p0_str    <- .fmt_posterior_p(h4_p0_val, "gt")
   }
 }
 
@@ -3004,23 +3009,154 @@ pupil_bias_beta_str  <- .pupil_b_fm$beta
 pupil_bias_cri_str   <- .pupil_b_fm$cri
 pupil_bias_null      <- .pupil_b_fm$null
 rm(.pupil_d_fm, .pupil_b_fm, fmt_pupil_inline)
+
+# ── Truncated Decision-Response AUC sensitivity (0.3–1.3 s post-probe) ───────
+pupil_trunc_n_trials <- NA_integer_
+pupil_trunc_delta_m1 <- pupil_trunc_delta_m2 <- pupil_trunc_delta_m3 <- NA_real_
+pupil_trunc_available <- FALSE
+for (.plf in file.path(proj_root, "output", "ddm_pupil_w1p3", "tables", "pupil_loo_summary.csv")) {
+  if (!file.exists(.plf)) next
+  .ploo <- readr::read_csv(.plf, show_col_types = FALSE)
+  if ("n_trials" %in% names(.ploo) && nrow(.ploo) > 0) {
+    pupil_trunc_n_trials <- as.integer(.ploo$n_trials[1])
+  }
+  if ("delta_elpd_vs_m0" %in% names(.ploo) && "model_name" %in% names(.ploo)) {
+    pupil_trunc_delta_m1 <- .ploo$delta_elpd_vs_m0[.ploo$model_name == "model_1_pupil_bias"]
+    pupil_trunc_delta_m2 <- .ploo$delta_elpd_vs_m0[.ploo$model_name == "model_2_pupil_bias_drift"]
+    pupil_trunc_delta_m3 <- .ploo$delta_elpd_vs_m0[.ploo$model_name == "model_3_pupil_difficulty_interaction"]
+  }
+  pupil_trunc_available <- TRUE
+  break
+}
+pupil_trunc_delta_m1_str <- if (is.finite(pupil_trunc_delta_m1)) sprintf("%.2f", abs(pupil_trunc_delta_m1)) else "\u2014"
+pupil_trunc_delta_m2_str <- if (is.finite(pupil_trunc_delta_m2)) sprintf("%.2f", abs(pupil_trunc_delta_m2)) else "\u2014"
+pupil_trunc_delta_m3_str <- if (is.finite(pupil_trunc_delta_m3)) sprintf("%.2f", abs(pupil_trunc_delta_m3)) else "\u2014"
+pupil_trunc_n_str <- if (is.finite(pupil_trunc_n_trials)) format(pupil_trunc_n_trials, big.mark = ",") else "\u2014"
+
+pupil_trunc_sensitivity_canonical <- if (isTRUE(pupil_trunc_available) && is.finite(pupil_trunc_n_trials)) {
+  sprintf(
+    paste0(
+      "As a window-choice sensitivity check, we repeated the nested pupil-DDM sequence using ",
+      "the **Truncated Decision-Response AUC** (0.3\u20131.3 s post-probe; %s trials with valid ",
+      "truncated TEPR). PSIS-LOO again favored the behavioral baseline ($|\\Delta$ELPD$|$ = %s, ",
+      "%s, and %s for pupil $\\rightarrow$ $z$, pupil $\\rightarrow$ $v$ + $z$, and pupil ",
+      "$\\times$ difficulty, respectively; all $< 4$); pooled and conditional pupil coefficients ",
+      "remained near zero with credible intervals spanning zero. Inconclusiveness therefore does ",
+      "not appear to depend on including the late TEPR tail."
+    ),
+    pupil_trunc_n_str,
+    pupil_trunc_delta_m1_str,
+    pupil_trunc_delta_m2_str,
+    pupil_trunc_delta_m3_str
+  )
+} else {
+  ""
+}
+
+pupil_trunc_discussion_blurb <- if (isTRUE(pupil_trunc_available) && is.finite(pupil_trunc_n_trials)) {
+  "The same conclusion held when TEPR was quantified with the **Truncated Decision-Response AUC** (0.3\u20131.3 s post-probe; @sec-pupil-ddm-integration)."
+} else {
+  ""
+}
+
 pupil_meas_limit_note <- "Near-zero posterior coefficients; TEPR likely conflates motor-autonomic and cognitive dilation under sustained grip (Appendix A5, @tbl-tepr)."
+
+# ── Canonical pupil/LOO narrative (single source; elsewhere cross-ref only) ──
+pupil_loo_canonical <- if (pupil_loo_reliable) {
+  sprintf(
+    paste0(
+      "On the pupil-available subset (%s trials, %s participants), PSIS-LOO was reliable ",
+      "(max Pareto-$k$ = %s; all $k \\leq 0.7$). Relative to the nested behavioral baseline, ",
+      "$\\Delta$ELPD was %s (pupil $\\rightarrow$ $z$), %s (pupil $\\rightarrow$ $v$ + $z$), ",
+      "and %s (pupil $\\times$ difficulty); none approached the $\\pm 4$ benchmark ",
+      "(@tbl-pupil-loo-appendix)."
+    ),
+    format(pupil_n_trials_model, big.mark = ","),
+    pupil_n_subj_model,
+    pupil_loo_max_k_str,
+    pupil_loo_delta_m1_str,
+    pupil_loo_delta_m2_str,
+    pupil_loo_delta_m3_str
+  )
+} else {
+  paste0(
+    "PSIS-LOO on the pupil-available subset should be verified in @tbl-pupil-loo-appendix ",
+    "before interpreting $\\Delta$ELPD."
+  )
+}
+
+pupil_coef_canonical <- sprintf(
+  paste0(
+    "Pooled TEPR did not credibly predict drift rate ($v$; %s, %s%s) or starting-point ",
+    "bias ($z$; %s, %s%s). Difficulty-conditional TEPR slopes on $v$ were centered near ",
+    "zero with CrIs spanning zero (@tbl-pupil-key-effects-appendix, @fig-tepr-slopes-supp)."
+  ),
+  pupil_drift_beta_str, pupil_drift_cri_str, pupil_drift_null,
+  pupil_bias_beta_str, pupil_bias_cri_str, pupil_bias_null
+)
+
+pupil_meas_canonical <- paste0(
+  "In five of six task $\\times$ difficulty cells, mean TEPR was **lower** under High ",
+  "(40% MVC) than Low (5% MVC) effort (@tbl-tepr; @fig-tepr-timecourse-supp). Combined ",
+  "with the Decision-Response AUC window—which spans pre- and post-response epochs and ",
+  "therefore likely mixes motor-autonomic with cognitive dilation under sustained ",
+  "isometric load—we treat pupil-linked DDM estimates as **measurement-limited**: they ",
+  "document a rigorously tested multimodal null under the current TEPR specification, ",
+  "not a definitive absence of arousal–parameter coupling."
+)
+
+pupil_abstract_blurb <- paste0(
+  "Exploratory pupil-linked models showed near-zero TEPR associations with drift and ",
+  "bias and no predictive gain over the behavioral baseline on the pupil subset ",
+  "(@sec-pupil-ddm-integration)."
+)
+
+pupil_xref_short <- "Pupil-linked DDM extensions were **inconclusive** under the current TEPR specification (@sec-pupil-ddm-integration)."
+
+pupil_xref_discussion <- paste0(
+  "Exploratory trial-wise pupil-linked models were inconclusive (@sec-pupil-ddm-integration); ",
+  "see also Limitations below."
+)
+
+pupil_xref_limitations <- if (isTRUE(pupil_trunc_available) && is.finite(pupil_trunc_n_trials)) {
+  paste0(
+    "Third, the primary trial-wise pupil predictor\u2014the **Decision-Response AUC**\u2014spans both ",
+    "pre- and post-response epochs (@sec-pupil-ddm-integration). We repeated the nested pupil-DDM ",
+    "comparisons using the **Truncated Decision-Response AUC** (0.3\u20131.3 s post-probe; ",
+    pupil_trunc_n_str, " trials with valid truncated TEPR); conclusions were unchanged ",
+    "($|\\Delta$ELPD$|$ $< 4$; near-zero coefficients). Remaining ambiguity likely reflects ",
+    "concurrent motor\u2013autonomic confounds under sustained grip rather than window choice alone."
+  )
+} else {
+  paste0(
+    "Third, the primary trial-wise pupil predictor\u2014the **Decision-Response AUC**\u2014spans both ",
+    "pre- and post-response epochs (@sec-pupil-ddm-integration). Sensitivity to the ",
+    "**Truncated Decision-Response AUC** window (0.3\u20131.3 s post-probe) should be verified ",
+    "against @sec-pupil-ddm-integration."
+  )
+}
+
+pupil_xref_conclusions <- paste0(
+  "Pupil-linked mechanisms were inconclusive (@sec-pupil-ddm-integration)."
+)
+
+pupil_scale_note <- "Inconclusive; see @sec-pupil-ddm-integration."
 
 null_ev_pupil_drift_early <- safe_rope_summary(
   label = "Pooled TEPR \u2192 Drift Rate (v)", parameter = "v (identity link)",
   estimate = .pd_est_e, q2.5 = .pd_lo_e, q97.5 = .pd_hi_e,
   rope_half_width = ROPE_V, meas_limited = TRUE,
-  scale_note = paste0("Inconclusive: ", pupil_meas_limit_note, " See @sec-pupil-ddm-integration.")
+  scale_note = pupil_scale_note
 )
 null_ev_pupil_bias_early <- safe_rope_summary(
   label = "Pooled TEPR \u2192 Bias (z)", parameter = "z (logit link)",
   estimate = .pb_est_e, q2.5 = .pb_lo_e, q97.5 = .pb_hi_e,
   rope_half_width = ROPE_BIAS, meas_limited = TRUE,
-  scale_note = paste0("Inconclusive: same TEPR measurement confound as drift model. See @sec-pupil-ddm-integration.")
+  scale_note = pupil_scale_note
 )
 
 # Conditional slope placeholders — estimates available only after pupil-interaction-stats runs
-.cond_note <- "Estimates computed in @sec-pupil-ddm-integration (Appendix A5, @tbl-pupil-key-effects-appendix). TEPR confound applies."
+.cond_note <- pupil_scale_note
 null_ev_pupil_std_e  <- safe_rope_summary(
   "TEPR slope \u2014 Standard trials", "v (interaction model)",
   NA_real_, NA_real_, NA_real_, rope_half_width = ROPE_V, meas_limited = TRUE,
@@ -3507,7 +3643,7 @@ For each hypothesis, inference rests on the posterior distribution of the High �
 
 **H4 (starting-point bias, $z$).** The effort contrast on pre-stimulus response bias was near zero and uncertain: `r h4_beta_str`, `r h4_cri_str``r h4_p0_str`. The CrI spans zero (ROPE mass `r h4_p_in_rope_pct`). In the primary model, VDT showed higher bias toward "different" responses than ADT (`r h4task_primary_beta_str`, `r h4task_primary_cri_str``r h4task_primary_p0_str`; logit task offset). Standard-only calibration reverses this ordering (`r h4task_stdonly_beta_str`, `r h4task_stdonly_cri_str``r h4task_stdonly_p0_str`; ADT − VDT on $z$), consistent with a $v$–$z$ trade-off when drift is not held constant across difficulty (@sec-starting-point-bias, @tbl-standard-only-bias-levels).
 
-The four hypotheses sit in different inferential positions. H1 is **supported**: the CrI excludes zero and posterior mass is consistent with a negative effort effect on drift rate (directionally reliable but small relative to difficulty contrasts). H2 is **directionally positive but practically negligible** under the project ROPE (CrI excludes zero; `r h2_p_in_rope_pct` ROPE mass), whereas H4 is a **near-zero null** (CrI spans zero). H3 is **not directly testable**: the response-signal design required an intercept-only $t_0$, so any exploratory effect on $\log t_0$ is a descriptive supplement, not a valid hypothesis test. Pupil-linked predictors are **inconclusive**: posterior coefficients were near zero with CrIs spanning zero, and `r pupil_loo_framing` `r pupil_meas_limit_note` ROPE mass in @tbl-hyp-summary (footnote [b]) is a project-level sensitivity summary and does not replace CrI-based inference.
+The four hypotheses sit in different inferential positions. H1 is **supported**: the CrI excludes zero and posterior mass is consistent with a negative effort effect on drift rate (directionally reliable but small relative to difficulty contrasts). H2 is **directionally positive but practically negligible** under the project ROPE (CrI excludes zero; `r h2_p_in_rope_pct` ROPE mass), whereas H4 is a **near-zero null** (CrI spans zero). H3 is **not directly testable**: the response-signal design required an intercept-only $t_0$, so any exploratory effect on $\log t_0$ is a descriptive supplement, not a valid hypothesis test. `r pupil_xref_short` ROPE mass in @tbl-hyp-summary (footnote [b]) is a project-level sensitivity summary and does not replace CrI-based inference.
 
 ```{r}
 #| label: tbl-hyp-summary
@@ -3639,7 +3775,7 @@ if (.is_pdf) {
     alphabet = c(
       "H3: t\u2080 intercept-only (response-signal design); exploratory estimate only.",
       "ROPE half-widths: drift \u00b10.02; boundary \u00b10.05 (log); bias \u00b10.05 (logit). Project convention, not a preregistered SESOI.",
-      "Pupil rows inconclusive: near-zero coefficients; TEPR confound under sustained grip. Conditional slopes: Appendix A5."
+      "Pupil rows inconclusive [c]; full LOO comparisons, coefficients, and measurement limits: @sec-pupil-ddm-integration; conditional slopes: Appendix A5."
     ),
     footnote_as_chunk = TRUE,
     escape = TRUE,
@@ -3697,11 +3833,9 @@ include_graphics_safe(main_fig("fig5_individual_differences.png"))
 
 As a pre-registered multimodal extension, we asked whether trial-wise task-evoked pupil responses (TEPR; within-subject *z*-scored Decision-Response AUC) modulate latent decision parameters during concurrent grip. On the pupil-available subset (`r format(pupil_n_trials_model, big.mark = ",")` trials, `r pupil_n_subj_model` participants), we fit a nested sequence of four hierarchical Wiener models (@sec-pupil-ddm-models): (1) a **behavioral baseline** without pupil predictors; (2) **pupil → bias** ($z$), directly relevant to phasic bias-reset accounts linked to H4; (3) **pupil → drift + bias** ($v$ and $z$); and (4) **pupil × difficulty** on drift (Yerkes–Dodson-style interaction on $v$). All four models used the identical trial set and additive difficulty/effort structure as the primary behavioral model. This subset excludes trials without valid pupil data and is **not** comparable to the full behavioral analysis ($N = 17{,}857$ trials); pupil-model comparisons are restricted to the nested same-$N$ set.
 
-`r pupil_loo_reliability_str` Relative to the behavioral baseline on this subset, $\Delta$ELPD was `r pupil_loo_delta_m1_str` (pupil → $z$), `r pupil_loo_delta_m2_str` (pupil → $v$ + $z$), and `r pupil_loo_delta_m3_str` (pupil × difficulty); none approached the $\pm 4$ benchmark for meaningful predictive improvement. Full PSIS-LOO values are in Appendix A5 (@tbl-pupil-loo-appendix).
+`r pupil_loo_canonical` `r pupil_coef_canonical` `r pupil_meas_canonical` `r pupil_trunc_sensitivity_canonical` Full TEPR descriptives are in Appendix A5 (@tbl-tepr). Pooled and conditional estimates appear in @tbl-hyp-summary (pupil rows) and @tbl-pupil-key-effects-appendix.
 
-Pupil-augmented results are summarized in @tbl-hyp-summary (pupil rows) and Supplementary @fig-tepr-slopes-supp. Pooled TEPR did not credibly predict drift rate ($v$; `r sprintf('%s, %s%s', pupil_drift_beta_str, pupil_drift_cri_str, pupil_drift_null)`) or starting-point bias ($z$; `r sprintf('%s, %s%s', pupil_bias_beta_str, pupil_bias_cri_str, pupil_bias_null)`). The pupil × difficulty model showed the same pattern: difficulty-conditional TEPR slopes on $v$ were centered near zero with CrIs spanning zero. Together with the tonic effort → bias null in @sec-key-contrasts, these results provide no credible evidence that concurrent grip or trial-wise TEPR shifted pre-stimulus bias in this sample — in contrast to phasic pupil-linked criterion reset reported in younger adults [@degee2020pupil] — though equivalence was not established and interpretation is limited by measurement constraints below.
-
-In five of six task × difficulty cells, mean TEPR was **lower** under High (40% MVC) than Low (5% MVC) effort (@tbl-tepr; @fig-tepr-timecourse-supp) — inconsistent with a simple monotonic increase in cognitive arousal under heavier grip. Combined with the Decision-Response AUC window (which spans pre- and post-response epochs and therefore likely mixes motor-autonomic with cognitive dilation under sustained isometric load), we treat the pupil-linked DDM estimates as **measurement-limited**: they document a rigorously tested multimodal null under the current TEPR specification, not a definitive absence of arousal–parameter coupling. Full TEPR descriptives and pupil coefficients are in Appendix A5 (@tbl-tepr, @tbl-pupil-key-effects-appendix).
+Together with the tonic effort → bias null in @sec-key-contrasts, these results provide no credible evidence that concurrent grip or trial-wise TEPR shifted pre-stimulus bias in this sample — in contrast to phasic pupil-linked criterion reset reported in younger adults [@degee2020pupil] — though equivalence was not established.
 
 ```{r}
 #| label: pupil-evidence-setup
@@ -3721,7 +3855,7 @@ if (exists(".pb_est_e") && is.finite(.pb_est_e)) {
 #| echo: false
 #| include: false
 # Compute caption choice and p_gt0 for fig-tepr-slopes-supp and tbl-pupil-key-effects-appendix
-pupil_fig_caption <- "Difficulty-Conditional TEPR Slopes on Drift Rate. Posterior distributions of the difficulty-conditional TEPR slope on drift rate $v$ for Standard, Hard, and Easy trials, from the pupil_scaled * difficulty interaction model. All three 95% credible intervals include zero, and the posteriors show minimal separation across difficulty levels, providing no clear evidence that trial-by-trial arousal fluctuations (indexed by TEPR) reliably predicted changes in evidence accumulation at any difficulty level. The absence of divergence across conditions is consistent with a null difficulty-conditional pattern, but interpretation is limited by the TEPR measurement confounds documented in the text (AUC window conflating motor-autonomic and cognitive components; see @sec-pupil-ddm-integration). Shaded regions show the 95% HDI; vertical dashed lines mark zero."
+pupil_fig_caption <- "Difficulty-Conditional TEPR Slopes on Drift Rate. Posterior distributions of the difficulty-conditional TEPR slope on drift rate $v$ for Standard, Hard, and Easy trials, from the pupil_scaled * difficulty interaction model. All three 95% credible intervals include zero, and the posteriors show minimal separation across difficulty levels. Interpretation is limited by measurement constraints documented in @sec-pupil-ddm-integration. Shaded regions show the 95% HDI; vertical dashed lines mark zero."
 p_gt0_easy <- p_gt0_hard <- p_gt0_standard <- NA_real_
 pupil_diff_mean_std <- pupil_diff_mean_hard <- pupil_diff_mean_easy <- NA_real_
 pupil_diff_ci_std <- pupil_diff_ci_hard <- pupil_diff_ci_easy <- ""
@@ -3777,7 +3911,7 @@ if (file.exists(pupil_int_model_path) && requireNamespace("brms", quietly = TRUE
       use_option_a <- med_easy > 0 && (hdi_easy[2] > 0 || (hdi_easy[2] - hdi_easy[1]) * 0.5 > abs(hdi_easy[1])) &&
                       (abs(med_std) < 0.05 || med_std <= 0) && (abs(med_hard) < 0.05 || med_hard <= 0)
       if (use_option_a) {
-        pupil_fig_caption <- "Difficulty-Conditional TEPR Slopes on Drift Rate. Posterior distributions of the difficulty-conditional TEPR slope on drift rate $v$, separately for Standard, Hard, and Easy trials, from the pupil_scaled * difficulty interaction model. The Easy condition shows a posterior slope with median above zero, and Standard and Hard conditions show slopes centered nearer to zero — a pattern qualitatively consistent with a Yerkes-Dodson difficulty-conditional account. However, all three 95% credible intervals include zero, so this divergence does not meet the threshold for a credible interaction effect. Additionally, all slopes are subject to the TEPR measurement limitations noted in the text (AUC window conflating motor-autonomic and cognitive components), which further limit causal interpretation. Shaded regions show the 95% HDI; vertical dashed lines mark zero."
+        pupil_fig_caption <- "Difficulty-Conditional TEPR Slopes on Drift Rate. Posterior distributions of the difficulty-conditional TEPR slope on drift rate $v$, separately for Standard, Hard, and Easy trials, from the pupil_scaled * difficulty interaction model. The Easy condition shows a posterior slope with median above zero, and Standard and Hard conditions show slopes centered nearer to zero — a pattern qualitatively consistent with a Yerkes-Dodson difficulty-conditional account. However, all three 95% credible intervals include zero, so this divergence does not meet the threshold for a credible interaction effect. See @sec-pupil-ddm-integration for measurement limitations. Shaded regions show the 95% HDI; vertical dashed lines mark zero."
       }
       # ── Near-identical slope detection ───────────────────────────────────────
       slopes_range <- max(c(pupil_diff_mean_std, pupil_diff_mean_hard, pupil_diff_mean_easy)) -
@@ -3797,12 +3931,7 @@ if (file.exists(pupil_int_model_path) && requireNamespace("brms", quietly = TRUE
 }
 pupil_fig_caption <- paste0(
   "**Supplementary Figure A5.2.** ",
-  pupil_fig_caption,
-  if (pupil_loo_reliable) {
-    sprintf(" %s", pupil_meas_limit_note)
-  } else {
-    " See @sec-pupil-ddm-integration for pupil LOO diagnostics."
-  }
+  pupil_fig_caption
 )
 ```
 
@@ -3835,7 +3964,7 @@ null_ev_pupil_drift <- safe_rope_summary(
   rope_half_width = ROPE_V,
   design_limited  = FALSE,
   meas_limited    = TRUE,   # TEPR confounded by motor-autonomic signals under sustained grip
-  scale_note      = "MEASUREMENT-LIMITED: TEPR likely confounds motor-autonomic and cognitive signals under sustained grip."
+  scale_note      = pupil_scale_note
 )
 
 # ── Pooled TEPR → bias (z) ───────────────────────────────────────────────────
@@ -4295,7 +4424,7 @@ include_graphics_safe(main_fig("fig4_temporal_dynamics.png"))
 
 ## Summary of Key Findings
 
-Results confirmed Hypothesis 1 (H1): High effort reduced drift rate, consistent with resource competition or supra-optimal arousal (@sec-key-contrasts). For Hypothesis 2 (H2), the boundary-separation effort contrast was directionally positive (`r h2_beta_str`, `r h2_cri_str``r h2_p0_str`) but `r if (h2_rope_practically_null) "all posterior mass fell within the project ROPE, so we do not interpret it as meaningful strategic caution" else "small relative to difficulty-driven variation in $a$"` (@sec-key-contrasts). Hypothesis 3 (H3) could not be tested directly: the response-signal design required constraining $t_0$ to an intercept-only specification for model stability, so no primary-model test of H3 was possible; an exploratory effort coefficient on $\log t_0$ was small and highly imprecise, and no firm conclusion about peripheral slowing can be drawn from it (@sec-key-contrasts). For Hypothesis 4 (H4), starting-point bias showed a near-zero, uncertain effort contrast, providing no credible evidence of a shift toward neutrality under High effort (@sec-starting-point-bias). Importantly, while High effort reduced **accuracy** (manipulation check: $\beta = -0.16$, $p < .001$), it did not reliably slow **reaction time** ($\beta = `r rt_effort_beta_str`, 95% CI `r rt_effort_ci_str`). This dissociation — lower accuracy without RT slowing — is explained by the DDM decomposition: drift rate declined (evidence quality) while boundary separation changed only negligibly under the project ROPE. The effort → drift effect was robust to adding task on drift, though task itself modulated absolute drift (@sec-key-contrasts, Appendix~A4.3). Trial-wise pupil-linked arousal (TEPR) showed near-zero posterior associations with both drift rate and starting-point bias (@sec-pupil-ddm-integration). `r pupil_loo_framing` `r pupil_meas_limit_note` The overall pattern is most consistent with concurrent physical effort degrading evidence accumulation quality while producing only a negligible boundary adjustment, rather than a large strategic reconfiguration of decision thresholds or pre-stimulus bias.
+Results confirmed Hypothesis 1 (H1): High effort reduced drift rate, consistent with resource competition or supra-optimal arousal (@sec-key-contrasts). For Hypothesis 2 (H2), the boundary-separation effort contrast was directionally positive (`r h2_beta_str`, `r h2_cri_str``r h2_p0_str`) but `r if (h2_rope_practically_null) "all posterior mass fell within the project ROPE, so we do not interpret it as meaningful strategic caution" else "small relative to difficulty-driven variation in $a$"` (@sec-key-contrasts). Hypothesis 3 (H3) could not be tested directly: the response-signal design required constraining $t_0$ to an intercept-only specification for model stability, so no primary-model test of H3 was possible; an exploratory effort coefficient on $\log t_0$ was small and highly imprecise, and no firm conclusion about peripheral slowing can be drawn from it (@sec-key-contrasts). For Hypothesis 4 (H4), starting-point bias showed a near-zero, uncertain effort contrast, providing no credible evidence of a shift toward neutrality under High effort (@sec-starting-point-bias). Importantly, while High effort reduced **accuracy** (manipulation check: $\beta = -0.16$, $p < .001$), it did not reliably slow **reaction time** ($\beta = `r rt_effort_beta_str`, 95% CI `r rt_effort_ci_str`). This dissociation — lower accuracy without RT slowing — is explained by the DDM decomposition: drift rate declined (evidence quality) while boundary separation changed only negligibly under the project ROPE. The effort → drift effect was robust to adding task on drift, though task itself modulated absolute drift (@sec-key-contrasts, Appendix~A4.3). `r pupil_xref_discussion` The overall pattern is most consistent with concurrent physical effort degrading evidence accumulation quality while producing only a negligible boundary adjustment, rather than a large strategic reconfiguration of decision thresholds or pre-stimulus bias.
 
 ## Drift rate under effort
 
@@ -4334,7 +4463,7 @@ This latent starting-point offset should not be read directly as a liberal behav
 
 Hard-trial accuracy at or below chance for many participants also indicates that some Hard offsets sat near perceptual threshold, weakening the assumption of a clean three-level difficulty gradient; this is noted in Limitations below. The absence of a credible effort contrast on $z$ is consistent with a stable task strategy rather than momentary arousal-driven criterion resetting, though this remains a graded null.
 
-The absence of a detectable phasic bias-resetting effect stands in contrast to prior work showing that pupil-indexed arousal can shift response criterion in younger adults [@degee2020pupil], and may reflect age-related attenuation of phasic LC-NE signals [@huang2024]. The pupil-linked findings in this chapter, however, must be classified as inconclusive rather than informative nulls. As detailed in @sec-pupil-ddm-integration, overlapping limitations constrain interpretation: (1) posterior coefficients for TEPR on both drift rate and bias were near zero; (2) `r pupil_loo_framing` and (3) the unexpected reversal of TEPR magnitude under High relative to Low effort (@tbl-tepr) suggests that the Decision-Response AUC window conflates motor-autonomic with cognitive dilation under sustained grip. These limitations collectively mean the current data cannot distinguish a genuine absence of pupil-parameter coupling from a failure of the TEPR measure to isolate cognitive arousal. Future work using a non-motor effort manipulation or the **Truncated Decision-Response AUC** window would be needed to resolve this. In the primary model, VDT showed higher starting-point bias toward "different" than ADT (`r h4task_primary_beta_str`, `r h4task_primary_cri_str``r h4task_primary_p0_str`; logit task offset), whereas the standard-only calibration model shows the opposite ordering (`r h4task_stdonly_beta_str`, `r h4task_stdonly_cri_str``r h4task_stdonly_p0_str`), illustrating the $v$–$z$ trade-off when drift is not held constant across difficulty. Exploratory LC-MRI correlates (Appendix A8) did not link LC integrity to task-specific bias or to the group-level effort effect on drift, though those tests were underpowered.
+The absence of a detectable phasic bias-resetting effect stands in contrast to prior work showing that pupil-indexed arousal can shift response criterion in younger adults [@degee2020pupil], and may reflect age-related attenuation of phasic LC-NE signals [@huang2024]. The pupil-linked findings in this chapter must be classified as inconclusive rather than informative nulls (@sec-pupil-ddm-integration). `r pupil_trunc_discussion_blurb` A non-motor effort manipulation may still be needed to separate tonic grip effects from phasic decision-related arousal. In the primary model, VDT showed higher starting-point bias toward "different" than ADT (`r h4task_primary_beta_str`, `r h4task_primary_cri_str``r h4task_primary_p0_str`; logit task offset), whereas the standard-only calibration model shows the opposite ordering (`r h4task_stdonly_beta_str`, `r h4task_stdonly_cri_str``r h4task_stdonly_p0_str`), illustrating the $v$–$z$ trade-off when drift is not held constant across difficulty. Exploratory LC-MRI correlates (Appendix A8) did not link LC integrity to task-specific bias or to the group-level effort effect on drift, though those tests were underpowered.
 
 ## Temporal dynamics across trials {#sec-temporal-dynamics}
 
@@ -4352,7 +4481,7 @@ Several limitations constrain the interpretation of these findings. First, the s
 
 Second, the response-signal paradigm imposes structural constraints on parameter estimation. Because the response window is externally gated, non-decision time $t_0$ could not be estimated with condition-specific variation without instability (@sec-ddm-spec and the H3 discussion above), limiting the direct test of H3. Reaction times are measured from response-screen onset rather than stimulus onset, confining the interpretation of $t_0$ to motor execution and response selection rather than early perceptual encoding. These design choices were necessary given the MRI-compatible grip-force paradigm but limit generalizability to free-response paradigms where $t_0$ reflects the full encoding-decision-motor chain.
 
-Third, the primary trial-wise pupil predictor—the **Decision-Response AUC**—spans both pre- and post-response epochs, so it cannot cleanly isolate phasic arousal during evidence accumulation from post-decisional and motor-related pupil dynamics. We did not test sensitivity to the **Truncated Decision-Response AUC** window. `r pupil_loo_framing` `r pupil_meas_limit_note`
+`r pupil_xref_limitations`
 
 Fourth, Hard-trial accuracy fell near or below chance for many participants (Appendix A7), indicating that some Hard offsets sat near perceptual threshold rather than forming a clean graded difficulty manipulation above chance. Parameter estimates for Hard conditions should be interpreted with this floor effect in mind.
 
@@ -4367,7 +4496,7 @@ Concurrent 40% MVC isometric grip degraded perceptual evidence accumulation in o
 
 First and strongest: drift rate was reliably lower under High than Low effort (small relative to difficulty contrasts, but directionally certain). Second: boundary separation was directionally higher under High effort but practically negligible under the project ROPE, whereas starting-point bias did not shift credibly — inconsistent with large strategic reconfiguration. Exploratory choice-history models showed small perseveration in bias without effort amplification; within-run fatigue affected boundary separation more than drift.
 
-Third and most uncertain: non-decision time could not be tested in the primary model because the response-signal design required an intercept-only $t_0$. The exploratory log-$t_0$ effort term was small and imprecise. Pupil-linked mechanisms were inconclusive: pupil-augmented models did not improve out-of-sample fit on the pupil-available subset, posterior TEPR coefficients on drift and bias were near zero, and TEPR under sustained grip likely conflated motor-autonomic with cognitive dilation.
+Third and most uncertain: non-decision time could not be tested in the primary model because the response-signal design required an intercept-only $t_0$. The exploratory log-$t_0$ effort term was small and imprecise. `r pupil_xref_conclusions`
 
 Exploratory individual-differences analyses in the same cohort did not alter this group-level story. LC-MRI correlates (Appendix A8; [@bennett2024lc]) were more closely related to between-person variability in sensitivity and baseline boundary settings than to mean perceptual sensitivity, trial-wise TEPR, or the effort effect on drift. Extended neuropsychological characterization (Appendix A9) did not indicate that global cognition explained the effort → drift pattern. Taken together, under concurrent physical load, older adults mainly accumulate less evidence per unit time, with only limited adjustment in caution or bias. Exploratory LC and neuropsychological appendices contextualize individual differences but do not change the group-level account.
 
@@ -5348,51 +5477,52 @@ LOOIC is not comparable across cutoffs because trial counts differ. We compare p
 #| label: tbl-sensitivity-thresholds
 #| tbl-cap: "Sensitivity to minimum cue-locked RT cutoff (0.15/0.20/0.25 s)."
 #| tbl-pos: "htbp"
+#| eval: !expr has_tbl_sens
 # Build sensitivity table from tbl_sens (handle optional LOOIC columns)
-# Build column list dynamically
-cols_to_select <- c("threshold", "n_trials")
-if ("looic" %in% names(tbl_sens)) {
-  cols_to_select <- c(cols_to_select, "looic")
-}
-if ("looic_se" %in% names(tbl_sens)) {
-  cols_to_select <- c(cols_to_select, "looic_se")
-}
+if (!is.null(tbl_sens) && nrow(tbl_sens) > 0) {
+  cols_to_select <- c("threshold", "n_trials")
+  if ("looic" %in% names(tbl_sens)) {
+    cols_to_select <- c(cols_to_select, "looic")
+  }
+  if ("looic_se" %in% names(tbl_sens)) {
+    cols_to_select <- c(cols_to_select, "looic_se")
+  }
 
-tbl_sens_base <- tbl_sens %>%
-  select(all_of(cols_to_select)) %>%
-  arrange(threshold)
+  tbl_sens_base <- tbl_sens %>%
+    select(all_of(cols_to_select)) %>%
+    arrange(threshold)
 
-# Add LOOIC columns if they don't exist
-if (!"looic" %in% names(tbl_sens_base)) {
-  tbl_sens_base <- tbl_sens_base %>% mutate(looic = NA_real_)
+  if (!"looic" %in% names(tbl_sens_base)) {
+    tbl_sens_base <- tbl_sens_base %>% mutate(looic = NA_real_)
+  }
+  if (!"looic_se" %in% names(tbl_sens_base)) {
+    tbl_sens_base <- tbl_sens_base %>% mutate(looic_se = NA_real_)
+  }
+
+  tbl_sens_compact <- tbl_sens_base %>%
+    mutate(
+      looic = if (!all(is.na(looic))) round(looic, 1) else NA_real_,
+      looic_se = if (!all(is.na(looic_se))) round(looic_se, 1) else NA_real_,
+      n_trials = format(n_trials, big.mark = ",")
+    ) %>%
+    select(threshold, n_trials, looic, looic_se) %>%
+    rename(
+      `Threshold (s)` = threshold,
+      `N trials` = n_trials,
+      `LOOIC` = looic,
+      `LOOIC SE` = looic_se
+    )
+
+  tbl_sens_compact %>%
+    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+                 booktabs = TRUE,
+                 linesep = "") %>%
+    kableExtra::kable_styling(
+      latex_options = c("striped", "hold_position"),
+      bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+      full_width = FALSE
+    )
 }
-if (!"looic_se" %in% names(tbl_sens_base)) {
-  tbl_sens_base <- tbl_sens_base %>% mutate(looic_se = NA_real_)
-}
-
-tbl_sens_compact <- tbl_sens_base %>%
-  mutate(
-    looic = if (!all(is.na(looic))) round(looic, 1) else NA_real_,
-    looic_se = if (!all(is.na(looic_se))) round(looic_se, 1) else NA_real_,
-    n_trials = format(n_trials, big.mark = ",")
-  ) %>%
-  select(threshold, n_trials, looic, looic_se) %>%
-  rename(
-    `Threshold (s)` = threshold,
-    `N trials` = n_trials,
-    `LOOIC` = looic,
-    `LOOIC SE` = looic_se
-  )
-
-tbl_sens_compact %>%
-  knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), 
-               booktabs = TRUE, 
-               linesep = "") %>%
-  kableExtra::kable_styling(
-    latex_options = c("striped", "hold_position"),
-    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
-    full_width = FALSE
-  )
 ```
 
 Primary cutoff: 0.20 s cue-locked (@tbl-sensitivity-thresholds). All reported effects use this threshold.
@@ -6241,7 +6371,7 @@ Full model equations, priors, and sampling details omitted from the main Methods
 
 ```{r}
 #| label: fig-timing-supp
-#| fig-cap: "Structural schematic of a single trial timeline and task-evoked pupil response (TEPR) integration windows. The full timeline is anchored to initial somatic contraction (Squeeze Onset at 0.00 s). Perceptual evidence becomes available at Probe Onset (4.35 s), followed by the execution prompt (Response Prompt at 4.70 s). Phasic arousal features are extracted using two baseline-corrected windows opening at 4.65 s (probe onset + 300 ms neurophysiological lag). The primary Decision-Response AUC window spans a full 3.0 seconds to capture the complete late-peaking morphology of the older cohort's pupillary response, intentionally encompassing both choice formation and post-decisional processing. The Truncated Decision-Response AUC window spans 1.0 second (0.3–1.3 s post-probe), serving as a targeted sensitivity control that captures the immediate execution phase while systematically clipping the post-decisional tail."
+#| fig-cap: "Structural schematic of a single trial timeline and task-evoked pupil response (TEPR) integration windows. The full timeline is anchored to initial somatic contraction (Squeeze Onset at 0.00 s). Perceptual evidence becomes available at Probe Onset (4.35 s), followed by the execution prompt (Response Prompt at 4.70 s). Phasic arousal features are extracted using two baseline-corrected windows opening at 4.65 s (probe onset + 300 ms neurophysiological lag). The primary Decision-Response AUC window spans a full 3.0 seconds to capture the complete late-peaking morphology of the older cohort's pupillary response, intentionally encompassing both choice formation and post-decisional processing. The Truncated Decision-Response AUC window spans 1.0 second (0.3–1.3 s post-probe), evaluated in a sensitivity refit of the nested pupil-DDM models (@sec-pupil-ddm-integration)."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "70%"
@@ -6453,9 +6583,37 @@ if (!is.null(behavioral_data)) {
     }
   }
 }
+acc_hard_beta_str   <- "$\\beta = -2.97$"
+acc_hard_ci_str     <- "95\\% CI [−3.07, −2.88]"
+acc_effort_beta_str <- "$\\beta = -0.15$"
+acc_effort_ci_str   <- "95\\% CI [−0.23, −0.06]"
+acc_effort_p_str    <- "$p < .001$"
+if (!is.null(acc_glmm) && nrow(acc_glmm) > 0) {
+  .acc_hard <- .lmm_term(acc_glmm, "difficulty.*Hard|Hard")
+  .acc_eff  <- .lmm_term(acc_glmm, "effort.*High|High_MVC")
+  if (!is.null(.acc_hard)) {
+    acc_hard_beta_str <- sprintf("$\\beta = %.2f$", .acc_hard$beta)
+    acc_hard_ci_str   <- sprintf("95\\%% CI [%.2f, %.2f]", .acc_hard$lo, .acc_hard$hi)
+  }
+  if (!is.null(.acc_eff)) {
+    acc_effort_beta_str <- sprintf("$\\beta = %.2f$", .acc_eff$beta)
+    acc_effort_ci_str   <- sprintf("95\\%% CI [%.2f, %.2f]", .acc_eff$lo, .acc_eff$hi)
+    .eff_row <- acc_glmm %>%
+      dplyr::filter(.data$effect == "fixed",
+                    grepl("effort.*High|High_MVC", .data$term, ignore.case = TRUE)) %>%
+      dplyr::slice(1)
+    if (nrow(.eff_row) == 1 && "p.value" %in% names(.eff_row)) {
+      acc_effort_p_str <- if (.eff_row$p.value < 0.001) {
+        "$p < .001$"
+      } else {
+        sprintf("$p = %.3f$", .eff_row$p.value)
+      }
+    }
+  }
+}
 ```
 
-Hard trials were less accurate than Easy ($\beta = -2.97$, 95% CI [−3.07, −2.88], $p < .001$; means `r acc_hard_mean`% vs. `r acc_easy_mean`%; @tbl-accuracy-glmm, @fig-accuracy-distribution). Lowest accuracy was in Hard+High cells (`r acc_hard_min`%). High effort reduced accuracy relative to Low ($\beta = -0.16$, 95% CI [−0.24, −0.07], $p < .001$; `r acc_high_mean`% vs. `r acc_low_mean`%).
+Hard trials were less accurate than Easy (`r acc_hard_beta_str`, `r acc_hard_ci_str`, $p < .001$; means `r acc_hard_mean`% vs. `r acc_easy_mean`%; @tbl-accuracy-glmm, @fig-accuracy-distribution). Lowest accuracy was in Hard+High cells (`r acc_hard_min`%). High effort reduced accuracy relative to Low (`r acc_effort_beta_str`, `r acc_effort_ci_str`, `r acc_effort_p_str`; `r acc_high_mean`% vs. `r acc_low_mean`%).
 
 ```{r}
 #| label: tbl-accuracy-glmm
@@ -6818,9 +6976,18 @@ if (!is.null(behavioral_data)) {
     }
   }
 }
+rt_hard_beta_str <- "$\\beta = 0.232 s$"
+rt_hard_ci_str   <- "95\\% CI [0.197, 0.266]"
+if (!is.null(rt_lmm) && nrow(rt_lmm) > 0) {
+  .rt_hard <- .lmm_term(rt_lmm, "difficulty.*Hard|Hard")
+  if (!is.null(.rt_hard)) {
+    rt_hard_beta_str <- sprintf("$\\beta = %.3f s$", .rt_hard$beta)
+    rt_hard_ci_str   <- sprintf("95\\%% CI [%.3f, %.3f]", .rt_hard$lo, .rt_hard$hi)
+  }
+}
 ```
 
-Hard trials were slower than Easy ($\beta = 0.23 s, 95% CI [0.20, 0.27], $p < .001$; medians `r rt_hard_median` s vs. `r rt_easy_median` s; @tbl-rt-lmm, @fig-rt-distribution). Effort did not affect RT credibly ($\beta = `r rt_effort_beta_str`, 95% CI `r rt_effort_ci_str`).
+Hard trials were slower than Easy (`r rt_hard_beta_str`, `r rt_hard_ci_str`, $p < .001$; medians `r rt_hard_median` s vs. `r rt_easy_median` s; @tbl-rt-lmm, @fig-rt-distribution). Effort did not affect RT credibly (`r sprintf("$\\beta = %s$", rt_effort_beta_str)`, `r sprintf("95\\%% CI %s", rt_effort_ci_str)`).
 
 ```{r}
 #| label: tbl-rt-lmm

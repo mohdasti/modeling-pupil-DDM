@@ -128,6 +128,16 @@ if [[ -f "${RUN_INTERACTION}" ]]; then
   echo "${RUN_INTERACTION}" >> "${TAR_LIST}"
 fi
 
+# Optional w1p3 sensitivity outputs
+W1P3_BASE="${PUPIL_BASE}/../ddm_pupil_w1p3"
+if [[ -d "${PROJECT_ROOT}/output/ddm_pupil_w1p3/tables" ]]; then
+  find "${PROJECT_ROOT}/output/ddm_pupil_w1p3" -type f ! -name '._*' >> "${TAR_LIST}" 2>/dev/null || true
+fi
+
+if [[ -f "${PUPIL_BASE}/tables/pupil_loo_window_comparison.csv" ]]; then
+  echo "${PUPIL_BASE}/tables/pupil_loo_window_comparison.csv" >> "${TAR_LIST}"
+fi
+
 # Deduplicate paths
 sort -u "${TAR_LIST}" -o "${TAR_LIST}"
 
