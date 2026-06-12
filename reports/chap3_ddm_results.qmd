@@ -6202,9 +6202,9 @@ if (file.exists(pdf_file)) {
 
 ## A5. Pupil-DDM Fixed Effects and TEPR Visualization {#app-pupil-fixef .unnumbered}
 
-Unified pupil LOO (A5.1); fixed effects and model comparison (A5.2); Cavanagh boundary extensions (A5.3); TEPR descriptives and waveforms (A5.4–A5.5). Interpretation: @sec-pupil-ddm-integration.
+Unified pupil LOO, nested fixed-effects comparisons, Cavanagh boundary extensions, and TEPR descriptives/waveforms. Interpretation: @sec-pupil-ddm-integration.
 
-### A5.1 Unified pupil LOO comparison {.unnumbered}
+### Unified pupil LOO comparison {.unnumbered .unlisted}
 
 ```{r}
 #| label: tbl-pupil-loo-unified
@@ -6240,7 +6240,8 @@ if (file.exists(pupil_loo_all_path)) {
     dplyr::select(Window, Model, `ELPD LOO`, `SE(ELPD)`, `Delta ELPD vs m0`, `Max Pareto-k`, n_trials) %>%
     dplyr::rename(`N trials` = n_trials) %>%
     knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
-                 booktabs = TRUE, linesep = "") %>%
+                 booktabs = TRUE, linesep = "",
+                 escape = !knitr::is_latex_output()) %>%
     kableExtra::kable_styling(
       latex_options = c("striped", "hold_position", "scale_down"),
       bootstrap_options = c("striped", "hover", "condensed"),
@@ -6254,7 +6255,7 @@ if (file.exists(pupil_loo_all_path)) {
 }
 ```
 
-### A5.2 Fixed Effects and Model Comparison {.unnumbered}
+### Fixed effects and model comparison {.unnumbered .unlisted}
 
 ```{r}
 #| label: tbl-pupil-loo-appendix
@@ -6282,71 +6283,6 @@ if (file.exists(pupil_loo_file_a6)) {
     kableExtra::kable_styling(latex_options = c("striped", "hold_position"), bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
 } else {
   tibble(Note = "Pupil LOO summary not available. See @sec-pupil-ddm-integration and online supplement.") %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE) %>%
-    kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
-}
-```
-
-### A5.3 Cavanagh Boundary Extensions {.unnumbered}
-
-```{r}
-#| label: tbl-pupil-boundary-appendix
-#| tbl-cap: "Cavanagh-style pupil → boundary separation ($a$) extensions. Same-$N$ behavioral baseline as nested Models 0–3; $\\Delta$ELPD vs. model_0_behavioral."
-#| tbl-pos: "htbp"
-
-pupil_boundary_rows <- list()
-for (.spec in list(
-  list(
-    base = file.path(proj_root, "output", "ddm_pupil_boundary"),
-    window = "Decision-Response AUC (0.3\u20133.3 s post-probe)"
-  ),
-  list(
-    base = file.path(proj_root, "output", "ddm_pupil_boundary_w1p3"),
-    window = "Truncated Decision-Response AUC (0.3\u20131.3 s post-probe)"
-  )
-)) {
-  .kt <- file.path(.spec$base, "tables", "pupil_boundary_key_terms.csv")
-  .kl <- file.path(.spec$base, "tables", "pupil_boundary_loo_summary.csv")
-  if (!file.exists(.kt) || !file.exists(.kl)) next
-  .ktbl <- readr::read_csv(.kt, show_col_types = FALSE)
-  .kloo <- readr::read_csv(.kl, show_col_types = FALSE)
-  pupil_boundary_rows[[length(pupil_boundary_rows) + 1L]] <- tibble::tibble(
-    tepr_window = .spec$window,
-    n_trials = .kloo$n_trials[1],
-    pupil_a_beta = sprintf("%.3f [%.3f, %.3f]", .ktbl$Estimate[1], .ktbl$Q2.5[1], .ktbl$Q97.5[1]),
-    elpd_loo = round(.kloo$elpd_loo[1], 1),
-    delta_elpd = round(.kloo$delta_elpd_vs_m0[1], 2),
-    pareto_k_max = round(.kloo$pareto_k_max[1], 2)
-  )
-}
-if (length(pupil_boundary_rows) > 0) {
-  pupil_boundary_tbl <- dplyr::bind_rows(pupil_boundary_rows)
-  kbl_args <- list(
-    format = ifelse(knitr::is_latex_output(), "latex", "html"),
-    booktabs = TRUE,
-    linesep = ""
-  )
-  if (knitr::is_latex_output()) {
-    kbl_args$col.names <- c(
-      "TEPR window", "N trials",
-      "Pupil $\\rightarrow$ $a$ $\\beta$",
-      "ELPD LOO", "$\\Delta$ELPD vs. m0", "Max Pareto-$k$"
-    )
-  } else {
-    kbl_args$col.names <- c(
-      "TEPR window", "N trials",
-      "Pupil \u2192 $a$ \u03b2",
-      "ELPD LOO", "\u0394 ELPD vs. m0", "Max Pareto-$k$"
-    )
-  }
-  do.call(knitr::kable, c(list(pupil_boundary_tbl), kbl_args)) %>%
-    kableExtra::kable_styling(
-      latex_options = c("striped", "hold_position"),
-      bootstrap_options = c("striped", "hover", "condensed"),
-      full_width = FALSE
-    )
-} else {
-  tibble(Note = "Cavanagh boundary LOO not available. See @sec-pupil-ddm-integration.") %>%
     knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE) %>%
     kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
 }
@@ -6445,7 +6381,86 @@ if (file.exists(pupil_key_terms_file)) {
 }
 ```
 
-### A5.4 TEPR Descriptives and Visualization {.unnumbered}
+### Cavanagh boundary extensions {.unnumbered .unlisted}
+
+```{r}
+#| label: tbl-pupil-boundary-appendix
+#| tbl-cap: "Cavanagh-style pupil $\\rightarrow$ boundary separation ($a$) extensions. Same-$N$ behavioral baseline as nested Models 0--3; $\\Delta$ELPD vs.\\ model\\_0\\_behavioral."
+#| tbl-pos: "htbp"
+
+pupil_boundary_rows <- list()
+for (.spec in list(
+  list(
+    base = file.path(proj_root, "output", "ddm_pupil_boundary"),
+    window = "full"
+  ),
+  list(
+    base = file.path(proj_root, "output", "ddm_pupil_boundary_w1p3"),
+    window = "truncated"
+  )
+)) {
+  .kt <- file.path(.spec$base, "tables", "pupil_boundary_key_terms.csv")
+  .kl <- file.path(.spec$base, "tables", "pupil_boundary_loo_summary.csv")
+  if (!file.exists(.kt) || !file.exists(.kl)) next
+  .ktbl <- readr::read_csv(.kt, show_col_types = FALSE)
+  .kloo <- readr::read_csv(.kl, show_col_types = FALSE)
+  pupil_boundary_rows[[length(pupil_boundary_rows) + 1L]] <- tibble::tibble(
+    window = .spec$window,
+    n_trials = .kloo$n_trials[1],
+    pupil_a_beta = sprintf("%.3f [%.3f, %.3f]", .ktbl$Estimate[1], .ktbl$Q2.5[1], .ktbl$Q97.5[1]),
+    elpd_loo = round(.kloo$elpd_loo[1], 1),
+    delta_elpd = round(.kloo$delta_elpd_vs_m0[1], 2),
+    pareto_k_max = round(.kloo$pareto_k_max[1], 2)
+  )
+}
+if (length(pupil_boundary_rows) > 0) {
+  pupil_boundary_tbl <- dplyr::bind_rows(pupil_boundary_rows) %>%
+    dplyr::transmute(
+      Window = dplyr::if_else(
+        window == "truncated",
+        "Truncated AUC (0.3--1.3 s)",
+        "Full AUC (0.3--3.3 s)"
+      ),
+      `N trials` = format(n_trials, big.mark = ","),
+      beta_a = pupil_a_beta,
+      ELPD = elpd_loo,
+      delta_elpd = delta_elpd,
+      max_k = pareto_k_max
+    )
+  kbl_args <- list(
+    pupil_boundary_tbl,
+    format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    booktabs = TRUE,
+    linesep = ""
+  )
+  if (knitr::is_latex_output()) {
+    kbl_args$escape <- FALSE
+    kbl_args$col.names <- c(
+      "Window", "N trials",
+      "Pupil $\\rightarrow a$ $\\beta$",
+      "ELPD", "$\\Delta$ELPD", "Max $k$"
+    )
+  } else {
+    kbl_args$col.names <- c(
+      "Window", "N trials",
+      "Pupil on $a$ (beta)",
+      "ELPD", "Delta ELPD", "Max k"
+    )
+  }
+  do.call(knitr::kable, kbl_args) %>%
+    kableExtra::kable_styling(
+      latex_options = c("striped", "hold_position", "scale_down"),
+      bootstrap_options = c("striped", "hover", "condensed"),
+      full_width = FALSE
+    )
+} else {
+  tibble(Note = "Cavanagh boundary LOO not available. See @sec-pupil-ddm-integration.") %>%
+    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE) %>%
+    kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
+}
+```
+
+### TEPR descriptives and visualization {.unnumbered .unlisted}
 
 ```{r}
 #| label: tbl-tepr
@@ -6520,11 +6535,11 @@ if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in
 }
 ```
 
-### A5.5 TEPR Waveforms and Conditional Slopes {.unnumbered}
+### TEPR waveforms and conditional slopes {.unnumbered .unlisted}
 
 ```{r}
 #| label: fig-tepr-timecourse-supp
-#| fig-cap: "**Supplementary Figure A5.5.** Task-Evoked Pupil Response (TEPR) time course. Grand-average pupil traces (baseline-corrected, mean $\\pm$ 95% CI) aligned to squeeze onset for four conditions (Easy/Low, Easy/High, Hard/Low, Hard/High), displayed separately for the ADT (top) and VDT (bottom). The shaded region marks the Decision-Response AUC window utilized for trial-wise feature extraction (4.65 to 7.65 s relative to initial motor onset, spanning from 300 ms after probe delivery to 3.3 s post-probe). Baseline-corrected trajectories converge at zero during the pre-trial epoch ($-0.5$ to 0 s). Vertical dashed markers isolate structural trial milestones: motor contraction onset (0 s), probe stimulus delivery (4.35 s), and response cue prompt (4.7 s)."
+#| fig-cap: "**Supplementary Figure (Appendix A5).** Task-Evoked Pupil Response (TEPR) time course. Grand-average pupil traces (baseline-corrected, mean $\\pm$ 95% CI) aligned to squeeze onset for four conditions (Easy/Low, Easy/High, Hard/Low, Hard/High), displayed separately for the ADT (top) and VDT (bottom). The shaded region marks the Decision-Response AUC window utilized for trial-wise feature extraction (4.65 to 7.65 s relative to initial motor onset, spanning from 300 ms after probe delivery to 3.3 s post-probe). Baseline-corrected trajectories converge at zero during the pre-trial epoch ($-0.5$ to 0 s). Vertical dashed markers isolate structural trial milestones: motor contraction onset (0 s), probe stimulus delivery (4.35 s), and response cue prompt (4.7 s)."
 #| fig-align: center
 #| out-width: "85%"
 #| echo: false
