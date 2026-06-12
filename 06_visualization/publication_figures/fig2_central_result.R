@@ -15,6 +15,14 @@ suppressPackageStartupMessages({
 source(here("R", "colors_manuscript.R"))
 source(here("06_visualization", "publication_figures", "manuscript_paths.R"))
 
+fmt_posterior_p_annot <- function(p, dir = c("lt", "gt")) {
+  sym <- if (dir[1] == "lt") "<" else ">"
+  if (is.na(p)) return("")
+  if (p >= 0.999) return(sprintf("P(\u03b2%s0) > .999", sym))
+  if (p <= 0.001) return(sprintf("P(\u03b2%s0) < .001", sym))
+  sprintf("P(\u03b2%s0) = %.3f", sym, p)
+}
+
 fit_primary <- readRDS(PATH_PRIMARY_MODEL)
 
 # ── Shared theme ──────────────────────────────────────────────────────────────
@@ -126,8 +134,9 @@ panel_b <- ggplot(contrast_v, aes(x = delta)) +
     x = min(contrast_v$delta) * 0.85,
     y = max(dens_v$y) * 0.9,
     label = sprintf(
-      "\u03b2 = %.3f\nP(\u03b2<0) = %.3f",
-      median(contrast_v$delta), p_neg_v
+      "\u03b2 = %.3f\n95%% CrI [%.3f, %.3f]\n%s",
+      median(contrast_v$delta), cri_v[1], cri_v[2],
+      fmt_posterior_p_annot(p_neg_v, "lt")
     ),
     size = 2.2, hjust = 0, color = stat_colors["empirical"]
   ) +
@@ -171,8 +180,9 @@ panel_d <- ggplot(contrast_a, aes(x = delta)) +
     x = x_annot_d,
     y = max(dens_a$y) * 0.9,
     label = sprintf(
-      "\u03b2 = %.3f\nP(\u03b2>0) = %.3f",
-      median(contrast_a$delta), p_pos_a
+      "\u03b2 = %.3f\n95%% CrI [%.3f, %.3f]\n%s",
+      median(contrast_a$delta), cri_a[1], cri_a[2],
+      fmt_posterior_p_annot(p_pos_a, "gt")
     ),
     size = 2.2, hjust = 0, color = stat_colors["empirical"]
   ) +

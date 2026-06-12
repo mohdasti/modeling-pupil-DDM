@@ -815,6 +815,19 @@ readr::write_csv(res_uncond, file.path(PUBLISH_DIR, paste0("table3_ppc_primary_u
 
 readr::write_csv(res_subj, file.path(PUBLISH_DIR, paste0("table3_ppc_primary_subjectwise", suffix, ".csv")))
 
+readr::write_csv(
+  res_cond %>%
+    dplyr::transmute(
+      task, effort_condition, difficulty_3, n,
+      qp_rmse_full = qp_rmse,
+      qp_rmse_midbody = qp_rmse_midbody,
+      ks_mean,
+      midbody_flag = ifelse(is.na(qp_rmse_midbody), FALSE, qp_rmse_midbody > thr_qp),
+      qp_flag, ks_flag, any_flag
+    ),
+  file.path(PUBLISH_DIR, "ppc_cells_midbody.csv")
+)
+
 log_msg("✓ Results written to output/publish/")
 
 if (is_censored) {

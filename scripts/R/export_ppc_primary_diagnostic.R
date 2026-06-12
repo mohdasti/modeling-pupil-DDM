@@ -280,9 +280,8 @@ log_msg(sprintf("PPC thresholds: QP=%.2f, KS=%.2f", thr_qp, thr_ks))
 
 # ---- Helper: compute metrics (conditional) ----
 
-compute_metrics <- function(emp_rt, emp_cor, emp_err, pred_cor, pred_err) {
-
-  qps <- c(.1, .3, .5, .7, .9)
+compute_metrics <- function(emp_rt, emp_cor, emp_err, pred_cor, pred_err,
+                            qps = c(.1, .3, .5, .7, .9)) {
 
   qp_rmse <- NA_real_
 
@@ -365,9 +364,7 @@ log_msg("1. CONDITIONAL PPC (RT conditional on observed decision)")
 one_cell_conditional <- function(cell_df) {
 
   if (nrow(cell_df) == 0 || all(is.na(cell_df$rt)) || all(is.na(cell_df$decision))) {
-
-    return(tibble(qp_rmse = NA_real_, ks_mean = NA_real_))
-
+    return(tibble(qp_rmse = NA_real_, ks_mean = NA_real_, qp_rmse_midbody = NA_real_))
   }
 
   
@@ -387,9 +384,7 @@ one_cell_conditional <- function(cell_df) {
   
 
   if (is.null(pp) || ncol(pp) == 0) {
-
-    return(tibble(qp_rmse = NA_real_, ks_mean = NA_real_))
-
+    return(tibble(qp_rmse = NA_real_, ks_mean = NA_real_, qp_rmse_midbody = NA_real_))
   }
 
   
@@ -412,10 +407,9 @@ one_cell_conditional <- function(cell_df) {
 
   pred_err <- pred_err[!is.na(pred_err) & is.finite(pred_err)]
 
-  
-
-  compute_metrics(emp_rt, emp_cor, emp_err, pred_cor, pred_err)
-
+  m_full <- compute_metrics(emp_rt, emp_cor, emp_err, pred_cor, pred_err)
+  m_mid  <- compute_metrics(emp_rt, emp_cor, emp_err, pred_cor, pred_err, qps = c(.3, .5, .7))
+  tibble(qp_rmse = m_full$qp_rmse, ks_mean = m_full$ks_mean, qp_rmse_midbody = m_mid$qp_rmse)
 }
 
 
@@ -696,7 +690,10 @@ for (i in seq_len(nrow(cells))) {
 
   m_cond <- one_cell_conditional(cell_df)
 
-  res_conditional[[i]] <- bind_cols(cell, m_cond %>% rename(qp_rmse_cond = qp_rmse, ks_cond = ks_mean))
+  res_conditional[[i]] <- bind_cols(
+    cell,
+    m_cond %>% rename(qp_rmse_cond = qp_rmse, ks_cond = ks_mean, qp_rmse_midbody = qp_rmse_midbody)
+  )
 
   
 
@@ -833,6 +830,19 @@ gate_summary <- res_subj %>%
     .groups = "drop"
   )
 readr::write_csv(gate_summary, file.path(PUBLISH_DIR, "ppc_gate_summary.csv"))
+
+readr::write_csv(
+  res_cond %>%
+    dplyr::transmute(
+      task, effort_condition, difficulty_3, n,
+      qp_rmse_full = qp_rmse_cond,
+      qp_rmse_midbody,
+      ks_mean = ks_cond,
+      midbody_flag = ifelse(is.na(qp_rmse_midbody), FALSE, qp_rmse_midbody > thr_qp),
+      qp_flag, ks_flag, any_flag
+    ),
+  file.path(PUBLISH_DIR, "ppc_cells_midbody.csv")
+)
 
 # pf_subj for appendix
 pf_subj <- list(

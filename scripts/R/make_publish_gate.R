@@ -175,7 +175,6 @@ if (!is.null(conv_from_run) && nrow(conv_from_run) == 1) {
   max_rhat     <- conv_from_run$max_rhat
   min_bulk_ess <- conv_from_run$min_bulk_ess
   divergences  <- conv_from_run$divergences
-  min_tail_ess <- NA_real_
 } else {
   log_msg("Falling back to brms::rhat / brms::neff_ratio on fit object")
   rhat_vals <- brms::rhat(fit)
@@ -186,7 +185,6 @@ if (!is.null(conv_from_run) && nrow(conv_from_run) == 1) {
     total_draws <- 4000L
   }
   min_bulk_ess <- suppressWarnings(min(neff_rat * total_draws, na.rm = TRUE))
-  min_tail_ess <- NA_real_
   divergences <- tryCatch({
     sampler_params <- brms::nuts_params(fit)
     sum(sampler_params$divergent__ == 1, na.rm = TRUE)
@@ -195,6 +193,19 @@ if (!is.null(conv_from_run) && nrow(conv_from_run) == 1) {
     NA_integer_
   })
 }
+
+extract_min_tail_ess <- function(f) {
+  s <- tryCatch(summary(f), error = function(e) NULL)
+  if (is.null(s)) return(NA_real_)
+  te <- c(s$fixed$Tail_ESS)
+  if (!is.null(s$random)) {
+    for (nm in names(s$random)) te <- c(te, s$random[[nm]]$Tail_ESS)
+  }
+  te <- te[is.finite(te)]
+  if (length(te) == 0) NA_real_ else min(te)
+}
+
+min_tail_ess <- extract_min_tail_ess(fit)
 
 
 
