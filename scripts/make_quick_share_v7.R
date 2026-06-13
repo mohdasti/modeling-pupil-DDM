@@ -1910,6 +1910,7 @@ if (!SKIP_WAVEFORMS) {
         
         tibble(
           trial_uid = trial_info$trial_uid[1],
+          subject_id = trial_info$sub[1],
           task = trial_info$task[1],
           effort = trial_info$effort[1],
           isOddball = trial_info$isOddball[1],
@@ -1936,9 +1937,9 @@ if (!SKIP_WAVEFORMS) {
       waveform_data$stimulus_intensity <- NA_real_
     }
     
-    waveform_summary <- waveform_data %>%
+    waveform_subject_summary <- waveform_data %>%
       filter(!is.na(pupil_full), !is.na(pupil_partial)) %>%
-      group_by(task, effort, isOddball, stimulus_intensity, trial_uid) %>%
+      group_by(subject_id, task, effort, isOddball, stimulus_intensity, trial_uid) %>%
       group_map(~ {
         # Check we have enough valid data points for interpolation
         valid_x <- !is.na(.x$t_rel) & is.finite(.x$t_rel)
@@ -1986,28 +1987,40 @@ if (!SKIP_WAVEFORMS) {
         bind_rows(
           tibble(
             chapter = "ch2", sample_rate_hz = FS_CH2_WAVEFORM,
-            task = first(.x$task), effort = first(.x$effort), isOddball = first(.x$isOddball),
+            subject_id = first(.x$subject_id), task = first(.x$task), effort = first(.x$effort), isOddball = first(.x$isOddball),
             stimulus_intensity = if("stimulus_intensity" %in% names(.x)) first(.x$stimulus_intensity) else NA_real_,
             t_rel = t_grid_ch2, mean_pupil_full = pupil_full_ch2, mean_pupil_partial = pupil_partial_ch2
           ),
           tibble(
             chapter = "ch3", sample_rate_hz = FS_CH3_WAVEFORM,
-            task = first(.x$task), effort = first(.x$effort), isOddball = first(.x$isOddball),
+            subject_id = first(.x$subject_id), task = first(.x$task), effort = first(.x$effort), isOddball = first(.x$isOddball),
             stimulus_intensity = if("stimulus_intensity" %in% names(.x)) first(.x$stimulus_intensity) else NA_real_,
             t_rel = t_grid_ch3, mean_pupil_full = pupil_full_ch3, mean_pupil_partial = pupil_partial_ch3
           )
         )
       }, .keep = TRUE) %>%
       bind_rows() %>%
-      group_by(chapter, sample_rate_hz, task, effort, isOddball, stimulus_intensity, t_rel) %>%
+      group_by(chapter, sample_rate_hz, subject_id, task, effort, isOddball, stimulus_intensity, t_rel) %>%
       summarise(
         mean_pupil_full = mean(mean_pupil_full, na.rm = TRUE),
         mean_pupil_partial = mean(mean_pupil_partial, na.rm = TRUE),
         n_trials = n(),
         .groups = "drop"
       )
+
+    waveform_summary <- waveform_subject_summary %>%
+      group_by(chapter, sample_rate_hz, task, effort, isOddball, stimulus_intensity, t_rel) %>%
+      summarise(
+        mean_pupil_full = mean(mean_pupil_full, na.rm = TRUE),
+        mean_pupil_partial = mean(mean_pupil_partial, na.rm = TRUE),
+        n_subjects = n_distinct(subject_id),
+        n_trials = sum(n_trials, na.rm = TRUE),
+        .groups = "drop"
+      )
     
+    write_csv(waveform_subject_summary, file.path(V7_ANALYSIS, "pupil_waveforms_subject_condition_mean.csv"))
     write_csv(waveform_summary, file.path(V7_ANALYSIS, "pupil_waveforms_condition_mean.csv"))
+    cat("  ✓ Saved: analysis/pupil_waveforms_subject_condition_mean.csv\n")
     cat("  ✓ Saved: analysis/pupil_waveforms_condition_mean.csv\n")
     cat("    Rows: ", nrow(waveform_summary), ", Conditions: ", 
         waveform_summary %>% distinct(task, effort, isOddball) %>% nrow(), "\n\n", sep = "")

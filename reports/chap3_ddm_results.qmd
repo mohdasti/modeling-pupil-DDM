@@ -6295,67 +6295,121 @@ if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in
 
 ```{r}
 #| label: fig-tepr-timecourse-supp
-#| fig-cap: "**Supplementary Figure (Appendix A5).** Task-Evoked Pupil Response (TEPR) time course. Grand-average pupil traces (baseline-corrected, mean $\\pm$ 95% CI) aligned to squeeze onset for four conditions (Easy/Low, Easy/High, Hard/Low, Hard/High), displayed separately for the ADT (top) and VDT (bottom). The shaded region marks the Decision-Response AUC window utilized for trial-wise feature extraction (4.65 to 7.65 s relative to initial motor onset, spanning from 300 ms after probe delivery to 3.3 s post-probe). Baseline-corrected trajectories converge at zero during the pre-trial epoch ($-0.5$ to 0 s). Vertical dashed markers isolate structural trial milestones: motor contraction onset (0 s), probe stimulus delivery (4.35 s), and response cue prompt (4.7 s)."
+#| fig-cap: "**Supplementary Figure (Appendix A5).** Task-Evoked Pupil Response (TEPR) time course. Baseline-corrected pupil traces are estimated from winsorized subject-level means, aggregated to condition $\\times$ time grand means, re-anchored to squeeze onset ($t = 0$), downsampled to 200 time samples, and smoothed with a GAM (95% CI on the smooth). Traces are shown for four conditions (Easy/Low, Easy/High, Hard/Low, Hard/High), separately for ADT (top) and VDT (bottom). The shaded region marks the Decision-Response AUC window (4.65–7.65 s relative to squeeze onset). Vertical dashed markers: motor onset (0 s), probe (4.35 s), response cue (4.7 s)."
 #| fig-align: center
 #| out-width: "85%"
 #| echo: false
 # Generate TEPR time course figure
 if (!is.null(pupil_data)) {
-  # Try to load waveform summary data
-  waveform_file <- c(
+  # Prefer subject-level waveform means: one row per subject x condition x time.
+  # Lines and SEM ribbons reflect between-subject uncertainty at each time sample.
+  waveform_subject_file <- c(
+    file.path(proj_root, "data/pupil_processed/analysis/pupil_waveforms_subject_condition_mean.csv"),
+    file.path(proj_root, "quick_share_v7/analysis/pupil_waveforms_subject_condition_mean.csv")
+  )
+  waveform_subject_file <- waveform_subject_file[file.exists(waveform_subject_file)][1]
+
+  # Legacy condition-only waveform file, retained only as a render fallback.
+  waveform_condition_file <- c(
     file.path(proj_root, "data/pupil_processed/analysis/pupil_waveforms_condition_mean.csv"),
     file.path(proj_root, "quick_share_v7/analysis/pupil_waveforms_condition_mean.csv")
   )
-  waveform_file <- waveform_file[file.exists(waveform_file)][1]
-  
-  if (!is.na(waveform_file) && file.exists(waveform_file)) {
-    waveform_data <- read_csv(waveform_file, show_col_types = FALSE)
+  waveform_condition_file <- waveform_condition_file[file.exists(waveform_condition_file)][1]
+
+  if (!is.na(waveform_subject_file) && file.exists(waveform_subject_file)) {
+    waveform_data <- read_csv(waveform_subject_file, show_col_types = FALSE)
+    waveform_source <- "subject"
+  } else if (!is.na(waveform_condition_file) && file.exists(waveform_condition_file)) {
+    waveform_data <- read_csv(waveform_condition_file, show_col_types = FALSE)
+    waveform_source <- "condition"
+    warning(
+      "Using legacy condition-level TEPR waveform file. ",
+      "Regenerate pupil_waveforms_subject_condition_mean.csv so Figure 18 GAM CIs ",
+      "are computed from subject-level means."
+    )
+  } else {
+    waveform_data <- NULL
+    waveform_source <- NA_character_
+  }
+
+  if (!is.null(waveform_data)) {
+    subject_col <- intersect(c("subject_id", "sub"), names(waveform_data))[1]
     
     # Filter to chapter 3 data and keep all 4 conditions (effort × difficulty)
     waveform_ch3 <- waveform_data %>%
-      filter(chapter == "ch3") %>%
-      # Map difficulty level from stimulus_intensity and isOddball
-      mutate(
-        difficulty_level = case_when(
-          isOddball == 0 | (is.na(isOddball) & (!is.na(stimulus_intensity) & stimulus_intensity == 0)) ~ "Standard",
-          !is.na(stimulus_intensity) & stimulus_intensity %in% c(1, 2) ~ "Hard",
-          !is.na(stimulus_intensity) & stimulus_intensity %in% c(3, 4) ~ "Easy",
-          isOddball == 1 & is.na(stimulus_intensity) ~ "Easy",
-          TRUE ~ NA_character_
-        ),
-        effort_level = case_when(
-          effort == "Low" | effort == "Low_Force_5pct" ~ "Low",
-          effort == "High" | effort == "High_Force_40pct" ~ "High",
-          TRUE ~ NA_character_
-        ),
-        # Create condition label (Difficulty / Effort)
-        condition = case_when(
-          !is.na(difficulty_level) & !is.na(effort_level) ~ 
-            paste0(difficulty_level, " / ", effort_level),
-          TRUE ~ "Unknown"
+      filter(chapter == "ch3")
+
+    if ("condition" %in% names(waveform_ch3) && any(!is.na(waveform_ch3$condition))) {
+      # Subject-level waveform export already carries Easy/Hard x Low/High labels.
+      waveform_ch3 <- waveform_ch3 %>%
+        mutate(condition = gsub("\u2013", "-", condition))
+    } else {
+      # Legacy condition-mean file: derive labels from trial metadata columns.
+      waveform_ch3 <- waveform_ch3 %>%
+        mutate(
+          difficulty_level = case_when(
+            isOddball == 0 | (is.na(isOddball) & (!is.na(stimulus_intensity) & stimulus_intensity == 0)) ~ "Standard",
+            !is.na(stimulus_intensity) & stimulus_intensity %in% c(1, 2) ~ "Hard",
+            !is.na(stimulus_intensity) & stimulus_intensity %in% c(3, 4) ~ "Easy",
+            isOddball == 1 & is.na(stimulus_intensity) ~ "Easy",
+            TRUE ~ NA_character_
+          ),
+          effort_level = case_when(
+            effort == "Low" | effort == "Low_Force_5pct" ~ "Low",
+            effort == "High" | effort == "High_Force_40pct" ~ "High",
+            TRUE ~ NA_character_
+          ),
+          condition = case_when(
+            !is.na(difficulty_level) & !is.na(effort_level) ~
+              paste0(difficulty_level, " / ", effort_level),
+            TRUE ~ "Unknown"
+          )
+        ) %>%
+        mutate(
+          difficulty_level = gsub("\u2013", "-", difficulty_level),
+          effort_level = gsub("\u2013", "-", effort_level),
+          condition = gsub("\u2013", "-", condition)
         )
-      ) %>%
-      mutate(
-        difficulty_level = gsub("\u2013", "-", difficulty_level),
-        effort_level = gsub("\u2013", "-", effort_level),
-        condition = gsub("\u2013", "-", condition)
-      ) %>%
+    }
+
+    waveform_ch3 <- waveform_ch3 %>%
       # Filter out Standard trials (we want Easy/Hard only) and Unknown
       filter(condition != "Unknown", !grepl("Standard", condition)) %>%
       # Use mean_pupil_full (baseline-corrected, B0-corrected) - this converges at 0 in baseline period
       # Per plot_pupil_waveforms.R line 134: mean_pupil_full is the B0-corrected (full baseline correction)
       rename(mean_pupil_isolated = mean_pupil_full) %>%
-      # Group by task, condition, and time to get per-condition means
-      group_by(task, condition, t_rel) %>%
-      summarise(
-        # Weighted mean across any duplicate entries (weight by n_trials)
-        total_trials = sum(n_trials, na.rm = TRUE),
-        mean_pupil_isolated = sum(mean_pupil_isolated * n_trials, na.rm = TRUE) / total_trials,
-        n_trials = total_trials,
-        .groups = "drop"
-      ) %>%
       filter(!is.na(task), !is.na(condition), !is.na(t_rel), !is.na(mean_pupil_isolated)) %>%
       arrange(task, condition, t_rel)
+
+    tepr_gam_k <- 10L
+    tepr_gam_n_timepoints <- 200L
+    cognitive_auc_end <- 7.65
+
+    if (!is.na(subject_col)) {
+      source(file.path(proj_root, "R", "tepr_waveform_helpers.R"))
+
+      plot_prep <- prepare_tepr_plot_data(
+        waveform_ch3 %>% rename(mean_pupil_full = mean_pupil_isolated),
+        value_col = "mean_pupil_full",
+        winsorize = TRUE
+      )
+      waveform_ch3 <- prepare_tepr_gam_plot_data(
+        plot_prep,
+        x_range = c(-0.5, cognitive_auc_end),
+        n_timepoints = tepr_gam_n_timepoints
+      )
+    } else {
+      # Legacy condition-level files have already collapsed over subjects, so
+      # no subject-level CI can be recovered from them.
+      waveform_ch3 <- waveform_ch3 %>%
+        group_by(task, condition, t_rel) %>%
+        summarise(
+          total_trials = sum(n_trials, na.rm = TRUE),
+          mean_pupil_isolated = sum(mean_pupil_isolated * n_trials, na.rm = TRUE) / total_trials,
+          n_trials = total_trials,
+          .groups = "drop"
+        )
+    }
     
     if (nrow(waveform_ch3) > 0) {
       # Define event markers and Decision-Response AUC window
@@ -6376,24 +6430,19 @@ if (!is.null(pupil_data)) {
         names(colors_for_plot) <- conditions_present
       }
       
-      # Calculate y-limits from data (use full range to show all curves, add padding for labels)
-      y_vals <- waveform_ch3$mean_pupil_isolated[!is.na(waveform_ch3$mean_pupil_isolated)]
-      if (length(y_vals) > 0) {
-        # Use full range to ensure all curves are visible
-        y_range <- range(y_vals, na.rm = TRUE)
-        y_range_span <- diff(y_range)
-        if (!is.finite(y_range_span) || y_range_span == 0) {
-          y_range_span <- max(abs(y_range), na.rm = TRUE)
-          if (!is.finite(y_range_span) || y_range_span == 0) y_range_span <- 1
-        }
-        # Add padding (12% top, 8% bottom) to accommodate labels and ensure visibility
-        y_upper_limit <- y_range[2] + y_range_span * 0.12  # Extra space for labels
-        y_lower_limit <- y_range[1] - y_range_span * 0.08  # Padding at bottom
-      } else {
-        y_upper_limit <- 0.5
-        y_lower_limit <- -0.5
-        y_range_span <- 1  # Default span for label positioning
-      }
+      gam_curves <- fit_tepr_gam_curves(
+        waveform_ch3,
+        gam_k = tepr_gam_k,
+        x_range = c(-0.5, cognitive_auc_end)
+      )
+
+      y_limits <- tepr_gam_curves_ylimits(
+        gam_curves,
+        x_range = c(-0.5, cognitive_auc_end)
+      )
+      y_lower_limit <- y_limits[1]
+      y_upper_limit <- y_limits[2]
+      y_range_span <- y_upper_limit - y_lower_limit
       
       # Event markers with staggered y positions to avoid overlap (vertical text)
       event_markers <- tibble(
@@ -6401,16 +6450,15 @@ if (!is.null(pupil_data)) {
         time = c(trial_start, target_onset, response_signal_onset),
         label_y = y_upper_limit - y_range_span * c(0.05, 0.10, 0.15)  # Stagger vertically
       )
-      
+
       # Create plot
-      p_tepr <- ggplot(waveform_ch3, aes(x = t_rel, y = mean_pupil_isolated, 
+      p_tepr <- ggplot(gam_curves, aes(x = t_rel, y = fit,
                                          color = condition, fill = condition)) +
         # Decision-Response AUC window shading
         geom_rect(aes(xmin = cognitive_auc_start, xmax = cognitive_auc_end, ymin = -Inf, ymax = Inf),
                   inherit.aes = FALSE, fill = "grey90", alpha = 0.3) +
-        # GAM smoothed lines with confidence intervals
-        geom_smooth(se = TRUE, method = "gam", formula = y ~ s(x, k = 20), 
-                    linewidth = 1.2, alpha = 0.3) +
+        geom_ribbon(aes(ymin = fit_lo, ymax = fit_hi), alpha = 0.25, color = NA) +
+        geom_line(linewidth = 1.2, alpha = 0.95) +
         # Event markers (vertical dashed lines)
         geom_vline(data = event_markers, aes(xintercept = time), 
                    inherit.aes = FALSE, linetype = "dashed", color = "grey40", linewidth = 0.6) +
