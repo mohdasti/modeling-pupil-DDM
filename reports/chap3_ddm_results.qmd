@@ -1544,7 +1544,7 @@ To explicitly adjudicate between alternative mechanisms of state-dependent cogni
 
 Priors were weakly informative and specified on the link scale. The boundary separation intercept used $\mathcal{N}(\log 1.3,\; 0.25)$ (corresponding to $a \approx 1.3$ at baseline), the non-decision time intercept used $\mathcal{N}(\log 0.35,\; 0.15)$ ($t_0 \approx 0.35$ s, probe-onset-locked), the drift rate intercept used $\mathcal{N}(0, 1)$, and the starting-point bias intercept used $\mathcal{N}(0, 0.5)$ ($z \approx 0.5$, no bias). Full prior specifications for slopes and random effects are provided in Appendix A6.
 
-Convergence was assessed using $\hat{R} < 1.01$ and minimum bulk ESS $> 400$; all primary behavioral models satisfied these criteria. Exploratory choice-history models met the criterion for the history variant (max $\hat{R}$ = 1.003); the WSLS variant showed a slightly elevated maximum $\hat{R}$ (1.014) but zero divergent transitions (@sec-choice-history). Model comparison used Pareto-smoothed importance sampling LOO cross-validation (PSIS-LOO; @vehtari2017loo), with ELPD differences exceeding 4 considered meaningful; results are in @sec-results-sample.
+Convergence was assessed using $\hat{R} < 1.01$ and minimum bulk ESS $> 400$; all primary behavioral models satisfied these criteria. Exploratory choice-history models met the criterion for the history variant (max $\hat{R}$ = 1.003); the WSLS variant showed a slightly elevated maximum $\hat{R}$ (1.014) but zero divergent transitions (Appendix A10.1). Model comparison used Pareto-smoothed importance sampling LOO cross-validation (PSIS-LOO; @vehtari2017loo), with ELPD differences exceeding 4 considered meaningful; results are in @sec-results-sample.
 
 Model fit was evaluated using posterior predictive checks (PPC), including subject-level quantile-probability plots, Kolmogorov-Smirnov statistics, and residual heatmaps (full PPC diagnostics in Appendix A3). PPC deviations in fast-tail regions — a known limitation of standard Wiener DDM — did not affect inference on key parameter contrasts.
 
@@ -3412,7 +3412,7 @@ null_evidence_for_table <- dplyr::bind_rows(
 
 # Results
 
-## Sample, model selection, and convergence {#sec-results-sample}
+## Primary model overview {#sec-results-sample}
 
 ```{r}
 #| include: false
@@ -3511,11 +3511,11 @@ if (is.na(tc_mean_trials_per_subj) && !is.na(primary_n_trials) && exists("n_subj
 n_subj_final <- if (exists("n_subj_inclusion") && !is.na(n_subj_inclusion)) n_subj_inclusion else 67L
 ```
 
-The DDM analysis included `r n_subj_inclusion` older adults ($N_{ADT}$ = `r n_subj_adt_ddm`, $N_{VDT}$ = `r n_subj_vdt_ddm` after task-specific exclusions). `r n_single_task_ddm` participants contributed to only one task after exclusions (fewer than 100 valid trials in the other task). The primary additive model retained `r format(primary_n_trials, big.mark = ",")` probe-onset-locked trials after the cue-locked RT $<$ 0.20 s cutoff (`r if (!is.na(tc_mean_trials_per_subj) && !is.na(tc_min_cell_trials)) sprintf("mean %.0f trials per subject across cells; cell totals %.0f–%.0f", tc_mean_trials_per_subj, tc_min_cell_trials, tc_max_cell_trials) else "cell counts in Appendix A2"`, @tbl-trial-counts). Manipulation checks confirmed difficulty and effort effects on accuracy and RT (Appendix A7).
+The DDM analysis included `r n_subj_inclusion` older adults ($N_{ADT}$ = `r n_subj_adt_ddm`, $N_{VDT}$ = `r n_subj_vdt_ddm` after task-specific exclusions). `r n_single_task_ddm` participants contributed to only one task after exclusions because the other task had fewer than 100 valid trials. The primary additive model retained `r format(primary_n_trials, big.mark = ",")` probe-onset-locked trials after the cue-locked RT $<$ 0.20 s cutoff (`r if (!is.na(tc_mean_trials_per_subj) && !is.na(tc_min_cell_trials)) sprintf("mean %.0f trials per subject across cells; cell totals %.0f–%.0f", tc_mean_trials_per_subj, tc_min_cell_trials, tc_max_cell_trials) else "cell counts in Appendix A2"`, @tbl-trial-counts). Manipulation checks showed that difficulty and effort affected accuracy and RT as intended (Appendix A7).
 
-All primary behavioral models met convergence criteria ($\hat{R}$ < 1.01, bulk ESS > 400, zero divergent transitions; Appendix A1). Posterior predictive checks flagged all experimental cells against pre-registered KS/QP thresholds (`r if (!is.na(ppc_n_cells_inline)) as.integer(ppc_n_cells_inline) else 12`/`r if (!is.na(ppc_n_cells_inline)) as.integer(ppc_n_cells_inline) else 12` cells; max KS = `r if (!is.na(ppc_max_ks_inline)) sprintf("%.3f", ppc_max_ks_inline) else "—"`, max full-range QP RMSE = `r if (!is.na(ppc_max_qp_inline)) sprintf("%.3f", ppc_max_qp_inline) else "—"` s; @tbl-convergence-ppc-gate-appendix), driven primarily by fast-tail RT misfit. Mid-body quantile–probability alignment was acceptable (Appendix A3), and key effort contrasts were robust to alternative RT lower-bound thresholds (Appendix A4.2).
+All primary behavioral models met convergence criteria ($\hat{R}$ < 1.01, bulk ESS > 400, zero divergent transitions; Appendix A1). Posterior predictive checks were less clean. All `r if (!is.na(ppc_n_cells_inline)) as.integer(ppc_n_cells_inline) else 12` experimental cells crossed the pre-registered KS/QP flagging thresholds (max KS = `r if (!is.na(ppc_max_ks_inline)) sprintf("%.3f", ppc_max_ks_inline) else "—"`, max full-range QP RMSE = `r if (!is.na(ppc_max_qp_inline)) sprintf("%.3f", ppc_max_qp_inline) else "—"` s; @tbl-convergence-ppc-gate-appendix), mainly because of fast-tail RT misfit. Mid-body quantile–probability fit was acceptable (Appendix A3). The key effort contrasts also held under alternative RT lower-bound thresholds (Appendix A4.2).
 
-We compared nested specifications with PSIS-LOO (@vehtari2017loo). The additive model — difficulty and effort as independent predictors of drift rate and boundary separation — outperformed a difficulty-only baseline ($\Delta$ELPD $>$ 4). `r interaction_loo_note``r interaction_coef_note` Full ELPD values are in Appendix A1 (@tbl-loo-comparison; max Pareto-$k$ = `r behavioral_loo_max_k_str` for the additive model). The additive probe-onset-locked specification was used for all primary analyses below. Pupil-augmented models are compared separately in @sec-pupil-ddm-integration.
+We compared nested specifications with PSIS-LOO (@vehtari2017loo). The additive model treated difficulty and effort as independent predictors of drift rate and boundary separation; it outperformed a difficulty-only baseline ($\Delta$ELPD $>$ 4). `r interaction_loo_note``r interaction_coef_note` Full ELPD values are in Appendix A1 (@tbl-loo-comparison; max Pareto-$k$ = `r behavioral_loo_max_k_str` for the additive model). All primary analyses below use the additive, probe-onset-locked specification. Pupil-augmented models are reported separately in @sec-pupil-ddm-integration.
 
 ```{r}
 #| tbl-cap: !expr sprintf("Behavioral model comparison via PSIS-LOO (probe-onset-locked, thr 0.20 s; N = %s). $\\Delta$ELPD is relative to the highest-ELPD model (negative = worse). The interaction row attains the highest nominal ELPD but unreliable PSIS-LOO (max Pareto-$k$ > 0.7); the additive model is retained.", format(if (is.null(primary_n_trials) || is.na(primary_n_trials)) 18097L else primary_n_trials, big.mark = ","))
@@ -3733,7 +3733,7 @@ if (!is.null(pred_params) && nrow(pred_params) > 0) {
 }
 ```
 
-## Behavioral DDM parameter estimates {#sec-behavioral-ddm}
+## Effort effects on decision parameters (H1-H4) {#sec-behavioral-ddm}
 
 Drift ($v$) and boundary separation ($a$) by Difficulty × Effort are shown in @fig-central-result; effort and difficulty contrasts in @fig-parameter-forest. Hypothesis tests (H1–H4) are in @sec-key-contrasts and @tbl-hyp-summary. Cell-wise posterior medians [95% CrI] for $v$, $a$, and $z$ are in Appendix A2 (@tbl-ddm-posterior-estimates).
 
@@ -3863,23 +3863,23 @@ pupil_quality_text <- if (n_subj_pupil > 0 && n_trials_total > 0) {
 `r pupil_quality_text` Baseline pupil descriptives by condition are reported in Appendix A2 (@tbl-baseline-pupil). TEPR descriptives and waveforms are in Appendix A5 (@tbl-tepr, @fig-tepr-timecourse-supp).
 
 
-### Hypothesis tests (H1–H4) {#sec-key-contrasts}
+### Behavioral hypothesis tests (H1-H4) {#sec-key-contrasts}
 
-To evaluate our a priori predictions about how effort and difficulty modulate decision parameters, we examined posterior contrasts on the link scale.
+We tested the four effort hypotheses using posterior contrasts on the link scale.
 
-Contrasts on the link scale confirmed large effects of difficulty on drift rate ($v$), with Easy $>$ Hard $>$ Standard, and consistent effects of effort on $v$. Boundary separation ($a$) and starting-point bias ($z$) showed more modest modulation by difficulty and effort.
+Difficulty had large effects on drift rate ($v$): Easy $>$ Hard $>$ Standard. Effort also shifted $v$. Boundary separation ($a$) and starting-point bias ($z$) changed less.
 
-For each hypothesis, inference rests on the posterior distribution of the High − Low effort contrast ($\delta$), extracted from posterior draws. We report the posterior median, 95% credible interval (CrI), and the posterior probability $P(\delta < 0)$ or $P(\delta > 0)$ as appropriate. When a 95% CrI excludes zero, posterior mass is concentrated on one side of zero (reported as $> .999$ when $P > 0.999$). The effort–drift contrast is visualized in @fig-central-result (Panel B) and summarized with H2 and H4 in @fig-parameter-forest (Panel A). Difficulty contrasts are in @fig-parameter-forest (Panel B). All hypothesis results are in @tbl-hyp-summary.
+For each hypothesis, inference rests on the High − Low effort contrast ($\delta$) extracted from posterior draws. We report the posterior median, 95% credible interval (CrI), and the relevant posterior probability, $P(\delta < 0)$ or $P(\delta > 0)$. When a 95% CrI excludes zero, posterior mass is concentrated on one side of zero; probabilities above 0.999 are reported as $> .999$. The effort–drift contrast appears in @fig-central-result (Panel B). H2 and H4 are summarized with it in @fig-parameter-forest (Panel A), and difficulty contrasts are shown in Panel B. @tbl-hyp-summary gives the full hypothesis summary.
 
-**H1 (drift rate, $v$).** High effort (40% MVC) produced lower drift rates than Low effort (5% MVC): `r h1_beta_str`, `r h1_cri_str``r h1_p0_str`. The 95% CrI excludes zero; only `r h1_p_in_rope_pct` of the posterior mass fell within the project ROPE on drift ($\pm 0.02$), indicating a directionally reliable but small effect relative to difficulty contrasts.
+**H1 (drift rate, $v$).** High effort (40% MVC) lowered drift relative to Low effort (5% MVC): `r h1_beta_str`, `r h1_cri_str``r h1_p0_str`. The 95% CrI excludes zero. Only `r h1_p_in_rope_pct` of the posterior mass fell within the project ROPE on drift ($\pm 0.02$), so the effect is directionally reliable but small relative to the difficulty contrasts.
 
 **H2 (boundary separation, $a$).** `r if (h2_rope_practically_null) "High effort produced a directionally positive but practically negligible change in boundary separation" else if (h2_supported) "High effort produced a small credible increase in boundary separation" else "The effort contrast on boundary separation was near zero with the CrI spanning zero"`: `r h2_beta_str`, `r h2_cri_str``r h2_p0_str``r h2_null_note`. `r if (h2_rope_practically_null) sprintf("All posterior mass fell within the project ROPE (\\pm0.05 log-scale; %s); we do not interpret this as meaningful strategic caution.", h2_p_in_rope_pct) else sprintf("Auxiliary ROPE mass %s (see @tbl-hyp-summary).", h2_p_in_rope_pct)`
 
-**H3 (non-decision time, $t_0$).** $t_0$ was constrained to a single intercept across all conditions for model identifiability in the response-signal design (@sec-ddm-spec). No primary-model H3 test is available. An exploratory effort contrast on $\log t_0$ was `r h3_beta_str` (95% CrI `r h3_cri_str`; `r h3_natural`) and should be treated as descriptive only.
+**H3 (non-decision time, $t_0$).** The response-signal design required $t_0$ to be a single intercept across conditions (@sec-ddm-spec). Thus, the primary model does not test H3. An exploratory effort contrast on $\log t_0$ was `r h3_beta_str` (95% CrI `r h3_cri_str`; `r h3_natural`), but this estimate is descriptive only.
 
-**H4 (starting-point bias, $z$).** The effort contrast on pre-stimulus response bias was near zero and uncertain: `r h4_beta_str`, `r h4_cri_str``r h4_p0_str`. The CrI spans zero (ROPE mass `r h4_p_in_rope_pct`). In the primary model, VDT showed higher bias toward "different" responses than ADT (`r h4task_primary_beta_str`, `r h4task_primary_cri_str``r h4task_primary_p0_str`; logit task offset). Standard-only calibration reverses this ordering (`r h4task_stdonly_beta_str`, `r h4task_stdonly_cri_str``r h4task_stdonly_p0_str`; ADT − VDT on $z$), consistent with a $v$–$z$ trade-off when drift is not held constant across difficulty (@sec-starting-point-bias, @tbl-standard-only-bias-levels).
+**H4 (starting-point bias, $z$).** The effort contrast on pre-stimulus response bias was near zero and uncertain: `r h4_beta_str`, `r h4_cri_str``r h4_p0_str`. The CrI spans zero (ROPE mass `r h4_p_in_rope_pct`). In the primary model, VDT showed higher bias toward "different" responses than ADT (`r h4task_primary_beta_str`, `r h4task_primary_cri_str``r h4task_primary_p0_str`; logit task offset). Standard-only calibration reverses this ordering (`r h4task_stdonly_beta_str`, `r h4task_stdonly_cri_str``r h4task_stdonly_p0_str`; ADT − VDT on $z$). This reversal is consistent with a $v$–$z$ trade-off when drift and bias are not estimated jointly across difficulty (@sec-starting-point-bias, @tbl-standard-only-bias-levels).
 
-The four hypotheses sit in different inferential positions. H1 is **supported**: the CrI excludes zero, only `r h1_p_in_rope_pct` of posterior mass lies within the project ROPE on drift, and the effect is small relative to difficulty contrasts. H2 is **directionally positive but practically negligible** under the project ROPE (CrI excludes zero; `r h2_p_in_rope_pct` ROPE mass), whereas H4 is a **near-zero null** (CrI spans zero). H3 is **not directly testable**: the response-signal design required an intercept-only $t_0$, so any exploratory effect on $\log t_0$ is a descriptive supplement, not a valid hypothesis test. `r pupil_xref_short` ROPE mass in @tbl-hyp-summary (footnote [b]) is a project-level sensitivity summary and does not replace CrI-based inference.
+The four hypotheses therefore carry different inferential weight. H1 is **supported**: the CrI excludes zero, only `r h1_p_in_rope_pct` of posterior mass lies within the project ROPE on drift, and the effect is small relative to difficulty contrasts. H2 is **directionally positive but practically negligible** under the project ROPE (CrI excludes zero; `r h2_p_in_rope_pct` ROPE mass). H4 is a **near-zero null** (CrI spans zero). H3 is **not directly testable** in the primary model because the response-signal design required an intercept-only $t_0$. `r pupil_xref_short` ROPE mass in @tbl-hyp-summary (footnote [b]) is a project-level sensitivity summary and does not replace CrI-based inference.
 
 ```{r}
 #| label: tbl-hyp-summary
@@ -4021,11 +4021,11 @@ if (.is_pdf) {
 .hyp_tbl
 ```
 
-The Effort → Drift effect was robust to task inclusion: the Effort × Task interaction was negligible (Appendix A4.3). H1 was stable in sign and magnitude across RT cutoffs of 0.15, 0.20, and 0.25 s; the already-negligible H2 boundary contrast lost CrI exclusion of zero at the most lenient cutoff (0.15 s), consistent with its practical-equivalence interpretation (Appendix A4.2).
+The Effort → Drift effect did not depend on task inclusion; the Effort × Task interaction was negligible (Appendix A4.3). H1 kept the same sign and similar magnitude across RT cutoffs of 0.15, 0.20, and 0.25 s. H2 was less stable: at the most lenient cutoff (0.15 s), the already-negligible boundary contrast no longer excluded zero, which supports the practical-equivalence interpretation (Appendix A4.2).
 
 ### Starting-point bias {#sec-starting-point-bias}
 
-In a standard-only calibration model, starting-point bias ($z$) was estimated independently of drift rate ($v$). Bias values were consistently above 0.5. ADT showed higher bias toward "different" responses than VDT (`r h4task_stdonly_beta_str`, `r h4task_stdonly_cri_str``r h4task_stdonly_p0_str`; ADT − VDT on $z$). The effort contrast in this calibration model was small and uncertain (Low−High: `r h4_stdonly_beta_str`, `r h4_stdonly_cri_str`). Bias was modeled as a function of task and effort only — participants had no advance knowledge of trial difficulty [@farell1985; @nosofsky1997palmeri]. The primary-model H4 test is in @sec-key-contrasts.
+In a standard-only calibration model, starting-point bias ($z$) was estimated independently of drift rate ($v$). Bias values were consistently above 0.5. ADT showed higher bias toward "different" responses than VDT (`r h4task_stdonly_beta_str`, `r h4task_stdonly_cri_str``r h4task_stdonly_p0_str`; ADT − VDT on $z$). The effort contrast in this calibration model was small and uncertain (Low−High: `r h4_stdonly_beta_str`, `r h4_stdonly_cri_str`). Bias was modeled as a function of task and effort only, because participants did not know trial difficulty in advance [@farell1985; @nosofsky1997palmeri]. The primary-model H4 test is in @sec-key-contrasts.
 
 ```{r drift-standard-compute}
 #| echo: false
@@ -4041,7 +4041,7 @@ if (!is.null(pred_params) && nrow(pred_params) > 0) {
 }
 ```
 
-The standard-only bias estimate ($z = `r z_stdonly_mean`$, 95% CrI [`r z_stdonly_q2.5`, `r z_stdonly_q97.5`]; @tbl-standard-only-bias-levels) exceeded primary-model estimates ($z \approx 0.52$–$0.55$; @tbl-ddm-posterior-estimates), reflecting the $v$–$z$ trade-off when drift and bias are estimated jointly across difficulty levels. Between-subject variability in drift rate and its effort sensitivity is shown in @fig-individual-diffs.
+The standard-only bias estimate ($z = `r z_stdonly_mean`$, 95% CrI [`r z_stdonly_q2.5`, `r z_stdonly_q97.5`]; @tbl-standard-only-bias-levels) exceeded the primary-model estimates ($z \approx 0.52$–$0.55$; @tbl-ddm-posterior-estimates). This difference reflects the $v$–$z$ trade-off when drift and bias are estimated jointly across difficulty levels. Between-subject variability in drift rate and its effort sensitivity is shown in @fig-individual-diffs.
 
 ```{r}
 #| echo: false
@@ -4065,13 +4065,13 @@ fig_individual_diffs_cap <- paste0(
 include_graphics_safe(main_fig("fig5_individual_differences.png"))
 ```
 
-## Pupil-linked DDM models {#sec-pupil-ddm-integration}
+## Pupil-linked DDM extensions {#sec-pupil-ddm-integration}
 
-As a multimodal extension, we asked whether trial-wise task-evoked pupil responses (TEPR; within-subject *z*-scored Decision-Response AUC) modulate latent decision parameters during concurrent grip. The **pupil → bias ($z$)** test was pre-registered; pupil → drift, pupil × difficulty on drift, and Cavanagh-style pupil → boundary ($a$) extensions were exploratory. On the pupil-available subset (`r format(pupil_n_trials_model, big.mark = ",")` trials, `r pupil_n_subj_model` participants), we fit a nested sequence of four hierarchical Wiener models (@sec-pupil-ddm-models) and, separately, Cavanagh-style extensions on boundary separation ($a$; @tbl-pupil-boundary-appendix): (1) a **behavioral baseline** without pupil predictors; (2) **pupil → bias** ($z$); (3) **pupil → drift + bias** ($v$ and $z$); and (4) **pupil × difficulty** on drift. All nested models used the identical trial set and additive difficulty/effort structure as the primary behavioral model. This subset excludes trials without valid pupil data and is **not** comparable to the full behavioral analysis ($N = 17{,}857$ trials); pupil-model comparisons are restricted to the nested same-$N$ set.
+We next tested whether trial-wise task-evoked pupil responses (TEPR; within-subject *z*-scored Decision-Response AUC) predicted latent decision parameters during concurrent grip. The **pupil → bias ($z$)** test was pre-registered. The pupil → drift, pupil × difficulty on drift, and Cavanagh-style pupil → boundary ($a$) models were exploratory. On the pupil-available subset (`r format(pupil_n_trials_model, big.mark = ",")` trials, `r pupil_n_subj_model` participants), we fit four nested hierarchical Wiener models (@sec-pupil-ddm-models): (1) a **behavioral baseline** without pupil predictors; (2) **pupil → bias** ($z$); (3) **pupil → drift + bias** ($v$ and $z$); and (4) **pupil × difficulty** on drift. We also fit Cavanagh-style boundary models ($a$; @tbl-pupil-boundary-appendix). All nested models used the same trial set and the same additive difficulty/effort structure as the primary behavioral model. Because the pupil subset excludes trials without valid pupil data, it is **not** comparable to the full behavioral analysis ($N = 17{,}857$ trials); pupil-model comparisons are restricted to the nested same-$N$ set.
 
 `r pupil_loo_canonical` `r pupil_coef_canonical` `r pupil_cavanagh_canonical` `r pupil_meas_canonical` `r pupil_trunc_sensitivity_canonical` Full TEPR descriptives are in Appendix A5 (@tbl-tepr). Pooled and conditional estimates appear in @tbl-hyp-summary (pupil rows) and @tbl-pupil-key-effects-appendix; Cavanagh boundary extensions in @tbl-pupil-boundary-appendix.
 
-Together with the tonic effort → bias null in @sec-key-contrasts, these results provide no credible evidence that concurrent grip or trial-wise TEPR shifted pre-stimulus bias in this sample — in contrast to phasic pupil-linked criterion reset reported in younger adults [@degee2020pupil] — though equivalence was not established.
+Together with the tonic effort → bias null in @sec-key-contrasts, these results give no credible evidence that concurrent grip or trial-wise TEPR shifted pre-stimulus bias in this sample. This differs from phasic pupil-linked criterion reset reported in younger adults [@degee2020pupil]. We did not establish equivalence.
 
 ```{r}
 #| label: pupil-evidence-setup
@@ -4402,252 +4402,8 @@ if (file.exists(model_path_diff) && requireNamespace("brms", quietly = TRUE) &&
 }
 ```
 
-## Exploratory: choice history {#sec-choice-history}
 
-To probe whether high somatic load promotes reliance on automatic choice heuristics, we fit two supplementary hierarchical Wiener DDM variants to the full behavioral dataset (N = 17,199 trials after block-boundary exclusions; see Supplementary Methods). Both models extended the primary architecture by adding the previous trial's response (coded ±0.5 for "Different"/"Same") to the starting-point bias subformula. The history model tested the main perseveration effect and its modulation by effort. The win-stay/lose-shift (WSLS) model additionally conditioned the history effect on the previous trial's accuracy, testing whether the carry-over differed depending on whether that trial was answered correctly. Both models met the pre-registered $\hat{R} < 1.01$ criterion for the history model (max $\hat{R}$ = 1.003); the WSLS variant showed a slightly elevated maximum $\hat{R}$ (1.014) but zero divergent transitions in both.
-
-**Baseline perseveration.** Older adults showed a small but reliable tendency to repeat their previous response. In the history model, the previous-trial response coefficient on bias was positive with its 95% CrI excluding zero ($\hat{\beta}$ = 0.065, 95% CrI [0.005, 0.125], P($\beta$ > 0) = 98.2%). On the logit scale, this corresponds to approximately a 1.5 percentage-point shift in the probability of choosing "Different" following a "Different" response. The same direction and magnitude emerged in the WSLS model (0.137 [0.017, 0.256]).
-
-**Effort does not amplify heuristic reliance.** The previous-trial response × effort interaction was near zero in both models: history model $\hat{\beta}$ = −0.001 (95% CrI [−0.065, 0.064], P($\beta$ > 0) = 48.8%); WSLS model −0.001 ([−0.065, 0.064]). There is no credible evidence that the perseveration tendency differed between High effort (40% MVC) and Low effort (5% MVC). The posterior rules out moderate-to-large modulation.
-
-**Win-stay/lose-shift dynamics.** In the WSLS model, the interaction between previous-trial response and previous-trial accuracy was $\hat{\beta}$ = −0.107 (95% CrI [−0.225, 0.009], P($\beta$ > 0) = 3.6%). The CrI just includes zero. The direction indicates that the perseveration effect was larger after incorrect trials than after correct ones. Neither the main effect of previous accuracy on bias ($\hat{\beta}$ ≈ 0, CrI [−0.060, 0.059]) nor the effort contrast differed from zero.
-
-**History effect on drift rate.** A small positive coefficient emerged for previous-trial response as a predictor of current-trial drift rate — present in both models ($\hat{\beta}$ = 0.054 [0.008, 0.100], P($\beta$ > 0) = 99.1%). Drift rate was slightly elevated when the current response direction matched the previous trial's.
-
-All focal parameter estimates from both models are visualized in @fig-temporal-dynamics (Panel C).
-
-```{r choice-history-load}
-#| include: false
-#| echo: false
-ch_hist_rds  <- "output/publish/fit_exploratory_choice_history_hist.rds"
-ch_wsls_rds  <- "output/publish/fit_exploratory_choice_history_wsls.rds"
-ch_csv       <- "output/publish/exploratory_choice_history_posterior_summary.csv"
-
-ch_fits_available <- file.exists(ch_hist_rds) && file.exists(ch_wsls_rds)
-ch_table_available <- file.exists(ch_csv)
-
-if (ch_fits_available) {
-  suppressPackageStartupMessages(library(brms))
-  suppressPackageStartupMessages(library(posterior))
-  ch_fit_hist <- readRDS(ch_hist_rds)
-  ch_fit_wsls <- readRDS(ch_wsls_rds)
-}
-
-if (ch_table_available) {
-  ch_posterior_tbl <- read_csv(ch_csv, show_col_types = FALSE)
-}
-```
-
-## Exploratory: within-session fatigue {#sec-fatigue-trajectory}
-
-To examine whether processing efficiency or decision caution dynamically changes over the course of a testing run, we fit a supplementary hierarchical Wiener DDM (N = 17,834 trials, 67 participants) that incorporated a within-run temporal factor. Each 30-trial run was split at the median trial position within each participant × task × run combination, yielding first-half and second-half labels (maximum 1-trial imbalance across runs). The drift rate subformula included a three-way interaction of effort, run half, and continuous age (z-scored; 1 unit ≈ 6.4 years) to test whether temporal drift-rate decline was exacerbated in older-within-cohort participants under high somatic load. Boundary separation used a two-way effort × run-half interaction plus continuous age as a main effect. The model converged satisfactorily (max $\hat{R}$ = 1.004; 0 divergent transitions).
-
-**Within-run boundary relaxation.** The only parameter contrast with a 95% CrI excluding zero was the second-half change in boundary separation: $\hat{\beta}$ = −0.022 (95% CrI [−0.040, −0.004], P($\beta$ < 0) = 99.3%). On the exponentiated scale this corresponds to an estimated drop from approximately 2.04 to 1.99 across the two halves under Low effort (5% MVC). The effort × run-half interaction was positive but non-credible ($\hat{\beta}$ = +0.011, 95% CrI [−0.014, 0.037]): the expected boundary under High effort (40% MVC) in the second half (≈ 2.03) was close to the first-half value. Boundary trajectories for all four condition cells are shown in @fig-temporal-dynamics (Panel A).
-
-**No credible drift-rate decline.** The effort × run-half interaction on drift was negative but spanned zero: $\hat{\beta}$ = −0.035 (95% CrI [−0.100, 0.032], P($\beta$ < 0) = 85.3%). There is no credible evidence that drift rate decays in the second half of a run under High effort. The effort main effect on drift was directionally consistent with the primary model ($\hat{\beta}$ = −0.038, 95% CrI [−0.085, 0.008], P($\beta$ < 0) = 94.8%) but non-credible under the expanded parameterization.
-
-**Age does not moderate the trajectory.** The three-way interaction (effort × run half × age on drift) was $\hat{\beta}$ = −0.023 (95% CrI [−0.091, 0.044], P($\beta$ < 0) = 74.0%), with the CrI spanning zero. Within-run drift-rate dynamics are not age-graded in this cohort.
-
-**Secondary pattern.** The run-half × age interaction on drift was positive and 95.8% probable ($\hat{\beta}$ = +0.048, 95% CrI [−0.006, 0.102]), with the CrI just including zero. Older-within-cohort participants tended toward slightly higher drift rates in the second half under Low effort. This should be treated as exploratory.
-
-Focal fatigue coefficients are plotted in @fig-temporal-dynamics (Panel B).
-
-```{r fatigue-trajectory-load}
-#| include: false
-#| echo: false
-
-fat_rds <- "output/publish/fit_exploratory_fatigue_trajectory.rds"
-fat_csv <- "output/publish/exploratory_fatigue_trajectory_posterior_summary.csv"
-
-fat_fit_available   <- file.exists(fat_rds)
-fat_table_available <- file.exists(fat_csv)
-
-if (fat_fit_available) {
-  suppressPackageStartupMessages(library(brms))
-  suppressPackageStartupMessages(library(posterior))
-  fat_fit   <- readRDS(fat_rds)
-  fat_draws <- as_draws_df(fat_fit)
-}
-
-if (fat_table_available) {
-  fat_posterior_tbl <- read_csv(fat_csv, show_col_types = FALSE) |>
-    mutate(
-      q2.5  = as.numeric(sub("[[](-?[0-9.]+),.*",      "\\1", CrI_95)),
-      q97.5 = as.numeric(sub(".*,[ ]*(-?[0-9.]+)[]]",  "\\1", CrI_95))
-    )
-}
-```
-
-```{r fatigue-build-figure}
-#| include: false
-#| echo: false
-
-p_fatigue_combined <- NULL
-
-if (fat_fit_available && fat_table_available) {
-  tryCatch({
-    suppressPackageStartupMessages(library(ggplot2))
-    suppressPackageStartupMessages(library(dplyr))
-    suppressPackageStartupMessages(library(tidyr))
-    suppressPackageStartupMessages(library(patchwork))
-
-    # ── Panel A: coefficient forest plot ───────────────────────────────────────
-
-    label_map <- c(
-      "b_age_z"                                                    = "Age",
-      "b_block_halfSecond_Half"                                    = "Block half: 2nd vs 1st",
-      "b_block_halfSecond_Half:age_z"                             = "Block half x Age",
-      "b_effort_conditionHigh_40_MVC"                             = "Effort: High vs Low",
-      "b_effort_conditionHigh_40_MVC:age_z"                       = "Effort x Age",
-      "b_effort_conditionHigh_40_MVC:block_halfSecond_Half"       = "Effort x Block half",
-      "b_effort_conditionHigh_40_MVC:block_halfSecond_Half:age_z" = "Effort x Block half x Age",
-      "b_bs_age_z"                                               = "Age",
-      "b_bs_block_halfSecond_Half"                               = "Block half: 2nd vs 1st [*]",
-      "b_bs_effort_conditionHigh_40_MVC"                        = "Effort: High vs Low",
-      "b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half"  = "Effort x Block half"
-    )
-
-    fat_forest <- fat_posterior_tbl |>
-      mutate(
-        label          = label_map[parameter],
-        parameter_type = factor(parameter_type, levels = c("Drift (v)", "Boundary (a)")),
-        credible       = as.logical(excludes0)
-      ) |>
-      filter(!is.na(label)) |>
-      group_by(parameter_type) |>
-      arrange(parameter_type, median) |>
-      ungroup() |>
-      mutate(label = factor(label, levels = unique(label)))
-
-    p_forest <- ggplot(fat_forest,
-        aes(x = median, y = label, color = parameter_type)) +
-      geom_vline(xintercept = 0, linetype = "dashed",
-                 colour = "grey35", linewidth = 0.5) +
-      geom_errorbarh(aes(xmin = q2.5, xmax = q97.5),
-                     height = 0.3, linewidth = 0.65, alpha = 0.7) +
-      geom_point(aes(shape = credible, size = credible)) +
-      scale_color_manual(values = fatigue_param_colors, guide = "none") +
-      scale_shape_manual(
-        values  = c("TRUE" = 16, "FALSE" = 21),
-        labels  = c("TRUE" = "CrI excludes 0", "FALSE" = "CrI spans 0"),
-        name    = NULL,
-        guide   = guide_legend(nrow = 1, byrow = TRUE, override.aes = list(size = 3))
-      ) +
-      scale_size_manual(values = c("TRUE" = 3.2, "FALSE" = 2.2), guide = "none") +
-      facet_grid(parameter_type ~ ., scales = "free_y", space = "free_y") +
-      labs(
-        x        = "Posterior estimate",
-        y        = NULL,
-        title    = NULL,
-        subtitle = "Coefficient estimates"
-      ) +
-      theme_minimal(base_size = 10) +
-      theme(
-        strip.text         = element_text(face = "bold", size = 9.5),
-        panel.grid.minor   = element_blank(),
-        panel.grid.major.y = element_blank(),
-        legend.position    = "none",
-        axis.title.x       = element_text(size = 8.5),
-        plot.subtitle      = element_text(face = "bold", size = 10, hjust = 0, margin = margin(b = 4))
-      )
-
-    # ── Panel B: expected boundary per cell ────────────────────────────────────
-
-    bs_int  <- fat_draws[["Intercept_bs"]]
-    bs_bh   <- fat_draws[["b_bs_block_halfSecond_Half"]]
-    bs_eff  <- fat_draws[["b_bs_effort_conditionHigh_40_MVC"]]
-    bs_intx <- fat_draws[["b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half"]]
-
-    cell_draws <- tibble(
-      `Low effort 1st half`   = exp(bs_int),
-      `Low effort 2nd half`   = exp(bs_int + bs_bh),
-      `High effort 1st half`  = exp(bs_int + bs_eff),
-      `High effort 2nd half`  = exp(bs_int + bs_eff + bs_bh + bs_intx)
-    ) |>
-      pivot_longer(everything(), names_to = "cell", values_to = "boundary")
-
-    cell_summary <- cell_draws |>
-      group_by(cell) |>
-      summarise(
-        med  = median(boundary),
-        lo   = quantile(boundary, .025),
-        hi   = quantile(boundary, .975),
-        .groups = "drop"
-      ) |>
-      mutate(
-        effort = if_else(grepl("High", cell), "High effort (40% MVC)", "Low effort (5% MVC)"),
-        half   = if_else(grepl("1st", cell), "1st Half", "2nd Half"),
-        half   = factor(half, levels = c("1st Half", "2nd Half"))
-      )
-
-    p_boundary <- ggplot(cell_summary,
-        aes(x = half, y = med, colour = effort, group = effort)) +
-      geom_ribbon(aes(ymin = lo, ymax = hi, fill = effort, group = effort),
-                  alpha = 0.15, colour = NA) +
-      geom_line(linewidth = 0.9) +
-      geom_errorbar(aes(ymin = lo, ymax = hi),
-                    width = 0.08, linewidth = 0.6) +
-      geom_point(size = 3.5) +
-      scale_color_manual(
-        values = fatigue_effort_colors,
-        name   = NULL,
-        guide  = guide_legend(nrow = 1, byrow = TRUE, override.aes = list(linewidth = 1.2))
-      ) +
-      scale_fill_manual(values = fatigue_effort_colors, guide = "none") +
-      labs(
-        x        = "Session half",
-        y        = "Boundary separation (exp scale)",
-        title    = NULL,
-        subtitle = "Boundary trajectories"
-      ) +
-      coord_cartesian(ylim = c(1.88, 2.20)) +
-      theme_minimal(base_size = 10) +
-      theme(
-        panel.grid.minor   = element_blank(),
-        panel.grid.major.x = element_blank(),
-        legend.position    = "bottom",
-        axis.title         = element_text(size = 8.5),
-        plot.subtitle      = element_text(face = "bold", size = 10, hjust = 0, margin = margin(b = 4))
-      )
-
-    p_fatigue_combined <- p_forest + p_boundary +
-      plot_layout(
-        widths    = c(1.55, 1),
-        guides    = "collect",
-        tag_level = "new"
-      ) +
-      plot_annotation(
-        caption = "Filled circles: 95% CrI excludes zero. Open circles: CrI spans zero.",
-        theme   = theme(
-          plot.caption   = element_text(size = 8, colour = "grey30", hjust = 0),
-          plot.tag       = element_text(face = "bold", size = 11),
-          plot.tag.position = c(0.01, 0.98)
-        )
-      ) &
-      theme(
-        legend.position    = "bottom",
-        legend.box         = "horizontal",
-        legend.box.just    = "left",
-        legend.spacing.x   = unit(0.6, "cm"),
-        legend.margin      = margin(t = 6, b = 2),
-        legend.text        = element_text(size = 8.5),
-        plot.margin        = margin(8, 8, 4, 8)
-      )
-
-  }, error = function(e) {
-    message("Fatigue trajectory figure build failed: ", e$message)
-  })
-}
-```
-
-```{r}
-#| label: fig-temporal-dynamics
-#| fig-cap: "**Effort degraded evidence quality upstream but did not amplify heuristic responding or produce within-run accumulation-stage exhaustion; the only credible temporal effect was a modest boundary relaxation across run halves.** **(A)** Population-average boundary separation ($a$, exponentiated scale) across the first and second halves of each 30-trial run, by effort condition (95% CrI). **(B)** Focal coefficients from the within-run fatigue model; only the 2nd-vs-1st-half boundary decline (marked *) has a 95% CrI excluding zero; the effort $\\times$ run-half interaction on $a$ and the effort $\\times$ run-half interaction on $v$ both span zero. **(C)** Posterior distributions of the perseveration-on-bias coefficient and the effort $\\times$ previous-response interaction on bias, from the history model (teal) and WSLS model (gold), plotted on the logit scale. Statistical note: Boundary decline, 2nd vs. 1st half: $\\hat{\\beta} = -0.022$, 95% CrI [$-0.040$, $-0.004$], $P(\\beta < 0) = 99.3$%. Effort $\\times$ run-half on boundary: $\\hat{\\beta} = +0.011$ [$-0.014$, $0.037$]. Effort $\\times$ previous-response on bias: $\\hat{\\beta} = -0.001$ [$-0.065$, $0.064$]. Perseveration on bias: $\\hat{\\beta} = 0.065$ [$0.005$, $0.125$], $P(\\beta > 0) = 98.2$%."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "100%"
-include_graphics_safe(main_fig("fig4_temporal_dynamics.png"))
-```
+Exploratory choice-history and within-session fatigue models are reported in Appendix A10. They help interpret the primary effort effects but do not directly test H1-H4 or the pupil-linked analysis.
 
 
 \newpage
@@ -4703,9 +4459,9 @@ The absence of a detectable phasic bias-resetting effect stands in contrast to p
 
 ## Temporal dynamics across trials {#sec-temporal-dynamics}
 
-Exploratory choice-history models (@sec-choice-history) showed a small but reliable perseveration tendency: pre-stimulus bias shifted by approximately 0.065 logit units toward the previous response, with the 95% CrI excluding zero. High effort (40% MVC) did not amplify this effect (previous-trial response × effort interaction $\hat{\beta}$ = −0.001, 95% CrI [−0.065, 0.064]). Together with the ROPE-negligible H2 boundary effect and the H4 bias null, this pattern suggests that effort degrades evidence quality upstream while producing only limited downstream adjustment in criterion-setting or history-driven responding [@wickens2008; @fischer2014serial].
+Exploratory choice-history models (Appendix A10.1) showed a small but reliable perseveration tendency: pre-stimulus bias shifted by approximately 0.065 logit units toward the previous response, with the 95% CrI excluding zero. High effort (40% MVC) did not amplify this effect (previous-trial response × effort interaction $\hat{\beta}$ = −0.001, 95% CrI [−0.065, 0.064]). Together with the ROPE-negligible H2 boundary effect and the H4 bias null, this pattern suggests that effort degrades evidence quality upstream while producing only limited downstream adjustment in criterion-setting or history-driven responding [@wickens2008; @fischer2014serial].
 
-Within-session fatigue models (@sec-fatigue-trajectory) showed a complementary pattern. Boundary separation relaxed slightly from the first to the second half of each run (more pronounced under Low effort), but drift rate did not decline credibly within runs, and age did not moderate the trajectory. The primary within-run dynamic is modest criterion adjustment, not accumulation-stage exhaustion [@drugowitsch2012; @tajima2016]. Effort's between-condition effect remains localized to drift rate ($v$), not to the temporal dynamics of boundary separation under load.
+Within-session fatigue models (Appendix A10.2) showed a complementary pattern. Boundary separation relaxed slightly from the first to the second half of each run (more pronounced under Low effort), but drift rate did not decline credibly within runs, and age did not moderate the trajectory. The primary within-run dynamic is modest criterion adjustment, not accumulation-stage exhaustion [@drugowitsch2012; @tajima2016]. Effort's between-condition effect remains localized to drift rate ($v$), not to the temporal dynamics of boundary separation under load.
 
 ## Modeling constraints
 
@@ -7839,6 +7595,258 @@ if (file.exists(np_cor_path)) {
 ```
 
 \newpage 
+
+
+## A10. Exploratory Temporal Dynamics {#app-exploratory-temporal .unnumbered}
+
+These models evaluate choice history and within-run fatigue. They are reported here because they support interpretation of the main effort effects but do not directly test H1-H4 or the pupil-linked analysis.
+
+### A10.1 Choice-history models {#sec-choice-history .unnumbered}
+
+We fit two hierarchical Wiener DDM variants to test whether high somatic load increased reliance on recent responses (N = 17,199 trials after block-boundary exclusions; see Supplementary Methods). Both models added the previous response (coded ±0.5 for "Different"/"Same") to the starting-point bias subformula. The history model tested perseveration and its modulation by effort. The win-stay/lose-shift (WSLS) model also included previous-trial accuracy, asking whether carry-over differed after correct versus incorrect responses. The history model met the pre-registered $\hat{R} < 1.01$ criterion (max $\hat{R}$ = 1.003). The WSLS variant had a slightly elevated maximum $\hat{R}$ (1.014). Neither model had divergent transitions.
+
+**Baseline perseveration.** Older adults showed a small but reliable tendency to repeat their previous response. In the history model, the previous-trial response coefficient on bias was positive with its 95% CrI excluding zero ($\hat{\beta}$ = 0.065, 95% CrI [0.005, 0.125], P($\beta$ > 0) = 98.2%). On the logit scale, this corresponds to approximately a 1.5 percentage-point shift in the probability of choosing "Different" following a "Different" response. The same direction and magnitude emerged in the WSLS model (0.137 [0.017, 0.256]).
+
+**Effort does not amplify heuristic reliance.** The previous-trial response × effort interaction was near zero in both models: history model $\hat{\beta}$ = −0.001 (95% CrI [−0.065, 0.064], P($\beta$ > 0) = 48.8%); WSLS model −0.001 ([−0.065, 0.064]). Perseveration did not differ between High effort (40% MVC) and Low effort (5% MVC).
+
+**Win-stay/lose-shift dynamics.** In the WSLS model, the interaction between previous-trial response and previous-trial accuracy was $\hat{\beta}$ = −0.107 (95% CrI [−0.225, 0.009], P($\beta$ > 0) = 3.6%). The CrI just includes zero. The direction indicates that the perseveration effect was larger after incorrect trials than after correct ones. Neither the main effect of previous accuracy on bias ($\hat{\beta}$ ≈ 0, CrI [−0.060, 0.059]) nor the effort contrast differed from zero.
+
+**History effect on drift rate.** Previous-trial response also predicted current-trial drift rate in both models ($\hat{\beta}$ = 0.054 [0.008, 0.100], P($\beta$ > 0) = 99.1%). Drift was slightly higher when the current response direction matched the previous response.
+
+The main estimates from both models are shown in @fig-temporal-dynamics (Panel C).
+
+```{r choice-history-load}
+#| include: false
+#| echo: false
+ch_hist_rds  <- "output/publish/fit_exploratory_choice_history_hist.rds"
+ch_wsls_rds  <- "output/publish/fit_exploratory_choice_history_wsls.rds"
+ch_csv       <- "output/publish/exploratory_choice_history_posterior_summary.csv"
+
+ch_fits_available <- file.exists(ch_hist_rds) && file.exists(ch_wsls_rds)
+ch_table_available <- file.exists(ch_csv)
+
+if (ch_fits_available) {
+  suppressPackageStartupMessages(library(brms))
+  suppressPackageStartupMessages(library(posterior))
+  ch_fit_hist <- readRDS(ch_hist_rds)
+  ch_fit_wsls <- readRDS(ch_wsls_rds)
+}
+
+if (ch_table_available) {
+  ch_posterior_tbl <- read_csv(ch_csv, show_col_types = FALSE)
+}
+```
+
+### A10.2 Within-session fatigue trajectory {#sec-fatigue-trajectory .unnumbered}
+
+We also tested whether processing efficiency or caution changed within a run. A supplementary hierarchical Wiener DDM (N = 17,834 trials, 67 participants) included a within-run temporal factor. Each 30-trial run was split at the median trial position within each participant × task × run combination, producing first-half and second-half labels (maximum 1-trial imbalance across runs). The drift-rate subformula included effort, run half, continuous age (z-scored; 1 unit ≈ 6.4 years), and their three-way interaction. Boundary separation included effort, run half, and their interaction, with age as a main effect. The model converged satisfactorily (max $\hat{R}$ = 1.004; 0 divergent transitions).
+
+**Within-run boundary relaxation.** The only parameter contrast with a 95% CrI excluding zero was the second-half change in boundary separation: $\hat{\beta}$ = −0.022 (95% CrI [−0.040, −0.004], P($\beta$ < 0) = 99.3%). On the exponentiated scale, this corresponds to a drop from about 2.04 to 1.99 across run halves under Low effort (5% MVC). The effort × run-half interaction was positive but non-credible ($\hat{\beta}$ = +0.011, 95% CrI [−0.014, 0.037]). Under High effort (40% MVC), the expected boundary in the second half (≈ 2.03) was close to the first-half value. Boundary trajectories for all four condition cells are shown in @fig-temporal-dynamics (Panel A).
+
+**No credible drift-rate decline.** The effort × run-half interaction on drift was negative but spanned zero: $\hat{\beta}$ = −0.035 (95% CrI [−0.100, 0.032], P($\beta$ < 0) = 85.3%). Drift did not credibly decay in the second half of a run under High effort. The effort main effect on drift was directionally consistent with the primary model ($\hat{\beta}$ = −0.038, 95% CrI [−0.085, 0.008], P($\beta$ < 0) = 94.8%), but it was non-credible in this expanded model.
+
+**Age does not moderate the trajectory.** The three-way interaction (effort × run half × age on drift) was $\hat{\beta}$ = −0.023 (95% CrI [−0.091, 0.044], P($\beta$ < 0) = 74.0%). The CrI spans zero, so there is no clear age gradient in within-run drift dynamics.
+
+**Secondary pattern.** The run-half × age interaction on drift was positive and 95.8% probable ($\hat{\beta}$ = +0.048, 95% CrI [−0.006, 0.102]), with the CrI just including zero. Older-within-cohort participants tended to show slightly higher drift in the second half under Low effort. This pattern is exploratory.
+
+The fatigue coefficients are plotted in @fig-temporal-dynamics (Panel B).
+
+```{r fatigue-trajectory-load}
+#| include: false
+#| echo: false
+
+fat_rds <- "output/publish/fit_exploratory_fatigue_trajectory.rds"
+fat_csv <- "output/publish/exploratory_fatigue_trajectory_posterior_summary.csv"
+
+fat_fit_available   <- file.exists(fat_rds)
+fat_table_available <- file.exists(fat_csv)
+
+if (fat_fit_available) {
+  suppressPackageStartupMessages(library(brms))
+  suppressPackageStartupMessages(library(posterior))
+  fat_fit   <- readRDS(fat_rds)
+  fat_draws <- as_draws_df(fat_fit)
+}
+
+if (fat_table_available) {
+  fat_posterior_tbl <- read_csv(fat_csv, show_col_types = FALSE) |>
+    mutate(
+      q2.5  = as.numeric(sub("[[](-?[0-9.]+),.*",      "\\1", CrI_95)),
+      q97.5 = as.numeric(sub(".*,[ ]*(-?[0-9.]+)[]]",  "\\1", CrI_95))
+    )
+}
+```
+
+```{r fatigue-build-figure}
+#| include: false
+#| echo: false
+
+p_fatigue_combined <- NULL
+
+if (fat_fit_available && fat_table_available) {
+  tryCatch({
+    suppressPackageStartupMessages(library(ggplot2))
+    suppressPackageStartupMessages(library(dplyr))
+    suppressPackageStartupMessages(library(tidyr))
+    suppressPackageStartupMessages(library(patchwork))
+
+    # ── Panel A: coefficient forest plot ───────────────────────────────────────
+
+    label_map <- c(
+      "b_age_z"                                                    = "Age",
+      "b_block_halfSecond_Half"                                    = "Block half: 2nd vs 1st",
+      "b_block_halfSecond_Half:age_z"                             = "Block half x Age",
+      "b_effort_conditionHigh_40_MVC"                             = "Effort: High vs Low",
+      "b_effort_conditionHigh_40_MVC:age_z"                       = "Effort x Age",
+      "b_effort_conditionHigh_40_MVC:block_halfSecond_Half"       = "Effort x Block half",
+      "b_effort_conditionHigh_40_MVC:block_halfSecond_Half:age_z" = "Effort x Block half x Age",
+      "b_bs_age_z"                                               = "Age",
+      "b_bs_block_halfSecond_Half"                               = "Block half: 2nd vs 1st [*]",
+      "b_bs_effort_conditionHigh_40_MVC"                        = "Effort: High vs Low",
+      "b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half"  = "Effort x Block half"
+    )
+
+    fat_forest <- fat_posterior_tbl |>
+      mutate(
+        label          = label_map[parameter],
+        parameter_type = factor(parameter_type, levels = c("Drift (v)", "Boundary (a)")),
+        credible       = as.logical(excludes0)
+      ) |>
+      filter(!is.na(label)) |>
+      group_by(parameter_type) |>
+      arrange(parameter_type, median) |>
+      ungroup() |>
+      mutate(label = factor(label, levels = unique(label)))
+
+    p_forest <- ggplot(fat_forest,
+        aes(x = median, y = label, color = parameter_type)) +
+      geom_vline(xintercept = 0, linetype = "dashed",
+                 colour = "grey35", linewidth = 0.5) +
+      geom_errorbarh(aes(xmin = q2.5, xmax = q97.5),
+                     height = 0.3, linewidth = 0.65, alpha = 0.7) +
+      geom_point(aes(shape = credible, size = credible)) +
+      scale_color_manual(values = fatigue_param_colors, guide = "none") +
+      scale_shape_manual(
+        values  = c("TRUE" = 16, "FALSE" = 21),
+        labels  = c("TRUE" = "CrI excludes 0", "FALSE" = "CrI spans 0"),
+        name    = NULL,
+        guide   = guide_legend(nrow = 1, byrow = TRUE, override.aes = list(size = 3))
+      ) +
+      scale_size_manual(values = c("TRUE" = 3.2, "FALSE" = 2.2), guide = "none") +
+      facet_grid(parameter_type ~ ., scales = "free_y", space = "free_y") +
+      labs(
+        x        = "Posterior estimate",
+        y        = NULL,
+        title    = NULL,
+        subtitle = "Coefficient estimates"
+      ) +
+      theme_minimal(base_size = 10) +
+      theme(
+        strip.text         = element_text(face = "bold", size = 9.5),
+        panel.grid.minor   = element_blank(),
+        panel.grid.major.y = element_blank(),
+        legend.position    = "none",
+        axis.title.x       = element_text(size = 8.5),
+        plot.subtitle      = element_text(face = "bold", size = 10, hjust = 0, margin = margin(b = 4))
+      )
+
+    # ── Panel B: expected boundary per cell ────────────────────────────────────
+
+    bs_int  <- fat_draws[["Intercept_bs"]]
+    bs_bh   <- fat_draws[["b_bs_block_halfSecond_Half"]]
+    bs_eff  <- fat_draws[["b_bs_effort_conditionHigh_40_MVC"]]
+    bs_intx <- fat_draws[["b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half"]]
+
+    cell_draws <- tibble(
+      `Low effort 1st half`   = exp(bs_int),
+      `Low effort 2nd half`   = exp(bs_int + bs_bh),
+      `High effort 1st half`  = exp(bs_int + bs_eff),
+      `High effort 2nd half`  = exp(bs_int + bs_eff + bs_bh + bs_intx)
+    ) |>
+      pivot_longer(everything(), names_to = "cell", values_to = "boundary")
+
+    cell_summary <- cell_draws |>
+      group_by(cell) |>
+      summarise(
+        med  = median(boundary),
+        lo   = quantile(boundary, .025),
+        hi   = quantile(boundary, .975),
+        .groups = "drop"
+      ) |>
+      mutate(
+        effort = if_else(grepl("High", cell), "High effort (40% MVC)", "Low effort (5% MVC)"),
+        half   = if_else(grepl("1st", cell), "1st Half", "2nd Half"),
+        half   = factor(half, levels = c("1st Half", "2nd Half"))
+      )
+
+    p_boundary <- ggplot(cell_summary,
+        aes(x = half, y = med, colour = effort, group = effort)) +
+      geom_ribbon(aes(ymin = lo, ymax = hi, fill = effort, group = effort),
+                  alpha = 0.15, colour = NA) +
+      geom_line(linewidth = 0.9) +
+      geom_errorbar(aes(ymin = lo, ymax = hi),
+                    width = 0.08, linewidth = 0.6) +
+      geom_point(size = 3.5) +
+      scale_color_manual(
+        values = fatigue_effort_colors,
+        name   = NULL,
+        guide  = guide_legend(nrow = 1, byrow = TRUE, override.aes = list(linewidth = 1.2))
+      ) +
+      scale_fill_manual(values = fatigue_effort_colors, guide = "none") +
+      labs(
+        x        = "Session half",
+        y        = "Boundary separation (exp scale)",
+        title    = NULL,
+        subtitle = "Boundary trajectories"
+      ) +
+      coord_cartesian(ylim = c(1.88, 2.20)) +
+      theme_minimal(base_size = 10) +
+      theme(
+        panel.grid.minor   = element_blank(),
+        panel.grid.major.x = element_blank(),
+        legend.position    = "bottom",
+        axis.title         = element_text(size = 8.5),
+        plot.subtitle      = element_text(face = "bold", size = 10, hjust = 0, margin = margin(b = 4))
+      )
+
+    p_fatigue_combined <- p_forest + p_boundary +
+      plot_layout(
+        widths    = c(1.55, 1),
+        guides    = "collect",
+        tag_level = "new"
+      ) +
+      plot_annotation(
+        caption = "Filled circles: 95% CrI excludes zero. Open circles: CrI spans zero.",
+        theme   = theme(
+          plot.caption   = element_text(size = 8, colour = "grey30", hjust = 0),
+          plot.tag       = element_text(face = "bold", size = 11),
+          plot.tag.position = c(0.01, 0.98)
+        )
+      ) &
+      theme(
+        legend.position    = "bottom",
+        legend.box         = "horizontal",
+        legend.box.just    = "left",
+        legend.spacing.x   = unit(0.6, "cm"),
+        legend.margin      = margin(t = 6, b = 2),
+        legend.text        = element_text(size = 8.5),
+        plot.margin        = margin(8, 8, 4, 8)
+      )
+
+  }, error = function(e) {
+    message("Fatigue trajectory figure build failed: ", e$message)
+  })
+}
+```
+
+```{r}
+#| label: fig-temporal-dynamics
+#| fig-cap: "**Effort degraded evidence quality upstream but did not amplify heuristic responding or produce within-run accumulation-stage exhaustion; the only credible temporal effect was a modest boundary relaxation across run halves.** **(A)** Population-average boundary separation ($a$, exponentiated scale) across the first and second halves of each 30-trial run, by effort condition (95% CrI). **(B)** Focal coefficients from the within-run fatigue model; only the 2nd-vs-1st-half boundary decline (marked *) has a 95% CrI excluding zero; the effort $\\times$ run-half interaction on $a$ and the effort $\\times$ run-half interaction on $v$ both span zero. **(C)** Posterior distributions of the perseveration-on-bias coefficient and the effort $\\times$ previous-response interaction on bias, from the history model (teal) and WSLS model (gold), plotted on the logit scale. Statistical note: Boundary decline, 2nd vs. 1st half: $\\hat{\\beta} = -0.022$, 95% CrI [$-0.040$, $-0.004$], $P(\\beta < 0) = 99.3$%. Effort $\\times$ run-half on boundary: $\\hat{\\beta} = +0.011$ [$-0.014$, $0.037$]. Effort $\\times$ previous-response on bias: $\\hat{\\beta} = -0.001$ [$-0.065$, $0.064$]. Perseveration on bias: $\\hat{\\beta} = 0.065$ [$0.005$, $0.125$], $P(\\beta > 0) = 98.2$%."
+#| fig-align: center
+#| fig-pos: "htbp"
+#| out-width: "100%"
+include_graphics_safe(main_fig("fig4_temporal_dynamics.png"))
+```
 
 # References {.unnumbered}
 
