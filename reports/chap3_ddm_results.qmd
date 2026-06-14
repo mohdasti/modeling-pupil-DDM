@@ -33,6 +33,7 @@ format:
         \usepackage{longtable}
         \usepackage{amsmath}
         \usepackage{amssymb}
+        \usepackage{placeins}
   docx:
     toc: true
     number-sections: true
@@ -144,6 +145,7 @@ if (basename(current_dir) == "reports") {
 
 source(here::here("R", "colors_manuscript.R"))
 source(here::here("R", "fig_save_utils.R"))
+source(here::here("R", "appendix_panel_helpers.R"))
 stopifnot(length(cond_colors) == 6, length(param_colors) == 4, length(task_colors) == 2)
 
 # Derived palettes for figure labels that differ from vector names
@@ -3243,7 +3245,7 @@ pupil_loo_canonical <- if (pupil_loo_reliable) {
       "(max Pareto-$k$ = %s; all $k \\leq 0.7$). Relative to the nested behavioral baseline, ",
       "$\\Delta$ELPD was %s (pupil $\\rightarrow$ $z$), %s (pupil $\\rightarrow$ $v$ + $z$), ",
       "and %s (pupil $\\times$ difficulty); none approached the $\\pm 4$ benchmark ",
-      "(@tbl-pupil-loo-appendix)."
+      "(@tbl-pupil-loo-unified; primary-window nested Models m0–m3)."
     ),
     format(pupil_n_trials_model, big.mark = ","),
     pupil_n_subj_model,
@@ -3254,7 +3256,7 @@ pupil_loo_canonical <- if (pupil_loo_reliable) {
   )
 } else {
   paste0(
-    "PSIS-LOO on the pupil-available subset should be verified in @tbl-pupil-loo-appendix ",
+    "PSIS-LOO on the pupil-available subset should be verified in @tbl-pupil-loo-unified ",
     "before interpreting $\\Delta$ELPD."
   )
 }
@@ -3546,8 +3548,10 @@ tbl_loo_comp_raw <- tbl_loo_comp_base %>%
     delta_looic = looic - min(looic, na.rm = TRUE),
     delta_elpd = elpd_loo - max(elpd_loo, na.rm = TRUE),
     model_display = case_when(
-      model == "baseline" ~ "Baseline (intercept-only)",
-      model == PRIMARY_MODEL ~ "Additive (difficulty + effort)",
+      model == "baseline" ~ "Baseline",
+      model == PRIMARY_MODEL ~ "Additive",
+      model == "difficulty_only" ~ "Difficulty-only",
+      model == "interaction" ~ "Interaction (Diff $\\times$ Effort)",
       TRUE ~ as.character(model)
     )
   )
@@ -3566,7 +3570,7 @@ invisible(local({
       looic_se     = 2  * loo_diffonly_se,
       elpd_loo     = loo_diffonly_elpd,
       elpd_se      = loo_diffonly_se,
-      model_display = "Difficulty-only (no Effort)"
+      model_display = "Difficulty-only"
     )
     tbl_loo_comp_raw <<- dplyr::bind_rows(tbl_loo_comp_raw, diffonly_row) |>
       dplyr::mutate(
@@ -3628,7 +3632,7 @@ if (file.exists(interaction_loo_summary_path)) {
       looic_se = if (is.finite(int_se)) 2 * int_se else NA_real_,
       elpd_loo = int_elpd,
       elpd_se = int_se,
-      model_display = "Interaction (Difficulty × Effort)"
+      model_display = "Interaction (Diff $\\times$ Effort)"
     )
     tbl_loo_comp_raw <- dplyr::bind_rows(tbl_loo_comp_raw, interaction_row) |>
       dplyr::mutate(
@@ -3648,6 +3652,7 @@ tbl_loo_comp <- tbl_loo_comp_raw %>%
       model == "baseline" ~ se_diff_elpd,
       TRUE ~ NA_real_
     ),
+    se_diff = if_else(is.finite(se_diff), round(se_diff, 1), NA_real_),
     elpd_loo = round(elpd_loo, 1),
     elpd_se = round(elpd_se, 1),
     delta_elpd = round(delta_elpd, 1),
@@ -3657,12 +3662,12 @@ tbl_loo_comp <- tbl_loo_comp_raw %>%
   arrange(delta_looic) %>%
   select(
     `Model` = model_display,
-    `ELPD LOO` = elpd_loo,
-    `SE(ELPD)` = elpd_se,
-    `Δ ELPD` = delta_elpd,
+    `ELPD` = elpd_loo,
+    `SE` = elpd_se,
+    `ΔELPD` = delta_elpd,
     `SE(Δ)` = se_diff,
     `LOOIC` = looic,
-    `Max Pareto-$k$` = max_pareto_k
+    `Max $k$` = max_pareto_k
   )
 
 # Compute table note for inline use (inline R cannot handle complex logic)
@@ -3695,12 +3700,13 @@ if (file.exists(loo_diffonly_path) && "difficulty_only" %in% tbl_loo_comp_raw$mo
 tbl_loo_comp %>%
   knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), 
                booktabs = TRUE, 
-               linesep = "") %>%
+               linesep = "",
+               escape = !knitr::is_latex_output()) %>%
   kableExtra::kable_styling(
-    latex_options = c("striped", "hold_position"),
+    latex_options = c("striped", "hold_position", "scale_down"),
     bootstrap_options = c("striped", "hover", "condensed", "responsive"),
     full_width = FALSE,
-    font_size = 12
+    font_size = 10
   )
 ```
 
@@ -4090,7 +4096,7 @@ if (exists(".pb_est_e") && is.finite(.pb_est_e)) {
 ```{r pupil-interaction-stats}
 #| echo: false
 #| include: false
-# Compute caption choice and p_gt0 for fig-tepr-slopes-supp and tbl-pupil-key-effects-appendix
+# Compute caption choice and p_gt0 for TEPR slopes panel (fig-tepr-timecourse-supp Panel B) and tbl-pupil-key-effects-appendix
 pupil_fig_caption <- "Difficulty-Conditional TEPR Slopes on Drift Rate. Posterior distributions of the difficulty-conditional TEPR slope on drift rate $v$ for Standard, Hard, and Easy trials, from the pupil_scaled * difficulty interaction model. All three 95% credible intervals include zero, and the posteriors show minimal separation across difficulty levels. Interpretation is limited by measurement constraints documented in @sec-pupil-ddm-integration. Shaded regions show the 95% HDI; vertical dashed lines mark zero."
 p_gt0_easy <- p_gt0_hard <- p_gt0_standard <- NA_real_
 pupil_diff_mean_std <- pupil_diff_mean_hard <- pupil_diff_mean_easy <- NA_real_
@@ -4504,6 +4510,8 @@ All analysis code and de-identified data are available in the project repository
 
 # Appendix {.unnumbered}
 
+This appendix supplements the main text with model diagnostics, sensitivity analyses, pupil-linked DDM extensions, and behavioral validation. **A1** — behavioral LOO and convergence; **A2** — standard-only calibration, trial counts, and baseline pupil descriptives; **A3** — posterior predictive checks (PPC); **A4** — RT timing and task-modality sensitivities; **A5** — pupil-augmented LOO, fixed effects, and TEPR waveforms; **A6** — full DDM specification (equations, priors, sampling); **A7** — manipulation-check GLMMs/LMMs; **A8–A10** — exploratory LC integrity, neuropsychological profile, and within-run temporal dynamics. Related figures are combined into multi-panel displays where layout permits (e.g., A2 bias calibration, A4 task-modality profiles); tall facet-heavy figures (TEPR, behavioral validation) remain as separate figures.
+
 ## A1. Model Selection and Convergence Diagnostics {.unnumbered}
 
 ```{r}
@@ -4514,12 +4522,13 @@ All analysis code and de-identified data are available in the project repository
 tbl_loo_comp %>%
   knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
                booktabs = TRUE,
-               linesep = "") %>%
+               linesep = "",
+               escape = !knitr::is_latex_output()) %>%
   kableExtra::kable_styling(
-    latex_options = c("striped", "hold_position"),
+    latex_options = c("striped", "hold_position", "scale_down"),
     bootstrap_options = c("striped", "hover", "condensed", "responsive"),
     full_width = FALSE,
-    font_size = 12
+    font_size = 10
   )
 ```
 
@@ -4645,7 +4654,7 @@ save_manuscript_fig(p_loo, "fig_loo_comparison", 7, 4.5)
 
 ## A2. Standard-Only Calibration and Supplementary Parameter Tables {.unnumbered}
 
-Individual-level drift plots are in the main text (@fig-individual-diffs). Trial counts and primary-model posterior estimates follow; standard-only bias tables are below.
+Individual-level drift plots are in the main text (@fig-individual-diffs). This section reports trial counts (**A2.1**), primary-model posterior estimates (**A2.2**), standard-only and primary-model starting-point bias (**A2.3**), baseline pupil diameter (**A2.4**), and the standard-only drift intercept (**A2.5**).
 
 ### A2.1 Trial counts by condition {.unnumbered}
 
@@ -4809,15 +4818,18 @@ tbl_bias_bycond %>%
 ```
 
 ```{r}
-#| label: fig-standard-only-bias-by-task-effort
-#| fig-cap: "Starting-point bias ($z$) by Task and Effort from Standard-only model. Points show posterior means with 95% credible intervals. Values above 0.5 indicate bias toward 'different' responses. ADT shows higher bias toward 'different' than VDT; effort effects are minimal."
+#| label: fig-a2-bias-calibration-panel
+#| fig-cap: "**Starting-point bias ($z$) by Task and Effort.** **(A)** Standard-only calibration model. Points show posterior means with 95% credible intervals. Values above 0.5 indicate bias toward 'different' responses. ADT shows higher bias toward 'different' than VDT; effort effects are minimal. **(B)** Primary additive model (Standard trials only). Points show posterior medians with 95% credible intervals. Dashed line marks $z = 0.5$ (no bias). These estimates reflect bias jointly identified with drift rate across all trial types; the standard-only canonical estimates are in Panel A and @tbl-standard-only-bias-levels. Effort contrasts on $z$ are near-zero in both tasks (H4; 95% CrI spans zero); see @tbl-hyp-summary for the graded evidence classification."
 #| fig-align: center
-#| out-width: "80%"
+#| fig-pos: "htbp"
+#| out-width: "100%"
 library(ggplot2)
+library(patchwork)
 
 bias_plot_data <- std_bias_levels %>%
   filter(threshold == PRIMARY_THR, rt_type == PRIMARY_RT) %>%
   mutate(
+    task = factor(task, levels = c("ADT", "VDT")),
     effort_label = case_when(
       tolower(effort_condition) == "low" | effort_condition == "Low_5_MVC" ~ "Low",
       tolower(effort_condition) == "high" | effort_condition == "High_40_MVC" | effort_condition == "High_MVC" ~ "High",
@@ -4826,35 +4838,6 @@ bias_plot_data <- std_bias_levels %>%
     effort_label = factor(effort_label, levels = c("Low", "High"))
   )
 
-p_bias_std <- ggplot(bias_plot_data, aes(x = task, y = z_mean, color = effort_label, group = effort_label)) +
-geom_pointrange(aes(ymin = z_q2.5, ymax = z_q97.5),
-                  position = position_dodge(width = 0.3), size = 0.6) +
-  geom_line(position = position_dodge(width = 0.3), alpha = 0.5) +
-  geom_hline(yintercept = 0.5, linetype = "dashed", color = "grey50", alpha = 0.5) +
-  scale_color_manual(values = effort_colors, name = "Effort") +
-  labs(x = "Task", y = "Starting-Point Bias (z)", title = NULL) +
-  theme_minimal(base_size = 12) +
-  theme(
-    axis.title = element_text(face = "bold"),
-    legend.title = element_text(face = "bold"),
-    panel.grid.minor = element_blank(),
-    legend.position = "bottom"
-  )
-
-print(p_bias_std)
-save_manuscript_fig(p_bias_std, "fig_standard_only_bias_by_task_effort", 8, 4)
-```
-
-@fig-a2-3-bias-primary shows primary-model estimates of starting-point bias across tasks and effort conditions, complementing the canonical standard-only estimates reported in the main text (@sec-starting-point-bias, @tbl-standard-only-bias-levels).
-
-```{r}
-#| label: fig-a2-3-bias-primary
-#| fig-cap: "Starting-point bias ($z$) by Task and Effort from the primary model. Points show posterior medians with 95% credible intervals. Dashed line marks $z = 0.5$ (no bias). These estimates reflect bias jointly identified with drift rate across all trial types; the standard-only canonical estimates are shown in @fig-standard-only-bias-by-task-effort and @tbl-standard-only-bias-levels. Effort contrasts on $z$ are near-zero in both tasks (H4; 95% CrI spans zero); see @tbl-hyp-summary for the graded evidence classification."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "70%"
-
-# Prepare data for bias plot (primary model)
 bias_plot_data_a2 <- pred_params %>%
   filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
   filter(difficulty == "Standard") %>%
@@ -4864,72 +4847,64 @@ bias_plot_data_a2 <- pred_params %>%
     effort = factor(effort, levels = c("Low", "High"))
   )
 
-p_bias_a2 <- ggplot(bias_plot_data_a2, aes(y = task, x = z_median, color = effort)) +
-  geom_vline(xintercept = 0.5, linetype = "dashed", color = "grey50", alpha = 0.5) +
-  geom_pointrange(aes(xmin = z_q2.5, xmax = z_q97.5),
-                  position = position_dodge(width = 0.4), size = 0.6, linewidth = 0.5) +
-  scale_color_manual(values = effort_colors, name = "Effort") +
-  labs(y = "Task", x = "Starting-Point Bias (z)", title = NULL) +
-  theme_bw(base_size = 13) +
+bias_xlim <- range(
+  c(bias_plot_data$z_q2.5, bias_plot_data$z_q97.5,
+    bias_plot_data_a2$z_q2.5, bias_plot_data_a2$z_q97.5),
+  na.rm = TRUE
+)
+bias_xlim <- bias_xlim + c(-0.005, 0.005)
+
+bias_panel_theme <- theme_minimal(base_size = 12) +
   theme(
     axis.title = element_text(face = "bold"),
     legend.title = element_text(face = "bold"),
     panel.grid.minor = element_blank(),
-    legend.position = "bottom"
+    panel.border = element_blank(),
+    legend.position = "none"
   )
 
-print(p_bias_a2)
+p_bias_std <- ggplot(bias_plot_data, aes(y = task, x = z_mean, color = effort_label)) +
+  geom_vline(xintercept = 0.5, linetype = "dashed", color = "grey50", alpha = 0.5) +
+  geom_pointrange(
+    aes(xmin = z_q2.5, xmax = z_q97.5),
+    position = position_dodge(width = 0.4),
+    size = 0.6,
+    linewidth = 0.5
+  ) +
+  scale_color_manual(values = effort_colors, name = "Effort") +
+  coord_cartesian(xlim = bias_xlim) +
+  labs(y = "Task", x = "Starting-Point Bias (z)", title = NULL) +
+  bias_panel_theme
+
+p_bias_a2 <- ggplot(bias_plot_data_a2, aes(y = task, x = z_median, color = effort)) +
+  geom_vline(xintercept = 0.5, linetype = "dashed", color = "grey50", alpha = 0.5) +
+  geom_pointrange(
+    aes(xmin = z_q2.5, xmax = z_q97.5),
+    position = position_dodge(width = 0.4),
+    size = 0.6,
+    linewidth = 0.5
+  ) +
+  scale_color_manual(values = effort_colors, name = "Effort") +
+  coord_cartesian(xlim = bias_xlim) +
+  labs(y = NULL, x = "Starting-Point Bias (z)", title = NULL) +
+  bias_panel_theme +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+fig_bias_panel <- appendix_combine_panels(
+  list(p_bias_std, p_bias_a2),
+  ncol = 2,
+  subtitles = c("Standard-only model", "Primary model (Standard trials)"),
+  hide_legend_except_last = FALSE
+)
+print(fig_bias_panel)
+save_manuscript_fig(p_bias_std, "fig_standard_only_bias_by_task_effort", 8, 4)
 save_manuscript_fig(p_bias_a2, "fig_a2_3_bias_primary", 7, 4)
+save_manuscript_fig(fig_bias_panel, "fig_a2_bias_calibration_panel", 12, 4.5)
 ```
 
-```{r}
-#| label: tbl-bias-drift-intercept
-#| tbl-cap: "Drift intercept (Standard-only model)."
-#| tbl-pos: "htbp"
-if (!is.null(tbl_sob_fixef)) {
-  if ("rt_def" %in% names(tbl_sob_fixef) && !"rt_type" %in% names(tbl_sob_fixef)) {
-    tbl_sob_fixef <- tbl_sob_fixef %>% rename(rt_type = rt_def)
-  }
-  drift_intercept_raw <- tbl_sob_fixef %>%
-    filter(threshold == PRIMARY_THR, rt_type == PRIMARY_RT) %>%
-    filter(term == "Intercept" | term == "(Intercept)") %>%
-    filter(!grepl("^bias_|^bs_|^ndt_|^b_", term, ignore.case = TRUE)) %>%
-    { if ("dpar" %in% names(.)) filter(., dpar == "v") else . } %>%
-    slice(1)
-  if (nrow(drift_intercept_raw) > 0) {
-    est_col <- if ("Estimate" %in% names(drift_intercept_raw)) "Estimate" else "estimate"
-    q2_col <- if ("Q2.5" %in% names(drift_intercept_raw)) "Q2.5" else if ("q2.5" %in% names(drift_intercept_raw)) "q2.5" else NA_character_
-    q97_col <- if ("Q97.5" %in% names(drift_intercept_raw)) "Q97.5" else if ("q97.5" %in% names(drift_intercept_raw)) "q97.5" else NA_character_
-    if (is.na(q2_col) || is.na(q97_col)) {
-      tibble(Note = "CI columns not found in standard_only_bias_fixef_link_scale.csv.") %>%
-        knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
-        kableExtra::kable_styling(latex_options = c("hold_position"), full_width = FALSE)
-    } else {
-      drift_intercept <- drift_intercept_raw %>%
-        select(!!sym(est_col), !!sym(q2_col), !!sym(q97_col)) %>%
-        mutate(
-          estimate = round(!!sym(est_col), 3),
-          q2.5 = round(!!sym(q2_col), 3),
-          q97.5 = round(!!sym(q97_col), 3),
-          `95% CrI` = paste0("[", q2.5, ", ", q97.5, "]")
-        ) %>%
-        select(estimate, `95% CrI`) %>%
-        rename(`Estimate` = estimate)
-      drift_intercept %>%
-        knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
-        kableExtra::kable_styling(latex_options = c("striped", "hold_position"), bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE)
-    }
-  } else {
-    tibble(Note = "Drift intercept not found in standard_only_bias_fixef_link_scale.csv.") %>%
-      knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
-      kableExtra::kable_styling(latex_options = c("hold_position"), full_width = FALSE)
-  }
-} else {
-  tibble(Note = "Data not available for drift intercept table.") %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
-    kableExtra::kable_styling(latex_options = c("hold_position"), full_width = FALSE)
-}
-```
+Panel B shows primary-model estimates of starting-point bias across tasks and effort conditions, complementing the canonical standard-only estimates in Panel A and the main text (@sec-starting-point-bias, @tbl-standard-only-bias-levels).
+
+### A2.4 Baseline pupil diameter {.unnumbered}
 
 @tbl-baseline-pupil reports descriptive baseline pupil diameter by Task and Effort condition, reflecting tonic arousal state prior to evidence accumulation onset.
 
@@ -5047,11 +5022,58 @@ if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% 
 }
 ```
 
+### A2.5 Standard-only drift intercept {.unnumbered}
+
+```{r}
+#| label: tbl-bias-drift-intercept
+#| tbl-cap: "Drift intercept (Standard-only model)."
+#| tbl-pos: "htbp"
+if (!is.null(tbl_sob_fixef)) {
+  if ("rt_def" %in% names(tbl_sob_fixef) && !"rt_type" %in% names(tbl_sob_fixef)) {
+    tbl_sob_fixef <- tbl_sob_fixef %>% rename(rt_type = rt_def)
+  }
+  drift_intercept_raw <- tbl_sob_fixef %>%
+    filter(threshold == PRIMARY_THR, rt_type == PRIMARY_RT) %>%
+    filter(term == "Intercept" | term == "(Intercept)") %>%
+    filter(!grepl("^bias_|^bs_|^ndt_|^b_", term, ignore.case = TRUE)) %>%
+    { if ("dpar" %in% names(.)) filter(., dpar == "v") else . } %>%
+    slice(1)
+  if (nrow(drift_intercept_raw) > 0) {
+    est_col <- if ("Estimate" %in% names(drift_intercept_raw)) "Estimate" else "estimate"
+    q2_col <- if ("Q2.5" %in% names(drift_intercept_raw)) "Q2.5" else if ("q2.5" %in% names(drift_intercept_raw)) "q2.5" else NA_character_
+    q97_col <- if ("Q97.5" %in% names(drift_intercept_raw)) "Q97.5" else if ("q97.5" %in% names(drift_intercept_raw)) "q97.5" else NA_character_
+    if (is.na(q2_col) || is.na(q97_col)) {
+      tibble(Note = "CI columns not found in standard_only_bias_fixef_link_scale.csv.") %>%
+        knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
+        kableExtra::kable_styling(latex_options = c("hold_position"), full_width = FALSE)
+    } else {
+      drift_intercept <- drift_intercept_raw %>%
+        select(!!sym(est_col), !!sym(q2_col), !!sym(q97_col)) %>%
+        mutate(
+          estimate = round(!!sym(est_col), 3),
+          q2.5 = round(!!sym(q2_col), 3),
+          q97.5 = round(!!sym(q97_col), 3),
+          `95% CrI` = paste0("[", q2.5, ", ", q97.5, "]")
+        ) %>%
+        select(estimate, `95% CrI`) %>%
+        rename(`Estimate` = estimate)
+      drift_intercept %>%
+        knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
+        kableExtra::kable_styling(latex_options = c("striped", "hold_position"), bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE)
+    }
+  } else {
+    tibble(Note = "Drift intercept not found in standard_only_bias_fixef_link_scale.csv.") %>%
+      knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
+      kableExtra::kable_styling(latex_options = c("hold_position"), full_width = FALSE)
+  }
+} else {
+  tibble(Note = "Data not available for drift intercept table.") %>%
+    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
+    kableExtra::kable_styling(latex_options = c("hold_position"), full_width = FALSE)
+}
+```
+
 ## A3. Posterior Predictive Checks and Diagnostics {#app-ch3-ppc .unnumbered}
-
-Primary-model convergence and PPC metrics: @tbl-convergence-ppc-gate-appendix. Convergence passed; PPC flags were driven mainly by fast RT tails.
-
-{{< include ch03_appA_ppc_diagnostics.qmd >}}
 
 ```{r}
 #| label: tbl-convergence-ppc-gate-appendix
@@ -5107,6 +5129,14 @@ if (!is.null(publish_gate) || nrow(conv_primary_row) > 0) {
   invisible(NULL)
 }
 ```
+
+Primary-model convergence and PPC metrics are summarized in @tbl-convergence-ppc-gate-appendix. Convergence passed; PPC flags were driven mainly by fast RT tails.
+
+### A3.1 PPC Validation Method {#sec-ch3-ppc-method .unnumbered}
+
+{{< include ch03_appA_ppc_diagnostics.qmd >}}
+
+### A3.2 Visual PPC Diagnostics {#sec-ch3-ppc-visual .unnumbered}
 
 {{< include ch03_appA_ppc_interpretation.qmd >}}
 
@@ -5704,10 +5734,13 @@ The primary model did not include Task on $v$ or $a$. We fit a task-sensitivity 
 
 ```{r}
 #| label: fig-suppl-drift-by-task
-#| fig-cap: "**Supplementary Figure 1.** Drift rate ($v$) by difficulty and effort, separately for ADT and VDT. Points show posterior medians with 95% credible intervals. The difficulty gradient (Standard $<$ Hard $<$ Easy) is consistent across tasks. High effort reduces drift rate in both modalities (Effort $\\times$ Task interaction near zero with CrI spanning zero), consistent with cognitive-motor interference generalizing across sensory domains. *Note: Drift rates ($v$) were estimated using Response Coding. Positive values indicate evidence accumulation toward the 'Different' boundary; negative values indicate accumulation toward the 'Same' boundary.*"
+#| fig-cap: "**Task-modality sensitivity profiles (task-sensitivity model).** **(A)** Drift rate ($v$) by difficulty and effort, separately for ADT and VDT. Points show posterior medians with 95% credible intervals. The difficulty gradient (Standard $<$ Hard $<$ Easy) is consistent across tasks. High effort reduces drift rate in both modalities (Effort $\\times$ Task interaction near zero with CrI spanning zero), consistent with cognitive-motor interference generalizing across sensory domains. *Note: Drift rates ($v$) were estimated using Response Coding. Positive values indicate evidence accumulation toward the 'Different' boundary; negative values indicate accumulation toward the 'Same' boundary.* **(B)** Boundary separation ($a$) by difficulty and effort, separately for ADT and VDT. Difficulty strongly modulates caution (Easy $<$ Hard $<$ Standard) in both tasks, but effort has minimal effect on boundary separation, indicating that older adults do not adjust response caution under physical effort."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "75%"
+#| out-width: "90%"
+#| fig-width: 8
+#| fig-height: 9
+library(patchwork)
 
 drift_plot_data_suppl <- pred_params %>%
   filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
@@ -5730,25 +5763,12 @@ p_drift_cond <- ggplot(drift_plot_data_suppl, aes(x = difficulty, y = drift_val,
   geom_line(position = position_dodge(width = 0.3), alpha = 0.5, linewidth = 0.5) +
   facet_wrap(~ task, labeller = labeller(task = c("ADT" = "ADT", "VDT" = "VDT"))) +
   scale_color_manual(values = effort_colors, name = "Effort") +
-  labs(x = "Difficulty", y = "Drift Rate (v)", title = NULL) +
+  labs(x = NULL, y = "Drift Rate (v)", title = NULL) +
   theme_minimal(base_size = 12) +
   theme(axis.title = element_text(face = "bold"), strip.text = element_text(face = "bold"),
         legend.title = element_text(face = "bold"), panel.grid.minor = element_blank(),
         legend.position = "bottom", strip.background = element_rect(fill = "grey95", color = NA)) +
   scale_x_discrete(drop = FALSE)
-
-print(p_drift_cond)
-save_manuscript_fig(p_drift_cond, "fig_suppl_drift_by_task", 8, 4)
-```
-
-#### Boundary Separation by Task {.unnumbered}
-
-```{r}
-#| label: fig-suppl-boundary-by-task
-#| fig-cap: "**Supplementary Figure 2.** Boundary separation ($a$) by difficulty and effort, separately for ADT and VDT. Points show posterior medians with 95% credible intervals. Difficulty strongly modulates caution (Easy $<$ Hard $<$ Standard) in both tasks, but effort has minimal effect on boundary separation, indicating that older adults do not adjust response caution under physical effort."
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "75%"
 
 boundary_plot_data_suppl <- pred_params %>%
   filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR) %>%
@@ -5780,8 +5800,15 @@ p_boundary_cond <- ggplot(boundary_plot_data_suppl, aes(x = difficulty, y = bs_v
         legend.position = "bottom", strip.background = element_rect(fill = "grey95", color = NA)) +
   scale_x_discrete(drop = FALSE)
 
-print(p_boundary_cond)
+fig_task_modality_panel <- appendix_combine_panels(
+  list(p_drift_cond, p_boundary_cond),
+  subtitles = c("Drift rate (v)", "Boundary separation (a)"),
+  heights = c(1.05, 0.95)
+)
+print(fig_task_modality_panel)
+save_manuscript_fig(p_drift_cond, "fig_suppl_drift_by_task", 8, 4)
 save_manuscript_fig(p_boundary_cond, "fig_suppl_boundary_by_task", 8, 4)
+save_manuscript_fig(fig_task_modality_panel, "fig_a4_3_task_modality_panel", 8, 9)
 ```
 
 ```{r fig-additivity-check, fig.cap="Additivity check: Difficulty × Effort condition means for drift rate (A) and boundary separation (B). The near-parallel shift between Low (blue) and High (magenta) effort lines across difficulty levels confirms the additive model assumption — the effort cost is consistent regardless of task difficulty, justifying the absence of a Difficulty × Effort interaction term (see @sec-results-sample and @tbl-loo-comparison).", fig.width=8, fig.height=4}
@@ -5905,7 +5932,7 @@ if (file.exists(task_sens_path)) {
 }
 ```
 
-Effort reduced drift with Task in the model (`r if (exists("task_sens_eff_ts") && !is.na(task_sens_eff_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_eff_ts, task_sens_eff_lo, task_sens_eff_hi) else "see @tbl-task-sensitivity"`). ADT and VDT differed in absolute drift (`r if (exists("task_sens_task_ts") && !is.na(task_sens_task_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_task_ts, task_sens_task_lo, task_sens_task_hi) else "see @tbl-task-sensitivity"`), but Effort × Task was near zero (`r if (exists("task_sens_int_ts") && !is.na(task_sens_int_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_int_ts, task_sens_int_lo, task_sens_int_hi) else "see @tbl-task-sensitivity"`). The effort→drift effect was robust to adding task on drift, but omitting task from drift in the primary model suppresses a credible task main effect; we report task-separated profiles in @fig-suppl-drift-by-task and treat pooling as a deliberate simplification for the pre-registered effort contrasts.
+Effort reduced drift with Task in the model (`r if (exists("task_sens_eff_ts") && !is.na(task_sens_eff_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_eff_ts, task_sens_eff_lo, task_sens_eff_hi) else "see @tbl-task-sensitivity"`). ADT and VDT differed in absolute drift (`r if (exists("task_sens_task_ts") && !is.na(task_sens_task_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_task_ts, task_sens_task_lo, task_sens_task_hi) else "see @tbl-task-sensitivity"`), but Effort × Task was near zero (`r if (exists("task_sens_int_ts") && !is.na(task_sens_int_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_int_ts, task_sens_int_lo, task_sens_int_hi) else "see @tbl-task-sensitivity"`). The effort→drift effect was robust to adding task on drift, but omitting task from drift in the primary model suppresses a credible task main effect; we report task-separated drift and boundary profiles in @fig-suppl-drift-by-task (Panels A–B) and treat pooling as a deliberate simplification for the pre-registered effort contrasts.
 
 ```{r pdf-sanity-check}
 #| include: false
@@ -6003,6 +6030,17 @@ if (file.exists(pupil_loo_all_path)) {
       bootstrap_options = c("striped", "hover", "condensed"),
       full_width = FALSE,
       font_size = 10
+    ) %>%
+    kableExtra::add_footnote(
+      paste0(
+        "Note. All pupil-augmented specifications on the same trial subset within each window. ",
+        "Rows under Decision-Response AUC (0.3–3.3 s) list nested Models m0–m3 ",
+        "(behavioral baseline, pupil $\\rightarrow$ $z$, pupil $\\rightarrow$ $v$ + $z$, pupil $\\times$ difficulty); ",
+        "$\\Delta$ELPD vs. m0 uses the same-$N$ behavioral baseline. ",
+        "Cavanagh pupil $\\rightarrow$ $a$ rows report boundary-only extensions. ",
+        "LOOIC values for m0–m3 equal $-2 \\times$ ELPD when PSIS-LOO is reliable (max Pareto-$k$ $\\leq 0.7$)."
+      ),
+      notation = "none"
     )
 } else {
   tibble(Note = "pupil_loo_all_models.csv not found. Run scripts/build_pupil_extended_loo_table.R.") %>%
@@ -6013,36 +6051,7 @@ if (file.exists(pupil_loo_all_path)) {
 
 ### Fixed effects and model comparison {.unnumbered .unlisted}
 
-```{r}
-#| label: tbl-pupil-loo-appendix
-#| tbl-cap: "Pupil-DDM nested model comparison (LOO). Behavioral baseline vs. pupil-augmented models on pupil-available trials (subset of @tbl-pupil-loo-unified)."
-#| tbl-pos: "htbp"
-
-pupil_loo_file_a6 <- file.path(proj_root, "output", "pupil_ddm", "tables", "pupil_loo_summary.csv")
-if (!file.exists(pupil_loo_file_a6)) {
-  pupil_loo_file_a6 <- file.path(proj_root, "output", "ddm_pupil", "tables", "pupil_loo_summary.csv")
-}
-if (file.exists(pupil_loo_file_a6)) {
-  pupil_loo_a6 <- read_csv(pupil_loo_file_a6, show_col_types = FALSE)
-  model_col <- if ("model_name" %in% names(pupil_loo_a6)) "model_name" else "model"
-  model_labels <- c(
-    "model_0_behavioral" = "Behavioral only",
-    "model_1_pupil_bias" = "Pupil on bias (z)",
-    "model_2_pupil_bias_drift" = "Pupil on bias + drift (v, z)",
-    "model_3_pupil_difficulty_interaction" = "Pupil × difficulty on drift (v)"
-  )
-  pupil_loo_a6 %>%
-    mutate(Model = coalesce(model_labels[.data[[model_col]]], gsub("_", " ", .data[[model_col]])), across(where(is.numeric), ~ round(.x, 2))) %>%
-    select(Model, elpd_loo, looic, pareto_k_max) %>%
-    rename(`ELPD` = elpd_loo, `LOOIC` = looic, `Max k` = pareto_k_max) %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "", digits = 2) %>%
-    kableExtra::kable_styling(latex_options = c("striped", "hold_position"), bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
-} else {
-  tibble(Note = "Pupil LOO summary not available. See @sec-pupil-ddm-integration and online supplement.") %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE) %>%
-    kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
-}
-```
+Nested-model LOO for the primary Decision-Response AUC window (Models m0–m3) appears in @tbl-pupil-loo-unified; key pupil-linked coefficients are in @tbl-pupil-key-effects-appendix.
 
 ```{r}
 #| label: tbl-pupil-key-effects-appendix
@@ -6297,9 +6306,12 @@ if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in
 #| label: fig-tepr-timecourse-supp
 #| fig-cap: "**Supplementary Figure (Appendix A5).** Task-Evoked Pupil Response (TEPR) time course. Baseline-corrected pupil traces are estimated from winsorized subject-level means, aggregated to condition $\\times$ time grand means, re-anchored to squeeze onset ($t = 0$), downsampled to 200 time samples, and smoothed with a GAM (95% CI on the smooth). Traces are shown for four conditions (Easy/Low, Easy/High, Hard/Low, Hard/High), separately for ADT (top) and VDT (bottom). The shaded region marks the Decision-Response AUC window (4.65–7.65 s relative to squeeze onset). Vertical dashed markers: motor onset (0 s), probe (4.35 s), response cue (4.7 s)."
 #| fig-align: center
-#| out-width: "85%"
+#| fig-pos: "htbp"
+#| out-width: "90%"
+#| fig-width: 10
+#| fig-height: 8
 #| echo: false
-# Generate TEPR time course figure
+p_tepr_out <- NULL
 if (!is.null(pupil_data)) {
   # Prefer subject-level waveform means: one row per subject x condition x time.
   # Lines and SEM ribbons reflect between-subject uncertainty at each time sample.
@@ -6492,22 +6504,12 @@ if (!is.null(pupil_data)) {
           plot.margin = margin(10, 10, 10, 10)
         )
       
-      print(p_tepr)
+      p_tepr_out <- p_tepr
       save_manuscript_fig(p_tepr, "fig_tepr_timecourse", 10, 8)
-    } else {
-      # Placeholder if no data
-      # Waveform data not available - ensure label still resolves
-      invisible(NULL)
     }
-  } else {
-    # Placeholder if file not found
-    # Waveform file not found - ensure label still resolves
-    invisible(NULL)
   }
-} else {
-  # Placeholder if pupil_data not loaded - use invisible output to ensure label resolves
-  invisible(NULL)
 }
+appendix_emit_figure(p_tepr_out, "TEPR time course")
 ```
 
 ```{r}
@@ -6516,8 +6518,10 @@ if (!is.null(pupil_data)) {
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "90%"
-
-# Load the pupil interaction model
+#| fig-width: 9
+#| fig-height: 3.5
+#| echo: false
+p_tepr_slopes_out <- NULL
 pupil_int_model_path <- file.path(
   proj_root, params$run_dir, "models",
   "pupil_interaction__probe_onset_locked__thr0.20.rds"
@@ -6600,20 +6604,22 @@ if (file.exists(pupil_int_model_path) &&
           strip.text       = element_text(face = "bold"),
           panel.grid.minor = element_blank()
         )
-      print(p_pupil_interact)
+      p_tepr_slopes_out <- p_pupil_interact
       save_manuscript_fig(p_pupil_interact, "fig_pupil_drift_difficulty_interaction", 9, 3.5)
     } else {
       message("Pupil interaction draws could not be extracted.")
-      invisible(NULL)
     }
   } else {
     message("Pupil interaction model not available (NULL or non-brmsfit).")
-    invisible(NULL)
   }
 } else {
   message("Pupil interaction model file or brms package not found; skipping figure.")
-  invisible(NULL)
 }
+appendix_emit_figure(p_tepr_slopes_out, "TEPR slopes on drift")
+```
+
+```{=latex}
+\FloatBarrier
 ```
 
 \newpage
@@ -6954,12 +6960,14 @@ if (!is.null(acc_glmm)) {
 
 ```{r}
 #| label: fig-accuracy-distribution
-#| fig-cap: "Accuracy distribution by condition. Individual subject trajectories (light gray) and group means by effort with approximate 95% CI (mean ± 1.96 SE). Faceted by task and difficulty. Each facet shows cell means (Low vs High effort) within that task × difficulty combination. Narrative text reports marginal mean accuracy across task × effort (Hard vs Easy only); this figure shows cell means for visual inspection. *Error bars represent within-subject standard errors calculated using the Cousineau-Morey correction to account for repeated-measures variance.*"
+#| fig-cap: "Accuracy distribution by condition. Individual subject trajectories (light gray) and group means by effort with approximate 95% CI (mean ± 1.96 SE). Faceted by task and difficulty. Each facet shows cell means (Low vs High effort) within that task × difficulty combination. Narrative text reports marginal mean accuracy across task × effort (Hard vs Easy only); this figure shows cell means for visual inspection. Error bars represent within-subject standard errors calculated using the Cousineau-Morey correction."
 #| fig-align: center
 #| fig-pos: "htbp"
-#| out-width: "75%"
+#| out-width: "85%"
 #| fig-width: 8
-# Accuracy distribution: interaction plot with individual trajectories and group means
+#| fig-height: 6
+#| echo: false
+p_acc_out <- NULL
 if (!is.null(behavioral_data)) {
   # Standardize column names
   acc_col <- intersect(c("correct", "iscorr", "accuracy"), names(behavioral_data))[1]
@@ -7060,20 +7068,21 @@ if (!is.null(behavioral_data)) {
           legend.position = "right",
           panel.spacing = unit(0.8, "lines")
         )
-      print(p1)
+      p_acc_out <- p1
       save_manuscript_fig(p1, "fig_accuracy_distribution", 8, 6)
       # Optional: uncomment to verify figure vs narrative alignment
       # cat("Figure 7 cell means (subject-averaged):\n"); print(fig7_cell_means)
       # cat("Figure 7 marginal by difficulty:\n"); print(fig7_marginal_diff)
     } else {
-      cat("Accuracy distribution plot: No data available.\n")
+      message("Accuracy distribution plot: No data available.")
     }
   } else {
-    cat("Accuracy distribution plot: Required columns not found.\n")
+    message("Accuracy distribution plot: Required columns not found.")
   }
 } else {
-  cat("Accuracy distribution plot: Behavioral data not available.\n")
+  message("Accuracy distribution plot: Behavioral data not available.")
 }
+appendix_emit_figure(p_acc_out, "Accuracy distribution")
 ```
 
 ```{r overall-accuracy-compute}
@@ -7331,9 +7340,10 @@ if (!is.null(rt_lmm)) {
 #| fig-pos: "htbp"
 #| fig-width: 8
 #| fig-height: 8
-#| out-width: "75%"
-# RT distribution figure - use ddm_ready_data_unthresholded.csv (includes Easy trials)
+#| out-width: "85%"
+#| echo: false
 # X-axis 0–3 s: response window was 3 s; trials with RT > 3 s excluded as outside valid period
+p_rt_out <- NULL
 rt_dist_file <- file.path("data", "ddm_ready_data_unthresholded.csv")
 if (file.exists(rt_dist_file)) {
   rt_dist_raw <- read_csv(rt_dist_file, show_col_types = FALSE)
@@ -7400,20 +7410,25 @@ if (file.exists(rt_dist_file)) {
       ) +
       scale_x_continuous(limits = c(0, 3), breaks = seq(0, 3, 0.5), expand = c(0, 0.05)) +
       scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
-    print(rt_plot)
+    p_rt_out <- rt_plot
     save_manuscript_fig(rt_plot, "fig_rt_distribution", 8, 8)
   } else {
-    ggplot() + 
+    p_rt_out <- ggplot() + 
       annotate("text", x = 0.5, y = 0.5, label = "RT distribution plot: No valid RT data.", size = 4) +
       theme_void() +
       labs(title = "RT Distribution by Condition (Data Not Available)")
   }
 } else {
-  ggplot() + 
+  p_rt_out <- ggplot() + 
     annotate("text", x = 0.5, y = 0.5, label = "RT distribution plot: data/ddm_ready_data_unthresholded.csv not found.", size = 4) +
     theme_void() +
     labs(title = "RT Distribution by Condition (Data Not Available)")
 }
+appendix_emit_figure(p_rt_out, "RT distribution")
+```
+
+```{=latex}
+\FloatBarrier
 ```
 
 Difficulty affected accuracy and RT; effort affected accuracy only. Both manipulations worked as intended.
@@ -7891,9 +7906,14 @@ if (fat_fit_available && fat_table_available) {
 #| label: fig-temporal-dynamics
 #| fig-cap: "**Effort degraded evidence quality upstream but did not amplify heuristic responding or produce within-run accumulation-stage exhaustion; the only credible temporal effect was a modest boundary relaxation across run halves.** **(A)** Population-average boundary separation ($a$, exponentiated scale) across the first and second halves of each 30-trial run, by effort condition (95% CrI). **(B)** Focal coefficients from the within-run fatigue model; only the 2nd-vs-1st-half boundary decline (marked *) has a 95% CrI excluding zero; the effort $\\times$ run-half interaction on $a$ and the effort $\\times$ run-half interaction on $v$ both span zero. **(C)** Posterior distributions of the perseveration-on-bias coefficient and the effort $\\times$ previous-response interaction on bias, from the history model (teal) and WSLS model (gold), plotted on the logit scale. Statistical note: Boundary decline, 2nd vs. 1st half: $\\hat{\\beta} = -0.022$, 95% CrI [$-0.040$, $-0.004$], $P(\\beta < 0) = 99.3$%. Effort $\\times$ run-half on boundary: $\\hat{\\beta} = +0.011$ [$-0.014$, $0.037$]. Effort $\\times$ previous-response on bias: $\\hat{\\beta} = -0.001$ [$-0.065$, $0.064$]. Perseveration on bias: $\\hat{\\beta} = 0.065$ [$0.005$, $0.125$], $P(\\beta > 0) = 98.2$%."
 #| fig-align: center
-#| fig-pos: "htbp"
+#| fig-pos: "H"
 #| out-width: "100%"
 include_graphics_safe(main_fig("fig4_temporal_dynamics.png"))
+```
+
+```{=latex}
+\FloatBarrier
+\clearpage
 ```
 
 # References {.unnumbered}

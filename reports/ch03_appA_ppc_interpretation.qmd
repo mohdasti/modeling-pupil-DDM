@@ -2,8 +2,6 @@ Strict PPC thresholds were not fully met (@tbl-convergence-ppc-gate-appendix). M
 
 Mid-body RT quantiles and accuracy by condition matched the data reasonably well (@fig-ch3app-qp-plot, @fig-ch3app-ppc-rt-overlay). Effort and difficulty contrasts did not change much under alternative RT cutoffs (Appendix A4.2).
 
-### A3.2 Visual PPC Diagnostics {#sec-ch3-ppc-visual .unnumbered}
-
 @fig-ch3app-ppc-rt-overlay compares observed and predicted RT densities. @fig-ch3app-qp-plot shows quantile–probability fit by condition.
 
 ```{r}
