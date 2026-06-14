@@ -5101,30 +5101,79 @@ ppc_max_ks      <- if (!is.null(ppc_cond_cens) && nrow(ppc_cond_cens) > 0) {
 } else if (!is.null(publish_gate) && is.finite(publish_gate$ppc_cond_max_ks[1])) publish_gate$ppc_cond_max_ks[1] else if (!is.null(ppc_gate_summary) && nrow(ppc_gate_summary) > 0) ppc_gate_summary$max_ks[1] else if (!is.null(publish_gate)) publish_gate$ppc_subj_max_ks else NA_real_
 ppc_pass        <- if (!is.null(publish_gate)) publish_gate$ppc_subj_pass else NA
 if (!is.null(publish_gate) || nrow(conv_primary_row) > 0) {
+  gate_metrics <- if (knitr::is_latex_output()) {
+    c(
+      "Max $\\hat{R}$", "Min bulk ESS", "Min tail ESS", "Divergent transitions", "Verdict",
+      "Max Pareto-$k$ (additive LOO)", "Cells ($n$)", "Cells flagged",
+      "Max QP RMSE (s)", "Max KS", "Verdict"
+    )
+  } else {
+    c(
+      "Max R-hat", "Min bulk ESS", "Min tail ESS", "Divergent transitions", "Verdict",
+      "Max Pareto-k (additive LOO)", "Cells (n)", "Cells flagged",
+      "Max QP RMSE (s)", "Max KS", "Verdict"
+    )
+  }
+  gate_pct_flagged <- ifelse(is.na(ppc_pct_flagged), "—", sprintf("%.1f%%", ppc_pct_flagged))
+  if (knitr::is_latex_output()) {
+    gate_pct_flagged <- gsub("%", "\\%", gate_pct_flagged, fixed = TRUE)
+  }
   gate_tbl <- tibble(
-    Metric = c(
-      "Max R-hat", "Min Bulk ESS", "Min Tail ESS", "Divergences",
-      "Convergence verdict", "Max Pareto-k (LOO, additive)", "PPC Cells (n)", "PPC Flagged (%)",
-      "Max QP RMSE (s)", "Max KS", "PPC verdict"
-    ),
+    Metric = gate_metrics,
     Value = c(
       ifelse(is.na(conv_max_rhat), "—", sprintf("%.4f", conv_max_rhat)),
       ifelse(is.na(conv_min_bulk), "—", sprintf("%.0f", conv_min_bulk)),
       ifelse(is.na(conv_min_tail), "—", sprintf("%.0f", conv_min_tail)),
       as.character(ifelse(is.na(conv_div), "—", conv_div)),
-      ifelse(is.na(conv_pass), "—", ifelse(conv_pass, "PASS (Rhat ≤ 1.01, ESS ≥ 400, 0 divergences)", "FAIL")),
+      ifelse(is.na(conv_pass), "—", ifelse(conv_pass, "PASS", "FAIL")),
       behavioral_loo_max_k_str,
       ifelse(is.na(ppc_n_cells), "—", sprintf("%.0f", ppc_n_cells)),
-      ifelse(is.na(ppc_pct_flagged), "—", sprintf("%.1f%%", ppc_pct_flagged)),
+      gate_pct_flagged,
       ifelse(is.na(ppc_max_qp), "—", sprintf("%.3f", ppc_max_qp)),
       ifelse(is.na(ppc_max_ks), "—", sprintf("%.3f", ppc_max_ks)),
-      ifelse(is.na(ppc_pass), "—", ifelse(ppc_pass, "PASS strict thresholds", "FAIL pre-registered thresholds (fast-tail driven; mid-body fit adequate, inferences robust)"))
+      ifelse(is.na(ppc_pass), "—", ifelse(
+        ppc_pass,
+        "PASS",
+        "FAIL (fast-tail driven; mid-body adequate)"
+      ))
     )
   )
-  gate_tbl %>% gt() %>%
-    tab_style(style = cell_text(weight = "bold"), locations = cells_column_labels()) %>%
-    tab_style(style = cell_text(style = "italic"), locations = cells_body(columns = Metric)) %>%
-    cols_width(Metric ~ px(180), Value ~ px(100)) %>% opt_table_font(size = "small")
+
+  if (knitr::is_latex_output()) {
+    gate_tbl %>%
+      knitr::kable(
+        format = "latex",
+        booktabs = TRUE,
+        linesep = "",
+        col.names = c("Metric", "Value"),
+        align = c("l", "l"),
+        escape = FALSE
+      ) %>%
+      kableExtra::kable_styling(
+        latex_options = c("hold_position"),
+        full_width = FALSE,
+        font_size = 10,
+        position = "center"
+      ) %>%
+      kableExtra::pack_rows("Convergence", 1, 5, bold = TRUE, italic = FALSE) %>%
+      kableExtra::pack_rows("Posterior predictive checks", 6, 11, bold = TRUE, italic = FALSE) %>%
+      kableExtra::column_spec(1, width = "4.6cm") %>%
+      kableExtra::column_spec(2, width = "9.0cm")
+  } else {
+    gate_tbl %>%
+      gt() %>%
+      tab_row_group(label = "Convergence", rows = 1:5) %>%
+      tab_row_group(label = "Posterior predictive checks", rows = 6:11) %>%
+      tab_style(style = cell_text(weight = "bold"), locations = cells_column_labels()) %>%
+      tab_style(style = cell_text(style = "italic"), locations = cells_body(columns = Metric)) %>%
+      cols_width(Metric ~ pct(42), Value ~ pct(58)) %>%
+      tab_options(
+        table.width = pct(78),
+        table.font.size = px(11),
+        column_labels.padding = px(6),
+        data_row.padding = px(4)
+      )
+  }
 } else {
   invisible(NULL)
 }
