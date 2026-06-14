@@ -874,7 +874,7 @@ if (is.null(fixef_link_abstract) || nrow(fixef_link_abstract) == 0) {
 h1_beta_str <- "[see @tbl-hyp-summary]"
 h1_cri_str  <- ""
 h1_p0_str   <- ""
-h1_p_in_rope_pct <- "\u2014"
+h1_p_in_rope_pct <- "—"
 h2_beta_str <- "[see @tbl-hyp-summary]"
 h2_cri_str  <- ""
 h2_p0_str   <- ""
@@ -2167,7 +2167,7 @@ if (file.exists(loo_additive_rds)) {
   }
   rm(.loo_add_obj)
 }
-behavioral_loo_max_k_str <- if (is.finite(behavioral_loo_max_k)) sprintf("%.2f", behavioral_loo_max_k) else "\u2014"
+behavioral_loo_max_k_str <- if (is.finite(behavioral_loo_max_k)) sprintf("%.2f", behavioral_loo_max_k) else "—"
 
 # Extended convergence (tail ESS; interaction max R-hat)
 conv_ext_path <- file.path(proj_root, params$run_dir, "tables", "convergence_primary_extended.csv")
@@ -2184,8 +2184,8 @@ if (file.exists(conv_ext_path)) {
     interaction_max_rhat <- .int_row$max_rhat[1]
   }
 }
-primary_min_tail_ess_str <- if (is.finite(primary_min_tail_ess)) sprintf("%.0f", primary_min_tail_ess) else "\u2014"
-interaction_max_rhat_str <- if (is.finite(interaction_max_rhat)) sprintf("%.3f", interaction_max_rhat) else "\u2014"
+primary_min_tail_ess_str <- if (is.finite(primary_min_tail_ess)) sprintf("%.0f", primary_min_tail_ess) else "—"
+interaction_max_rhat_str <- if (is.finite(interaction_max_rhat)) sprintf("%.3f", interaction_max_rhat) else "—"
 
 # Difficulty × effort interaction LOO (vs additive)
 interaction_delta_elpd <- interaction_delta_se <- interaction_pareto_k_int <- NA_real_
@@ -2222,11 +2222,11 @@ if (file.exists(interaction_terms_path)) {
   interaction_bs_int_str <- .fmt_int(.int_terms, "bs")
   rm(.int_terms, .fmt_int)
 }
-interaction_delta_elpd_str <- if (is.finite(interaction_delta_elpd)) sprintf("%.1f", interaction_delta_elpd) else "\u2014"
-interaction_delta_se_str <- if (is.finite(interaction_delta_se)) sprintf("%.1f", interaction_delta_se) else "\u2014"
-interaction_pareto_k_int_str <- if (is.finite(interaction_pareto_k_int)) sprintf("%.2f", interaction_pareto_k_int) else "\u2014"
+interaction_delta_elpd_str <- if (is.finite(interaction_delta_elpd)) sprintf("%.1f", interaction_delta_elpd) else "—"
+interaction_delta_se_str <- if (is.finite(interaction_delta_se)) sprintf("%.1f", interaction_delta_se) else "—"
+interaction_pareto_k_int_str <- if (is.finite(interaction_pareto_k_int)) sprintf("%.2f", interaction_pareto_k_int) else "—"
 interaction_nominal_elpd_gain <- if (is.finite(interaction_delta_elpd)) -interaction_delta_elpd else NA_real_
-interaction_nominal_elpd_gain_str <- if (is.finite(interaction_nominal_elpd_gain)) sprintf("%.1f", interaction_nominal_elpd_gain) else "\u2014"
+interaction_nominal_elpd_gain_str <- if (is.finite(interaction_nominal_elpd_gain)) sprintf("%.1f", interaction_nominal_elpd_gain) else "—"
 interaction_z_elpd <- if (is.finite(interaction_nominal_elpd_gain) && is.finite(interaction_delta_se) && interaction_delta_se > 0) {
   interaction_nominal_elpd_gain / interaction_delta_se
 } else NA_real_
@@ -2861,7 +2861,7 @@ classify_null_evidence <- function(row) {
   p_in <- row$p_in_rope
   if (!is.na(p_in)) {
     if (p_in >= 0.90)
-      return("estimate near zero; \u226590% posterior mass within project ROPE")
+      return("estimate near zero; ≥90% posterior mass within project ROPE")
     if (p_in >= 0.75)
       return("estimate near zero; majority of posterior within project ROPE")
   }
@@ -2936,7 +2936,7 @@ format_posterior_summary <- function(df) {
 # Pupil application is in chunk null-evidence-pupil-apply (after those chunks).
 
 null_ev_h2 <- safe_rope_summary(
-  label           = "H2: Effort \u2192 Boundary Separation",
+  label           = "H2: Effort → Boundary Separation",
   parameter       = "bs (log link)",
   estimate        = if (exists("h2_est") && !is.null(h2_est)) h2_est else NA_real_,
   q2.5            = if (exists("h2_lo")  && !is.null(h2_lo))  h2_lo  else NA_real_,
@@ -2945,12 +2945,12 @@ null_ev_h2 <- safe_rope_summary(
   rope_half_width = ROPE_BS,
   design_limited  = FALSE,
   meas_limited    = FALSE,
-  scale_note      = paste0("Log link. ROPE = \u00b1", ROPE_BS,
-                           " (project convention; exp(0.05)\u22121 \u2248 5.1% change in boundary)")
+  scale_note      = paste0("Log link. ROPE = ±", ROPE_BS,
+                           " (project convention; exp(0.05)−1 ≈ 5.1% change in boundary)")
 )
 
 null_ev_h3 <- safe_rope_summary(
-  label           = "H3: Effort \u2192 Non-Decision Time (exploratory only)",
+  label           = "H3: Effort → Non-Decision Time (exploratory only)",
   parameter       = "ndt (log link)",
   estimate        =  0.02,   # hardcoded from exploratory model (h3_beta_str)
   q2.5            = -0.05,   # hardcoded from h3_cri_str
@@ -2965,7 +2965,7 @@ null_ev_h3 <- safe_rope_summary(
 )
 
 null_ev_h4 <- safe_rope_summary(
-  label           = "H4: Effort \u2192 Starting-Point Bias",
+  label           = "H4: Effort → Starting-Point Bias",
   parameter       = "z (logit link)",
   estimate        = if (exists("h4_est") && !is.null(h4_est)) h4_est else NA_real_,
   q2.5            = if (exists("h4_lo")  && !is.null(h4_lo))  h4_lo  else NA_real_,
@@ -2974,8 +2974,8 @@ null_ev_h4 <- safe_rope_summary(
   rope_half_width = ROPE_BIAS,
   design_limited  = FALSE,
   meas_limited    = FALSE,
-  scale_note      = paste0("Primary additive model; logit link. ROPE = \u00b1", ROPE_BIAS,
-                           " (project convention). Standard-only \u0394z in Appendix A2.")
+  scale_note      = paste0("Primary additive model; logit link. ROPE = ±", ROPE_BIAS,
+                           " (project convention). Standard-only Δz in Appendix A2.")
 )
 
 # Convenience inline strings for H2 and H4
@@ -2998,7 +2998,7 @@ null_evidence_h_partial <- dplyr::bind_rows(null_ev_h2, null_ev_h3, null_ev_h4)
 
 # ── H1: for unified hypothesis summary table ───────────────────────────────
 null_ev_h1 <- safe_rope_summary(
-  label           = "H1: Effort \u2192 Drift Rate",
+  label           = "H1: Effort → Drift Rate",
   parameter       = "v (identity link)",
   estimate        = if (exists("h1_est") && !is.null(h1_est)) h1_est else NA_real_,
   q2.5            = if (exists("h1_lo")  && !is.null(h1_lo))  h1_lo  else NA_real_,
@@ -3013,7 +3013,7 @@ null_ev_h1 <- safe_rope_summary(
   scale_note      = "Supported: CrI excludes zero (both bounds negative); High effort reliably reduces drift."
 )
 h1_p_in_rope_pct <- if (!is.na(null_ev_h1$p_in_rope))
-  sprintf("%.0f%%", null_ev_h1$p_in_rope * 100) else "\u2014"
+  sprintf("%.0f%%", null_ev_h1$p_in_rope * 100) else "—"
 
 # ── Early-load pooled pupil effects from CSV ──────────────────────────────────
 # Loaded here so the unified table (tbl-hyp-summary) can display pooled pupil
@@ -3105,10 +3105,10 @@ for (.mif in c(
   }
   break
 }
-pupil_loo_delta_m1_str <- if (is.finite(pupil_loo_delta_m1)) sprintf("%.2f", pupil_loo_delta_m1) else "\u2014"
-pupil_loo_delta_m2_str <- if (is.finite(pupil_loo_delta_m2)) sprintf("%.2f", pupil_loo_delta_m2) else "\u2014"
-pupil_loo_delta_m3_str <- if (is.finite(pupil_loo_delta_m3)) sprintf("%.2f", pupil_loo_delta_m3) else "\u2014"
-pupil_loo_max_k_str <- if (is.finite(pupil_loo_max_k)) sprintf("%.2f", pupil_loo_max_k) else "\u2014"
+pupil_loo_delta_m1_str <- if (is.finite(pupil_loo_delta_m1)) sprintf("%.2f", pupil_loo_delta_m1) else "—"
+pupil_loo_delta_m2_str <- if (is.finite(pupil_loo_delta_m2)) sprintf("%.2f", pupil_loo_delta_m2) else "—"
+pupil_loo_delta_m3_str <- if (is.finite(pupil_loo_delta_m3)) sprintf("%.2f", pupil_loo_delta_m3) else "—"
+pupil_loo_max_k_str <- if (is.finite(pupil_loo_max_k)) sprintf("%.2f", pupil_loo_max_k) else "—"
 pupil_loo_reliable  <- is.finite(pupil_loo_max_k) && pupil_loo_max_k <= 0.7
 fmt_pupil_inline <- function(est, lo, hi) {
   list(
@@ -3149,16 +3149,16 @@ for (.plf in file.path(proj_root, "output", "ddm_pupil_w1p3", "tables", "pupil_l
   pupil_trunc_available <- TRUE
   break
 }
-pupil_trunc_delta_m1_str <- if (is.finite(pupil_trunc_delta_m1)) sprintf("%.2f", abs(pupil_trunc_delta_m1)) else "\u2014"
-pupil_trunc_delta_m2_str <- if (is.finite(pupil_trunc_delta_m2)) sprintf("%.2f", abs(pupil_trunc_delta_m2)) else "\u2014"
-pupil_trunc_delta_m3_str <- if (is.finite(pupil_trunc_delta_m3)) sprintf("%.2f", abs(pupil_trunc_delta_m3)) else "\u2014"
-pupil_trunc_n_str <- if (is.finite(pupil_trunc_n_trials)) format(pupil_trunc_n_trials, big.mark = ",") else "\u2014"
+pupil_trunc_delta_m1_str <- if (is.finite(pupil_trunc_delta_m1)) sprintf("%.2f", abs(pupil_trunc_delta_m1)) else "—"
+pupil_trunc_delta_m2_str <- if (is.finite(pupil_trunc_delta_m2)) sprintf("%.2f", abs(pupil_trunc_delta_m2)) else "—"
+pupil_trunc_delta_m3_str <- if (is.finite(pupil_trunc_delta_m3)) sprintf("%.2f", abs(pupil_trunc_delta_m3)) else "—"
+pupil_trunc_n_str <- if (is.finite(pupil_trunc_n_trials)) format(pupil_trunc_n_trials, big.mark = ",") else "—"
 
 pupil_trunc_sensitivity_canonical <- if (isTRUE(pupil_trunc_available) && is.finite(pupil_trunc_n_trials)) {
   sprintf(
     paste0(
       "As a window-choice sensitivity check, we repeated the nested pupil-DDM sequence using ",
-      "the **Truncated Decision-Response AUC** (0.3\u20131.3 s post-probe; %s trials with valid ",
+      "the **Truncated Decision-Response AUC** (0.3–1.3 s post-probe; %s trials with valid ",
       "truncated TEPR). PSIS-LOO again favored the behavioral baseline ($|\\Delta$ELPD$|$ = %s, ",
       "%s, and %s for pupil $\\rightarrow$ $z$, pupil $\\rightarrow$ $v$ + $z$, and pupil ",
       "$\\times$ difficulty, respectively; all $< 4$); pooled and conditional pupil coefficients ",
@@ -3175,7 +3175,7 @@ pupil_trunc_sensitivity_canonical <- if (isTRUE(pupil_trunc_available) && is.fin
 }
 
 pupil_trunc_discussion_blurb <- if (isTRUE(pupil_trunc_available) && is.finite(pupil_trunc_n_trials)) {
-  "The same conclusion held when TEPR was quantified with the **Truncated Decision-Response AUC** (0.3\u20131.3 s post-probe; @sec-pupil-ddm-integration)."
+  "The same conclusion held when TEPR was quantified with the **Truncated Decision-Response AUC** (0.3–1.3 s post-probe; @sec-pupil-ddm-integration)."
 } else {
   ""
 }
@@ -3211,8 +3211,8 @@ for (.bnd in list(
 .pupil_bs_w1_fm <- fmt_pupil_inline(pupil_bs_est_w1, pupil_bs_lo_w1, pupil_bs_hi_w1)
 pupil_bs_beta_str <- .pupil_bs_fm$beta
 pupil_bs_cri_str <- .pupil_bs_fm$cri
-pupil_bs_delta_primary_str <- if (is.finite(pupil_bs_delta_primary)) sprintf("%.2f", pupil_bs_delta_primary) else "\u2014"
-pupil_bs_delta_w1_str <- if (is.finite(pupil_bs_delta_w1)) sprintf("%.2f", pupil_bs_delta_w1) else "\u2014"
+pupil_bs_delta_primary_str <- if (is.finite(pupil_bs_delta_primary)) sprintf("%.2f", pupil_bs_delta_primary) else "—"
+pupil_bs_delta_w1_str <- if (is.finite(pupil_bs_delta_w1)) sprintf("%.2f", pupil_bs_delta_w1) else "—"
 
 pupil_cavanagh_canonical <- if (isTRUE(pupil_boundary_available) && is.finite(pupil_bs_est)) {
   sprintf(
@@ -3296,19 +3296,19 @@ pupil_xref_discussion <- paste0(
 
 pupil_xref_limitations <- if (isTRUE(pupil_trunc_available) && is.finite(pupil_trunc_n_trials)) {
   paste0(
-    "Third, the primary trial-wise pupil predictor\u2014the **Decision-Response AUC**\u2014spans both ",
+    "Third, the primary trial-wise pupil predictor—the **Decision-Response AUC**—spans both ",
     "pre- and post-response epochs (@sec-pupil-ddm-integration). We repeated the nested pupil-DDM ",
-    "comparisons using the **Truncated Decision-Response AUC** (0.3\u20131.3 s post-probe; ",
-    pupil_trunc_n_str, " trials with valid truncated TEPR) and Cavanagh-style pupil\u2192$a$ extensions ",
+    "comparisons using the **Truncated Decision-Response AUC** (0.3–1.3 s post-probe; ",
+    pupil_trunc_n_str, " trials with valid truncated TEPR) and Cavanagh-style pupil→$a$ extensions ",
     "on both windows; conclusions were unchanged ($|\\Delta$ELPD$|$ $< 4$; near-zero or small ",
     "coefficients without LOO advantage). Remaining ambiguity likely reflects concurrent ",
-    "motor\u2013autonomic confounds under sustained grip rather than window choice alone."
+    "motor–autonomic confounds under sustained grip rather than window choice alone."
   )
 } else {
   paste0(
-    "Third, the primary trial-wise pupil predictor\u2014the **Decision-Response AUC**\u2014spans both ",
+    "Third, the primary trial-wise pupil predictor—the **Decision-Response AUC**—spans both ",
     "pre- and post-response epochs (@sec-pupil-ddm-integration). Sensitivity to the ",
-    "**Truncated Decision-Response AUC** window (0.3\u20131.3 s post-probe) should be verified ",
+    "**Truncated Decision-Response AUC** window (0.3–1.3 s post-probe) should be verified ",
     "against @sec-pupil-ddm-integration."
   )
 }
@@ -3320,13 +3320,13 @@ pupil_xref_conclusions <- paste0(
 pupil_scale_note <- "Inconclusive; see @sec-pupil-ddm-integration."
 
 null_ev_pupil_drift_early <- safe_rope_summary(
-  label = "Pooled TEPR \u2192 Drift Rate (v)", parameter = "v (identity link)",
+  label = "Pooled TEPR → Drift Rate (v)", parameter = "v (identity link)",
   estimate = .pd_est_e, q2.5 = .pd_lo_e, q97.5 = .pd_hi_e,
   rope_half_width = ROPE_V, meas_limited = TRUE,
   scale_note = pupil_scale_note
 )
 null_ev_pupil_bias_early <- safe_rope_summary(
-  label = "Pooled TEPR \u2192 Bias (z)", parameter = "z (logit link)",
+  label = "Pooled TEPR → Bias (z)", parameter = "z (logit link)",
   estimate = .pb_est_e, q2.5 = .pb_lo_e, q97.5 = .pb_hi_e,
   rope_half_width = ROPE_BIAS, meas_limited = TRUE,
   scale_note = pupil_scale_note
@@ -3335,15 +3335,15 @@ null_ev_pupil_bias_early <- safe_rope_summary(
 # Conditional slope placeholders — estimates available only after pupil-interaction-stats runs
 .cond_note <- pupil_scale_note
 null_ev_pupil_std_e  <- safe_rope_summary(
-  "TEPR slope \u2014 Standard trials", "v (interaction model)",
+  "TEPR slope — Standard trials", "v (interaction model)",
   NA_real_, NA_real_, NA_real_, rope_half_width = ROPE_V, meas_limited = TRUE,
   scale_note = .cond_note)
 null_ev_pupil_hard_e <- safe_rope_summary(
-  "TEPR slope \u2014 Hard trials", "v (interaction model)",
+  "TEPR slope — Hard trials", "v (interaction model)",
   NA_real_, NA_real_, NA_real_, rope_half_width = ROPE_V, meas_limited = TRUE,
   scale_note = .cond_note)
 null_ev_pupil_easy_e <- safe_rope_summary(
-  "TEPR slope \u2014 Easy trials", "v (interaction model)",
+  "TEPR slope — Easy trials", "v (interaction model)",
   NA_real_, NA_real_, NA_real_, rope_half_width = ROPE_V, meas_limited = TRUE,
   scale_note = .cond_note)
 rm(.cond_note)
@@ -3351,15 +3351,15 @@ rm(.cond_note)
 # ── Hypothesis summary table data (used by tbl-hyp-summary) ──────────────────
 # Contrast descriptions (not stored in safe_rope_summary; added as lookup column)
 .hyp_contrasts <- c(
-  "H1: Effort \u2192 Drift Rate"           = "High vs. Low effort (40% vs. 5% MVC)",
-  "H2: Effort \u2192 Boundary Separation"  = "High vs. Low effort (40% vs. 5% MVC)",
-  "H3: Effort \u2192 Non-Decision Time (exploratory only)" = "High vs. Low (exploratory; t0 constrained)",
-  "H4: Effort \u2192 Starting-Point Bias"  = "High vs. Low effort (Low \u2212 High \u0394z)",
-  "Pooled TEPR \u2192 Drift Rate (v)"      = "Trial-wise TEPR on drift (pooled)",
-  "Pooled TEPR \u2192 Bias (z)"            = "Trial-wise TEPR on bias (pooled)",
-  "TEPR slope \u2014 Standard trials"      = "TEPR \u00d7 Standard (interaction model)",
-  "TEPR slope \u2014 Hard trials"          = "TEPR \u00d7 Hard (interaction model)",
-  "TEPR slope \u2014 Easy trials"          = "TEPR \u00d7 Easy (interaction model)"
+  "H1: Effort → Drift Rate"           = "High vs. Low effort (40% vs. 5% MVC)",
+  "H2: Effort → Boundary Separation"  = "High vs. Low effort (40% vs. 5% MVC)",
+  "H3: Effort → Non-Decision Time (exploratory only)" = "High vs. Low (exploratory; t0 constrained)",
+  "H4: Effort → Starting-Point Bias"  = "High vs. Low effort (Low − High Δz)",
+  "Pooled TEPR → Drift Rate (v)"      = "Trial-wise TEPR on drift (pooled)",
+  "Pooled TEPR → Bias (z)"            = "Trial-wise TEPR on bias (pooled)",
+  "TEPR slope — Standard trials"      = "TEPR × Standard (interaction model)",
+  "TEPR slope — Hard trials"          = "TEPR × Hard (interaction model)",
+  "TEPR slope — Easy trials"          = "TEPR × Easy (interaction model)"
 )
 
 # Abbreviated evidence labels for the table (shorter than full classify output)
@@ -3368,14 +3368,14 @@ rm(.cond_note)
     isTRUE(get("h2_rope_practically_null", inherits = TRUE))
   dplyr::case_when(
     grepl("^H2:", label) & h2_rope_flag ~
-      "Dir. positive; in ROPE\u00b9",
+      "Dir. positive; in ROPE¹",
     grepl("credible negative",       ev) ~ "Supported",
     grepl("credible positive",       ev) ~ "Supported",
-    grepl("practically equivalent", ev) ~ "Dir. positive; in ROPE\u00b9",
+    grepl("practically equivalent", ev) ~ "Dir. positive; in ROPE¹",
     grepl("design-constrained",      ev) ~ "Not directly testable",
     grepl("measurement-limited",     ev) ~ "Inconclusive",
-    grepl(">=90%|.90.", ev)              ~ "Near-zero; >90% in ROPE\u00b9",
-    grepl("majority",                ev) ~ "Near-zero; >75% in ROPE\u00b9",
+    grepl(">=90%|.90.", ev)              ~ "Near-zero; >90% in ROPE¹",
+    grepl("majority",                ev) ~ "Near-zero; >75% in ROPE¹",
     TRUE                                 ~ "Near-zero; CrI spans zero"
   )
 }
@@ -3394,17 +3394,17 @@ null_evidence_for_table <- dplyr::bind_rows(
   dplyr::mutate(
     Contrast      = .hyp_contrasts[label] %||% "",
     ev_short      = .short_ev_label(evidence_label, label),
-    est_fmt       = dplyr::if_else(is.na(estimate), "\u2014",
+    est_fmt       = dplyr::if_else(is.na(estimate), "—",
                       sprintf("%.3f", estimate)),
-    cri_fmt       = dplyr::if_else(is.na(q2.5) | is.na(q97.5), "\u2014",
+    cri_fmt       = dplyr::if_else(is.na(q2.5) | is.na(q97.5), "—",
                       sprintf("[%.3f, %.3f]", q2.5, q97.5)),
     ci0_fmt       = dplyr::case_when(
-                      is.na(ci_includes_zero) ~ "\u2014",
+                      is.na(ci_includes_zero) ~ "—",
                       ci_includes_zero        ~ "Yes",
                       TRUE                    ~ "No"),
     rope_fmt      = dplyr::case_when(
                       design_limited | meas_limited     ~ "n/a",
-                      is.na(p_in_rope)                  ~ "\u2014",
+                      is.na(p_in_rope)                  ~ "—",
                       TRUE                              ~ sprintf("%.0f%%", p_in_rope * 100)),
     section_group = dplyr::case_when(
                       grepl("^H[1-4]",   label) ~ "Behavioral DDM (Primary Model)",
@@ -3657,7 +3657,7 @@ tbl_loo_comp <- tbl_loo_comp_raw %>%
     elpd_se = round(elpd_se, 1),
     delta_elpd = round(delta_elpd, 1),
     looic = round(looic, 1),
-    max_pareto_k = if_else(is.finite(max_pareto_k), sprintf("%.2f", max_pareto_k), "\u2014")
+    max_pareto_k = if_else(is.finite(max_pareto_k), sprintf("%.2f", max_pareto_k), "—")
   ) %>%
   arrange(delta_looic) %>%
   select(
@@ -3679,11 +3679,11 @@ if (file.exists(loo_diffonly_path) && "difficulty_only" %in% tbl_loo_comp_raw$mo
   n_se_diffonly <- if (!is.na(diffonly_delta) && !is.na(se_diffonly_vs_add) && se_diffonly_vs_add > 0)
     round(abs(diffonly_delta) / se_diffonly_vs_add, 0) else NA_integer_
   loo_table_note <- sprintf(
-    "*Note.* ELPD = expected log predictive density; LOOIC = \u22122 \u00d7 ELPD; SE(\u0394) = SE of ELPD difference vs. the reference model in that row. Observed \u0394 ELPD = %s (~%s SEs) strongly favors the additive model over baseline. The difficulty-only row confirms that adding effort further improves fit (\u0394ELPD = %.0f relative to additive, ~%s SEs). The interaction attains the highest nominal ELPD but PSIS-LOO is unreliable (max Pareto-$k$ = %s); additive LOO is reliable (max Pareto-$k$ = %s). All primary analyses use the additive specification.",
+    "*Note.* ELPD = expected log predictive density; LOOIC = −2 × ELPD; SE(Δ) = SE of ELPD difference vs. the reference model in that row. Observed Δ ELPD = %s (~%s SEs) strongly favors the additive model over baseline. The difficulty-only row confirms that adding effort further improves fit (ΔELPD = %.0f relative to additive, ~%s SEs). The interaction attains the highest nominal ELPD but PSIS-LOO is unreliable (max Pareto-$k$ = %s); additive LOO is reliable (max Pareto-$k$ = %s). All primary analyses use the additive specification.",
     format(round(abs(baseline_delta_elpd), 0), big.mark = ","),
     if (!is.na(n_se_from_zero)) as.character(n_se_from_zero) else "30",
     abs(diffonly_delta),
-    if (!is.na(n_se_diffonly)) as.character(n_se_diffonly) else "\u226530",
+    if (!is.na(n_se_diffonly)) as.character(n_se_diffonly) else "≥30",
     interaction_pareto_k_int_str,
     behavioral_loo_max_k_str
   )
@@ -4015,8 +4015,8 @@ if (.is_pdf) {
     ),
     general_title = "Note.",
     alphabet = c(
-      "H3: t\u2080 intercept-only (response-signal design); exploratory estimate only.",
-      "ROPE half-widths: drift \u00b10.02; boundary \u00b10.05 (log); bias \u00b10.05 (logit). Project convention, not a preregistered SESOI.",
+      "H3: t₀ intercept-only (response-signal design); exploratory estimate only.",
+      "ROPE half-widths: drift ±0.02; boundary ±0.05 (log); bias ±0.05 (logit). Project convention, not a preregistered SESOI.",
       "Pupil rows inconclusive [c]; full LOO comparisons, coefficients, and measurement limits: §3.3 (Pupil-linked DDM models); conditional slopes: Appendix A5."
     ),
     footnote_as_chunk = TRUE,
@@ -4159,7 +4159,7 @@ if (file.exists(pupil_int_model_path) && requireNamespace("brms", quietly = TRUE
       slopes_range <- max(c(pupil_diff_mean_std, pupil_diff_mean_hard, pupil_diff_mean_easy)) -
                       min(c(pupil_diff_mean_std, pupil_diff_mean_hard, pupil_diff_mean_easy))
       pupil_slopes_note <- if (!is.na(slopes_range) && slopes_range < 0.01) {
-        paste0("*Note: Although the pupil\u00d7difficulty interaction was modeled, the three ",
+        paste0("*Note: Although the pupil×difficulty interaction was modeled, the three ",
                "difficulty-conditional slopes show minimal divergence (posterior means differ by ",
                sprintf("%.4f", slopes_range), " < 0.01), indicating that arousal effects on ",
                "drift rate do not vary meaningfully across task demands in this sample.*")
@@ -4197,7 +4197,7 @@ safe_q <- function(q_vec, idx) {
 
 # ── Pooled TEPR → drift (v) ──────────────────────────────────────────────────
 null_ev_pupil_drift <- safe_rope_summary(
-  label           = "Pooled TEPR \u2192 Drift Rate (v)",
+  label           = "Pooled TEPR → Drift Rate (v)",
   parameter       = "v (identity link, pooled pupil model)",
   estimate        = if (exists("pd_est") && !is.null(pd_est)) pd_est else NA_real_,
   q2.5            = if (exists("pd_lo")  && !is.null(pd_lo))  pd_lo  else NA_real_,
@@ -4211,7 +4211,7 @@ null_ev_pupil_drift <- safe_rope_summary(
 
 # ── Pooled TEPR → bias (z) ───────────────────────────────────────────────────
 null_ev_pupil_bias <- safe_rope_summary(
-  label           = "Pooled TEPR \u2192 Starting-Point Bias (z)",
+  label           = "Pooled TEPR → Starting-Point Bias (z)",
   parameter       = "z (logit link, pooled pupil model)",
   estimate        = if (exists("pb_est") && !is.null(pb_est)) pb_est else NA_real_,
   q2.5            = if (exists("pb_lo")  && !is.null(pb_lo))  pb_lo  else NA_real_,
@@ -4228,7 +4228,7 @@ null_ev_pupil_bias <- safe_rope_summary(
 # These exist only when the interaction model loaded; safe_q() handles absence.
 
 null_ev_pupil_std <- safe_rope_summary(
-  label           = "TEPR slope on drift \u2014 Standard trials",
+  label           = "TEPR slope on drift — Standard trials",
   parameter       = "v (identity link, interaction model)",
   estimate        = if (exists("pupil_diff_mean_std")  && !is.na(pupil_diff_mean_std))
                       pupil_diff_mean_std  else NA_real_,
@@ -4243,7 +4243,7 @@ null_ev_pupil_std <- safe_rope_summary(
 )
 
 null_ev_pupil_hard <- safe_rope_summary(
-  label           = "TEPR slope on drift \u2014 Hard trials",
+  label           = "TEPR slope on drift — Hard trials",
   parameter       = "v (identity link, interaction model)",
   estimate        = if (exists("pupil_diff_mean_hard") && !is.na(pupil_diff_mean_hard))
                       pupil_diff_mean_hard else NA_real_,
@@ -4258,7 +4258,7 @@ null_ev_pupil_hard <- safe_rope_summary(
 )
 
 null_ev_pupil_easy <- safe_rope_summary(
-  label           = "TEPR slope on drift \u2014 Easy trials",
+  label           = "TEPR slope on drift — Easy trials",
   parameter       = "v (identity link, interaction model)",
   estimate        = if (exists("pupil_diff_mean_easy") && !is.na(pupil_diff_mean_easy))
                       pupil_diff_mean_easy else NA_real_,
@@ -4660,7 +4660,7 @@ Individual-level drift plots are in the main text (@fig-individual-diffs). This 
 
 ```{r}
 #| label: tbl-trial-counts
-#| tbl-cap: !expr 'sprintf("Trial counts by Task \\u00d7 Difficulty \\u00d7 Effort (primary DDM dataset: cue-locked RT $\\geq$ 0.20 s; $N = %s$ trials).", format(if (exists("primary_n_trials") && !is.na(primary_n_trials)) primary_n_trials else 17857L, big.mark = ","))'
+#| tbl-cap: !expr 'sprintf("Trial counts by Task × Difficulty × Effort (primary DDM dataset: cue-locked RT $\\geq$ 0.20 s; $N = %s$ trials).", format(if (exists("primary_n_trials") && !is.na(primary_n_trials)) primary_n_trials else 17857L, big.mark = ","))'
 #| tbl-pos: "htbp"
 trial_counts_data <- NULL
 ddm_ready_paths <- c(
@@ -4718,9 +4718,9 @@ if (!is.null(trial_counts_data)) {
       mutate(
         mean_trials_per_subj = round(n_trials / n_subjects, 1),
         Task_Group = paste0(Task, " (N = ", task_n_subj, ")"),
-        Task_Group = gsub("\u2013", "-", Task_Group),
-        Difficulty = gsub("\u2013", "-", Difficulty),
-        Effort = gsub("\u2013", "-", Effort)
+        Task_Group = gsub("–", "-", Task_Group),
+        Difficulty = gsub("–", "-", Difficulty),
+        Effort = gsub("–", "-", Effort)
       ) %>%
       arrange(Task, Difficulty, Effort) %>%
       transmute(
@@ -4946,8 +4946,8 @@ if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% 
       `N Subjects` = n_subjects
     ) %>%
     mutate(
-      Task_Group = gsub("\u2013", "-", Task_Group),
-      Effort = gsub("\u2013", "-", Effort)
+      Task_Group = gsub("–", "-", Task_Group),
+      Effort = gsub("–", "-", Effort)
     ) %>%
     arrange(Task_Group, Effort) %>%
     select(Task_Group, Effort, `Mean (AU)`, `SD (AU)`, `Median (AU)`, `N Subjects`)
@@ -4995,8 +4995,8 @@ if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% 
       `N Subjects` = "To be computed"
     ) %>%
     mutate(
-      Task_Group = gsub("\u2013", "-", Task_Group),
-      Effort = gsub("\u2013", "-", Effort)
+      Task_Group = gsub("–", "-", Task_Group),
+      Effort = gsub("–", "-", Effort)
     ) %>%
     arrange(Task_Group, Effort) %>%
     select(Task_Group, Effort, `Mean (AU)`, `SD (AU)`, `Median (AU)`, `N Subjects`)
@@ -6054,8 +6054,8 @@ if (!file.exists(pupil_loo_all_path)) {
   model_1p_pupil_boundary = "m1p: Cavanagh pupil $\\rightarrow$ $a$"
 )
 .pupil_source_labels <- c(
-  primary_w3 = "Decision-Response AUC (0.3\u20133.3 s)",
-  truncated_w1p3 = "Truncated AUC (0.3\u20131.3 s)",
+  primary_w3 = "Decision-Response AUC (0.3–3.3 s)",
+  truncated_w1p3 = "Truncated AUC (0.3–1.3 s)",
   cavanagh_bs_primary = "Cavanagh $a$ (primary window)",
   cavanagh_bs_truncated = "Cavanagh $a$ (truncated window)"
 )
@@ -6317,9 +6317,9 @@ if (!is.null(pupil_data) && "cognitive_auc" %in% names(pupil_data) && "task" %in
       `N Subjects` = n_subjects
     ) %>%
     mutate(
-      Task_Group = gsub("\u2013", "-", Task_Group),
-      Difficulty = gsub("\u2013", "-", Difficulty),
-      Effort = gsub("\u2013", "-", Effort)
+      Task_Group = gsub("–", "-", Task_Group),
+      Difficulty = gsub("–", "-", Difficulty),
+      Effort = gsub("–", "-", Effort)
     ) %>%
     arrange(Task_Group, Difficulty, Effort) %>%
     select(Task_Group, Difficulty, Effort, `Mean AUC`, `SD AUC`, `N Subjects`)
@@ -6403,7 +6403,7 @@ if (!is.null(pupil_data)) {
     if ("condition" %in% names(waveform_ch3) && any(!is.na(waveform_ch3$condition))) {
       # Subject-level waveform export already carries Easy/Hard x Low/High labels.
       waveform_ch3 <- waveform_ch3 %>%
-        mutate(condition = gsub("\u2013", "-", condition))
+        mutate(condition = gsub("–", "-", condition))
     } else {
       # Legacy condition-mean file: derive labels from trial metadata columns.
       waveform_ch3 <- waveform_ch3 %>%
@@ -6427,9 +6427,9 @@ if (!is.null(pupil_data)) {
           )
         ) %>%
         mutate(
-          difficulty_level = gsub("\u2013", "-", difficulty_level),
-          effort_level = gsub("\u2013", "-", effort_level),
-          condition = gsub("\u2013", "-", condition)
+          difficulty_level = gsub("–", "-", difficulty_level),
+          effort_level = gsub("–", "-", effort_level),
+          condition = gsub("–", "-", condition)
         )
     }
 
@@ -7420,9 +7420,9 @@ if (file.exists(rt_dist_file)) {
       Condition = paste(Difficulty, Effort, sep = " - ")
     ) %>%
     mutate(
-      Difficulty = gsub("\u2013", "-", as.character(Difficulty)),
-      Effort = gsub("\u2013", "-", as.character(Effort)),
-      Condition = gsub("\u2013", "-", Condition)
+      Difficulty = gsub("–", "-", as.character(Difficulty)),
+      Effort = gsub("–", "-", as.character(Effort)),
+      Condition = gsub("–", "-", Condition)
     ) %>%
       mutate(
         Difficulty = factor(Difficulty, levels = c("Standard", "Easy", "Hard")),
