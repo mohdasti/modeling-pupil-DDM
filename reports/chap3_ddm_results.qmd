@@ -2457,6 +2457,7 @@ if (!is.null(fixef_link) && nrow(fixef_link) > 0) {
 
 # ── H1: High effort → drift rate (v) ──────────────────────────
 # Source: fixef_link (fixed effects on link scale, primary model)
+h1_est       <- NA_real_
 h1_beta_str  <- "[see @tbl-hyp-summary]"
 h1_cri_str   <- ""
 h1_p0_str    <- ""
@@ -2489,6 +2490,35 @@ if (!is.null(fixef_link) && nrow(fixef_link) > 0) {
                     else NA_real_
     h1_p0_str    <- .fmt_posterior_p(h1_p0_val, "lt")
     h1_supported <- !is.na(h1_hi) && h1_hi < 0
+  }
+}
+
+# Task-sensitivity contrasts for pooling prose (@tbl-task-sensitivity; Appendix A4.3)
+task_sens_eff_primary <- task_sens_eff_ts <- NA_real_
+task_sens_pooling_sentence <- "task-on-drift sensitivity is in @tbl-task-sensitivity"
+.task_sens_path <- file.path(tables_dir, "task_sensitivity_comparison.csv")
+if (file.exists(.task_sens_path)) {
+  .task_sens_comp <- readr::read_csv(.task_sens_path, show_col_types = FALSE)
+  .pick_ts <- function(pat) {
+    .task_sens_comp %>%
+      dplyr::filter(grepl(pat, Parameter, ignore.case = TRUE)) %>%
+      dplyr::slice(1)
+  }
+  .eff_pri <- .pick_ts("Effort.*Primary|Effort → Drift \\(Primary")
+  .eff_ts  <- .pick_ts("Effort.*Task-Sens|Task-Sens")
+  if (nrow(.eff_pri) == 1) task_sens_eff_primary <- .eff_pri$Estimate
+  if (nrow(.eff_ts) == 1)  task_sens_eff_ts <- .eff_ts$Estimate
+  if (is.finite(task_sens_eff_primary) && is.finite(task_sens_eff_ts)) {
+    .h1_val <- if (is.finite(h1_est)) h1_est else task_sens_eff_primary
+    task_sens_pooling_sentence <- sprintf(
+      paste0(
+        "effort$\\rightarrow$drift was similar with Task on drift ",
+        "(primary $\\beta = %.3f$ vs task-sensitivity $\\delta = %.3f$; @tbl-task-sensitivity); ",
+        "Task$\\rightarrow$drift was credible but Effort $\\times$ Task was not, ",
+        "so we treat cross-task pooling as a deliberate simplification"
+      ),
+      .h1_val, task_sens_eff_ts
+    )
   }
 }
 
@@ -4132,7 +4162,7 @@ if (.is_pdf) {
 .hyp_tbl
 ```
 
-The Effort → Drift effect did not depend on task inclusion; the Effort × Task interaction was negligible (Appendix A4.3). H1 kept the same sign and similar magnitude across RT cutoffs of 0.15, 0.20, and 0.25 s. H2 was less stable: at the most lenient cutoff (0.15 s), the already-negligible boundary contrast no longer excluded zero, which supports the practical-equivalence interpretation (Appendix A4.2).
+The pooled primary model omitted Task on drift; `r task_sens_pooling_sentence` (Appendix A4.3). H1 kept the same sign and similar magnitude across RT cutoffs of 0.15, 0.20, and 0.25 s. H2 was less stable: at the most lenient cutoff (0.15 s), the already-negligible boundary contrast no longer excluded zero, which supports the practical-equivalence interpretation (Appendix A4.2).
 
 ### Starting-point bias {#sec-starting-point-bias}
 
@@ -4613,7 +4643,7 @@ Several limitations constrain the interpretation of these findings. First, the s
 
 `r pupil_xref_limitations`
 
-Third, Hard-trial accuracy fell near or below chance for many participants (Appendix A7), indicating that some Hard offsets sat near perceptual threshold rather than forming a clean graded difficulty manipulation above chance. Parameter estimates for Hard conditions should be interpreted with this floor effect in mind.
+Third, Hard-trial accuracy fell near or below chance for many participants (Appendix A7), indicating that some Hard offsets sat near perceptual threshold rather than forming a clean graded difficulty manipulation above chance. Parameter estimates for Hard conditions should be interpreted with this floor effect in mind. Complementary sensitivity analyses for task-on-drift pooling and related robustness checks are reported in Appendix A4 (@tbl-task-sensitivity, @tbl-h1-h2-by-cutoff) where already completed; a Standard+Easy-only primary refit excluding Hard trials remains planned.
 
 Fourth, the concurrent isometric handgrip manipulation (40% MVC) may interact with motor execution in ways not fully captured by small fixed effects on $t_0$; future work integrating EMG or kinematic measures could disentangle central resource competition from peripheral motor interference. Linear Ballistic Accumulator or race models may also better accommodate the fast-tail RT dynamics observed in Easy-difficulty conditions, and future work could explore whether these model families yield the same substantive pattern of effort and difficulty effects on decision parameters.
 
