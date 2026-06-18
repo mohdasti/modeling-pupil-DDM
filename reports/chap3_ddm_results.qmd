@@ -2169,6 +2169,35 @@ if (file.exists(loo_additive_rds)) {
 }
 behavioral_loo_max_k_str <- if (is.finite(behavioral_loo_max_k)) sprintf("%.2f", behavioral_loo_max_k) else "—"
 
+# Canonical primary additive LOOIC (probe-onset-locked, 0.20 s) for inline prose/captions
+primary_looic <- NA_real_
+if (!is.null(loo_summary) && nrow(loo_summary) > 0) {
+  .pl_row <- loo_summary %>%
+    dplyr::filter(
+      .data$threshold == PRIMARY_THR,
+      .data$rt_type == PRIMARY_RT,
+      .data$model == PRIMARY_MODEL
+    ) %>%
+    dplyr::slice(1)
+  if (nrow(.pl_row) == 1 && is.finite(.pl_row$looic[1])) {
+    primary_looic <- .pl_row$looic[1]
+  }
+}
+primary_looic_str <- if (is.finite(primary_looic)) {
+  format(round(primary_looic, 1), big.mark = ",", nsmall = 1, trim = TRUE)
+} else {
+  "—"
+}
+fig_loo_comparison_cap <- sprintf(
+  paste0(
+    "LOO model comparison for baseline vs. additive models across RT definitions. ",
+    "Note: These LOOIC values reflect sensitivity models spanning multiple RT definitions ",
+    "and thresholds and are not directly comparable to the primary probe-onset-locked ",
+    "additive model (LOOIC = %s; Appendix A1), which uses a single pre-specified RT definition."
+  ),
+  primary_looic_str
+)
+
 # Extended convergence (tail ESS; interaction max R-hat)
 conv_ext_path <- file.path(proj_root, params$run_dir, "tables", "convergence_primary_extended.csv")
 primary_min_tail_ess <- primary_min_bulk_ess_ext <- interaction_max_rhat <- NA_real_
@@ -3515,7 +3544,7 @@ n_subj_final <- if (exists("n_subj_inclusion") && !is.na(n_subj_inclusion)) n_su
 
 The DDM analysis included `r n_subj_inclusion` older adults ($N_{ADT}$ = `r n_subj_adt_ddm`, $N_{VDT}$ = `r n_subj_vdt_ddm` after task-specific exclusions). `r n_single_task_ddm` participants contributed to only one task after exclusions because the other task had fewer than 100 valid trials. The primary additive model retained `r format(primary_n_trials, big.mark = ",")` probe-onset-locked trials after the cue-locked RT $<$ 0.20 s cutoff (`r if (!is.na(tc_mean_trials_per_subj) && !is.na(tc_min_cell_trials)) sprintf("mean %.0f trials per subject across cells; cell totals %.0f–%.0f", tc_mean_trials_per_subj, tc_min_cell_trials, tc_max_cell_trials) else "cell counts in Appendix A2"`, @tbl-trial-counts). Manipulation checks showed that difficulty and effort affected accuracy and RT as intended (Appendix A7).
 
-All primary behavioral models met convergence criteria ($\hat{R}$ < 1.01, bulk ESS > 400, zero divergent transitions; Appendix A1). Posterior predictive checks were less clean. All `r if (!is.na(ppc_n_cells_inline)) as.integer(ppc_n_cells_inline) else 12` experimental cells crossed the pre-registered KS/QP flagging thresholds (max KS = `r if (!is.na(ppc_max_ks_inline)) sprintf("%.3f", ppc_max_ks_inline) else "—"`, max full-range QP RMSE = `r if (!is.na(ppc_max_qp_inline)) sprintf("%.3f", ppc_max_qp_inline) else "—"` s; @tbl-convergence-ppc-gate-appendix), mainly because of fast-tail RT misfit. Mid-body quantile–probability fit was acceptable (Appendix A3). The key effort contrasts also held under alternative RT lower-bound thresholds (Appendix A4.2).
+All primary behavioral models met convergence criteria ($\hat{R}$ < 1.01, bulk ESS > 400, zero divergent transitions; Appendix A1). Posterior predictive checks were less clean. All `r if (!is.na(ppc_n_cells_inline)) as.integer(ppc_n_cells_inline) else 12` experimental cells crossed the pre-specified KS/QP flagging thresholds (max KS = `r if (!is.na(ppc_max_ks_inline)) sprintf("%.3f", ppc_max_ks_inline) else "—"`, max full-range QP RMSE = `r if (!is.na(ppc_max_qp_inline)) sprintf("%.3f", ppc_max_qp_inline) else "—"` s; @tbl-convergence-ppc-gate-appendix), mainly because of fast-tail RT misfit. Mid-body quantile–probability fit was acceptable (Appendix A3). The key effort contrasts also held under alternative RT lower-bound thresholds (Appendix A4.2).
 
 We compared nested specifications with PSIS-LOO (@vehtari2017loo). The additive model treated difficulty and effort as independent predictors of drift rate and boundary separation; it outperformed a difficulty-only baseline ($\Delta$ELPD $>$ 4). `r interaction_loo_note``r interaction_coef_note` Full ELPD values are in Appendix A1 (@tbl-loo-comparison; max Pareto-$k$ = `r behavioral_loo_max_k_str` for the additive model). All primary analyses below use the additive, probe-onset-locked specification. Pupil-augmented models are reported separately in @sec-pupil-ddm-integration.
 
@@ -3588,6 +3617,64 @@ se_diff_elpd <- if (is.na(se_elpd_additive) || is.na(se_elpd_baseline)) NA_real_
   sqrt(se_elpd_additive^2 + se_elpd_baseline^2)
 se_diff_looic <- if (is.na(se_diff_elpd)) NA_real_ else 2 * se_diff_elpd
 
+elpd_additive_loo <- tbl_loo_comp_raw %>%
+  dplyr::filter(model == PRIMARY_MODEL) %>%
+  dplyr::pull(elpd_loo) %>%
+  dplyr::first()
+elpd_baseline_loo <- tbl_loo_comp_raw %>%
+  dplyr::filter(model == "baseline") %>%
+  dplyr::pull(elpd_loo) %>%
+  dplyr::first()
+elpd_diffonly_loo <- if ("difficulty_only" %in% tbl_loo_comp_raw$model) {
+  tbl_loo_comp_raw %>%
+    dplyr::filter(model == "difficulty_only") %>%
+    dplyr::pull(elpd_loo) %>%
+    dplyr::first()
+} else {
+  NA_real_
+}
+se_elpd_diffonly_loo <- if ("difficulty_only" %in% tbl_loo_comp_raw$model) {
+  tbl_loo_comp_raw %>%
+    dplyr::filter(model == "difficulty_only") %>%
+    dplyr::pull(elpd_se) %>%
+    dplyr::first()
+} else {
+  NA_real_
+}
+delta_additive_vs_baseline <- if (is.finite(elpd_additive_loo) && is.finite(elpd_baseline_loo)) {
+  elpd_additive_loo - elpd_baseline_loo
+} else {
+  NA_real_
+}
+delta_additive_vs_diffonly <- if (is.finite(elpd_additive_loo) && is.finite(elpd_diffonly_loo)) {
+  elpd_additive_loo - elpd_diffonly_loo
+} else {
+  NA_real_
+}
+se_diffonly_vs_add <- if (is.na(se_elpd_additive) || is.na(se_elpd_diffonly_loo)) {
+  NA_real_
+} else {
+  sqrt(se_elpd_additive^2 + se_elpd_diffonly_loo^2)
+}
+n_se_additive_vs_baseline <- if (
+  is.finite(delta_additive_vs_baseline) &&
+    !is.na(se_diff_elpd) &&
+    se_diff_elpd > 0
+) {
+  round(delta_additive_vs_baseline / se_diff_elpd, 0)
+} else {
+  NA_integer_
+}
+n_se_additive_vs_diffonly <- if (
+  is.finite(delta_additive_vs_diffonly) &&
+    !is.na(se_diffonly_vs_add) &&
+    se_diffonly_vs_add > 0
+) {
+  round(delta_additive_vs_diffonly / se_diffonly_vs_add, 0)
+} else {
+  NA_integer_
+}
+
 baseline_delta_elpd <- tbl_loo_comp_raw %>%
   filter(model == "baseline") %>%
   pull(delta_elpd) %>%
@@ -3650,6 +3737,7 @@ tbl_loo_comp <- tbl_loo_comp_raw %>%
       model == PRIMARY_MODEL ~ 0,
       model == "interaction" & is.finite(interaction_delta_se) ~ interaction_delta_se,
       model == "baseline" ~ se_diff_elpd,
+      model == "difficulty_only" ~ se_diffonly_vs_add,
       TRUE ~ NA_real_
     ),
     se_diff = if_else(is.finite(se_diff), round(se_diff, 1), NA_real_),
@@ -3672,28 +3760,41 @@ tbl_loo_comp <- tbl_loo_comp_raw %>%
 
 # Compute table note for inline use (inline R cannot handle complex logic)
 if (file.exists(loo_diffonly_path) && "difficulty_only" %in% tbl_loo_comp_raw$model) {
-  diffonly_delta <- tbl_loo_comp_raw |> dplyr::filter(model == "difficulty_only") |> dplyr::pull(delta_elpd) |> dplyr::first()
-  se_elpd_diffonly <- tbl_loo_comp_raw |> dplyr::filter(model == "difficulty_only") |> dplyr::pull(elpd_se) |> dplyr::first()
-  se_diffonly_vs_add <- if (is.na(se_elpd_additive) || is.na(se_elpd_diffonly)) NA_real_ else
-    sqrt(se_elpd_additive^2 + se_elpd_diffonly^2)
-  n_se_diffonly <- if (!is.na(diffonly_delta) && !is.na(se_diffonly_vs_add) && se_diffonly_vs_add > 0)
-    round(abs(diffonly_delta) / se_diffonly_vs_add, 0) else NA_integer_
   loo_table_note <- sprintf(
-    "*Note.* ELPD = expected log predictive density; LOOIC = −2 × ELPD; SE(Δ) = SE of ELPD difference vs. the reference model in that row. Observed Δ ELPD = %s (~%s SEs) strongly favors the additive model over baseline. The difficulty-only row confirms that adding effort further improves fit (ΔELPD = %.0f relative to additive, ~%s SEs). The interaction attains the highest nominal ELPD but PSIS-LOO is unreliable (max Pareto-$k$ = %s); additive LOO is reliable (max Pareto-$k$ = %s). All primary analyses use the additive specification.",
-    format(round(abs(baseline_delta_elpd), 0), big.mark = ","),
-    if (!is.na(n_se_from_zero)) as.character(n_se_from_zero) else "30",
-    abs(diffonly_delta),
-    if (!is.na(n_se_diffonly)) as.character(n_se_diffonly) else "≥30",
+    paste0(
+      "*Note.* ELPD = expected log predictive density; LOOIC = $-2 \\times$ ELPD; ",
+      "SE($\\Delta$) = SE of ELPD difference vs. the reference model in that row. ",
+      "Baseline vs additive: $\\Delta$ELPD = +%s (~%s SEs), favoring additive. ",
+      "Difficulty-only vs additive: $\\Delta$ELPD = +%s (~%s SEs), favoring the effort-inclusive additive model. ",
+      "The interaction attains the highest nominal ELPD but PSIS-LOO is unreliable (max Pareto-$k$ = %s); ",
+      "additive LOO is reliable (max Pareto-$k$ = %s). ",
+      "Canonical primary additive LOOIC = %s (probe-onset-locked, 0.20 s). ",
+      "All primary analyses use the additive specification."
+    ),
+    format(round(delta_additive_vs_baseline, 0), big.mark = ","),
+    if (!is.na(n_se_additive_vs_baseline)) as.character(n_se_additive_vs_baseline) else "—",
+    format(round(delta_additive_vs_diffonly, 0), big.mark = ","),
+    if (!is.na(n_se_additive_vs_diffonly)) as.character(n_se_additive_vs_diffonly) else "—",
     interaction_pareto_k_int_str,
-    behavioral_loo_max_k_str
+    behavioral_loo_max_k_str,
+    primary_looic_str
   )
 } else {
   loo_table_note <- sprintf(
-    "*Note.* ELPD = expected log predictive density; LOOIC = −2 × ELPD; SE(Δ) = SE of ELPD difference. Observed Δ ELPD = %s (~%s SEs) strongly favors additive over baseline. The interaction attains the highest nominal ELPD but PSIS-LOO is unreliable (max Pareto-$k$ = %s); additive LOO is reliable (max Pareto-$k$ = %s). All primary analyses use the additive specification.",
-    format(round(abs(baseline_delta_elpd), 0), big.mark = ","),
-    if (!is.na(n_se_from_zero)) as.character(n_se_from_zero) else "30",
+    paste0(
+      "*Note.* ELPD = expected log predictive density; LOOIC = $-2 \\times$ ELPD; ",
+      "SE($\\Delta$) = SE of ELPD difference vs. the reference model in that row. ",
+      "Baseline vs additive: $\\Delta$ELPD = +%s (~%s SEs), favoring additive. ",
+      "The interaction attains the highest nominal ELPD but PSIS-LOO is unreliable (max Pareto-$k$ = %s); ",
+      "additive LOO is reliable (max Pareto-$k$ = %s). ",
+      "Canonical primary additive LOOIC = %s (probe-onset-locked, 0.20 s). ",
+      "All primary analyses use the additive specification."
+    ),
+    format(round(delta_additive_vs_baseline, 0), big.mark = ","),
+    if (!is.na(n_se_additive_vs_baseline)) as.character(n_se_additive_vs_baseline) else "—",
     interaction_pareto_k_int_str,
-    behavioral_loo_max_k_str
+    behavioral_loo_max_k_str,
+    primary_looic_str
   )
 }
 
@@ -3720,6 +3821,7 @@ t0_q97.5 <- 0.347
 a_easy <- 2.06
 a_standard <- 2.27
 a_hard <- 2.12
+a_effort_label <- "Low-effort"
 if (!is.null(pred_params) && nrow(pred_params) > 0) {
   primary_params <- pred_params %>%
     filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR)
@@ -3728,13 +3830,16 @@ if (!is.null(pred_params) && nrow(pred_params) > 0) {
     t0_q2.5 <- round(primary_params$t0_q2.5[1], 3)
     t0_q97.5 <- round(primary_params$t0_q97.5[1], 3)
     a_by_diff <- primary_params %>%
+      filter(effort == "Low") %>%
       group_by(difficulty) %>%
       slice(1) %>%
       ungroup() %>%
       select(difficulty, a_median)
-    a_easy <- round(a_by_diff %>% filter(difficulty == "Easy") %>% pull(a_median), 2)
-    a_standard <- round(a_by_diff %>% filter(difficulty == "Standard") %>% pull(a_median), 2)
-    a_hard <- round(a_by_diff %>% filter(difficulty == "Hard") %>% pull(a_median), 2)
+    if (nrow(a_by_diff) == 3) {
+      a_easy <- round(a_by_diff %>% filter(difficulty == "Easy") %>% pull(a_median), 2)
+      a_standard <- round(a_by_diff %>% filter(difficulty == "Standard") %>% pull(a_median), 2)
+      a_hard <- round(a_by_diff %>% filter(difficulty == "Hard") %>% pull(a_median), 2)
+    }
   }
 }
 ```
@@ -3881,7 +3986,7 @@ For each hypothesis, inference rests on the High − Low effort contrast ($\delt
 
 **H2 (boundary separation, $a$).** `r if (h2_rope_practically_null) "High effort produced a directionally positive but practically negligible change in boundary separation" else if (h2_supported) "High effort produced a small credible increase in boundary separation" else "The effort contrast on boundary separation was near zero with the CrI spanning zero"`: `r h2_beta_str`, `r h2_cri_str``r h2_p0_str``r h2_null_note`. `r if (h2_rope_practically_null) sprintf("All posterior mass fell within the project ROPE (\\pm0.05 log-scale; %s); we do not interpret this as meaningful strategic caution.", h2_p_in_rope_pct) else sprintf("Auxiliary ROPE mass %s (see @tbl-hyp-summary).", h2_p_in_rope_pct)`
 
-**H3 (non-decision time, $t_0$).** The response-signal design required $t_0$ to be a single intercept across conditions (@sec-ddm-spec). Thus, the primary model does not test H3. An exploratory effort contrast on $\log t_0$ was `r h3_beta_str` (95% CrI `r h3_cri_str`; `r h3_natural`), but this estimate is descriptive only.
+**H3 (non-decision time, $t_0$).** The response-signal design required $t_0$ to be a single intercept across conditions (@sec-ddm-spec). Thus, the primary model does not test H3. An exploratory effort contrast on $\log t_0$ was `r h3_beta_str` (`r h3_cri_str`; `r h3_natural`), but this estimate is descriptive only.
 
 **H4 (starting-point bias, $z$).** The effort contrast on pre-stimulus response bias was near zero and uncertain: `r h4_beta_str`, `r h4_cri_str``r h4_p0_str`. The CrI spans zero (ROPE mass `r h4_p_in_rope_pct`). In the primary model, VDT showed higher bias toward "different" responses than ADT (`r h4task_primary_beta_str`, `r h4task_primary_cri_str``r h4task_primary_p0_str`; logit task offset). Standard-only calibration reverses this ordering (`r h4task_stdonly_beta_str`, `r h4task_stdonly_cri_str``r h4task_stdonly_p0_str`; ADT − VDT on $z$). This reversal is consistent with a $v$–$z$ trade-off when drift and bias are not estimated jointly across difficulty (@sec-starting-point-bias, @tbl-standard-only-bias-levels).
 
@@ -4031,18 +4136,37 @@ The Effort → Drift effect did not depend on task inclusion; the Effort × Task
 
 ### Starting-point bias {#sec-starting-point-bias}
 
-In a standard-only calibration model, starting-point bias ($z$) was estimated independently of drift rate ($v$). Bias values were consistently above 0.5. ADT showed higher bias toward "different" responses than VDT (`r h4task_stdonly_beta_str`, `r h4task_stdonly_cri_str``r h4task_stdonly_p0_str`; ADT − VDT on $z$). The effort contrast in this calibration model was small and uncertain (Low−High: `r h4_stdonly_beta_str`, `r h4_stdonly_cri_str`). Bias was modeled as a function of task and effort only, because participants did not know trial difficulty in advance [@farell1985; @nosofsky1997palmeri]. The primary-model H4 test is in @sec-key-contrasts.
+In a standard-only calibration model, starting-point bias ($z$) was estimated independently of drift rate ($v$). Bias values were consistently above 0.5. ADT showed higher bias toward "different" responses than VDT (`r h4task_stdonly_beta_str`, `r h4task_stdonly_cri_str``r h4task_stdonly_p0_str`; ADT − VDT on $z$). The effort contrast in this calibration model was small and uncertain (High−Low: `r h4_stdonly_beta_str`, `r h4_stdonly_cri_str`). Bias was modeled as a function of task and effort only, because participants did not know trial difficulty in advance [@farell1985; @nosofsky1997palmeri]. The primary-model H4 test is in @sec-key-contrasts.
 
 ```{r drift-standard-compute}
 #| echo: false
 #| include: false
-# Compute drift rate on Standard trials for inline use
-v_standard <- -1.1
+# Compute drift rate on Standard trials for inline use (Low vs High effort)
+v_standard_low <- -1.12
+v_standard_high <- -1.17
+v_standard_str <- "$\\hat{v} \\approx -1.12$ to $-1.17$"
 if (!is.null(pred_params) && nrow(pred_params) > 0) {
   v_std_data <- pred_params %>%
-    filter(model == PRIMARY_MODEL, rt_type == PRIMARY_RT, threshold == PRIMARY_THR, difficulty == "Standard")
+    filter(
+      model == PRIMARY_MODEL,
+      rt_type == PRIMARY_RT,
+      threshold == PRIMARY_THR,
+      difficulty == "Standard"
+    )
   if (nrow(v_std_data) > 0) {
-    v_standard <- round(mean(v_std_data$drift_median, na.rm = TRUE), 1)
+    v_low <- v_std_data %>%
+      dplyr::filter(effort == "Low") %>%
+      dplyr::pull(drift_median)
+    v_high <- v_std_data %>%
+      dplyr::filter(effort == "High") %>%
+      dplyr::pull(drift_median)
+    if (length(v_low) > 0) v_standard_low <- round(mean(v_low, na.rm = TRUE), 2)
+    if (length(v_high) > 0) v_standard_high <- round(mean(v_high, na.rm = TRUE), 2)
+    v_standard_str <- sprintf(
+      "$\\hat{v} \\approx %.2f$ (Low effort) to %.2f (High effort)",
+      v_standard_low,
+      v_standard_high
+    )
   }
 }
 ```
@@ -4073,7 +4197,7 @@ include_graphics_safe(main_fig("fig5_individual_differences.png"))
 
 ## Pupil-linked DDM extensions {#sec-pupil-ddm-integration}
 
-We next tested whether trial-wise task-evoked pupil responses (TEPR; within-subject *z*-scored Decision-Response AUC) predicted latent decision parameters during concurrent grip. The **pupil → bias ($z$)** test was pre-registered. The pupil → drift, pupil × difficulty on drift, and Cavanagh-style pupil → boundary ($a$) models were exploratory. On the pupil-available subset (`r format(pupil_n_trials_model, big.mark = ",")` trials, `r pupil_n_subj_model` participants), we fit four nested hierarchical Wiener models (@sec-pupil-ddm-models): (1) a **behavioral baseline** without pupil predictors; (2) **pupil → bias** ($z$); (3) **pupil → drift + bias** ($v$ and $z$); and (4) **pupil × difficulty** on drift. We also fit Cavanagh-style boundary models ($a$; @tbl-pupil-boundary-appendix). All nested models used the same trial set and the same additive difficulty/effort structure as the primary behavioral model. Because the pupil subset excludes trials without valid pupil data, it is **not** comparable to the full behavioral analysis ($N = 17{,}857$ trials); pupil-model comparisons are restricted to the nested same-$N$ set.
+We next tested whether trial-wise task-evoked pupil responses (TEPR; within-subject *z*-scored Decision-Response AUC) predicted latent decision parameters during concurrent grip. The **pupil → bias ($z$)** test was pre-specified as the primary pupil-linked contrast. The pupil → drift, pupil × difficulty on drift, and Cavanagh-style pupil → boundary ($a$) models were exploratory. On the pupil-available subset (`r format(pupil_n_trials_model, big.mark = ",")` trials, `r pupil_n_subj_model` participants), we fit four nested hierarchical Wiener models (@sec-pupil-ddm-models): (1) a **behavioral baseline** without pupil predictors; (2) **pupil → bias** ($z$); (3) **pupil → drift + bias** ($v$ and $z$); and (4) **pupil × difficulty** on drift. We also fit Cavanagh-style boundary models ($a$; @tbl-pupil-boundary-appendix). All nested models used the same trial set and the same additive difficulty/effort structure as the primary behavioral model. Because the pupil subset excludes trials without valid pupil data, it is **not** comparable to the full behavioral analysis ($N = 17{,}857$ trials); pupil-model comparisons are restricted to the nested same-$N$ set.
 
 `r pupil_loo_canonical` `r pupil_coef_canonical` `r pupil_cavanagh_canonical` `r pupil_meas_canonical` `r pupil_trunc_sensitivity_canonical` Full TEPR descriptives are in Appendix A5 (@tbl-tepr). Pooled and conditional estimates appear in @tbl-hyp-summary (pupil rows) and @tbl-pupil-key-effects-appendix; Cavanagh boundary extensions in @tbl-pupil-boundary-appendix.
 
@@ -4150,11 +4274,21 @@ if (file.exists(pupil_int_model_path) && requireNamespace("brms", quietly = TRUE
       med_std   <- median(draws_pupil_standard)
       med_hard  <- median(draws_pupil_hard)
       hdi_easy  <- quantile(draws_pupil_easy, c(0.025, 0.975))
-      use_option_a <- med_easy > 0 && (hdi_easy[2] > 0 || (hdi_easy[2] - hdi_easy[1]) * 0.5 > abs(hdi_easy[1])) &&
-                      (abs(med_std) < 0.05 || med_std <= 0) && (abs(med_hard) < 0.05 || med_hard <= 0)
-      if (use_option_a) {
-        pupil_fig_caption <- "Difficulty-Conditional TEPR Slopes on Drift Rate. Posterior distributions of the difficulty-conditional TEPR slope on drift rate $v$, separately for Standard, Hard, and Easy trials, from the pupil_scaled * difficulty interaction model. The Easy condition shows a posterior slope with median above zero, and Standard and Hard conditions show slopes centered nearer to zero — a pattern qualitatively consistent with a Yerkes-Dodson difficulty-conditional account. However, all three 95% credible intervals include zero, so this divergence does not meet the threshold for a credible interaction effect. See @sec-pupil-ddm-integration for measurement limitations. Shaded regions show the 95% HDI; vertical dashed lines mark zero."
-      }
+      # Conservative caption aligned with Table 18: all CrIs include zero;
+      # Standard shows the most positive conditional slope, not Easy.
+      pupil_fig_caption <- paste0(
+        "Difficulty-Conditional TEPR Slopes on Drift Rate. Posterior distributions of ",
+        "the difficulty-conditional TEPR slope on drift rate $v$, separately for Standard, ",
+        "Hard, and Easy trials, from the pupil_scaled * difficulty interaction model. ",
+        "Conditional posterior means were Standard = ", sprintf("%.3f", pupil_diff_mean_std),
+        ", Hard = ", sprintf("%.3f", pupil_diff_mean_hard),
+        ", Easy = ", sprintf("%.3f", pupil_diff_mean_easy),
+        "; all three 95% credible intervals include zero, and the posteriors show minimal ",
+        "separation across difficulty levels. This pattern does not support a credible ",
+        "pupil $\\times$ difficulty interaction on drift. See @sec-pupil-ddm-integration ",
+        "for measurement limitations. Shaded regions show the 95% HDI; vertical dashed ",
+        "lines mark zero."
+      )
       # ── Near-identical slope detection ───────────────────────────────────────
       slopes_range <- max(c(pupil_diff_mean_std, pupil_diff_mean_hard, pupil_diff_mean_easy)) -
                       min(c(pupil_diff_mean_std, pupil_diff_mean_hard, pupil_diff_mean_easy))
@@ -4430,13 +4564,13 @@ The reduction in drift rate under High effort (40% MVC) relative to Low effort i
 
 ## Boundary separation and strategic rigidity
 
-The H2 posterior is directionally positive (`r h2_beta_str`, `r h2_cri_str``r h2_p0_str`) but `r if (h2_rope_practically_null) sprintf("100\\%% of the posterior mass lies within the \\pm0.05 log-scale project ROPE, so we treat it as practically equivalent to zero rather than a compensatory caution adjustment") else "small relative to difficulty-driven variation"`. In natural-scale terms, the posterior median corresponds to `r h2_natural_pct_str` of baseline boundary separation ($\hat{a} \approx$ `r a_standard` in the Standard condition; @tbl-ddm-posterior-estimates) — much smaller than routine variation in $a$ across difficulty levels ($\hat{a}$ ranging from `r a_hard` to `r a_standard`). Empirical support for criterion widening under arousal comes from @cavanagh2014, who showed that pupil-indexed arousal during high-conflict choices predicted increased boundary separation — though that manipulation targeted transient cognitive conflict rather than sustained physical effort.
+The H2 posterior is directionally positive (`r h2_beta_str`, `r h2_cri_str``r h2_p0_str`) but `r if (h2_rope_practically_null) sprintf("100\\%% of the posterior mass lies within the \\pm0.05 log-scale project ROPE, so we treat it as practically equivalent to zero rather than a compensatory caution adjustment") else "small relative to difficulty-driven variation"`. In natural-scale terms, the posterior median corresponds to `r h2_natural_pct_str` of baseline boundary separation ($\hat{a} \approx$ `r a_standard` in the Standard, Low-effort condition; @tbl-ddm-posterior-estimates) — much smaller than routine variation in $a$ across difficulty levels ($\hat{a}$ ranging from `r a_hard` to `r a_standard`, Low effort). Empirical support for criterion widening under arousal comes from @cavanagh2014, who showed that pupil-indexed arousal during high-conflict choices predicted increased boundary separation — though that manipulation targeted transient cognitive conflict rather than sustained physical effort.
 
-Notably, boundary estimates varied substantially by stimulus-driven difficulty (Easy: `r a_easy`, Standard: `r a_standard`, Hard: `r a_hard`; @tbl-ddm-posterior-estimates), confirming that the model is sensitive to caution adjustments driven by bottom-up perceptual demands. Future work using free-response paradigms (without response cues) could better isolate strategic flexibility from design-imposed temporal constraints and provide a more powerful test of effort-related criterion adjustment at 40% MVC.
+Notably, boundary estimates varied substantially by stimulus-driven difficulty (Easy: `r a_easy`, Standard: `r a_standard`, Hard: `r a_hard`; Low-effort posterior medians; @tbl-ddm-posterior-estimates), confirming that the model is sensitive to caution adjustments driven by bottom-up perceptual demands. Future work using free-response paradigms (without response cues) could better isolate strategic flexibility from design-imposed temporal constraints and provide a more powerful test of effort-related criterion adjustment at 40% MVC.
 
-A potential concern with response-side coding is whether the Wiener DDM misinterprets Standard trial responses — where the correct answer is 'Same' (lower boundary) — as errors, because they accumulate toward a negative drift (lower boundary rather than upper). This concern does not apply in the present implementation. The decresponse argument in brms encodes the observed response (Different = 1, Same = 0) as the boundary indicator, not a correctness flag. The model observes the actual RT and response, infers the latent evidence trajectory that would produce that RT–accuracy combination given the full design, and estimates parameters that best explain the joint RT × accuracy distribution across all conditions simultaneously. Accordingly, the strong negative drift on Standard trials ($\hat{v} \approx -1.09$) does not indicate that the model treats these as error trials; it correctly captures the fact that participants accurately pressed 'Same' by accumulating evidence toward the lower boundary. The fact that boundary separation is higher on Standard trials ($\hat{a} = `r a_standard`$) than on Hard ($\hat{a} = `r a_hard`$) or Easy ($\hat{a} = `r a_easy`$) further validates this interpretation: the model responds to the exhaustive search demands of Standard trials by estimating a wider, more cautious boundary — the theoretically correct direction — rather than collapsing the boundary as it would if it incorrectly coded these as high-error conditions.
+A potential concern with response-side coding is whether the Wiener DDM misinterprets Standard trial responses — where the correct answer is 'Same' (lower boundary) — as errors, because they accumulate toward a negative drift (lower boundary rather than upper). This concern does not apply in the present implementation. The decresponse argument in brms encodes the observed response (Different = 1, Same = 0) as the boundary indicator, not a correctness flag. The model observes the actual RT and response, infers the latent evidence trajectory that would produce that RT–accuracy combination given the full design, and estimates parameters that best explain the joint RT × accuracy distribution across all conditions simultaneously. Accordingly, the strong negative drift on Standard trials (`r v_standard_str`) does not indicate that the model treats these as error trials; it correctly captures the fact that participants accurately pressed 'Same' by accumulating evidence toward the lower boundary. The fact that boundary separation is higher on Standard trials ($\hat{a} = `r a_standard`$, Low effort) than on Hard ($\hat{a} = `r a_hard`$) or Easy ($\hat{a} = `r a_easy`$) further validates this interpretation: the model responds to the exhaustive search demands of Standard trials by estimating a wider, more cautious boundary — the theoretically correct direction — rather than collapsing the boundary as it would if it incorrectly coded these as high-error conditions.
 
-**Boundary separation vs. starting-point bias: Different timescales of adjustment.** It is important to clarify an apparent asymmetry in the modeling decisions. Starting-point bias $z$ was constrained to be constant across difficulty levels, reflecting the logical impossibility of pre-trial criterion adjustment when trial difficulty is randomized and unknown prior to stimulus onset. In contrast, boundary separation $a$ was estimated as a function of difficulty and varied systematically (Standard: $\hat{a}$ = `r a_standard`; Hard: $\hat{a}$ = `r a_hard`; Easy: $\hat{a}$ = `r a_easy`; @tbl-ddm-posterior-estimates).
+**Boundary separation vs. starting-point bias: Different timescales of adjustment.** It is important to clarify an apparent asymmetry in the modeling decisions. Starting-point bias $z$ was constrained to be constant across difficulty levels, reflecting the logical impossibility of pre-trial criterion adjustment when trial difficulty is randomized and unknown prior to stimulus onset. In contrast, boundary separation $a$ was estimated as a function of difficulty and varied systematically (Standard: $\hat{a}$ = `r a_standard`; Hard: $\hat{a}$ = `r a_hard`; Easy: $\hat{a}$ = `r a_easy`; Low-effort medians; @tbl-ddm-posterior-estimates).
 
 This is not a contradiction. The two parameters reflect adjustments occurring at different timescales. Starting-point bias $z$ represents a true pre-stimulus strategic choice — where participants position themselves before evidence accumulation begins — and can only be set based on information available before the trial (task modality, effort condition). Boundary separation $a$, by contrast, is not a pre-trial strategic decision but rather an effective decision threshold inferred by the model from the shape of the empirical RT distribution within each condition. Participants do not "set" this boundary in advance; rather, the model recovers it as the latent parameter that best explains the observed RT variance under diffusion process assumptions [@ratcliff1985; @voss2004interpreting]. Over many trials, difficulty-dependent differences in RT dispersion and accuracy produce systematically different $a$ estimates even though individual participants are unaware of upcoming difficulty.
 
@@ -4457,7 +4591,7 @@ z_overall_q97.5 <- z_stdonly_q97.5
 
 The near-zero effort contrast on starting-point bias (H4; `r h4_beta_str`, `r h4_cri_str``r h4_p0_str`) provides no credible evidence that concurrent handgrip at 40% MVC shifted pre-existing response preferences in older adults — though the credible interval does not formally exclude a small effect, and no equivalence threshold was established. A key interpretive consideration is the distinction between tonic and phasic arousal: the @degee2020pupil bias-resetting effect was demonstrated using phasic, within-trial arousal fluctuations indexed by pupil dilation, whereas the present H4 test relied on a sustained tonic effort manipulation. Tonic arousal elevation may not produce the same criterion-resetting dynamics as a phasic arousal event — a distinction that future work pairing trial-level TEPR with starting-point bias estimates could address directly. In the standard-only calibration model, starting-point bias was consistently above 0.5 ($z = `r z_overall_mean`$, 95% CrI [`r z_overall_q2.5`, `r z_overall_q97.5`]; @tbl-standard-only-bias-levels), indicating a latent tendency to initiate accumulation closer to the "Different" boundary.
 
-This latent starting-point offset should not be read directly as a liberal behavioral criterion in signal-detection terms. Manipulation checks showed near-ceiling accuracy on Standard (same) trials but poor accuracy on Hard trials (~30%; Appendix A7) — a pattern dominated by **misses** (failure to report "different" when stimuli differed), not false alarms on same trials. The strongly negative drift on Standard trials ($\hat{v} \approx -1.1$) and the joint estimation of $v$ and $z$ across difficulty levels mean that a $z > 0.5$ starting point coexists with accurate "Same" responding rather than excess "Different" responses. The offset is therefore better interpreted as a DDM starting-point parameter under response-side coding — potentially reflecting a "Different-as-default" processing heuristic [@farell1985; @nosofsky1997palmeri] — than as a liberal SDT criterion producing elevated false-alarm rates.
+This latent starting-point offset should not be read directly as a liberal behavioral criterion in signal-detection terms. Manipulation checks showed near-ceiling accuracy on Standard (same) trials but poor accuracy on Hard trials (~30%; Appendix A7) — a pattern dominated by **misses** (failure to report "different" when stimuli differed), not false alarms on same trials. The strongly negative drift on Standard trials (`r v_standard_str`) and the joint estimation of $v$ and $z$ across difficulty levels mean that a $z > 0.5$ starting point coexists with accurate "Same" responding rather than excess "Different" responses. The offset is therefore better interpreted as a DDM starting-point parameter under response-side coding — potentially reflecting a "Different-as-default" processing heuristic [@farell1985; @nosofsky1997palmeri] — than as a liberal SDT criterion producing elevated false-alarm rates.
 
 Hard-trial accuracy at or below chance for many participants also indicates that some Hard offsets sat near perceptual threshold, weakening the assumption of a clean three-level difficulty gradient; this is noted in Limitations below. The absence of a credible effort contrast on $z$ is consistent with a stable task strategy rather than momentary arousal-driven criterion resetting, though this remains a graded null.
 
@@ -4475,17 +4609,15 @@ H3 could not be tested in the primary model because the response-signal design r
 
 ## Limitations and Future Directions
 
-Several limitations constrain the interpretation of these findings. First, the standard Wiener DDM assumes constant drift within each trial and does not include across-trial variability in drift ($s_v$), starting point ($s_z$), or non-decision time ($s_{t_0}$). Second, the response-signal design enforced a fixed delay before overt responding; probe-onset RT alignment and an intercept-only $t_0$ identify condition effects within that shared timing regime but do not support strong claims about pure encoding or motor $t_0$ in isolation (@sec-ddm-spec). Posterior predictive checks flagged all `r if (!is.na(ppc_n_cells_inline)) as.integer(ppc_n_cells_inline) else 12` experimental cells against pre-registered KS/QP thresholds (@tbl-convergence-ppc-gate-appendix), with deviations concentrated in fast RT tails (worst in Easy/VDT). Mid-body quantile–probability alignment was nevertheless acceptable (Appendix A3, @tbl-ppc-midbody), and key effort contrasts were stable across alternative RT lower-bound thresholds (Appendix A4.2, @tbl-h1-h2-by-cutoff). Future extensions incorporating across-trial variability, a fast-guess contaminant mixture, or urgency-collapsing boundaries may improve absolute fit [@ratcliff2008diffusion].
-
-Second, the response-signal paradigm imposes structural constraints on parameter estimation. Because the response window is externally gated, non-decision time $t_0$ could not be estimated with condition-specific variation without instability (@sec-ddm-spec and the H3 discussion above), limiting the direct test of H3. Reaction times are measured from response-screen onset rather than stimulus onset, confining the interpretation of $t_0$ to motor execution and response selection rather than early perceptual encoding. These design choices were necessary given the MRI-compatible grip-force paradigm but limit generalizability to free-response paradigms where $t_0$ reflects the full encoding-decision-motor chain.
+Several limitations constrain the interpretation of these findings. First, the standard Wiener DDM assumes constant drift within each trial and does not include across-trial variability in drift ($s_v$), starting point ($s_z$), or non-decision time ($s_{t_0}$). Second, the response-signal design enforced a fixed delay before overt responding; probe-onset RT alignment and an intercept-only $t_0$ identify condition effects within that shared timing regime but do not support strong claims about pure encoding or motor $t_0$ in isolation (@sec-ddm-spec). Reaction times are measured from response-screen onset rather than stimulus onset, confining the interpretation of $t_0$ to motor execution and response selection rather than early perceptual encoding. These design choices were necessary given the MRI-compatible grip-force paradigm but limit generalizability to free-response paradigms where $t_0$ reflects the full encoding-decision-motor chain. Posterior predictive checks flagged all `r if (!is.na(ppc_n_cells_inline)) as.integer(ppc_n_cells_inline) else 12` experimental cells against pre-specified KS/QP thresholds (@tbl-convergence-ppc-gate-appendix), with deviations concentrated in fast RT tails (worst in Easy/VDT). Mid-body quantile–probability alignment was nevertheless acceptable (Appendix A3, @tbl-ppc-midbody), and key effort contrasts were stable across alternative RT lower-bound thresholds (Appendix A4.2, @tbl-h1-h2-by-cutoff). Future extensions incorporating across-trial variability, a fast-guess contaminant mixture, or urgency-collapsing boundaries may improve absolute fit [@ratcliff2008diffusion].
 
 `r pupil_xref_limitations`
 
-Fourth, Hard-trial accuracy fell near or below chance for many participants (Appendix A7), indicating that some Hard offsets sat near perceptual threshold rather than forming a clean graded difficulty manipulation above chance. Parameter estimates for Hard conditions should be interpreted with this floor effect in mind.
+Third, Hard-trial accuracy fell near or below chance for many participants (Appendix A7), indicating that some Hard offsets sat near perceptual threshold rather than forming a clean graded difficulty manipulation above chance. Parameter estimates for Hard conditions should be interpreted with this floor effect in mind.
 
-Fifth, the concurrent isometric handgrip manipulation (40% MVC) may interact with motor execution in ways not fully captured by small fixed effects on $t_0$; future work integrating EMG or kinematic measures could disentangle central resource competition from peripheral motor interference. Linear Ballistic Accumulator or race models may also better accommodate the fast-tail RT dynamics observed in Easy-difficulty conditions, and future work could explore whether these model families yield the same substantive pattern of effort and difficulty effects on decision parameters.
+Fourth, the concurrent isometric handgrip manipulation (40% MVC) may interact with motor execution in ways not fully captured by small fixed effects on $t_0$; future work integrating EMG or kinematic measures could disentangle central resource competition from peripheral motor interference. Linear Ballistic Accumulator or race models may also better accommodate the fast-tail RT dynamics observed in Easy-difficulty conditions, and future work could explore whether these model families yield the same substantive pattern of effort and difficulty effects on decision parameters.
 
-Sixth, exploratory LC-MRI and neuropsychological correlates (Appendices A8 and A9) were underpowered for individual-differences moderation and did not enter the primary inferential framework; they are reported as descriptive context for sample characterization and do not alter the group-level DDM conclusions below.
+Fifth, exploratory LC-MRI and neuropsychological correlates (Appendices A8 and A9) were underpowered for individual-differences moderation and did not enter the primary inferential framework; they are reported as descriptive context for sample characterization and do not alter the group-level DDM conclusions below.
 
 
 ## Conclusions
@@ -4610,7 +4742,7 @@ include_graphics_safe(fig_path("fig_ndt_prior_posterior.pdf"))
 
 ```{r}
 #| label: fig-loo-comparison
-#| fig-cap: "LOO model comparison for baseline vs. additive models across RT definitions. Note: These LOOIC values reflect sensitivity models spanning multiple RT definitions and thresholds and are not directly comparable to the primary probe-onset-locked model (LOOIC = 42,857.5; Table 4), which uses a single pre-specified RT definition."
+#| fig-cap: !expr fig_loo_comparison_cap
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "70%"
@@ -5317,7 +5449,7 @@ if (file.exists(ppc_mid_path)) {
 
 ```{r}
 #| label: fig-ppc-heatmaps
-#| fig-cap: "PPC Residual Heatmaps. KS statistic and QP RMSE by Task × Effort × Difficulty for all models (top panel) and primary model only (bottom panel). Darker red indicates larger residuals. All cells exceed at least one pre-registered strict threshold; deviations are concentrated in fast RT tails."
+#| fig-cap: "PPC Residual Heatmaps. KS statistic and QP RMSE by Task × Effort × Difficulty for all models (top panel) and primary model only (bottom panel). Darker red indicates larger residuals. All cells exceed at least one pre-specified strict threshold; deviations are concentrated in fast RT tails."
 #| fig-align: center
 #| out-width: "80%"
 include_graphics_safe(fig_path("fig_ppc_heatmaps.pdf"))
@@ -5328,7 +5460,7 @@ include_graphics_safe(fig_path("fig_ppc_heatmaps.pdf"))
 
 ### A4.1 Exclusion of Sub-Chance Participants {.unnumbered}
 
-Twelve participants were at or near chance (≤55% accuracy in some conditions). We refit the primary model on the full sample (N = 67) and after excluding them (N = 55).
+Twelve participants were at or near chance ($\leq$55% accuracy in some conditions). We refit the primary model on the full sample (N = 67) and after excluding them (N = 55).
 
 **Method.** Model3_Difficulty and Model4_Additive were refit on the reduced sample. We compared sensitivity − baseline (Δ) with 95% CrIs. Overlapping CIs and a Δ CI including zero indicate little change.
 
@@ -5592,54 +5724,37 @@ if (!is.null(sensitivity_summary) && exists("has_sensitivity_summary") && has_se
 
 The difficulty gradient and effort effect on drift were similar at RT cutoffs of 0.15, 0.20, and 0.25 s (@tbl-app-sensitivity-full, @tbl-h1-h2-by-cutoff and figures below).
 
-LOOIC is not comparable across cutoffs because trial counts differ. We compare parameter estimates and effect direction, not LOOIC. @tbl-h1-h2-by-cutoff reports H1 (effort on drift) and H2 (effort on boundary) contrasts from additive probe-onset-locked models refit at each cutoff (0.15 / 0.20 / 0.25 s). Coefficients at 0.20 s match the canonical primary model; max $\hat{R}$ values in this table (up to 1.04) reflect the sensitivity refit pass and are interpreted for direction only.
+LOOIC is not comparable across cutoffs because trial counts differ; we therefore compare parameter estimates and effect direction only (@tbl-h1-h2-by-cutoff). @tbl-h1-h2-by-cutoff reports H1 (effort on drift) and H2 (effort on boundary) contrasts from additive probe-onset-locked models refit at each cutoff (0.15 / 0.20 / 0.25 s). Coefficients at 0.20 s match the canonical primary model (max $\hat{R}$ = 1.006 in the primary fit; Appendix A1). Cutoff-sweep refits are reported for directional stability only.
 
 ```{r}
 #| label: tbl-sensitivity-thresholds
-#| tbl-cap: "Sensitivity to minimum cue-locked RT cutoff (0.15/0.20/0.25 s)."
+#| tbl-cap: "Sensitivity to minimum cue-locked RT cutoff (0.15/0.20/0.25 s). LOOIC is omitted because trial counts differ across cutoffs; effect-direction comparisons appear in @tbl-h1-h2-by-cutoff."
 #| tbl-pos: "htbp"
 #| eval: !expr has_tbl_sens
-# Build sensitivity table from tbl_sens (handle optional LOOIC columns)
+# Build sensitivity table (trial counts only; LOOIC omitted — prior exports mixed baseline LOOIC with additive refits)
 if (!is.null(tbl_sens) && nrow(tbl_sens) > 0) {
-  cols_to_select <- c("threshold", "n_trials")
-  if ("looic" %in% names(tbl_sens)) {
-    cols_to_select <- c(cols_to_select, "looic")
-  }
-  if ("looic_se" %in% names(tbl_sens)) {
-    cols_to_select <- c(cols_to_select, "looic_se")
-  }
-
   tbl_sens_base <- tbl_sens %>%
-    select(all_of(cols_to_select)) %>%
+    select(threshold, n_trials, any_of(c("n_subjects", "min_rt", "median_rt"))) %>%
     arrange(threshold)
 
-  if (!"looic" %in% names(tbl_sens_base)) {
-    tbl_sens_base <- tbl_sens_base %>% mutate(looic = NA_real_)
-  }
-  if (!"looic_se" %in% names(tbl_sens_base)) {
-    tbl_sens_base <- tbl_sens_base %>% mutate(looic_se = NA_real_)
-  }
-
   tbl_sens_compact <- tbl_sens_base %>%
-    mutate(
-      looic = if (!all(is.na(looic))) round(looic, 1) else NA_real_,
-      looic_se = if (!all(is.na(looic_se))) round(looic_se, 1) else NA_real_,
-      n_trials = format(n_trials, big.mark = ",")
-    ) %>%
-    select(threshold, n_trials, looic, looic_se) %>%
+    mutate(n_trials = format(n_trials, big.mark = ",")) %>%
     rename(
       `Threshold (s)` = threshold,
-      `N trials` = n_trials,
-      `LOOIC` = looic,
-      `LOOIC SE` = looic_se
+      `N trials` = n_trials
     )
+
+  if ("n_subjects" %in% names(tbl_sens_compact)) {
+    tbl_sens_compact <- tbl_sens_compact %>%
+      rename(`N subjects` = n_subjects)
+  }
 
   tbl_sens_compact %>%
     knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
                  booktabs = TRUE,
                  linesep = "") %>%
     kableExtra::kable_styling(
-      latex_options = c("striped", "hold_position"),
+      latex_options = c("striped", "hold_position", "scale_down"),
       bootstrap_options = c("striped", "hover", "condensed", "responsive"),
       full_width = FALSE
     )
@@ -5659,10 +5774,9 @@ if (file.exists(h1h2_cutoff_path)) {
       `Threshold (s)` = threshold,
       `N trials` = format(n_trials, big.mark = ","),
       `H1: Effort on drift` = sprintf("beta = %.3f [%.3f, %.3f]", h1_beta, h1_q2.5, h1_q97.5),
-      `H2: Effort on boundary` = sprintf("beta = %.3f [%.3f, %.3f]", h2_beta, h2_q2.5, h2_q97.5),
-      `Max $\\hat{R}$` = sprintf("%.3f", max_rhat)
+      `H2: Effort on boundary` = sprintf("beta = %.3f [%.3f, %.3f]", h2_beta, h2_q2.5, h2_q97.5)
     ) %>%
-    dplyr::select(`Threshold (s)`, `N trials`, `H1: Effort on drift`, `H2: Effort on boundary`, `Max $\\hat{R}$`) %>%
+    dplyr::select(`Threshold (s)`, `N trials`, `H1: Effort on drift`, `H2: Effort on boundary`) %>%
     knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
                  booktabs = TRUE, linesep = "") %>%
     kableExtra::kable_styling(
@@ -5682,9 +5796,10 @@ if (file.exists(h1h2_cutoff_path)) {
 #| tbl-cap: "Full sensitivity analysis results across RT cutoffs (0.15, 0.20, 0.25 s)."
 #| tbl-pos: "htbp"
 #| eval: !expr has_tbl_sens
-# Print full tbl_sens table
+# Print full tbl_sens table (exclude LOOIC columns — not comparable across cutoffs)
 if (!is.null(tbl_sens) && nrow(tbl_sens) > 0) {
   tbl_sens %>%
+    select(-any_of(c("looic", "looic_se", "loo_ic", "loo_se", "LOOIC", "LOOIC_SE"))) %>%
     arrange(threshold) %>%
     mutate(
       across(where(is.numeric) & !matches("threshold"), ~round(.x, 3))
@@ -5704,34 +5819,13 @@ if (!is.null(tbl_sens) && nrow(tbl_sens) > 0) {
 
 ```{r}
 #| label: fig-app-sensitivity-looic
-#| fig-cap: "LOOIC values across RT cutoff thresholds. Model fit (LOOIC) is shown for each threshold (0.15, 0.20, 0.25 s), with error bars indicating standard errors. Minimal variation across thresholds indicates that model conclusions are robust to the choice of RT cutoff."
+#| fig-cap: "LOOIC across RT cutoff thresholds (disabled: prior exports reported baseline-model LOOIC and are not comparable to the primary additive model)."
 #| fig-align: center
 #| fig-pos: "htbp"
 #| out-width: "70%"
-#| eval: !expr has_tbl_sens_looic
-if (!is.null(tbl_sens) && nrow(tbl_sens) > 0 && "looic" %in% names(tbl_sens)) {
-  # Add looic_se if missing
-  if (!"looic_se" %in% names(tbl_sens)) {
-    tbl_sens <- tbl_sens %>% mutate(looic_se = NA_real_)
-  }
-  p_sens_loo <- ggplot(tbl_sens, aes(x = threshold, y = looic)) +
-    geom_point(size = 1.8, color = unname(param_colors["v"])) +
-    {if (!all(is.na(tbl_sens$looic_se))) geom_errorbar(aes(ymin = looic - looic_se, ymax = looic + looic_se), width = 0.01, color = unname(param_colors["v"]))} +
-    geom_line(alpha = 0.5, color = unname(param_colors["v"])) +
-    labs(
-      x = "RT Cutoff Threshold (s)",
-      y = "LOOIC"
-    ) +
-    theme_minimal(base_size = 12) +
-    theme(
-      axis.title = element_text(face = "bold"),
-      panel.grid.minor = element_blank()
-    )
-  print(p_sens_loo)
-  save_manuscript_fig(p_sens_loo, "fig_app_sensitivity_looic", 7, 4)
-} else {
-  invisible(NULL)
-}
+#| eval: false
+# LOOIC across cutoffs intentionally omitted — see @tbl-sensitivity-thresholds footnote.
+invisible(NULL)
 ```
 
 ```{r}
@@ -5941,6 +6035,15 @@ save_manuscript_fig(fig_additivity, "fig_additivity_check", 8, 4)
 #### Task-Sensitivity Model Comparison {.unnumbered}
 
 ```{r}
+#| include: false
+#| echo: false
+task_sens_table_note <- paste0(
+  "*Note.* Primary model excludes Task from drift; Task-Sens model includes Task main effect ",
+  "and Effort $\\times$ Task interaction."
+)
+```
+
+```{r}
 #| label: tbl-task-sensitivity
 #| tbl-cap: "Comparison of Effort Effects: Primary vs. Task-Sensitivity Model"
 #| tbl-pos: "htbp"
@@ -5971,17 +6074,15 @@ if (file.exists(task_sens_path)) {
     ) %>%
     select(Parameter, Estimate, `95% CrI`) %>%
     knitr::kable(booktabs = TRUE) %>%
-    kableExtra::kable_styling(latex_options = "hold_position") %>%
-    kableExtra::add_footnote(
-      "Note. Primary model excludes Task from drift; Task-Sens model includes Task main effect and Effort×Task interaction.",
-      notation = "none"
-    )
+    kableExtra::kable_styling(latex_options = "hold_position")
 } else {
   cat("Task-sensitivity comparison table not yet available. Run the full DDM refit pipeline to generate it.")
 }
 ```
 
-Effort reduced drift with Task in the model (`r if (exists("task_sens_eff_ts") && !is.na(task_sens_eff_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_eff_ts, task_sens_eff_lo, task_sens_eff_hi) else "see @tbl-task-sensitivity"`). ADT and VDT differed in absolute drift (`r if (exists("task_sens_task_ts") && !is.na(task_sens_task_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_task_ts, task_sens_task_lo, task_sens_task_hi) else "see @tbl-task-sensitivity"`), but Effort × Task was near zero (`r if (exists("task_sens_int_ts") && !is.na(task_sens_int_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_int_ts, task_sens_int_lo, task_sens_int_hi) else "see @tbl-task-sensitivity"`). The effort→drift effect was robust to adding task on drift, but omitting task from drift in the primary model suppresses a credible task main effect; we report task-separated drift and boundary profiles in @fig-suppl-drift-by-task (Panels A–B) and treat pooling as a deliberate simplification for the pre-registered effort contrasts.
+`r task_sens_table_note`
+
+Effort reduced drift with Task in the model (`r if (exists("task_sens_eff_ts") && !is.na(task_sens_eff_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_eff_ts, task_sens_eff_lo, task_sens_eff_hi) else "see @tbl-task-sensitivity"`). ADT and VDT differed in absolute drift (`r if (exists("task_sens_task_ts") && !is.na(task_sens_task_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_task_ts, task_sens_task_lo, task_sens_task_hi) else "see @tbl-task-sensitivity"`), but Effort × Task was near zero (`r if (exists("task_sens_int_ts") && !is.na(task_sens_int_ts)) sprintf("$\\delta = %.3f$, 95\\%% CrI [%.3f, %.3f]", task_sens_int_ts, task_sens_int_lo, task_sens_int_hi) else "see @tbl-task-sensitivity"`). The effort→drift effect was robust to adding task on drift, but omitting task from drift in the primary model suppresses a credible task main effect; we report task-separated drift and boundary profiles in @fig-suppl-drift-by-task (Panels A–B) and treat pooling as a deliberate simplification for the pre-specified effort contrasts.
 
 ```{r pdf-sanity-check}
 #| include: false
@@ -6039,9 +6140,23 @@ Unified pupil LOO, nested fixed-effects comparisons, Cavanagh boundary extension
 ### Unified pupil LOO comparison {.unnumbered .unlisted}
 
 ```{r}
+#| include: false
+#| echo: false
+pupil_loo_table_note <- paste0(
+  "*Note.* All pupil-augmented specifications use the same trial subset within each window. ",
+  "Rows under Decision-Response AUC (0.3--3.3 s) list nested Models m0--m3 ",
+  "(behavioral baseline; pupil $\\rightarrow$ $z$; pupil $\\rightarrow$ $v$ + $z$; pupil $\\times$ difficulty). ",
+  "$\\Delta$ELPD vs. m0 uses the same-$N$ behavioral baseline. ",
+  "Cavanagh pupil $\\rightarrow$ $a$ rows report boundary-only extensions. ",
+  "LOOIC for m0--m3 equals $-2 \\times$ ELPD when PSIS-LOO is reliable (max Pareto-$k$ $\\leq 0.7$)."
+)
+```
+
+```{r}
 #| label: tbl-pupil-loo-unified
-#| tbl-cap: "Unified PSIS-LOO comparison for all pupil-augmented specifications (nested m0–m3, Cavanagh pupil $\\rightarrow$ $a$, both TEPR windows). $\\Delta$ELPD vs. same-$N$ behavioral baseline within each window."
+#| tbl-cap: "Unified PSIS-LOO comparison for all pupil-augmented specifications (nested m0--m3, Cavanagh pupil $\\rightarrow$ $a$, both TEPR windows). $\\Delta$ELPD vs. same-$N$ behavioral baseline within each window."
 #| tbl-pos: "htbp"
+#| echo: false
 pupil_loo_all_path <- file.path(proj_root, "output", "ddm_pupil", "tables", "pupil_loo_all_models.csv")
 if (!file.exists(pupil_loo_all_path)) {
   pupil_loo_all_path <- file.path(proj_root, "output", "pupil_ddm", "tables", "pupil_loo_all_models.csv")
@@ -6054,8 +6169,8 @@ if (!file.exists(pupil_loo_all_path)) {
   model_1p_pupil_boundary = "m1p: Cavanagh pupil $\\rightarrow$ $a$"
 )
 .pupil_source_labels <- c(
-  primary_w3 = "Decision-Response AUC (0.3–3.3 s)",
-  truncated_w1p3 = "Truncated AUC (0.3–1.3 s)",
+  primary_w3 = "Decision-Response AUC (0.3--3.3 s)",
+  truncated_w1p3 = "Truncated AUC (0.3--1.3 s)",
   cavanagh_bs_primary = "Cavanagh $a$ (primary window)",
   cavanagh_bs_truncated = "Cavanagh $a$ (truncated window)"
 )
@@ -6079,17 +6194,6 @@ if (file.exists(pupil_loo_all_path)) {
       bootstrap_options = c("striped", "hover", "condensed"),
       full_width = FALSE,
       font_size = 10
-    ) %>%
-    kableExtra::add_footnote(
-      paste0(
-        "Note. All pupil-augmented specifications on the same trial subset within each window. ",
-        "Rows under Decision-Response AUC (0.3–3.3 s) list nested Models m0–m3 ",
-        "(behavioral baseline, pupil $\\rightarrow$ $z$, pupil $\\rightarrow$ $v$ + $z$, pupil $\\times$ difficulty); ",
-        "$\\Delta$ELPD vs. m0 uses the same-$N$ behavioral baseline. ",
-        "Cavanagh pupil $\\rightarrow$ $a$ rows report boundary-only extensions. ",
-        "LOOIC values for m0–m3 equal $-2 \\times$ ELPD when PSIS-LOO is reliable (max Pareto-$k$ $\\leq 0.7$)."
-      ),
-      notation = "none"
     )
 } else {
   tibble(Note = "pupil_loo_all_models.csv not found. Run scripts/build_pupil_extended_loo_table.R.") %>%
@@ -6097,6 +6201,12 @@ if (file.exists(pupil_loo_all_path)) {
     kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
 }
 ```
+
+```{=latex}
+\FloatBarrier
+```
+
+`r pupil_loo_table_note`
 
 ### Fixed effects and model comparison {.unnumbered .unlisted}
 
@@ -6817,7 +6927,7 @@ All priors were weakly informative and specified on the link scale. For intercep
 
 **Software.** R [@R], `brms` [@burkner2017brms; @burkner2018brms], CmdStan [@cmdstan2024] via `cmdstanr` [@cmdstanr], `loo` [@vehtari2017loo], tidyverse [@dplyr; @tidyr; @readr; @wickham2016ggplot2], `gt` [@gt], `posterior` [@burkner2022posterior], `RWiener` [@wabersich2014rwiener], `bayesplot` [@gabry2019bayesplot], Quarto [@quarto]. Models fit on GCP.
 
-**MCMC.** NUTS [@hoffman2014nuts], 8 chains × 2000 iterations (1000 warmup), adapt_delta = 0.95, max_treedepth = 12. Convergence: $\hat{R}$ ≤ 1.01, bulk ESS ≥ 400, zero divergences. Primary additive model: max $\hat{R}$ < 1.01, min bulk ESS = `r if (!is.null(conv_min_bulk_primary) && !is.na(conv_min_bulk_primary)) sprintf("%.0f", conv_min_bulk_primary) else "745"`, zero divergences.
+**MCMC.** NUTS [@hoffman2014nuts], 8 chains × 2000 iterations (1000 warmup), adapt_delta = 0.95, max_treedepth = 12. Convergence: $\hat{R}$ $\leq$ 1.01, bulk ESS $\geq$ 400, zero divergences. Primary additive model: max $\hat{R}$ < 1.01, min bulk ESS = `r if (!is.null(conv_min_bulk_primary) && !is.na(conv_min_bulk_primary)) sprintf("%.0f", conv_min_bulk_primary) else "745"`, zero divergences.
 
 **PSIS.** Pareto-$k > 0.7$ flagged per [@vehtari2017loo].
 
@@ -7510,9 +7620,9 @@ LC MRI in a subset of participants ([@bennett2024lc]; overlapping BAP cohort). E
 
 **Sample.** `r lc_n_merged` participants had LC metrics and DDM random effects; `r lc_n_complete` had complete NODDI data. The LC subset did not differ from others on accuracy, RT, effort cost, or age (*p* > .19).
 
-**Metrics.** LC CNR, NODDI fISO/fICVF, and composites (Composite~v2~, PC1~v2~). Outcomes: d′ variability and mean, |RT effort cost|, baseline DDM parameters (*v*, *a*, *z*), mean TEPR. Partial correlations controlled for age and sex.
+**Metrics.** LC CNR, NODDI fISO/fICVF, and composites (Composite~v2~, PC1~v2~). Outcomes: $d'$ variability and mean, |RT effort cost|, baseline DDM parameters (*v*, *a*, *z*), mean TEPR. Partial correlations controlled for age and sex.
 
-**Results.** Higher LC fISO predicted greater d′ variability (partial *r* = `r lc_fiso_dprimevar_r`, *p* = `r lc_fiso_dprimevar_p`, *n* = `r lc_fiso_dprimevar_n`) but not mean d′ (*p* = `r lc_fiso_dprime_mean_p`). LC fISO correlated with lower baseline *a* (partial *r* = `r lc_fiso_a_r`, *p* = `r lc_fiso_a_p`); not with *v* (*p* = `r lc_fiso_v_p`), *z* (*p* > .80), or TEPR (*p* = `r lc_fiso_tepr_p`; CNR vs. TEPR: *p* = `r lc_cnr_tepr_p`).
+**Results.** Higher LC fISO predicted greater $d'$ variability (partial *r* = `r lc_fiso_dprimevar_r`, *p* = `r lc_fiso_dprimevar_p`, *n* = `r lc_fiso_dprimevar_n`) but not mean $d'$ (*p* = `r lc_fiso_dprime_mean_p`). LC fISO correlated with lower baseline *a* (partial *r* = `r lc_fiso_a_r`, *p* = `r lc_fiso_a_p`); not with *v* (*p* = `r lc_fiso_v_p`), *z* (*p* > .80), or TEPR (*p* = `r lc_fiso_tepr_p`; CNR vs. TEPR: *p* = `r lc_cnr_tepr_p`).
 
 @tbl-lc-exploratory-correlations lists targeted associations. @fig-lc-fiso-dprime-variability and @fig-lc-fiso-four-panel show the main patterns.
 
@@ -7535,8 +7645,8 @@ if (file.exists(lc_tbl_path)) {
         TRUE ~ predictor
       ),
       Outcome = case_when(
-        outcome == "dprime_variability" ~ "d′ variability",
-        outcome == "dprime_mean" ~ "Mean d′",
+        outcome == "dprime_variability" ~ "$d'$ variability",
+        outcome == "dprime_mean" ~ "Mean $d'$",
         outcome == "v_mean" ~ "Baseline drift (v)",
         outcome == "a_mean" ~ "Baseline boundary (a)",
         outcome == "z_mean" ~ "Baseline bias (z)",
@@ -7549,7 +7659,8 @@ if (file.exists(lc_tbl_path)) {
 
   lc_supp_tbl %>%
     knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
-                 booktabs = TRUE, linesep = "") %>%
+                 booktabs = TRUE, linesep = "",
+                 escape = !knitr::is_latex_output()) %>%
     kableExtra::kable_styling(
       latex_options = c("striped", "hold_position"),
       bootstrap_options = c("striped", "hover", "condensed", "responsive"),
@@ -7562,7 +7673,7 @@ if (file.exists(lc_tbl_path)) {
 
 ```{r}
 #| label: fig-lc-fiso-dprime-variability
-#| fig-cap: "Exploratory association between LC free-water fraction (fISO) and cross-intensity d′ variability, controlling for age and sex. Higher fISO predicted greater sensitivity variability across stimulus levels but not mean d′ (see Appendix A8)."
+#| fig-cap: "Exploratory association between LC free-water fraction (fISO) and cross-intensity $d'$ variability, controlling for age and sex. Higher fISO predicted greater sensitivity variability across stimulus levels but not mean $d'$ (see Appendix A8)."
 #| fig-align: center
 #| out-width: "72%"
 #| echo: false
@@ -7576,7 +7687,7 @@ if (file.exists(file.path(proj_root, "output/figures/fig_lc_fiso_dprime_variabil
 
 ```{r}
 #| label: fig-lc-fiso-four-panel
-#| fig-cap: "LC fISO in relation to behavioral variability, mean d′, baseline DDM boundary separation (a), and mean TEPR. Partial correlations control for age and sex. Only variability and baseline a showed associations at p < .05."
+#| fig-cap: "LC fISO in relation to behavioral variability, mean $d'$, baseline DDM boundary separation (a), and mean TEPR. Partial correlations control for age and sex. Only variability and baseline a showed associations at p < .05."
 #| fig-align: center
 #| out-width: "92%"
 #| echo: false
@@ -7616,7 +7727,7 @@ Extended baseline descriptives for the DDM sample (*N* = `r np_n_ddm`). Table 1 
 
 **Battery.** @tbl-extended-baseline lists executive, language, and self-report measures (TMT, Boston Naming, SILS, GDS, GAD-7, EMQ). Scores were typical for healthy older adults (e.g., Boston Naming *M* = 20.6/23; GDS *M* = 1.7/15).
 
-**DDM associations (exploratory).** MoCA did not correlate with baseline drift (*p* = `r np_moca_v_p`) or RT effort cost (*p* = `r np_moca_rt_p`) (@tbl-neuropsych-ddm-exploratory). Uncorrected *p* < .05 links included SILS with accuracy/RT and GDS with d′ variability (partial *r* = `r np_gds_var_r`, *p* = `r np_gds_var_p`; none FDR *q* < .05). Secondary context only.
+**DDM associations (exploratory).** MoCA did not correlate with baseline drift (*p* = `r np_moca_v_p`) or RT effort cost (*p* = `r np_moca_rt_p`) (@tbl-neuropsych-ddm-exploratory). Uncorrected *p* < .05 links included SILS with accuracy/RT and GDS with $d'$ variability (partial *r* = `r np_gds_var_r`, *p* = `r np_gds_var_p`; none FDR *q* < .05). Secondary context only.
 
 ```{r}
 #| label: tbl-extended-baseline-categorical
@@ -7685,7 +7796,7 @@ if (file.exists(np_cor_path)) {
         outcome == "rt_mean" ~ "Mean RT",
         outcome == "accuracy_diff_abs" ~ "|Accuracy cost|",
         outcome == "rt_diff_abs" ~ "|RT cost|",
-        outcome == "dprime_var" ~ "d′ variability",
+        outcome == "dprime_var" ~ "$d'$ variability",
         TRUE ~ outcome
       ),
       `Partial r` = r,
@@ -7695,7 +7806,8 @@ if (file.exists(np_cor_path)) {
     ) %>%
     select(Predictor, Outcome, `Partial r`, `p`, `FDR q`, n) %>%
     knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
-                 booktabs = TRUE, linesep = "") %>%
+                 booktabs = TRUE, linesep = "",
+                 escape = !knitr::is_latex_output()) %>%
     kableExtra::kable_styling(
       latex_options = c("striped", "hold_position"),
       bootstrap_options = c("striped", "hover", "condensed", "responsive"),
@@ -7715,7 +7827,7 @@ These models evaluate choice history and within-run fatigue. They are reported h
 
 ### A10.1 Choice-history models {#sec-choice-history .unnumbered}
 
-We fit two hierarchical Wiener DDM variants to test whether high somatic load increased reliance on recent responses (N = 17,199 trials after block-boundary exclusions; see Supplementary Methods). Both models added the previous response (coded ±0.5 for "Different"/"Same") to the starting-point bias subformula. The history model tested perseveration and its modulation by effort. The win-stay/lose-shift (WSLS) model also included previous-trial accuracy, asking whether carry-over differed after correct versus incorrect responses. The history model met the pre-registered $\hat{R} < 1.01$ criterion (max $\hat{R}$ = 1.003). The WSLS variant had a slightly elevated maximum $\hat{R}$ (1.014). Neither model had divergent transitions.
+We fit two hierarchical Wiener DDM variants to test whether high somatic load increased reliance on recent responses (N = 17,199 trials after block-boundary exclusions; see Supplementary Methods). Both models added the previous response (coded ±0.5 for "Different"/"Same") to the starting-point bias subformula. The history model tested perseveration and its modulation by effort. The win-stay/lose-shift (WSLS) model also included previous-trial accuracy, asking whether carry-over differed after correct versus incorrect responses. The history model met the pre-specified $\hat{R} < 1.01$ criterion (max $\hat{R}$ = 1.003). The WSLS variant had a slightly elevated maximum $\hat{R}$ (1.014). Neither model had divergent transitions.
 
 **Baseline perseveration.** Older adults showed a small but reliable tendency to repeat their previous response. In the history model, the previous-trial response coefficient on bias was positive with its 95% CrI excluding zero ($\hat{\beta}$ = 0.065, 95% CrI [0.005, 0.125], P($\beta$ > 0) = 98.2%). On the logit scale, this corresponds to approximately a 1.5 percentage-point shift in the probability of choosing "Different" following a "Different" response. The same direction and magnitude emerged in the WSLS model (0.137 [0.017, 0.256]).
 

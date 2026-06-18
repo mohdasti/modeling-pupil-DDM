@@ -84,4 +84,4 @@ if (file.exists(pf_subj_rds)) {
 # tbl_sens is loaded in the main chapter (ddm-paths-and-imports); do not reload here
 ```
 
-PPC thresholds (pre-registered): mid-body QP RMSE < 0.09 s, |Δ accuracy| < 0.05, KS < 0.15, and <15% of subject-condition cells flagged. Residuals = observed minus posterior median. Unconditional trial simulations used `RWiener` [@wabersich2014rwiener]; plots used `bayesplot` [@gabry2019bayesplot].
+PPC thresholds (pre-specified): mid-body QP RMSE < 0.09 s, |Δ accuracy| < 0.05, KS < 0.15, and <15% of subject-condition cells flagged. Residuals = observed minus posterior median. Unconditional trial simulations used `RWiener` [@wabersich2014rwiener]; plots used `bayesplot` [@gabry2019bayesplot].
