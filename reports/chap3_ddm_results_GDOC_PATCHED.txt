@@ -1,0 +1,1658 @@
+Physical Effort Reduces Evidence Accumulation Quality in Older Adults: A Hierarchical Diffusion Decision Model Analysis
+Table of contents
+Abstract        4
+1. Introduction        5
+1.1 Physical Effort and Performance in the Aging Brain        5
+1.2 Decomposing Decisions: The Drift-Diffusion Model        5
+1.3 Arousal, Effort, and Decision Performance in Older Adults        7
+1.4 Pupillometry and Pupil-Informed Drift-Diffusion Modeling        8
+1.5 Hypotheses and Predictions        10
+1.6 The Present Study        11
+2. Methods        11
+2.1 Participants        11
+2.2 Stimuli and Task Design        12
+2.3 Equipment        13
+2.4 Data Processing and Quality Control        14
+2.5 Experimental Design and Statistical Modeling        14
+2.6 Statistical Analysis Overview        15
+2.7 Pupillometry Preprocessing and AUC Features        15
+2.8 DDM Overview and Parameter Definitions        17
+2.9 Decision Coding and Parameterization        17
+2.10 Model Specification: Standard-only Calibration and Primary Model        17
+2.10.1 Pupil-Linked DDM Extensions        19
+2.11 Priors, Computation, and Diagnostics        20
+3. Results        21
+3.1 Primary model overview        21
+3.2 Effort effects on decision parameters (H1-H4)        21
+3.2.1 Behavioral hypothesis tests (H1-H4)        23
+3.2.2 Starting-point bias        27
+3.3 Pupil-linked DDM extensions        28
+4. Discussion        30
+4.1 Summary of Key Findings        30
+4.2 Drift rate under effort        30
+4.3 Boundary separation and strategic rigidity        30
+4.4 Starting-point bias and pupil-linked arousal        32
+4.5 Temporal dynamics across trials        33
+4.6 Modeling constraints        33
+4.7 Limitations and Future Directions        34
+4.8 Conclusions        35
+Reproducibility Note        35
+Appendix        37
+A1. Model Selection and Convergence Diagnostics        37
+A2. Standard-Only Calibration and Supplementary Parameter Tables        39
+A2.1 Trial counts by condition        39
+A2.2 Primary model posterior estimates        41
+A2.3 Standard-only calibration        43
+A2.4 Baseline pupil diameter        44
+A2.5 Standard-only drift intercept        45
+A3. Posterior Predictive Checks and Diagnostics        45
+A3.1 PPC Validation Method        47
+A3.2 Visual PPC Diagnostics        47
+A3.3 Supplementary Diagnostic Figures        49
+A4. Sensitivity Analyses        51
+A4.1 Exclusion of Sub-Chance Participants        51
+A4.2 RT Cutoff Thresholds        53
+A4.3 Task Modality Effects: Sensitivity Analysis        55
+A5. Pupil-DDM Fixed Effects and TEPR Visualization        58
+Unified pupil LOO comparison        58
+Fixed effects and model comparison        61
+Cavanagh boundary extensions        61
+TEPR descriptives and visualization        62
+TEPR waveforms and conditional slopes        64
+A6. Detailed DDM Model Specification        66
+A6.1 Response-Signal Timing Structure        66
+A6.2 Link Functions and Parameter Constraints        67
+A6.3 Hierarchical Model Structure        67
+A6.4 Prior Specification        69
+A6.5 Computational Details        69
+A7. Manipulation Checks: Behavioral Validation        70
+A7.1 Methods        70
+A7.2 Accuracy Results        70
+A7.3 Reaction Time Results        72
+A8. Exploratory LC Structural Correlates        73
+A9. Extended Baseline Characteristics and Neuropsychological Profile        76
+A10. Exploratory Temporal Dynamics        78
+A10.1 Choice-history models        78
+A10.2 Within-session fatigue trajectory        78
+References        80
+
+
+________________
+
+
+Abstract
+Sixty-seven older adults completed auditory and visual same–different judgments under low (5% MVC) or high (40% MVC) isometric grip while pupil diameter was recorded. A hierarchical Wiener DDM was fit with probe-onset-locked RT. Difficulty entered drift () and boundary separation (); task and effort entered starting-point bias (), held constant across difficulty because trials were randomized.
+High effort lowered drift relative to low (, 95% CrI ; ; 4% ROPE mass). High effort produced a directionally positive boundary-separation contrast that was practically negligible under the project ROPE (, 95% CrI ; ). Effort did not credibly change bias (, 95% CrI ; ). Non-decision time () was group-level only in the primary model, so effort on peripheral timing was not tested there; an exploratory log- effort term was small and wide (, 95% CrI [−0.05, 0.09]).
+Exploratory pupil-linked models showed near-zero TEPR associations with drift and bias, no predictive gain over the behavioral baseline on the pupil subset, and no LOO advantage for Cavanagh-style pupil→boundary extensions (Section 3.3). A pupil × difficulty interaction on drift did not support demand-dependent arousal effects (Section 3.3).
+Primary contrasts held under alternative RT cutoffs and when task modality was included as a sensitivity check. Under concurrent grip, older adults mainly accumulated less evidence per unit time; caution and pre-response bias changed little.
+________________
+
+
+1. Introduction
+1.1 Physical Effort and Performance in the Aging Brain
+Older adults show pervasive response time slowing across virtually all task domains, a finding historically attributed to generalized processing speed decline (Birren, 1965; Salthouse, 1985; Salthouse, 1996). Beyond simple biological slowing, this behavior is often strategic; older adults systematically favor accuracy over speed, adopting a more cautious response mode to compensate for declining neural efficiency (Rabbitt, 1979; Ratcliff et al., 2004; Starns & Ratcliff, 2010). While these patterns are well-documented in sedentary laboratory settings, real-world cognitive tasks frequently occur while simultaneously exerting physical effort.
+For older adults, the “cost” of such exertion is significantly higher due to age-related declines in motor efficiency and reduced neural reserves (Verhaeghen et al., 2003). According to resource competition theories, the executive demands required to maintain a physical grip or posture compete for the same limited pool of cognitive resources needed for decision-making (Wickens, 2008). While it is established that physical load can impair general performance (Verhaeghen et al., 2003; Woollacott & Shumway-Cook, 2002), we do not yet know whether this interference simply slows down peripheral execution or fundamentally degrades the quality of information processing. This study utilizes a computational framework to decompose these effects, investigating how physical effort and physiological state interact to shape decision-making in the aging brain.
+1.2 Decomposing Decisions: The Drift-Diffusion Model
+To understand the latent mechanisms underlying age-related slowing, we utilize the Drift-Diffusion Model (Ratcliff, 1978). This computational framework assumes that decision-making is a continuous process of evidence accumulation over time, driven by two primary opposing forces that define the internal dynamics of the choice. The first of these internal forces is the deterministic mean drift rate (), which represents the true quality or strength of the sensory evidence extracted from a stimulus. The second force is the stochastic diffusion constant (), capturing the inherent noise and moment-to-moment Gaussian fluctuations in the nervous system. Together, these two forces determine the trajectory of a decision vector over time until it intersects a boundary, a dynamic process visually formalized in Figure 1 (Panel B). As shown in this architectural layout, the final choice and its corresponding timing are ultimately governed by the decision architecture, which dictates the structural boundaries and thresholds within which this continuous evidence accumulation occurs.
+  
+
+Figure 1: Older adults performed auditory and visual change-detection tasks under concurrent isometric grip while pupil diameter was continuously recorded, enabling trial-by-trial decomposition of decision processes via hierarchical drift-diffusion modeling. (A) Response-signal trial timeline: jittered pre-cue (1.5–4.5 s), 3-s grip gauge (Low = 5% MVC; High = 40% MVC), standard  probe stimulus sequence, same/different response window (3 s), and confidence rating. (B) Drift-diffusion schematic with response-side coding (upper boundary = ‘different’; lower = ‘same’); parameters labelled: drift rate (), boundary separation (), starting-point bias (), non-decision time (). (C) Predictor-to-parameter map for the primary model: difficulty and effort predict  and ; effort and task predict ;  is intercept-only. Statistical note:  = 67 older adults (age  = 69.5 years,  = 6.4, range 60–87); 17,857 trials retained after cue-locked RT exclusions.
+	This mathematical framework allows us to decompose standard behavioral reaction time data and accuracy rates into four distinct latent parameters. The drift rate () reflects the efficiency and quality of the accumulation process itself, where the absolute magnitude of the parameter reflects the clarity of the sensory signal and the efficiency of the accumulation process itself, directing the decision vector toward either the upper (‘different’) or lower (‘same’) boundary based on stimulus properties. The boundary separation () establishes the total amount of evidence required before a participant commits to a response, serving as a direct measure of response caution. The starting-point bias () accounts for any a priori preference or baseline asymmetry toward one response alternative over another before the trial even begins. Finally, the non-decision time () captures the duration of peripheral mechanisms that fall completely outside the core decision process, such as initial sensory encoding and downstream motor execution (Ratcliff, 1978; Ratcliff & McKoon, 2008; Voss et al., 2004).
+Decomposing these metrics is critical when examining an aging population because standard behavioral observations often mask the true underlying cognitive changes. Previous research demonstrates a clear processing dissociation in older adults. When performing simple perceptual tasks like brightness or letter discrimination, older adults consistently exhibit elevated boundary separation and longer non-decision times, yet their underlying drift rate remains remarkably preserved (Ratcliff et al., 2001, 2004; Ratcliff & McKoon, 2008). However, this preservation is fragile. When task demands intensify through increased perceptual load, complex visual search, or episodic memory retrieval, the efficiency of evidence accumulation begins to decline significantly (Madden & Allen, 1991; Spaniol et al., 2006).
+An open question is whether these DDM parameters represent rigid capacity limits or if they are dynamically modulated by an individual’s immediate physiological state. By using physical effort to manipulate systemic arousal, we can test whether these internal mechanisms are flexible under stress. Specifically, we can determine if the increased physiological cost of high physical effort forces an alteration in the decision architecture, perhaps prompting a compensatory increase in boundary caution, or if it directly degrades the efficiency of the evidence accumulation process itself. This methodology allows us to move past the simple observation that older adults slow down under pressure, revealing instead the real-time interaction between somatic demand and cognitive efficiency.
+1.3 Arousal, Effort, and Decision Performance in Older Adults
+The relationship between physiological arousal and cognitive performance has long been conceptualized as an inverted-U function, where intermediate states yield optimal execution while hypo- or hyper-arousal leads to systemic performance degradation (Yerkes & Dodson, 1908). Adaptive Gain Theory provides a functional account of this classic relationship by frameworking arousal as a dynamic modulator of neural gain, which directly dictates the signal-to-noise ratio of information processing during task-relevant behavior (Aston-Jones & Cohen, 2005). When applied to the psychology of aging, empirical evidence suggests that the dynamic range of these autonomic regulation systems becomes significantly constricted. Age-related shifts in baseline arousal settings and diminished physiological flexibility make older adults highly vulnerable to over-activation. Consequently, modest increases in objective task demands can rapidly elevate systemic arousal past the optimal peak and into a supra-optimal zone where excessive internal noise compromises cognitive stability (Huang & Clewett, 2024; Mather & Harley, 2016; Mikneviciute et al., 2022).
+This physiological vulnerability becomes highly salient when cognitive operations are performed under concurrent physical load, which acts as a powerful somatic driver of systemic arousal. Because older adults exhibit reduced motor efficiency and diminished physiological reserves, maintaining an isometric grip demands a vastly disproportionate expenditure of subjective effort relative to younger cohorts. This cognitive-motor cost reflects an age-related shift wherein previously automated sensorimotor operations must recruit explicit, top-down executive control, effectively transforming a somatic task into a direct competitor for limited central processing resources (Verhaeghen et al., 2003). Older adults performing continuous processing tasks exhibit exaggerated autonomic reactivity, measured via prominent shifts in systolic blood pressure, which directly predict heightened states of subsequent cognitive fatigue (Hess & Ennis, 2012). Crucially, this somatic burden directly interferes with simultaneous processing, selectively impairing performance accuracy in older adults under conditions where younger adults remain entirely unaffected (Azer et al., 2023). Rather than treating resource competition (Wickens, 2008) and arousal-based models as independent accounts, we argue they are functionally integrated. The substantial central resources required to sustain a high-intensity physical grip force the aging nervous system into a state of hyper-arousal. This sustained somatic load pushes the organism past the optimal peak of the functional gain curve, generating a resource bottleneck where cognitive processing efficiency is simultaneously drained by structural capacity limits and obscured by hyper-arousal-induced noise.
+Although it is clear that concurrent physical effort alters gross behavioral metrics like accuracy, traditional performance measures are fundamentally blind to the underlying latent mechanisms driving these failures. For example, a drop in accuracy under high physical load could reflect a degradation in the quality of sensory processing, but it could alternatively signal a top-down strategic shift where a participant deliberately lowers their decision threshold to escape the discomfort of sustained muscular contraction. Traditional reaction time and error analyses cannot adjudicate between these competing explanations. By decomposing behavioral data into distinct computational parameters within a diffusion framework, we can explicitly isolate these hidden components. Identifying whether physical effort selectively suppresses evidence quality or collapses decision boundaries provides critical insight into the functional architecture of cognitive-motor interference. This computational approach moves the field beyond merely documenting that physical demand impairs cognition, providing instead a clear mechanistic account of how somatic load shapes the speed, accuracy, and strategic boundaries of human choice.
+1.4 Pupillometry and Pupil-Informed Drift-Diffusion Modeling
+To empirically capture these shifting states of resource allocation, we utilize pupillometry as a continuous physiological proxy for an individual’s internal state. Non-invasive eye tracking provides a highly sensitive measure of central nervous system activation, where fluctuations in pupil diameter track changes in autonomic tone with exceptional temporal precision (Beatty, 1982; Kahneman & Beatty, 1966). Within this methodology, two distinct components offer insight into a participant’s physiological state. While baseline pupil diameter reflects slower shifts in tonic arousal and sustained alertness, the task-evoked pupil response (TEPR) acts as a rapid, phasic signal that directly tracks moment-to-moment changes in cognitive and somatic workload (Gilzenrat et al., 2010; Van Gerven et al., 2004). Quantifying this phasic response via the trial-wise area under the curve (AUC) allows us to measure how the immediate demand of sustaining a physical grip alters an individual’s physiological investment from one choice to the next.
+Of course, peripheral pupil metrics are not driven solely by internal arousal; they are inherently sensitive to extraneous variables such as ambient luminance, viewing distance, and direct motor execution reflexes (Beatty, 1982; Loewenfeld & Lowenstein, 1999). We rigorously control for these potential confounds by executing our paradigm within a highly regulated MRI environment characterized by constant background luminance and a locked viewing distance. Under these invariant conditions, transient changes in the TEPR can be confidently interpreted as a relative index of phasic arousal rather than a sensory or physical artifact. Furthermore, while a wealth of animal and neuropharmacological research firmly links transient pupil dilations to central locus coeruleus-norepinephrine activity (Gilzenrat et al., 2010; Joshi et al., 2016), our psychophysiological approach treats the TEPR strictly as a functional, systemic index of phasic arousal state rather than a direct anatomical biomarker of midbrain nuclei integrity. However, an open physiological question remains whether the concurrent somatic demands of a sustained motor action complement or structurally obscure these transient, cognitively driven pupillary dilations under high workload.
+Integrating this single-trial psychophysiological metric directly into a computational model offers a substantial analytical advantage over traditional behavioral modeling. Standard applications of the drift-diffusion model generate static parameter estimates averaged across entire blocks of trials. This aggregate approach completely ignores the reality that a participant’s internal state fluctuations occur continuously throughout a session. By incorporating trial-by-trial pupil data directly into the hierarchical DDM framework, we can map these transient, phasic arousal fluctuations onto specific latent decision processes, revealing how moment-to-moment cognitive preparation shifts under the broader constraints of a sustained physical load.
+A foundational demonstration of this technique was provided by Cavanagh and colleagues (2014), who utilized single-trial pupillometry during a probabilistic learning task to show that transient pupil dilations specifically predicted an increase in boundary separation () during high-conflict choices. This finding suggested that under cognitive conflict, a sudden surge in phasic arousal acts as a signaling mechanism that prompts the brain to adopt greater response caution.
+Our study extends this methodology by shifting the experimental focus from cognitive conflict to physical effort, and from healthy young cohorts to an aging population. This shift provides a fundamentally distinct test of how internal arousal states govern decision architecture. While cognitive conflict in young adults primarily modulates top-down strategic thresholds, the combination of advanced age and concurrent physical exertion introduces a severe strain on shared processing resources. Consequently, by testing pupil-informed models under varying physical loads—including nested extensions on drift, starting-point bias, and boundary separation—we evaluated whether trial-by-trial fluctuations in pupil-indexed phasic arousal track strategic caution () or degradation in evidence accumulation () under sustained physical load.
+1.5 Hypotheses and Predictions
+We evaluated four primary predictions regarding how concurrent physical load modulates the latent components of decision formation in older adults. First, we hypothesized that the drift rate () would significantly decrease under the high-effort condition (40% MVC) relative to the low-effort baseline (5% MVC). This prediction directly builds upon the principles of resource competition and functional arousal dynamics established across the preceding sections. The severe somatic burden of maintaining a high-intensity muscular contraction is expected to force the aging nervous system past the optimal peak of the Yerkes-Dodson curve, draining shared central resources and ultimately degrading the clarity and efficiency of sensory evidence accumulation.
+Second, we evaluated two competing accounts regarding boundary separation (). Under an adaptive caution account extrapolated from cognitive conflict frameworks, systemic hyper-arousal might prompt a top-down, strategic widening of thresholds to protect performance stability under strain. Conversely, under a somatic fatigue account, the acute physical discomfort of sustained muscular contraction could drive a collapse of boundaries as participants attempt to terminate trials quickly. Adjudicating between these accounts allows us to determine whether older adults dynamically recalibrate their decision criteria under tonic somatic load.
+Third, we addressed the impact of motor demand on peripheral overhead by exploring whether non-decision time () would increase under high physical effort, a shift that would reflect direct cognitive-motor interference during concurrent grip maintenance. Because the inherent structural constraints of the response-signal paradigm restrict full estimation flexibility for non-decision processes, this evaluation was treated as an explicit exploratory analysis rather than a primary structural hypothesis. These parameter variations are reported transparently to provide a complete overview of the model space despite these paradigm-specific mathematical limitations.
+Fourth, we tested whether the bias-attenuating properties of physiological arousal generalize from transient states to sustained states. While spontaneous, trial-by-trial phasic arousal bursts have been shown to systematically suppress choice biases, it remains unknown whether a sustained, exogenously driven tonic elevation in arousal operates through an identical framework. We hypothesized that if tonic somatic noise mirrors phasic arousal dynamics, starting-point bias () would systematically shift toward structural neutrality () under high effort; alternatively, the chronic overhead of the motor task might lock in stable, energy-saving strategic heuristics.
+1.6 The Present Study
+The present chapter applies hierarchical Bayesian drift-diffusion modeling to examine how physical effort (Low: 5% MVC vs. High: 40% MVC isometric handgrip) modulates latent decision parameters in older adults performing auditory and visual same-different discrimination tasks. Trial-by-trial task-evoked pupil responses (TEPR) serve as an exploratory index of phasic arousal to test whether within-person arousal fluctuations predict changes in evidence accumulation or response bias. Together, these analyses test whether the characteristic slowing and cautiousness of older decision-makers reflect fixed capacity limits or physiological-state-dependent features modulated by effort-induced arousal.
+2. Methods
+2.1 Participants
+Participants were recruited from communities surrounding the University of California, Riverside, through multiple channels including direct mail, posted flyers, social media advertisements, and word-of-mouth referrals. Eligibility criteria required participants to be aged 60–90 years, possess normal or corrected-to-normal vision and hearing, demonstrate sufficient English language comprehension to follow experimental instructions, and exhibit right-hand dominance. Exclusion criteria comprised contraindications for magnetic resonance imaging (MRI), current use of psychotropic medications, clinically significant neurological disorders, and major systemic health conditions including diabetes mellitus.
+Sixty-nine individuals initially enrolled in the study. Two participants were excluded following enrollment: one due to suspected mild cognitive impairment (MCI) and another due to possible essential tremor, yielding a final sample of 67 older adults (age M = 69.5 years, SD = 6.4, range = 60–87 years). Table 1 reports baseline demographics for the full sample; the extended neuropsychological battery and additional baseline descriptives are provided in Appendix A9. After applying the RT threshold and quality criteria (fewer than 100 analyzable trials in a given task), 5 participants contributed data to only one task, yielding task-specific analytic samples of N = 64 (Auditory) and N = 65 (Visual). Sample size was determined via a priori power analysis (G*Power 3.1; (Faul et al., 2007)). For a repeated-measures ANOVA with two within-subject conditions, medium effect size (), , and power = .80, a minimum of 34 participants was required. The achieved sample of  exceeds this threshold by approximately 2 and is consistent with published hierarchical DDM studies reliably detecting group-level condition effects with – (Ratcliff et al., 2004; Wiecki et al., 2013). Twelve participants performed at or near chance level ( 55% accuracy, compared to the 50% two-alternative forced-choice chance baseline) in some experimental conditions but were retained in analyses to maximize sample size, as hierarchical modeling approaches borrow statistical strength across participants to stabilize individual-level parameter estimates.
+All participants provided written informed consent and received either course credit or monetary compensation for their participation. Study procedures were approved by the Institutional Review Board of the University of California, Riverside, and all experimental procedures were conducted in accordance with approved guidelines and regulations.
+Table 1: Baseline Demographics
+
+
+	Full Sample
+	N
+	67
+	Age (SD)
+	69.5 (6.4)
+	Gender, female (%)
+	34 (50.7%)
+	Education, years (SD)
+	15.7 (2.6)
+	MoCA, score (SD)
+	19.8 (1.5)
+	Race, count (%)
+	
+
+	White/Caucasian
+	51 (76.1%)
+	Black/African American
+	4 (6.0%)
+	Asian
+	5 (7.5%)
+	Other
+	5 (7.5%)
+	Hispanic/Latino
+	10 (14.9%)
+	Note.  The telephone MoCA (T-MoCA) provides a brief measure of global cognitive function; scores below 17 out of a possible 22 were taken to reflect mild cognitive impairment.
+	
+
+	2.2 Stimuli and Task Design
+Task overview Participants completed two response-signal same/different discrimination tasks—an Auditory Detection Task (ADT) and a Visual Detection Task (VDT)—each performed under concurrent hand-grip effort manipulation. In both tasks, a standard and probe stimulus were presented in succession, and participants judged whether the stimuli were the same or different using button presses, followed by a confidence rating.
+Trial structure. Both tasks shared the same response-signal timeline (see Figure 1, Panel A). Each trial began with a jittered blank interval (1.5–4.5 s) displaying only a gray background. Participants were then shown a 3-second rectangular grip gauge with a marker positioned at either 5% or 40% from the bottom, indicating the target force level to be maintained using a hand-held dynamometer (left hand) at the corresponding percentage of their maximum voluntary contraction (MVC). MVC was determined during a brief calibration procedure prior to each task. Following the grip period, a 0.25-second blank screen and 0.5-second fixation dot preceded stimulus presentation.
+Auditory Detection Task (ADT). The standard stimulus was a 0.1-second sinusoidal tone at 1000 Hz. After a 0.5-second inter-stimulus interval, the probe stimulus was presented as a 0.1-second tone that was either identical to the standard ( = 0) or positively offset by . For drift-diffusion model (DDM) analyses, the four non-zero offsets were collapsed into two difficulty bins: Hard = {8, 16} Hz and Easy = {32, 64} Hz, with Standard = 0 Hz.
+Visual Detection Task (VDT). The standard stimulus was a centrally presented sinusoidal Gabor patch (spatial frequency 1.5 cycles/degree, Michelson contrast 0.20, diameter 4°, duration 0.1 s). After a 0.5-second inter-stimulus interval, the probe stimulus was presented as a 0.1-second Gabor that was either identical to the standard ( = 0) or showed a positive contrast increase of , with all other parameters held constant. For DDM analyses, offsets were collapsed into Hard = {0.06, 0.12} and Easy = {0.24, 0.48}, with Standard = 0.
+Response collection. Following stimulus offset, participants relaxed their grip and had a 3-second response window to indicate whether the two stimuli were the same or different using their right hand (index finger = “different”; middle finger = “same”). This was immediately followed by another 3-second window in which participants provided a confidence rating on a 4-point scale (1 = low confidence, 4 = high confidence).
+Trial counts and monitoring. Each task comprised 150 trials distributed across five blocks of 30 trials each. Within each block, the five stimulus levels (Standard plus four offsets) were crossed with the two effort conditions (5% vs. 40% MVC) and presented in pseudorandom order with equal proportions (three repetitions per stimulus × effort combination). Hand-grip performance was monitored after each block, and participants received corrective feedback if they consistently failed to maintain the dynamometer at the designated force level (near the grip gauge marker) and/or for the correct duration (until offset of the probe stimulus).
+2.3 Equipment
+The experimental task was programmed and executed on an Alienware laptop. Visual stimuli were presented via a PROPixx projector (VPixx Technologies, Montreal, Canada; 480 Hz refresh rate, 1920×1080 resolution) and viewed through a head coil-mounted mirror (viewing distance  12 cm). Auditory stimuli were delivered via MRI-safe earbuds (Newmatic Medical, Duluth, GA; 30 dB NRR). Behavioral responses were recorded using a RESPONSEpixx fiber-optic response box, hand-grip force via a MRI-compatible dynamometer (Current Designs Inc., Philadelphia, USA; 100 Hz sampling), and pupil diameter via an MRI-compatible TRACKPixx binocular eye tracker (VPixx Technologies, Montreal, Canada; 2000 Hz sampling). Stimuli were generated using Psychophysics Toolbox 3.0.18 (Brainard & Vision, 1997; Kleiner et al., 2007) in MATLAB R2022b (The MathWorks, Natick, MA). Data were collected inside an MRI scanner; neuroimaging results are reported elsewhere.
+2.4 Data Processing and Quality Control
+Reaction time definition. In this response-signal design, reaction time (RT) was initially recorded as the latency from response-screen onset (“Same or Different?” prompt) to button press, termed cue-locked RT. However, perceptual evidence becomes available at probe onset (the second stimulus). To align RT with evidence accumulation onset, we derived probe-onset-locked RT by adding the fixed post-probe delay to cue-locked RT:
+
+where 0.35 s comprises 0.10 s probe duration plus 0.25 s grip-relaxation period. Probe-onset-locked RT served as the primary timing measure for DDM interpretation, as it aligns the decision process with evidence onset. Under this convention, the DDM non-decision time parameter () includes the fixed 0.35 s response-gating delay plus residual encoding and motor components. Cue-locked RT was retained for sensitivity analyses. This probe-onset-locked timing is our chosen convention to align  with evidence onset; some DDM studies alternatively use cue-locked or response-locked reference points depending on task structure.
+Gated response-signal validity. Overt responses were withheld until the response screen (a fixed 0.35 s after probe offset), so cue-locked RT mixes pre-response processing with enforced waiting. Probe-onset locking shifts the accumulation clock to evidence onset while absorbing the fixed gating interval into  (intercept-only in the primary model). This follows standard practice for response-signal and masked-response designs: condition contrasts are identified within a shared timing regime, and absolute  estimates are not interpreted as pure motor time (Ratcliff & McKoon, 2008; Starns & Ratcliff, 2010). We treat probe-onset locking as a conservative alignment choice; free-response replications without enforced waiting would be needed to isolate encoding-only  components.
+Trial exclusion criteria. To minimize the influence of premature or accidental button presses, trials with cue-locked RT < 0.20 s were excluded from the primary analysis (sensitivity analyses using alternative cutoffs of 0.15 s and 0.25 s are reported in Appendix A). This lower bound was applied to cue-locked RT before constructing probe-onset-locked RT for the primary DDM models. Additional exclusions included missed responses, trials from runs flagged for invalid performance (defined as run-level accuracy at or below chance, indicating the participant did not engage with the task), and trials with non-positive or missing RT values (i.e., recording artifacts where RT was logged as zero or a negative number). For pupil-linked DDM models, trials additionally required valid pupil data (see Pupillometry Preprocessing section).
+2.5 Experimental Design and Statistical Modeling
+Design. The study employed a 2 (Task: ADT, VDT) × 3 (Difficulty: Standard, Easy, Hard) × 2 (Effort: Low, High) within-subjects factorial design, yielding 12 experimental conditions per participant. Because difficulty is determined by stimulus offset magnitude and thus unknown at trial onset, it was not included as a predictor of starting-point bias in the primary DDM specification.
+Modeling approach. ADT and VDT were modeled jointly in a single hierarchical Bayesian DDM, with Task (ADT vs. VDT) included as a fixed effect on starting-point bias . This joint specification estimates task-specific parameter offsets (i.e., how ADT and VDT differ in bias) while sharing subject-level random-effect variance across tasks, allowing hierarchical shrinkage to stabilize individual-level estimates. Importantly, drift rate  and boundary separation  were not modeled as functions of Task in the primary model — instead, task-specific estimates for these parameters are provided as a sensitivity analysis in Appendix A4.3. This choice reflects our primary interest in the pooled effort and difficulty effects, with task-modality differences treated as secondary context.
+2.6 Statistical Analysis Overview
+Analyses proceeded in three stages. First, manipulation checks confirmed that difficulty and effort affected behavioral performance (accuracy and RT) as intended, using generalized linear mixed-effects models (GLMM, binomial family) for accuracy and linear mixed-effects models (LMM) for median RT via lme4 (Bates et al., 2015), each with fixed effects for Difficulty, Effort, and Task and random intercepts for participant; fixed-effects summaries used broom.mixed (Anderson et al., 2024). Full results are reported in Appendix A7. Second, the primary DDM analysis used a hierarchical Bayesian Wiener diffusion model fit via brms (Bürkner, 2017) in R (R Core Team, 2025), with model comparison via Pareto-smoothed importance sampling LOO cross-validation (PSIS-LOO; (Vehtari et al., 2017)); full model specification is described in Section 2.10. Third, pupil-linked DDM extensions tested whether trial-wise task-evoked pupil responses (TEPR) modulated drift rate or response bias, using a nested sequence of pupil-augmented models compared via PSIS-LOO (Section 2.10.1). Sensitivity analyses across RT cutoff thresholds are reported in Appendix A4.2. Exploratory individual-differences analyses examined whether LC structural MRI metrics (Appendix A8; (Bennett et al., 2024)) and neuropsychological test scores (Appendix A9) related to DDM parameters or behavioral effort costs; these analyses were not used for model selection or primary hypothesis testing.
+2.7 Pupillometry Preprocessing and AUC Features
+Recording and hardware. Pupil diameter was continuously recorded using an MRI-compatible TRACKPixx binocular eye tracker (VPixx Technologies, Montreal, Canada) sampling at 2000 Hz. Raw eye-tracking data were exported as .mat files and processed through a multi-stage preprocessing pipeline designed to ensure high-quality pupillometry measurements.
+Artifact correction and quality control. Blink artifacts and invalid samples were removed using the ET-remove-artifacts MATLAB toolbox (Huang et al., 2020), which employs a velocity-based detection algorithm configured with a 100th-order low-pass filter (passband: 10 Hz, stopband: 12 Hz) and peak/trough threshold factors of 5 standard deviations above baseline. Artifacts exceeding 2 seconds in duration were replaced with missing values rather than interpolated, following established methodological guidelines indicating that linear reconstruction over extended durations artificially compresses natural physiological variance and introduces spurious data trends ((Kret & Sjak-Shie, 2019; Mathôt, 2018)). All recordings then underwent manual inspection using the toolbox’s interactive plot editor to identify and correct any remaining undetected artifacts.
+Trial alignment and downsampling. Cleaned pupil data were trial-aligned using event timestamps synchronized with behavioral event markers, then downsampled from 2000 Hz to 250 Hz using an 8th-order anti-aliasing filter to preserve signal quality while reducing computational demands. Baseline correction was applied by subtracting the mean pupil diameter during the baseline window (-0.5 s to 0 s relative to squeeze onset) from all timepoints in the trial.
+Decision-Response AUC specification and rationale. We quantified trial-wise phasic cognitive workload by calculating the baseline-corrected pupil area under the curve (AUC) via trapezoidal integration. This metric, functionally designated as the Decision-Response AUC, was extracted from a 3.0-second window anchored directly to evidence onset, spanning from 0.3 to 3.3 seconds post-probe. This placement corresponds to 4.65 to 7.65 seconds relative to the initial handgrip squeeze, capturing the transient, stimulus-locked phasic arousal fluctuation riding on top of the sustained tonic effort baseline. Delaying the window onset by 300 milliseconds directly accounts for the inherent neurophysiological lag of the pupillary efferent pathway. The 3.0-second window duration is highly specialized. It encapsulates the complete morphological profile of the transient task-evoked pupil response (TEPR), which characteristically peaks at approximately 2.95 seconds post-stimulus in this cohort. Because the explicit response prompt appeared 0.35 seconds post-probe and mean cue-locked response latencies averaged 0.6 seconds, this expansive window spans both pre-decision evidence accumulation and post-decision motor and confidence processing. We directly isolated these overlapping post-decisional dynamics by entering reaction time as a covariate in all primary downstream pupil-informed models. We also defined a Truncated Decision-Response AUC—a 1.0-second integration window from 0.3 to 1.3 s post-probe (4.65 to 5.65 s relative to handgrip onset)—as a narrower alternative that minimizes post-response contamination at the cost of capturing less of the full TEPR morphology; the same nested pupil-DDM sequence was refit on this metric as a sensitivity analysis (Section 3.3).
+Supplementary Figure 18 shows the response-signal timing structure used in analyses.
+Confounds and sensitivity checks. To minimize potential confounds from luminance and viewing distance, the paradigm was executed within a controlled MRI environment characterized by constant background luminance and a fixed viewing distance. Motor-related autonomic activity was addressed by including reaction time as a covariate in subsequent pupil-informed models.
+2.8 DDM Overview and Parameter Definitions
+The DDM framework and its four parameters (, , , ) are introduced in Section 1.2; this section describes the implementation-specific decisions for the present study.
+2.9 Decision Coding and Parameterization
+Response-side coding rationale. We employed response-side coding (also termed stimulus coding) where the upper boundary maps to “different” choices and the lower boundary maps to “same” choices (Ratcliff & McKoon, 2008; Wiecki et al., 2013). This configuration is mathematically required to independently isolate response-selection biases from true sensory discriminability (drift rate). Accuracy-based coding layouts (correct vs. incorrect boundaries) are structurally incapable of capturing these dynamics, as a bias parameter in an accuracy matrix merely reflects a trivial preference for being correct. Because individuals performing same–different discrimination paradigms frequently exhibit prominent response-specific heuristics (e.g., a conservative tendency to favor the “same” classification), anchoring boundaries directly to the physical response alternatives allows the model to estimate true pre-stimulus starting-point preferences. Under this parameterization, evidence accumulation directed toward a true “Standard” (same) stimulus is represented as a negative drift rate traveling toward the lower boundary, rather than a processing deficit.
+Implementation and model leverage. Response-side coding was implemented by constructing a binary response vector, coded as 1 for “different” judgments and 0 for “same” judgments. Standard () trials provide critical mathematical leverage for identifying baseline starting-point bias () under this coding scheme. Because these baseline trials contain zero objective sensory evidence, they effectively isolate automatic response preferences from evidence accumulation speed. Full link function specifications and the underlying Wiener likelihood equations are detailed in Appendix A6.
+2.10 Model Specification: Standard-only Calibration and Primary Model
+Standard-only bias calibration model. To structurally isolate baseline starting-point bias from active drift-rate estimation, we executed a two-stage modeling pipeline. The first stage fit a targeted calibration model restricted exclusively to Standard trials ( 3,600 trials), which establishes an empirical baseline for choice preference in the complete absence of sensory evidence shifts. Starting-point bias () was allowed to vary as a function of task modality and effort condition—both of which were explicitly known to the participant pre-trial—but was constrained to be invariant across perceptual difficulty levels, as trial-wise difficulty was randomized and entirely unknown prior to evidence presentation. The full parameter estimates and descriptive levels resulting from this calibration step are detailed in Appendix A2.
+Primary analysis model. Our primary behavioral DDM integrated both testing domains by modeling the Auditory Discrimination Task (ADT) and Visual Discrimination Task (VDT) jointly within a single hierarchical Bayesian framework. This joint configuration enters task modality as a fixed effect on starting-point bias (), allowing the model to isolate task-specific parameter offsets while sharing participant-level random-effect variance across sensory domains. This hierarchical design leverages partial pooling via shrinkage to stabilize individual parameter estimates and maximize statistical power for detecting our core effects of interest.
+Within this joint model architecture, drift rate () and boundary separation () were estimated as additive functions of perceptual task difficulty (treatment-coded, Standard as reference) and tonic effort condition (treatment-coded, Low as reference). Starting-point bias () was modeled as a function of task and effort, but remained excluded from difficulty subformulas because trial difficulty cannot be anticipated before evidence accumulation begins (see Figure 1, Panel C for a visual summary of predictor mappings). Non-decision time () was set to an intercept-only specification based on pilot identification constraints inherent to the gated response-signal design. Random intercepts by participant were comprehensively estimated for , , and , while  was retained as a fixed population parameter to ensure strict model identifiability. Task-separated parameter profiles are provided as an explicit sensitivity check in Appendix A4.3 to validate that joint pooling did not obscure modality-specific trends.
+RT timing convention. In this response-signal design, reaction time was defined as the latency from response-screen onset to the button press. However, because perceptual evidence becomes available immediately at probe onset, modeling distributions strictly from the execution cue presents a chronological misalignment between evidence availability and the mathematical integration start point. To ensure the diffusion window encompasses the entire information-processing timeline, probe-onset-locked RT was derived by adding the fixed 0.35-s post-probe delay (0.10-s probe duration plus 0.25-s grip-relaxation period) to the raw cue-locked value.
+Probe-onset-locked RT served as our primary timing convention because it correctly aligns the diffusion process with evidence onset (Figure 19). Under this convention, the non-decision time parameter () absorbs the fixed 0.35-s response-gating delay alongside standard encoding and motor execution overhead (Ratcliff et al., 2007; Voss et al., 2004). While this constant addition can compress parameter variance in peripheral timing estimates, anchoring the model timeline to evidence onset is more theoretically appropriate for isolating accumulation dynamics under concurrent motor load. Raw cue-locked latency profiles and alternative lower-bound filtering cutoffs (0.15 s and 0.25 s) were retained for sensitivity analyses, which are reported in Appendix A4.
+Behavioral validation checks. To confirm that our perceptual difficulty and physical effort manipulations systematically altered gross behavioral performance independent of DDM assumptions, we conducted baseline mixed-effects model checks restricted to active discrimination trials (Easy and Hard conditions). Perceptual accuracy was evaluated using a generalized linear mixed model (GLMM, binomial logistic link), and median reaction times were evaluated using a linear mixed model (LMM). Both validation frameworks entered task modality, perceptual difficulty, and physical effort as fixed effects, alongside random participant intercepts. Full model parameters and frequentist significance metrics for these baseline checks are reported transparently in Appendix A7.
+2.10.1 Pupil-Linked DDM Extensions
+Building upon the baseline behavioral model, we implemented hierarchical, pupil-informed regression extensions to evaluate whether within-person physiological fluctuations modulate parameters of choice on a trial-by-trial basis (Wiecki et al., 2013). The physical metric used for these extensions was the baseline-corrected Decision-Response AUC. To isolate true intra-individual variation from stable, between-participant differences in eye morphology, these trial-wise integration values were z-scored individually within each participant’s complete timecourse profile. This localized transformation yielded a standardized single-trial metric that serves as our functional physiological proxy for transient arousal fluctuations during the decision window.
+To explicitly adjudicate between alternative mechanisms of state-dependent cognitive control, we evaluated a nested sequence of model configurations (de Gee et al., 2017). The baseline behavioral model excluded all trial-level physiological inputs, establishing a structural reference point where parameter variance was governed solely by categorical task conditions. A bias-only model allowed this standardized pupil metric to modulate starting-point bias () through a logistic link function, testing the hypothesis that momentary arousal suppresses pre-existing response preferences and drives the initial decision architecture toward neutrality (). Finally, a dual-dependency model allowed the pupil metric to simultaneously modulate both bias and drift rate (), testing whether momentary arousal additionally alters the efficiency of central sensory processing under a sustained motor load. We compared the relative predictive success of these architectures using Pareto-smoothed importance sampling leave-one-out cross-validation (PSIS-LOO; Vehtari et al. (2017)), focusing population-level inference on the posterior regression coefficients () estimated on the link scale.
+Pupil × Perceptual Difficulty interaction model. To evaluate the classic Yerkes–Dodson prediction that the effects of arousal on decision-making diverge as a function of immediate cognitive demands—with the optimal arousal threshold shifting according to task complexity—we implemented an interaction model crossing the standardized pupil metric with perceptual task difficulty. This specification directly evaluates the integrated resource-arousal framework established in our introduction, examining whether within-person fluctuations in phasic arousal differentially modulate parameter dynamics across sensory difficulty levels. In the primary nested sequence, pupil was evaluated on starting-point bias (), drift + bias (, ), and pupil × difficulty on drift (Models 1–3). To test the Cavanagh (2014) boundary account directly, we additionally fit a Cavanagh-style extension allowing pupil to modulate boundary separation () only, compared to the same- behavioral baseline via PSIS-LOO (Decision-Response and Truncated Decision-Response AUC windows; Section 3.3, Appendix A5). Non-decision time remained intercept-only.
+2.11 Priors, Computation, and Diagnostics
+Priors were weakly informative and specified on the link scale. The boundary separation intercept used  (corresponding to  at baseline), the non-decision time intercept used  ( s, probe-onset-locked), the drift rate intercept used , and the starting-point bias intercept used  (, no bias). Full prior specifications for slopes and random effects are provided in Appendix A6.
+Convergence was assessed using  and minimum bulk ESS ; all primary behavioral models satisfied these criteria. Exploratory choice-history models met the criterion for the history variant (max  = 1.003); the WSLS variant showed a slightly elevated maximum  (1.014) but zero divergent transitions (Appendix A10.1). Model comparison used Pareto-smoothed importance sampling LOO cross-validation (PSIS-LOO; Vehtari et al. (2017)), with ELPD differences exceeding 4 considered meaningful; results are in Section 3.1.
+Model fit was evaluated using posterior predictive checks (PPC), including subject-level quantile-probability plots, Kolmogorov-Smirnov statistics, and residual heatmaps (full PPC diagnostics in Appendix A3). PPC deviations in fast-tail regions — a known limitation of standard Wiener DDM — did not affect inference on key parameter contrasts.
+________________
+
+
+3. Results
+3.1 Primary model overview
+The DDM analysis included 67 older adults ( = 64,  = 65 after task-specific exclusions). 5 participants contributed to only one task after exclusions because the other task had fewer than 100 valid trials. The primary additive model retained 17,857 probe-onset-locked trials after the cue-locked RT  0.20 s cutoff (mean 23 trials per subject across cells; cell totals 860–1863, Table 5). Manipulation checks showed that difficulty and effort affected accuracy and RT as intended (Appendix A7).
+All primary behavioral models met convergence criteria ( < 1.01, bulk ESS > 400, zero divergent transitions; Appendix A1). Posterior predictive checks were less clean. All 12 experimental cells crossed the pre-specified KS/QP flagging thresholds (max KS = 0.343, max full-range QP RMSE = 0.225 s; Table 10), mainly because of fast-tail RT misfit. Mid-body quantile–probability fit was acceptable (Appendix A3). The key effort contrasts also held under alternative RT lower-bound thresholds (Appendix A4.2).
+We compared nested specifications with PSIS-LOO (Vehtari et al. (2017)). The additive model treated difficulty and effort as independent predictors of drift rate and boundary separation; it outperformed a difficulty-only baseline (ELPD  4). A difficulty  effort interaction model attained a nominally higher ELPD (+ vs. additive, SE = ; 26 SE). This apparent advantage is not interpretable: PSIS-LOO for the interaction was unreliable (max Pareto- = 1.18, above the 0.7 diagnostic threshold), whereas the additive model’s LOO was reliable (max Pareto- = 0.47). We retain the additive specification on LOO reliability and parsimony (see Table 3). Interaction coefficients on drift , 95% CrI  and boundary , 95% CrI  spanned zero. Full ELPD values are in Appendix A1 (Table 3; max Pareto- = 0.47 for the additive model). All primary analyses below use the additive, probe-onset-locked specification. Pupil-augmented models are reported separately in Section 3.3.
+3.2 Effort effects on decision parameters (H1-H4)
+Drift () and boundary separation () by Difficulty × Effort are shown in Figure 2; effort and difficulty contrasts in Figure 3. Hypothesis tests (H1–H4) are in Section 3.2.1 and Table 2. Cell-wise posterior medians [95% CrI] for , , and  are in Appendix A2 (Table 6).
+Positive  indicates drift toward “different”; negative  toward “same”. Non-decision time () was a single intercept (0.504 s) in the primary model (Section 2.10); it does not vary by condition and is omitted from the figures.
+  
+
+Figure 2: High-effort handgrip degraded evidence accumulation quality with only a ROPE-negligible boundary effect. (A) Posterior median drift rate () by Difficulty  Effort (95% CrI; Low = blue, High = magenta), pooled across tasks; dashed line at . (B) H1: High  Low effort contrast on ; 95% CrI excludes zero. (C) Posterior median boundary separation () by Difficulty  Effort. (D) H2: High  Low effort contrast on  (log scale); directionally positive but all posterior mass within the project ROPE (practically negligible). Statistical note: H1 on : , 95% CrI ; . H2 on : , 95% CrI ; ; 100% of posterior mass within $$0.05 log-scale ROPE.
+	Because Effort is a within-subject manipulation, visual overlap in marginal means is misleading. Panel B of Figure 2 plots the posterior distribution of the difference score (High  Low Effort) and shows that the 95% CrI does not cross zero, confirming a highly credible reduction in drift rate.
+  
+
+Figure 3: Effort credibly affected drift rate and boundary separation; starting-point bias did not. (A) High  Low effort contrasts (posterior median  95% CrI) for H1 (drift ), H2 (boundary ), and H4 (starting-point bias ). Filled circles: 95% CrI excludes zero; open circles: CrI spans zero. (B) Pairwise difficulty contrasts on drift  (identity scale) and boundary  (log scale): Easy vs. Standard, Hard vs. Standard, and Easy vs. Hard. Statistical note: H1  95% CrI ; H2  95% CrI ; H4 (primary, logit)  95% CrI . Difficulty contrasts on drift: Easy vs. Standard  [, ]; Hard vs. Standard  [, ]; all 95% CrIs exclude zero.
+	Difficulty strongly modulated  and ;  varied mainly by task, with little effort effect (Figure 3). Starting-point bias calibration is in Section 3.2.2.
+Of 63 subjects with usable pupil recordings, 14,586 trials had valid baseline-corrected pupil data (mean 232 trials per subject). The pupil-linked DDM models below use a further filtered subset (12,287 trials, 59 participants) requiring valid TEPR and matching behavioral inclusion. Baseline pupil descriptives by condition are reported in Appendix A2 (Table 8). TEPR descriptives and waveforms are in Appendix A5 (Table 20, Figure 16).
+3.2.1 Behavioral hypothesis tests (H1-H4)
+We tested the four effort hypotheses using posterior contrasts on the link scale.
+Difficulty had large effects on drift rate (): Easy  Hard  Standard. Effort also shifted . Boundary separation () and starting-point bias () changed less.
+For each hypothesis, inference rests on the High − Low effort contrast () extracted from posterior draws. We report the posterior median, 95% credible interval (CrI), and the relevant posterior probability,  or . When a 95% CrI excludes zero, posterior mass is concentrated on one side of zero; probabilities above 0.999 are reported as . The effort–drift contrast appears in Figure 2 (Panel B). H2 and H4 are summarized with it in Figure 3 (Panel A), and difficulty contrasts are shown in Panel B. Table 2 gives the full hypothesis summary.
+H1 (drift rate, ). High effort (40% MVC) lowered drift relative to Low effort (5% MVC): , 95% CrI ; . The 95% CrI excludes zero. Only 4% of the posterior mass fell within the project ROPE on drift (), so the effect is directionally reliable but small relative to the difficulty contrasts.
+H2 (boundary separation, ). High effort produced a directionally positive but practically negligible change in boundary separation: , 95% CrI ; ; credible interval excludes zero. All posterior mass fell within the project ROPE ( log-scale; 100%); we do not interpret this as meaningful strategic caution.
+H3 (non-decision time, ). The response-signal design required  to be a single intercept across conditions (Section 2.10). Thus, the primary model does not test H3. An exploratory effort contrast on  was  (log  scale) (95% CrI 95% CrI ; at the median,  multiplicative change in ; the CrI permits negligible or large proportional shifts), but this estimate is descriptive only.
+H4 (starting-point bias, ). The effort contrast on pre-stimulus response bias was near zero and uncertain: , 95% CrI ; . The CrI spans zero (ROPE mass 98%). In the primary model, VDT showed higher bias toward “different” responses than ADT (, 95% CrI ; ; logit task offset). Standard-only calibration reverses this ordering (, 95% CrI ; ; ADT − VDT on ). This reversal is consistent with a – trade-off when drift and bias are not estimated jointly across difficulty (Section 3.2.2, Table 7).
+The four hypotheses therefore carry different inferential weight. H1 is supported: the CrI excludes zero, only 4% of posterior mass lies within the project ROPE on drift, and the effect is small relative to difficulty contrasts. H2 is directionally positive but practically negligible under the project ROPE (CrI excludes zero; 100% ROPE mass). H4 is a near-zero null (CrI spans zero). H3 is not directly testable in the primary model because the response-signal design required an intercept-only . Pupil-linked DDM extensions were inconclusive under the current TEPR specification (Section 3.3). ROPE mass in Table 2 (footnote [b]) is a project-level sensitivity summary and does not replace CrI-based inference.
+Table 2: Unified hypothesis summary: effort and pupil effects on DDM parameters (link-scale estimates and graded evidence). Estimates use identity link for drift , log for boundary , logit for bias . Conditional TEPR  difficulty slopes are in Table 18.
+Effect
+	Estimate
+	95% CrI
+	CrI incl. 0
+	P(in ROPE)
+	Evidence
+	**Behavioral DDM — primary model**
+	
+
+	
+
+	
+
+	
+
+	
+
+	H1: Effort on drift (v)
+	-0.057
+	[-0.097, -0.017]
+	No
+	4%
+	Supported
+	H2: Effort on boundary (a)
+	0.017
+	[0.004, 0.029]
+	No
+	100%
+	Dir. positive; in ROPE
+	H3: Effort on NDT (t0) [a]
+	0.020
+	[-0.050, 0.090]
+	Yes
+	n/a
+	Not testable [a]
+	H4: Effort on bias (z)
+	-0.005
+	[-0.046, 0.036]
+	Yes
+	98%
+	Near-zero [b]
+	**Pupil-augmented models [c]**
+	
+
+	
+
+	
+
+	
+
+	
+
+	Pooled TEPR on v
+	0.011
+	[-0.025, 0.045]
+	Yes
+	n/a
+	Inconclusive [c]
+	Pooled TEPR on z
+	0.004
+	[-0.027, 0.034]
+	Yes
+	n/a
+	Inconclusive [c]
+	TEPR slope: Standard
+	—
+	—
+	No
+	n/a
+	Inconclusive [c]
+	TEPR slope: Hard
+	—
+	—
+	No
+	n/a
+	Inconclusive [c]
+	TEPR slope: Easy
+	—
+	—
+	No
+	n/a
+	Inconclusive [c]
+	Note.  Link scales: drift v (identity); boundary a (log); bias z (logit). P(in ROPE) from CrI (Gaussian approximation); n/a = not applicable.
+a H3: t₀ intercept-only (response-signal design); exploratory estimate only. b ROPE half-widths: drift ±0.02; boundary ±0.05 (log); bias ±0.05 (logit). Project convention, not a preregistered SESOI. c Pupil rows inconclusive [c]; full LOO comparisons, coefficients, and measurement limits: §3.3 (Pupil-linked DDM models); conditional slopes: Appendix A5.
+	
+
+	The pooled primary model omitted Task on drift; effort→drift was similar with Task on drift (primary β = −0.057 vs task-sensitivity δ = −0.085; Table 16); Task→drift was credible but Effort × Task was not, so we treat cross-task pooling as a deliberate simplification (Appendix A4.3). H1 kept the same sign and similar magnitude across RT cutoffs of 0.15, 0.20, and 0.25 s. H2 was less stable: at the most lenient cutoff (0.15 s), the already-negligible boundary contrast no longer excluded zero, which supports the practical-equivalence interpretation (Appendix A4.2).
+3.2.2 Starting-point bias
+In a standard-only calibration model, starting-point bias () was estimated independently of drift rate (). Bias values were consistently above 0.5. ADT showed higher bias toward “different” responses than VDT (, 95% CrI ; ; ADT − VDT on ). The effort contrast in this calibration model was small and uncertain (High−Low: , 95% CrI ). Bias was modeled as a function of task and effort only, because participants did not know trial difficulty in advance (Farell, 1985; Nosofsky & Palmeri, 1997). The primary-model H4 test is in Section 3.2.1.
+The standard-only bias estimate (, 95% CrI [0.51, 0.64]; Table 7) exceeded the primary-model estimates (–; Table 6). This difference reflects the – trade-off when drift and bias are estimated jointly across difficulty levels. Between-subject variability in drift rate and its effort sensitivity is shown in Figure 4.
+  
+
+Figure 4: Group-level effort reduced drift rate, with most participants showing lower High-effort than Low-effort subject-level estimates. (A) Brinley plot (Hard vs. Easy mean RT per participant). (B) Paired subject-level drift by effort; diamonds = group means. (C) Low vs. High effort drift scatter (points below diagonal = lower drift under High effort; uncertainty not shown). Group-level effort contrast (primary additive model) , 95% CrI . Estimates are hierarchical posteriors with partial shrinkage toward the group mean.
+	3.3 Pupil-linked DDM extensions
+We next tested whether trial-wise task-evoked pupil responses (TEPR; within-subject z-scored Decision-Response AUC) predicted latent decision parameters during concurrent grip. The pupil → bias (z) test was pre-specified as the primary pupil-linked contrast. The pupil → drift, pupil × difficulty on drift, and Cavanagh-style pupil → boundary () models were exploratory. On the pupil-available subset (12,287 trials, 59 participants), we fit four nested hierarchical Wiener models (Section 2.10.1): (1) a behavioral baseline without pupil predictors; (2) pupil → bias (); (3) pupil → drift + bias ( and ); and (4) pupil × difficulty on drift. We also fit Cavanagh-style boundary models (; Table 19). All nested models used the same trial set and the same additive difficulty/effort structure as the primary behavioral model. Because the pupil subset excludes trials without valid pupil data, it is not comparable to the full behavioral analysis ( trials); pupil-model comparisons are restricted to the nested same- set.
+On the pupil-available subset (12,287 trials, 59 participants), PSIS-LOO was reliable (max Pareto- = 0.68; all ). Relative to the nested behavioral baseline, ELPD was -0.10 (pupil  ), -2.15 (pupil   + ), and -2.59 (pupil  difficulty); none approached the  benchmark (Table 17; primary-window nested Models m0–m3). Pooled TEPR did not credibly predict drift rate (; , 95% CrI ; 95% CrI includes zero) or starting-point bias (; , 95% CrI ; 95% CrI includes zero). Difficulty-conditional TEPR slopes on  were centered near zero with CrIs spanning zero (Table 18, Figure 17). We additionally fit Cavanagh-style extensions allowing trial-wise TEPR to modulate boundary separation () while holding drift and bias structures fixed (Cavanagh et al., 2014). Posterior slopes were small but credibly above zero on the log- link (Decision-Response AUC: , 95% CrI ; Truncated Decision-Response AUC: , 95% CrI ). PSIS-LOO nonetheless did not favor these models over the behavioral baseline (ELPD = 2.69 and 0.39 vs. m0; both ELPD; Table 19). Phasic arousal therefore showed no credible predictive gain on  under the current TEPR specification, paralleling the inconclusive drift/bias extensions. In five of six task  difficulty cells, mean TEPR was lower under High (40% MVC) than Low (5% MVC) effort (Table 20; Figure 16). Combined with the Decision-Response AUC window—which spans pre- and post-response epochs and therefore likely mixes motor-autonomic with cognitive dilation under sustained isometric load—we treat pupil-linked DDM estimates as measurement-limited: they document a rigorously tested multimodal null under the current TEPR specification, not a definitive absence of arousal–parameter coupling. As a window-choice sensitivity check, we repeated the nested pupil-DDM sequence using the Truncated Decision-Response AUC (0.3–1.3 s post-probe; 12,150 trials with valid truncated TEPR). PSIS-LOO again favored the behavioral baseline (ELPD = 1.38, 2.55, and 2.83 for pupil  , pupil   + , and pupil  difficulty, respectively; all ); pooled and conditional pupil coefficients remained near zero with credible intervals spanning zero. Inconclusiveness therefore does not appear to depend on including the late TEPR tail. Full TEPR descriptives are in Appendix A5 (Table 20). Pooled and conditional estimates appear in Table 2 (pupil rows) and Table 18; Cavanagh boundary extensions in Table 19.
+Together with the tonic effort → bias null in Section 3.2.1, these results give no credible evidence that concurrent grip or trial-wise TEPR shifted pre-stimulus bias in this sample. This differs from phasic pupil-linked criterion reset reported in younger adults (de Gee et al., 2020). We did not establish equivalence.
+Exploratory choice-history and within-session fatigue models are reported in Appendix A10. They help interpret the primary effort effects but do not directly test H1-H4 or the pupil-linked analysis.
+________________
+
+
+4. Discussion
+4.1 Summary of Key Findings
+Results confirmed Hypothesis 1 (H1): High effort reduced drift rate, consistent with resource competition or supra-optimal arousal (Section 3.2.1). For Hypothesis 2 (H2), the boundary-separation effort contrast was directionally positive (, 95% CrI ; ) but all posterior mass fell within the project ROPE, so we do not interpret it as meaningful strategic caution (Section 3.2.1). Hypothesis 3 (H3) could not be tested directly: the response-signal design required constraining  to an intercept-only specification for model stability, so no primary-model test of H3 was possible; an exploratory effort coefficient on  was small and highly imprecise, and no firm conclusion about peripheral slowing can be drawn from it (Section 3.2.1). For Hypothesis 4 (H4), starting-point bias showed a near-zero, uncertain effort contrast, providing no credible evidence of a shift toward neutrality under High effort (Section 3.2.2). Importantly, while High effort reduced accuracy (manipulation check: , ), it did not reliably slow reaction time ($= 0.011 s, 95% CI [-0.019, 0.041]). This dissociation — lower accuracy without RT slowing — is explained by the DDM decomposition: drift rate declined (evidence quality) while boundary separation changed only negligibly under the project ROPE. The effort → drift effect was robust to adding task on drift, though task itself modulated absolute drift (Section 3.2.1, Appendix~A4.3). Exploratory trial-wise pupil-linked models were inconclusive (Section 3.3); see also Limitations below. The overall pattern is most consistent with concurrent physical effort degrading evidence accumulation quality while producing only a negligible boundary adjustment, rather than a large strategic reconfiguration of decision thresholds or pre-stimulus bias.
+4.2 Drift rate under effort
+The reduction in drift rate under High effort (40% MVC) relative to Low effort is the central finding and directly supports H1. Interpreted through Adaptive Gain Theory (Aston-Jones & Cohen, 2005), this pattern is consistent with supra-optimal arousal under sustained grip: noise in neural representations degrades the signal-to-noise ratio driving evidence accumulation (Mather & Harley, 2016; Mikneviciute et al., 2022). The DDM localizes the primary cost to evidence quality (), with only a directionally positive but ROPE-negligible boundary effect and no shift in starting-point bias (Section 3.2.1). Non-decision time () could not be tested in the primary model (Section 2.10).
+4.3 Boundary separation and strategic rigidity
+The H2 posterior is directionally positive (, 95% CrI ; ) but 100% of the posterior mass lies within the  log-scale project ROPE, so we treat it as practically equivalent to zero rather than a compensatory caution adjustment. In natural-scale terms, the posterior median corresponds to approximately 2% of baseline boundary separation ( 2.27 in the Standard condition; Table 6) — much smaller than routine variation in  across difficulty levels ( ranging from 2.12 to 2.27). Empirical support for criterion widening under arousal comes from Cavanagh et al. (2014), who showed that pupil-indexed arousal during high-conflict choices predicted increased boundary separation — though that manipulation targeted transient cognitive conflict rather than sustained physical effort.
+Notably, boundary estimates varied substantially by stimulus-driven difficulty (Easy: 2.06, Standard: 2.27, Hard: 2.12; Table 6), confirming that the model is sensitive to caution adjustments driven by bottom-up perceptual demands. Future work using free-response paradigms (without response cues) could better isolate strategic flexibility from design-imposed temporal constraints and provide a more powerful test of effort-related criterion adjustment at 40% MVC.
+A potential concern with response-side coding is whether the Wiener DDM misinterprets Standard trial responses — where the correct answer is ‘Same’ (lower boundary) — as errors, because they accumulate toward a negative drift (lower boundary rather than upper). This concern does not apply in the present implementation. The decresponse argument in brms encodes the observed response (Different = 1, Same = 0) as the boundary indicator, not a correctness flag. The model observes the actual RT and response, infers the latent evidence trajectory that would produce that RT–accuracy combination given the full design, and estimates parameters that best explain the joint RT × accuracy distribution across all conditions simultaneously. Accordingly, the strong negative drift on Standard trials () does not indicate that the model treats these as error trials; it correctly captures the fact that participants accurately pressed ‘Same’ by accumulating evidence toward the lower boundary. The fact that boundary separation is higher on Standard trials () than on Hard () or Easy () further validates this interpretation: the model responds to the exhaustive search demands of Standard trials by estimating a wider, more cautious boundary — the theoretically correct direction — rather than collapsing the boundary as it would if it incorrectly coded these as high-error conditions.
+Boundary separation vs. starting-point bias: Different timescales of adjustment. It is important to clarify an apparent asymmetry in the modeling decisions. Starting-point bias  was constrained to be constant across difficulty levels, reflecting the logical impossibility of pre-trial criterion adjustment when trial difficulty is randomized and unknown prior to stimulus onset. In contrast, boundary separation  was estimated as a function of difficulty and varied systematically (Standard:  = 2.27; Hard:  = 2.12; Easy:  = 2.06; Table 6).
+This is not a contradiction. The two parameters reflect adjustments occurring at different timescales. Starting-point bias  represents a true pre-stimulus strategic choice — where participants position themselves before evidence accumulation begins — and can only be set based on information available before the trial (task modality, effort condition). Boundary separation , by contrast, is not a pre-trial strategic decision but rather an effective decision threshold inferred by the model from the shape of the empirical RT distribution within each condition. Participants do not “set” this boundary in advance; rather, the model recovers it as the latent parameter that best explains the observed RT variance under diffusion process assumptions (Ratcliff, 1985; Voss et al., 2004). Over many trials, difficulty-dependent differences in RT dispersion and accuracy produce systematically different  estimates even though individual participants are unaware of upcoming difficulty.
+The larger  on Standard trials reflects the model’s accommodation of the characteristically broader, more right-skewed RT distribution observed on those trials — a distributional signature of the exhaustive comparison process required to confirm perfect sameness (Farell, 1985; Voss et al., 2004). In this sense,  captures the mechanistic consequence of within-trial processing demands, while  captures a pre-trial strategic bias. Both are legitimate sources of condition-specific variation, but only  requires advance knowledge of the trial type.
+In interpreting the TEPR as a relative index of phasic arousal, we acknowledge measurement constraints under sustained grip (Section 3.3, Table 20).
+4.4 Starting-point bias and pupil-linked arousal
+The near-zero effort contrast on starting-point bias (H4; , 95% CrI ; ) provides no credible evidence that concurrent handgrip at 40% MVC shifted pre-existing response preferences in older adults — though the credible interval does not formally exclude a small effect, and no equivalence threshold was established. A key interpretive consideration is the distinction between tonic and phasic arousal: the de Gee et al. (2020) bias-resetting effect was demonstrated using phasic, within-trial arousal fluctuations indexed by pupil dilation, whereas the present H4 test relied on a sustained tonic effort manipulation. Tonic arousal elevation may not produce the same criterion-resetting dynamics as a phasic arousal event — a distinction that future work pairing trial-level TEPR with starting-point bias estimates could address directly. In the standard-only calibration model, starting-point bias was consistently above 0.5 (, 95% CrI [0.51, 0.64]; Table 7), indicating a latent tendency to initiate accumulation closer to the “Different” boundary.
+This latent starting-point offset should not be read directly as a liberal behavioral criterion in signal-detection terms. Manipulation checks showed near-ceiling accuracy on Standard (same) trials but poor accuracy on Hard trials (~30%; Appendix A7) — a pattern dominated by misses (failure to report “different” when stimuli differed), not false alarms on same trials. The strongly negative drift on Standard trials (2 (Low effort) to −1.17 (High effort) on Standard trials) and the joint estimation of  and  across difficulty levels mean that a  starting point coexists with accurate “Same” responding rather than excess “Different” responses. The offset is therefore better interpreted as a DDM starting-point parameter under response-side coding — potentially reflecting a “Different-as-default” processing heuristic (Farell, 1985; Nosofsky & Palmeri, 1997) — than as a liberal SDT criterion producing elevated false-alarm rates.
+Hard-trial accuracy at or below chance for many participants also indicates that some Hard offsets sat near perceptual threshold, weakening the assumption of a clean three-level difficulty gradient; this is noted in Limitations below. The absence of a credible effort contrast on  is consistent with a stable task strategy rather than momentary arousal-driven criterion resetting, though this remains a graded null.
+The absence of a detectable phasic bias-resetting effect stands in contrast to prior work in younger adults (de Gee et al., 2020) and may reflect age-related attenuation of phasic LC-NE signals (Huang & Clewett, 2024). Exploratory trial-wise pupil-linked models were inconclusive (Section 3.3); see also Limitations below. In the primary model, VDT showed higher starting-point bias toward “different” than ADT (, 95% CrI ; ; logit task offset), whereas the standard-only calibration model shows the opposite ordering (, 95% CrI ; ), illustrating the – trade-off when drift is not held constant across difficulty. Exploratory LC-MRI correlates (Appendix A8) did not link LC integrity to task-specific bias or to the group-level effort effect on drift, though those tests were underpowered.
+4.5 Temporal dynamics across trials
+Exploratory choice-history models (Appendix A10.1) showed a small but reliable perseveration tendency: pre-stimulus bias shifted by approximately 0.065 logit units toward the previous response, with the 95% CrI excluding zero. High effort (40% MVC) did not amplify this effect (previous-trial response × effort interaction  = −0.001, 95% CrI [−0.065, 0.064]). Together with the ROPE-negligible H2 boundary effect and the H4 bias null, this pattern suggests that effort degrades evidence quality upstream while producing only limited downstream adjustment in criterion-setting or history-driven responding (Fischer & Whitney, 2014; Wickens, 2008).
+Within-session fatigue models (Appendix A10.2) showed a complementary pattern. Boundary separation relaxed slightly from the first to the second half of each run (more pronounced under Low effort), but drift rate did not decline credibly within runs, and age did not moderate the trajectory. The primary within-run dynamic is modest criterion adjustment, not accumulation-stage exhaustion (Drugowitsch et al., 2012; Tajima et al., 2016). Effort’s between-condition effect remains localized to drift rate (), not to the temporal dynamics of boundary separation under load.
+4.6 Modeling constraints
+H3 could not be tested in the primary model because the response-signal design required an intercept-only  specification (Section 2.10). An exploratory effort effect on  was small and imprecise ( = 0.02, 95% CrI [−0.05, 0.09]), precluding firm conclusions about peripheral slowing. Accuracy declines under High effort align more directly with reduced drift rate than with shifts in  (Table 21).
+4.7 Limitations and Future Directions
+Several limitations constrain the interpretation of these findings. First, the standard Wiener DDM assumes constant drift within each trial and does not include across-trial variability in drift (s_v), starting point (s_z), or non-decision time (s_t0). Second, the response-signal design enforced a fixed delay before overt responding; probe-onset RT alignment and an intercept-only t_0 identify condition effects within that shared timing regime but do not support strong claims about pure encoding or motor t_0 in isolation (Section 2.10). Reaction times are measured from response-screen onset rather than stimulus onset, confining the interpretation of t_0 to motor execution and response selection rather than early perceptual encoding. These design choices were necessary given the MRI-compatible grip-force paradigm but limit generalizability to free-response paradigms where t_0 reflects the full encoding-decision-motor chain. Posterior predictive checks flagged all 12 experimental cells against pre-specified KS/QP thresholds (Table 10), with deviations concentrated in fast RT tails (worst in Easy/VDT). Mid-body quantile–probability alignment was nevertheless acceptable (Appendix A3, Table 11), and key effort contrasts were stable across alternative RT lower-bound thresholds (Appendix A4.2, Table 14). Future extensions incorporating across-trial variability, a fast-guess contaminant mixture, or urgency-collapsing boundaries may improve absolute fit (Ratcliff & McKoon, 2008).
+
+Third, the primary trial-wise pupil predictor—the Decision-Response AUC—spans both pre- and post-response epochs (Section 3.3). We repeated the nested pupil-DDM comparisons using the Truncated Decision-Response AUC (0.3–1.3 s post-probe; 12,150 trials with valid truncated TEPR) and Cavanagh-style pupil→a extensions on both windows; conclusions were unchanged (|ΔELPD| < 4; near-zero or small coefficients without LOO advantage). Remaining ambiguity likely reflects concurrent motor–autonomic confounds under sustained grip rather than window choice alone.
+
+Fourth, Hard-trial accuracy fell near or below chance for many participants (Appendix A7), indicating that some Hard offsets sat near perceptual threshold rather than forming a clean graded difficulty manipulation above chance. Parameter estimates for Hard conditions should be interpreted with this floor effect in mind. Complementary sensitivity analyses for task-on-drift pooling and related robustness checks are reported in Appendix A4 (Table 16, Table 14) where already completed; a Standard+Easy-only primary refit excluding Hard trials remains planned.
+
+Fifth, the concurrent isometric handgrip manipulation (40% MVC) may interact with motor execution in ways not fully captured by small fixed effects on t_0; future work integrating EMG or kinematic measures could disentangle central resource competition from peripheral motor interference. Linear Ballistic Accumulator or race models may also better accommodate the fast-tail RT dynamics observed in Easy-difficulty conditions, and future work could explore whether these model families yield the same substantive pattern of effort and difficulty effects on decision parameters.
+
+Sixth, exploratory LC-MRI and neuropsychological correlates (Appendices A8 and A9) were underpowered for individual-differences moderation and did not enter the primary inferential framework; they are reported as descriptive context for sample characterization and do not alter the group-level DDM conclusions below.
+
+4.8 Conclusions
+Concurrent 40% MVC isometric grip degraded perceptual evidence accumulation in older adults more than it reorganized decision thresholds or pre-response bias. The hierarchical Wiener DDM localized the primary cost to drift rate  — the signal-to-noise ratio of evidence integration — with a credible interval excluding zero. The inferential hierarchy was as follows.
+First and strongest: drift rate was reliably lower under High than Low effort (small relative to difficulty contrasts, but directionally certain). Second: boundary separation was directionally higher under High effort but practically negligible under the project ROPE, whereas starting-point bias did not shift credibly — inconsistent with large strategic reconfiguration. Exploratory choice-history models showed small perseveration in bias without effort amplification; within-run fatigue affected boundary separation more than drift.
+Third and most uncertain: non-decision time could not be tested in the primary model because the response-signal design required an intercept-only . The exploratory log- effort term was small and imprecise. Pupil-linked mechanisms were inconclusive (Section 3.3).
+Exploratory individual-differences analyses in the same cohort did not alter this group-level story. LC-MRI correlates (Appendix A8; (Bennett et al., 2024)) were more closely related to between-person variability in sensitivity and baseline boundary settings than to mean perceptual sensitivity, trial-wise TEPR, or the effort effect on drift. Extended neuropsychological characterization (Appendix A9) did not indicate that global cognition explained the effort → drift pattern. Taken together, under concurrent physical load, older adults mainly accumulate less evidence per unit time, with only limited adjustment in caution or bias. Exploratory LC and neuropsychological appendices contextualize individual differences but do not change the group-level account.
+Reproducibility Note
+All analysis code and de-identified data are available in the project repository: modeling-pupil-DDM. A versioned archive of the analysis code and data is also available via Zenodo: https://doi.org/10.5281/zenodo.18205123. Key paths: R/, scripts/, reports/chap3_ddm_results.qmd.
+________________
+
+
+Appendix
+This appendix supplements the main text with model diagnostics, sensitivity analyses, pupil-linked DDM extensions, and behavioral validation. A1 — behavioral LOO and convergence; A2 — standard-only calibration, trial counts, and baseline pupil descriptives; A3 — posterior predictive checks (PPC); A4 — RT timing and task-modality sensitivities; A5 — pupil-augmented LOO, fixed effects, and TEPR waveforms; A6 — full DDM specification (equations, priors, sampling); A7 — manipulation-check GLMMs/LMMs; A8–A10 — exploratory LC integrity, neuropsychological profile, and within-run temporal dynamics. Related figures are combined into multi-panel displays where layout permits (e.g., A2 bias calibration, A4 task-modality profiles); tall facet-heavy figures (TEPR, behavioral validation) remain as separate figures.
+A1. Model Selection and Convergence Diagnostics
+Table 3: Behavioral model comparison via PSIS-LOO (probe-onset-locked, thr 0.20 s; N = 17,857). ELPD is relative to the highest-ELPD model (negative = worse). The interaction row attains the highest nominal ELPD but unreliable PSIS-LOO (max Pareto- > 0.7); the additive model is retained.
+Model
+	ELPD
+	SE
+	ΔELPD
+	SE(Δ)
+	LOOIC
+	Max k
+	Interaction (Diff × Effort)
+	-17815.6
+	155.4
+	0.0
+	58.4
+	35631.1
+	1.18
+	Additive
+	-19331.4
+	146.6
+	-1515.8
+	0.0
+	38662.7
+	0.47
+	Difficulty-only
+	-20460.2
+	146.1
+	-2644.6
+	207.0
+	40920.4
+	0.65
+	Baseline
+	-23983.1
+	107.6
+	-6167.6
+	181.8
+	47966.3
+	—
+	
+
+	Note. ELPD = expected log predictive density; LOOIC = −2 × ELPD; SE(Δ) = SE of ELPD difference vs. the reference model in that row. Baseline vs additive: ΔELPD = +4,652 (~26 SEs), favoring additive. Difficulty-only vs additive: ΔELPD = +1,129 (~5 SEs), favoring the effort-inclusive additive model. The interaction attains the highest nominal ELPD but PSIS-LOO is unreliable (max Pareto-k = 1.18); additive LOO is reliable (max Pareto-k = 0.47). Canonical primary additive LOOIC = 38,662.7 (probe-onset-locked, 0.20 s). All primary analyses use the additive specification.
+Table 4: Detailed convergence diagnostics for all model variants. All models met pre-specified convergence criteria ( < 1.01, ESS > 400, zero divergences).
+RT Definition
+	Model
+	N Subjects
+	N Trials
+	Max Rhat
+	Divergent
+	Min Bulk ESS
+	Cue-locked RT
+	Baseline
+	67
+	17857
+	1.008
+	0
+	580.6067
+	Probe-onset-locked RT
+	Baseline
+	67
+	17857
+	1.009
+	0
+	540.4472
+	Cue-locked RT
+	Additive
+	67
+	17857
+	1.004
+	0
+	636.2445
+	Probe-onset-locked RT
+	Additive
+	67
+	17857
+	1.006
+	0
+	745.0662
+	
+
+	  
+
+Figure 5:  Prior vs Posterior. Prior (gray line) and posterior (blue shaded density) distributions for the  intercept. The prior is Normal(log(0.35), 0.15) on the log scale (approximately 0.35 s on natural scale). This figure documents prior influence for the response-signal design, where  primarily reflects motor execution rather than encoding time.
+	  
+
+Figure 6: LOO model comparison for baseline vs. additive models across RT definitions. Note: These LOOIC values reflect sensitivity models spanning multiple RT definitions and thresholds and are not directly comparable to the primary probe-onset-locked model (LOOIC = 38,662.7; Table 3), which uses a single pre-specified RT definition.
+	A2. Standard-Only Calibration and Supplementary Parameter Tables
+Individual-level drift plots are in the main text (Figure 4). This section reports trial counts (A2.1), primary-model posterior estimates (A2.2), standard-only and primary-model starting-point bias (A2.3), baseline pupil diameter (A2.4), and the standard-only drift intercept (A2.5).
+A2.1 Trial counts by condition
+Table 5: Trial counts by Task × Difficulty × Effort (primary DDM dataset: cue-locked RT  0.20 s;  trials).
+Difficulty
+	Effort
+	Total Trials
+	Trials/Subject
+	ADT (N = 64)
+	Easy
+	High (40% MVC)
+	1,777
+	27.8
+	Easy
+	Low (5% MVC)
+	1,738
+	27.2
+	Hard
+	High (40% MVC)
+	1,772
+	27.7
+	Hard
+	Low (5% MVC)
+	1,740
+	27.2
+	Standard
+	High (40% MVC)
+	887
+	13.9
+	Standard
+	Low (5% MVC)
+	860
+	13.4
+	VDT (N = 65)
+	Easy
+	High (40% MVC)
+	1,863
+	28.7
+	Easy
+	Low (5% MVC)
+	1,788
+	27.5
+	Hard
+	High (40% MVC)
+	1,838
+	28.3
+	Hard
+	Low (5% MVC)
+	1,749
+	26.9
+	Standard
+	High (40% MVC)
+	939
+	14.4
+	Standard
+	Low (5% MVC)
+	906
+	13.9
+	
+
+	A2.2 Primary model posterior estimates
+Posterior medians [95% CrI] for the additive primary model.  and  do not vary by task in this specification;  is constant across difficulty (randomized design).  was a single intercept (0.504 s; Section 2.10) and is not listed.
+Table 6: Primary DDM posterior estimates by Task × Difficulty × Effort. Median [95% CrI].  omitted (single intercept across conditions).
+Task
+	Difficulty
+	Effort
+	Drift (v)
+	Boundary (a)
+	Bias (z)
+	ADT
+	Standard
+	Low
+	-1.116 [-1.217, -1.018]
+	2.270 [2.231, 2.309]
+	0.532 [0.516, 0.547]
+	ADT
+	Standard
+	High
+	-1.173 [-1.273, -1.074]
+	2.309 [2.269, 2.351]
+	0.531 [0.515, 0.546]
+	ADT
+	Easy
+	Low
+	0.958 [0.861, 1.053]
+	2.057 [2.028, 2.087]
+	0.532 [0.516, 0.547]
+	ADT
+	Easy
+	High
+	0.901 [0.805, 0.997]
+	2.093 [2.061, 2.123]
+	0.531 [0.515, 0.546]
+	ADT
+	Hard
+	Low
+	-0.545 [-0.641, -0.453]
+	2.119 [2.093, 2.145]
+	0.532 [0.516, 0.547]
+	ADT
+	Hard
+	High
+	-0.604 [-0.697, -0.509]
+	2.156 [2.130, 2.183]
+	0.531 [0.515, 0.546]
+	VDT
+	Standard
+	Low
+	-1.116 [-1.217, -1.018]
+	2.270 [2.231, 2.309]
+	0.549 [0.534, 0.564]
+	VDT
+	Standard
+	High
+	-1.173 [-1.273, -1.074]
+	2.309 [2.269, 2.351]
+	0.548 [0.533, 0.563]
+	VDT
+	Easy
+	Low
+	0.958 [0.861, 1.053]
+	2.057 [2.028, 2.087]
+	0.549 [0.534, 0.564]
+	VDT
+	Easy
+	High
+	0.901 [0.805, 0.997]
+	2.093 [2.061, 2.123]
+	0.548 [0.533, 0.563]
+	VDT
+	Hard
+	Low
+	-0.545 [-0.641, -0.453]
+	2.119 [2.093, 2.145]
+	0.549 [0.534, 0.564]
+	VDT
+	Hard
+	High
+	-0.604 [-0.697, -0.509]
+	2.156 [2.130, 2.183]
+	0.548 [0.533, 0.563]
+	
+
+	A2.3 Standard-only calibration
+Table 7: Estimated starting-point bias () by Task and Effort (Standard-only model).
+Task
+	Effort
+	Mean z
+	95% CrI
+	ADT
+	low
+	0.597
+	[0.567, 0.628]
+	ADT
+	high
+	0.603
+	[0.574, 0.633]
+	VDT
+	low
+	0.559
+	[0.527, 0.589]
+	VDT
+	high
+	0.565
+	[0.535, 0.595]
+	
+
+	  
+
+Figure 7: Starting-point bias () by Task and Effort. (A) Standard-only calibration model. Points show posterior means with 95% credible intervals. Values above 0.5 indicate bias toward ‘different’ responses. ADT shows higher bias toward ‘different’ than VDT; effort effects are minimal. (B) Primary additive model (Standard trials only). Points show posterior medians with 95% credible intervals. Dashed line marks  (no bias). These estimates reflect bias jointly identified with drift rate across all trial types; the standard-only canonical estimates are in Panel A and Table 7. Effort contrasts on  are near-zero in both tasks (H4; 95% CrI spans zero); see Table 2 for the graded evidence classification.
+	Panel B shows primary-model estimates of starting-point bias across tasks and effort conditions, complementing the canonical standard-only estimates in Panel A and the main text (Section 3.2.2, Table 7).
+A2.4 Baseline pupil diameter
+Table 8 reports descriptive baseline pupil diameter by Task and Effort condition, reflecting tonic arousal state prior to evidence accumulation onset.
+Table 8: Baseline pupil diameter (tonic arousal) by Task and Effort condition. Values are descriptive summaries from the pre-trial baseline window (−0.5 s to 0 s relative to squeeze onset).
+Effort
+	Mean (AU)1
+	SD (AU)
+	Median (AU)
+	N Subjects
+	ADT
+	High (40% MVC)
+	31.68
+	9.74
+	28.56
+	51
+	Low (5% MVC)
+	32.70
+	10.01
+	29.79
+	52
+	VDT
+	High (40% MVC)
+	33.44
+	13.45
+	29.39
+	55
+	Low (5% MVC)
+	33.99
+	13.73
+	29.47
+	55
+	1Values in arbitrary units (AU) from eye tracker.
+	
+
+	A2.5 Standard-only drift intercept
+Table 9: Drift intercept (Standard-only model).
+Estimate
+	95% CrI
+	-1.478
+	[-1.659, -1.303]
+	
+
+	A3. Posterior Predictive Checks and Diagnostics
+Table 10: Convergence and PPC diagnostics (primary model). Convergence: PASS. PPC: FAIL strict thresholds (fast-tail misfit; mid-body fit acceptable). Convergence and PPC use different criteria — see main text (Section 3.2).
+Metric
+	Value
+	Posterior predictive checks
+	Max Pareto-k (additive LOO)
+	0.47
+	Cells (n)
+	12
+	Cells flagged
+	100.0%
+	Max QP RMSE (s)
+	0.225
+	Max KS
+	0.343
+	Verdict
+	FAIL (fast-tail driven; mid-body adequate)
+	Convergence
+	Max R-hat
+	1.0057
+	Min bulk ESS
+	745
+	Min tail ESS
+	1669
+	Divergent transitions
+	0
+	Verdict
+	PASS
+	
+
+	Primary-model convergence and PPC metrics are summarized in Table 10. Convergence passed; PPC flags were driven mainly by fast RT tails.
+A3.1 PPC Validation Method
+PPC thresholds (pre-specified): mid-body QP RMSE < 0.09 s, |Δ accuracy| < 0.05, KS < 0.15, and <15% of subject-condition cells flagged. Residuals = observed minus posterior median. Unconditional trial simulations used RWiener (Wabersich & Vandekerckhove, 2014); plots used bayesplot (Gabry et al., 2019).
+A3.2 Visual PPC Diagnostics
+Strict PPC thresholds were not fully met (Table 10). Most flagged cells were Easy/VDT, with misfit concentrated in fast RT tails — a common issue for standard Wiener DDMs without fast-guess or across-trial variability parameters.
+Mid-body RT quantiles and accuracy by condition matched the data reasonably well (Figure 9, Figure 8). Effort and difficulty contrasts did not change much under alternative RT cutoffs (Appendix A4.2).
+Figure 8 compares observed and predicted RT densities. Figure 9 shows quantile–probability fit by condition.
+  
+
+Figure 8: Posterior Predictive Check: RT Distributions. Empirical (black solid) vs. posterior predictive (blue solid) RT densities by Task × Effort × Difficulty. Overall model fit is good for central tendencies, with some misfit in fast tails (especially Easy/VDT).
+	  
+
+Figure 9: Quantile-Probability (QP) Plot. Empirical vs. predicted RT quantiles by difficulty level, with separate panels for Task × Effort. Points colored by difficulty (Standard=gray, Easy=blue, Hard=red) and shaped by response type (Correct/Error). Dashed diagonal = perfect prediction. Deviations primarily occur in fast tails for Easy/VDT conditions.
+	A3.3 Supplementary Diagnostic Figures
+Figure 10 plots accuracy by RT bin for each Task × Effort × Difficulty cell. Accuracy rises with RT, as expected under accumulation.
+  
+
+Figure 10: Conditional Accuracy Function (CAF). Empirical accuracy by RT bin for each Task × Effort × Difficulty combination. Shows the speed–accuracy tradeoff: faster responses (lower bins) tend toward chance accuracy, while slower responses show higher accuracy, consistent with evidence accumulation over time.
+	Figure 11 shows KS and full-range QP RMSE by cell. Table 11 reports mid-body QP RMSE (30/50/70 quantiles only), which is less sensitive to fast-tail misfit. Thresholds: KS  0.15 = pass, 0.15–0.20 = warn,  0.20 = fail; QP RMSE  0.09 s = pass, 0.09–0.12 s = warn,  0.12 s = fail. In the primary gate summary, 100% of cells were flagged on full-range metrics (max KS = 0.343; max full-range QP RMSE = 0.225 s; Table 10), mostly in fast tails (often Easy/VDT). Mid-body QP RMSE was below the 0.12 s fail threshold in 7/12 cells (max = 0.138 s; Table 11), indicating better central-tendency fit than the full quantile range despite tail-driven KS flags. PPC flags reflect absolute fit only; substantive contrasts were stable across RT cutoffs and sub-chance exclusions.
+Table 11: Mid-body QP RMSE by experimental cell (30/50/70 quantiles only). Values below the 0.12 s fail threshold support acceptable central-tendency fit despite fast-tail KS flags.
+Task
+	Effort
+	Difficulty
+	Mid-body QP RMSE (s)
+	Full QP RMSE (s)
+	KS
+	Mid-body flag
+	KS flag
+	ADT
+	low
+	Standard
+	0.129
+	0.107
+	0.279
+	Fail
+	Fail
+	ADT
+	low
+	Hard
+	0.110
+	0.128
+	0.145
+	Warn
+	Pass
+	ADT
+	low
+	Easy
+	0.110
+	0.135
+	0.330
+	Warn
+	Fail
+	ADT
+	high
+	Standard
+	0.138
+	0.119
+	0.266
+	Fail
+	Fail
+	ADT
+	high
+	Hard
+	0.089
+	0.122
+	0.103
+	Pass
+	Pass
+	ADT
+	high
+	Easy
+	0.132
+	0.180
+	0.299
+	Fail
+	Fail
+	VDT
+	low
+	Standard
+	0.057
+	0.165
+	0.203
+	Pass
+	Fail
+	VDT
+	low
+	Hard
+	0.053
+	0.185
+	0.096
+	Pass
+	Pass
+	VDT
+	low
+	Easy
+	0.121
+	0.197
+	0.328
+	Fail
+	Fail
+	VDT
+	high
+	Standard
+	0.071
+	0.168
+	0.255
+	Pass
+	Fail
+	VDT
+	high
+	Hard
+	0.063
+	0.180
+	0.088
+	Pass
+	Pass
+	VDT
+	high
+	Easy
+	0.129
+	0.225
+	0.343
+	Fail
+	Fail
+	
+
+	  
+
+Figure 11: PPC Residual Heatmaps. KS statistic and QP RMSE by Task × Effort × Difficulty for all models (top panel) and primary model only (bottom panel). Darker red indicates larger residuals. All cells exceed at least one pre-specified strict threshold; deviations are concentrated in fast RT tails.
+	A4. Sensitivity Analyses
+A4.1 Exclusion of Sub-Chance Participants
+Twelve participants were at or near chance (≤55% accuracy in some conditions). We refit the primary model on the full sample (N = 67) and after excluding them (N = 55).
+Method. Model3_Difficulty and Model4_Additive were refit on the reduced sample. We compared sensitivity − baseline (Δ) with 95% CrIs. Overlapping CIs and a Δ CI including zero indicate little change.
+Table 12: Sensitivity Analysis: Excluding Sub-Chance Participants
+Model
+	Parameter
+	Baseline
+	Excluded
+	Δ
+	Δ CI Lower
+	Δ CI Upper
+	CI Overlap
+	Δ Contains 01
+	Additive (v + a + z)
+	Boundary (a): Intercept
+	0.705
+	0.711
+	0.006
+	-0.091
+	0.103
+	TRUE
+	TRUE
+	Additive (v + a + z)
+	Drift (v): Difficulty: Hard
+	-1.534
+	-1.582
+	-0.049
+	-0.195
+	0.096
+	TRUE
+	TRUE
+	Additive (v + a + z)
+	Drift (v): Intercept
+	0.996
+	1.041
+	0.044
+	-0.170
+	0.259
+	TRUE
+	TRUE
+	Difficulty → v (drift)
+	Boundary (a): Intercept
+	0.705
+	0.710
+	0.005
+	-0.094
+	0.104
+	TRUE
+	TRUE
+	Difficulty → v (drift)
+	Drift (v): Difficulty: Hard
+	-1.534
+	-1.582
+	-0.048
+	-0.195
+	0.100
+	TRUE
+	TRUE
+	Difficulty → v (drift)
+	Drift (v): Intercept
+	1.020
+	1.117
+	0.097
+	-0.106
+	0.301
+	TRUE
+	TRUE
+	1Baseline: N=67 (includes sub-chance). Excluded: N=55 (excludes sub-chance). Δ = Excluded - Baseline. If Δ CI contains 0 and CIs overlap, parameter is robust.
+	Parameter estimates are posterior medians; Δ CI is the 95% credible interval for the difference between the full sample and the sub-chance-excluded subsample.
+	
+
+	Results. Drift intercept, boundary separation, and the Easy difficulty effect changed little. Hard difficulty shifted slightly (; ~6.5% of baseline) but remained negative relative to Standard.
+Conclusion. Main effects were unchanged. We kept all 67 participants for the primary analysis.
+A4.2 RT Cutoff Thresholds
+The difficulty gradient and effort effect on drift were similar at RT cutoffs of 0.15, 0.20, and 0.25 s (Table 14 and figures below).
+LOOIC is not comparable across cutoffs because trial counts differ. We compare parameter estimates and effect direction, not LOOIC. Table 14 reports H1 (effort on drift) and H2 (effort on boundary) contrasts from additive probe-onset-locked models refit at each cutoff (0.15 / 0.20 / 0.25 s). Coefficients at 0.20 s match the canonical primary model (max  = 1.006 in the primary fit; Appendix A1). Cutoff-sweep refits are reported for directional stability only.
+Table 13: Sensitivity to minimum cue-locked RT cutoff (0.15/0.20/0.25 s). LOOIC is omitted because trial counts differ across cutoffs; effect-direction comparisons appear in the H1/H2-by-cutoff table.
+Threshold (s)
+	N trials
+	N subjects
+	Min RT
+	Median RT
+	0.15
+	17,981
+	67
+	0.1505
+	0.8774
+	0.20
+	17,857
+	67
+	0.2004
+	0.8823
+	0.25
+	17,720
+	67
+	0.2505
+	0.8887
+	
+
+	Primary cutoff: 0.20 s cue-locked (Table 13). All reported effects use this threshold.
+Table 14: H1 (effort on drift) and H2 (effort on boundary) contrasts by cue-locked RT cutoff. High minus Low effort; additive probe-onset-locked models.
+Threshold (s)
+	N trials
+	H1: Effort on drift
+	H2: Effort on boundary
+	0.15
+	17,981
+	beta = -0.066 [-0.108, -0.025]
+	beta = 0.012 [-0.001, 0.026]
+	0.20
+	17,857
+	beta = -0.057 [-0.097, -0.017]
+	beta = 0.017 [0.004, 0.029]
+	0.25
+	17,720
+	beta = -0.065 [-0.106, -0.021]
+	beta = 0.018 [0.005, 0.032]
+	
+
+	 
+Table 15: Full sensitivity analysis results across RT cutoffs (0.15, 0.20, 0.25 s). LOOIC columns are omitted because trial counts differ across cutoffs and prior exports mixed baseline-model LOOIC with additive refits; see Table 13 and Table 14 for trial counts and H1/H2 contrasts.
+
+Figure 13: Drift rate () by difficulty condition under the primary RT cutoff threshold (0.20 s). The difficulty gradient (Easy > Hard > Standard) is consistent with the primary analysis. Parameter estimates across all three cutoff thresholds (0.15 s, 0.20 s, 0.25 s) are reported in full in Table 15.
+	A4.3 Task Modality Effects: Sensitivity Analysis
+The primary model did not include Task on  or . We fit a task-sensitivity model:
+* Drift (): ~ difficulty + effort * task
+* Boundary (): ~ difficulty + effort + task
+* Other parameters as in the primary model
+  
+
+Figure 14: Task-modality sensitivity profiles (task-sensitivity model). (A) Drift rate () by difficulty and effort, separately for ADT and VDT. Points show posterior medians with 95% credible intervals. The difficulty gradient (Standard  Hard  Easy) is consistent across tasks. High effort reduces drift rate in both modalities (Effort  Task interaction near zero with CrI spanning zero), consistent with cognitive-motor interference generalizing across sensory domains. Note: Drift rates () were estimated using Response Coding. Positive values indicate evidence accumulation toward the ‘Different’ boundary; negative values indicate accumulation toward the ‘Same’ boundary. (B) Boundary separation () by difficulty and effort, separately for ADT and VDT. Difficulty strongly modulates caution (Easy  Hard  Standard) in both tasks, but effort has minimal effect on boundary separation, indicating that older adults do not adjust response caution under physical effort.
+	  
+
+Figure 15: Additivity check: Difficulty × Effort condition means for drift rate (A) and boundary separation (B). The near-parallel shift between Low (blue) and High (magenta) effort lines across difficulty levels confirms the additive model assumption — the effort cost is consistent regardless of task difficulty, justifying the absence of a Difficulty × Effort interaction term (see Section 3.1 and Table 3).
+	Task-Sensitivity Model Comparison
+Table 16: Comparison of Effort Effects: Primary vs. Task-Sensitivity Model
+Parameter
+	Estimate
+	95% CrI
+	Effort → Drift (Primary)
+	-0.057
+	[-0.097, -0.017]
+	Effort → Drift (Task-Sens)
+	-0.085
+	[-0.133, -0.038]
+	Task → Drift
+	0.071
+	[0.020, 0.120]
+	Effort × Task → Drift
+	0.029
+	[-0.029, 0.088]
+	Note. Primary model excludes Task from drift; Task-Sens model includes Task main effect and Effort × Task interaction.
+	
+
+	Effort reduced drift with Task in the model (, 95% CrI [-0.133, -0.038]). ADT and VDT differed in absolute drift (, 95% CrI [0.020, 0.120]), but Effort × Task was near zero (, 95% CrI [-0.029, 0.088]). The effort→drift effect was robust to adding task on drift, but omitting task from drift in the primary model suppresses a credible task main effect; we report task-separated drift and boundary profiles in Figure 14 (Panels A–B) and treat pooling as a deliberate simplification for the pre-specified effort contrasts.
+A5. Pupil-DDM Fixed Effects and TEPR Visualization
+Unified pupil LOO, nested fixed-effects comparisons, Cavanagh boundary extensions, and TEPR descriptives/waveforms. Interpretation: Section 3.3.
+Unified pupil LOO comparison
+Table 17: Unified PSIS-LOO comparison for all pupil-augmented specifications (nested m0–m3, Cavanagh pupil  , both TEPR windows). ELPD vs. same- behavioral baseline within each window.
+Window
+	Model
+	ELPD LOO
+	SE(ELPD)
+	Delta ELPD vs m0
+	Max Pareto-k
+	N trials
+	Decision-Response AUC (0.3–3.3 s)
+	m0: Behavioral baseline
+	-13335.1
+	123.5
+	0.00
+	0.68
+	12287
+	Decision-Response AUC (0.3–3.3 s)
+	m1: Pupil $\rightarrow$ bias ($z$)
+	-13335.2
+	123.5
+	-0.10
+	0.42
+	12287
+	Decision-Response AUC (0.3–3.3 s)
+	m2: Pupil $\rightarrow$ drift + bias
+	-13337.3
+	123.5
+	-2.15
+	0.50
+	12287
+	Decision-Response AUC (0.3–3.3 s)
+	m3: Pupil $\times$ difficulty
+	-13337.7
+	123.5
+	-2.59
+	0.46
+	12287
+	Truncated AUC (0.3–1.3 s)
+	m0: Behavioral baseline
+	-13180.4
+	122.8
+	0.00
+	0.58
+	12150
+	Truncated AUC (0.3–1.3 s)
+	m1: Pupil $\rightarrow$ bias ($z$)
+	-13181.7
+	122.8
+	-1.38
+	0.55
+	12150
+	Truncated AUC (0.3–1.3 s)
+	m2: Pupil $\rightarrow$ drift + bias
+	-13182.9
+	122.8
+	-2.55
+	0.45
+	12150
+	Truncated AUC (0.3–1.3 s)
+	m3: Pupil $\times$ difficulty
+	-13183.2
+	122.9
+	-2.83
+	0.50
+	12150
+	Cavanagh $a$ (primary window)
+	m1p: Cavanagh pupil $\rightarrow$ $a$
+	-13332.4
+	123.5
+	2.69
+	0.34
+	12287
+	Cavanagh $a$ (truncated window)
+	m1p: Cavanagh pupil $\rightarrow$ $a$
+	-13180.0
+	122.9
+	0.39
+	0.58
+	12150
+	 Note. All pupil-augmented specifications use the same trial subset within each window. Rows under Decision-Response AUC (0.3–3.3 s) list nested Models m0–m3 (behavioral baseline, pupil $rightarrow$ $z$, pupil $rightarrow$ $v$ + $z$, pupil $times$ difficulty); $Delta$ELPD vs. m0 uses the same-$N$ behavioral baseline. Cavanagh pupil $rightarrow$ $a$ rows report boundary-only extensions. LOOIC for m0–m3 equals $-2 times$ ELPD when PSIS-LOO is reliable (max Pareto-$k$ $leq 0.7$).
+	
+
+	Fixed effects and model comparison
+Nested-model LOO for the primary Decision-Response AUC window (Models m0–m3) appears in Table 17; key pupil-linked coefficients are in Table 18.
+Table 18: Key pupil effects on drift () and bias () (link scale). Posterior mean, 95% CrI, whether the interval includes zero, and  for difficulty-conditional slopes (from interaction model).
+Parameter
+	Mean
+	95% CrI
+	Includes 0
+	P(beta > 0)
+	Pupil $v$
+	0.011
+	[-0.025, 0.045]
+	Yes
+	NA
+	Pupil $z$
+	0.004
+	[-0.027, 0.034]
+	Yes
+	NA
+	Pupil $v$: Standard
+	0.022
+	[-0.038, 0.081]
+	Yes
+	0.758
+	Pupil $v$: Hard
+	-0.026
+	[-0.07, 0.018]
+	Yes
+	0.116
+	Pupil $v$: Easy
+	0.005
+	[-0.048, 0.058]
+	Yes
+	0.580
+	
+
+	Cavanagh boundary extensions
+Table 19: Cavanagh-style pupil  boundary separation () extensions. Same- behavioral baseline as nested Models 0–3; ELPD vs. model_0_behavioral.
+Window
+	N trials
+	Pupil on $a$ (beta)
+	ELPD
+	Delta ELPD
+	Max k
+	Full AUC (0.3--3.3 s)
+	12,287
+	0.017 [0.005, 0.028]
+	-13332.4
+	2.69
+	0.34
+	Truncated AUC (0.3--1.3 s)
+	12,150
+	0.014 [0.002, 0.025]
+	-13180.0
+	0.39
+	0.58
+	
+
+	TEPR descriptives and visualization
+Table 20: Task-Evoked Pupil Response (TEPR) by Condition
+Difficulty
+	Effort
+	Mean AUC1
+	SD AUC
+	N Subjects
+	ADT
+	Easy
+	High (40% MVC)
+	0.150
+	2.585
+	45
+	Easy
+	Low (5% MVC)
+	0.127
+	3.820
+	46
+	Hard
+	High (40% MVC)
+	0.306
+	1.993
+	45
+	Hard
+	Low (5% MVC)
+	0.616
+	2.782
+	47
+	Standard
+	High (40% MVC)
+	0.190
+	3.486
+	47
+	Standard
+	Low (5% MVC)
+	0.720
+	2.626
+	46
+	VDT
+	Easy
+	High (40% MVC)
+	0.234
+	2.898
+	54
+	Easy
+	Low (5% MVC)
+	0.533
+	3.210
+	52
+	Hard
+	High (40% MVC)
+	0.681
+	2.184
+	54
+	Hard
+	Low (5% MVC)
+	0.859
+	2.062
+	53
+	Standard
+	High (40% MVC)
+	0.652
+	2.097
+	50
+	Standard
+	Low (5% MVC)
+	0.858
+	2.416
+	50
+	1TEPR quantified as Decision-Response AUC (4.65–7.65 s relative to handgrip onset; 0.3–3.3 s post-probe). Units: AU·s.
+	
+
+	TEPR waveforms and conditional slopes
+  
+
+Figure 16: Supplementary Figure (Appendix A5). Task-Evoked Pupil Response (TEPR) time course. Baseline-corrected pupil traces are estimated from winsorized subject-level means, aggregated to condition  time grand means, re-anchored to squeeze onset (), downsampled to 200 time samples, and smoothed with a GAM (95% CI on the smooth). Traces are shown for four conditions (Easy/Low, Easy/High, Hard/Low, Hard/High), separately for ADT (top) and VDT (bottom). The shaded region marks the Decision-Response AUC window (4.65–7.65 s relative to squeeze onset). Vertical dashed markers: motor onset (0 s), probe (4.35 s), response cue (4.7 s).
+	  
+
+Figure 17: Supplementary Figure A5.2. Diﬀiculty-Conditional TEPR Slopes on Drift Rate. Posterior distributions of the diﬀiculty-conditional TEPR slope on drift rate 𝑣, separately for Standard, Hard, and Easy trials, from the pupil_scaled * diﬀiculty interaction model. Conditional posterior means were Standard = 0.022, Hard = -0.026, Easy = 0.005; all three 95% credible intervals include zero, and the posteriors show minimal separation across diﬀiculty levels. This pattern does not support a credible pupil × diﬀiculty interaction on drift. See Section 3.3 for measurement limitations. Shaded regions show the 95% HDI; vertical dashed lines mark zero.
+	________________
+
+
+A6. Detailed DDM Model Specification
+Full model equations, priors, and sampling details omitted from the main Methods.
+A6.1 Response-Signal Timing Structure
+  
+
+Figure 18: Structural schematic of a single trial timeline and task-evoked pupil response (TEPR) integration windows. The full timeline is anchored to initial somatic contraction (Squeeze Onset at 0.00 s). Perceptual evidence becomes available at Probe Onset (4.35 s), followed by the execution prompt (Response Prompt at 4.70 s). Phasic arousal features are extracted using two baseline-corrected windows opening at 4.65 s (probe onset + 300 ms neurophysiological lag). The primary Decision-Response AUC window spans a full 3.0 seconds to capture the complete late-peaking morphology of the older cohort’s pupillary response, intentionally encompassing both choice formation and post-decisional processing. The Truncated Decision-Response AUC window spans 1.0 second (0.3–1.3 s post-probe), evaluated in a sensitivity refit of the nested pupil-DDM models (Section 3.3).
+	Primary analyses used probe-onset-locked RT. Figure 19 shows the ~0.35 s shift from cue-locked RT. Cue-locked RT is used only in sensitivity checks (Appendix A4.2).
+  
+
+Figure 19: RT Timing Convention Validation. Histograms showing the distribution of response times for cue-locked (measured from response-window onset) and probe-onset-locked (measured from probe stimulus onset) RT definitions across all trials. The probe-onset distribution is shifted rightward by approximately 0.35 s, corresponding to the fixed post-probe delay before the response window opens. This shift validates correct implementation of the timing transformation described in Methods. All primary analyses use probe-onset-locked RT.
+	A6.2 Link Functions and Parameter Constraints
+Link functions: To ensure parameter constraints, we apply link functions (Bürkner, 2017; Ratcliff & Tuerlinckx, 2002). The model was implemented using the brms package with family = wiener(link_bs="log", link_ndt="log", link_bias="logit"): drift rate  (identity link); boundary separation  (log link, ensures ); non-decision time  (log link, ensures ); starting-point bias  (logit link, ensures ).
+A6.3 Hierarchical Model Structure
+For subject , trial  (Bürkner, 2017; Ratcliff & McKoon, 2008):
+
+
+
+
+where  are intercepts,  are coefficients for predictors , and  are subject random effects.  has no subject random effects (response-signal design).
+Likelihood: The likelihood for a single trial with RT  and decision  follows the Wiener first-passage time distribution (Feller, 1968):
+
+where the Wiener distribution gives the probability density of the first-passage time to boundary  given drift , boundary separation , and starting point .
+Standard-only model formulas (one brms bf() call): drift rt | dec(dec_upper) ~ 1 + (1|subject_id) (prior N(0, 2)); boundary bs ~ 1 + (1|subject_id); ndt ndt ~ 1; bias bias ~ task + effort_condition + (1|subject_id).
+Figure 20 summarizes the response-signal design (Panel A) and hierarchical generative model (Panel B).
+  
+
+Figure 20: Causal assumptions and generative structure for the hierarchical DDM. Panel A shows a conceptual causal DAG in which Age and experimentally manipulated task factors (difficulty, modality, effort) influence latent DDM parameters under a gated-response design; the wait constraint alters the mapping from decision completion to observed RT, and trial selection S represents RT-based exclusions. Panel B shows the corresponding hierarchical generative structure: subject-level parameters , ,  are depicted as influenced by a generic subject-level covariate (e.g., Age_i), while in the present chapter age is not explicitly modeled because all participants are older adults; trial-level predictors  (difficulty, modality, effort) modulate drift, and choices and RTs are generated from these parameters.
+	The complete brms formula syntax for the standard-only calibration model is:
+bf(rt | dec(dec_upper) ~ 1 + (1 | subject_id),
+   bs ~ task + effort_condition + (1 | subject_id),
+   ndt ~ 1,
+   bias ~ task + effort_condition + (1 | subject_id),
+   family = wiener(link_bs = "log",
+                   link_ndt = "log",
+                   link_bias = "logit"))
+The complete brms formula syntax for the primary additive model is:
+bf(rt | dec(dec_upper) ~ difficulty_level + effort_condition +
+                          (1 | subject_id),
+   bs ~ difficulty_level + effort_condition + (1 | subject_id),
+   ndt ~ 1,
+   bias ~ task + effort_condition + (1 | subject_id),
+   family = wiener(link_bs = "log",
+                   link_ndt = "log",
+                   link_bias = "logit"))
+where dec(dec_upper) encodes the response boundary (1 = different, 0 = same), bs is the log-link parameter for boundary separation , ndt is the log-link parameter for non-decision time , and bias is the logit-link parameter for starting-point .
+A6.4 Prior Specification
+All priors were weakly informative and specified on the link scale. For intercepts, drift rate () used Normal(0, 1); boundary separation () used Normal(log(1.3), 0.25), corresponding to  on the natural scale; non-decision time () used Normal(log(0.35), 0.15), corresponding to  s on the natural scale (probe-onset-locked timing; the cue-locked variant used Normal(log(0.10), 0.15)); and starting-point bias () used Normal(0, 0.5), corresponding to  (no bias) on the probability scale. For slope parameters, drift rate slopes used Normal(0, 0.6–0.7), boundary separation slopes used Normal(0, 0.25–0.30), and bias slopes used Normal(0, 0.35). Random effects were assigned Student-t(3, 0, 0.30) priors for standard deviations and LKJ(2) priors for correlations. Prior vs. posterior for : Figure 5 (A1).
+A6.5 Computational Details
+Software. R (R Core Team, 2025), brms (Bürkner, 2017, 2018), CmdStan (Stan Development Team, 2024) via cmdstanr (Gabry & Češnovar, 2021), loo (Vehtari et al., 2017), tidyverse (Wickham, 2016; Wickham, François, et al., 2023; Wickham, Vaughan, et al., 2023; Wickham et al., 2024), gt (Iannone et al., 2024), posterior (Bürkner et al., 2022), RWiener (Wabersich & Vandekerckhove, 2014), bayesplot (Gabry et al., 2019), Quarto (Allaire et al., 2022). Models fit on GCP.
+MCMC. NUTS (Hoffman & Gelman, 2014), 8 chains × 2000 iterations (1000 warmup), adapt_delta = 0.95, max_treedepth = 12. Convergence:  ≤ 1.01, bulk ESS ≥ 400, zero divergences. Primary additive model: max  < 1.01, min bulk ESS = 745, zero divergences.
+PSIS. Pareto- flagged per (Vehtari et al., 2017).
+Model comparison and PPC: Appendix A1 and A3.
+A7. Manipulation Checks: Behavioral Validation
+Mixed-effects checks on accuracy and RT (Easy and Hard trials only). Reported for validation; DDM results do not depend on them.
+A7.1 Methods
+GLMM (binomial) for accuracy; LMM for median cue-locked RT per subject-condition. Fixed effects: difficulty, effort, task (with interactions as needed); random intercepts by subject. Standard trials excluded. Fitted in lme4 (Bates et al., 2015); tables from broom.mixed (Anderson et al., 2024).
+A7.2 Accuracy Results
+Easy and Hard trials only (N = 14,237).
+Hard trials were less accurate than Easy (, 95% CI [-3.07, -2.89], ; means 29.9% vs. 85.9%; Table 21, Figure 21). Lowest accuracy was in Hard+High cells (26.4%). High effort reduced accuracy relative to Low (, 95% CI [-0.24, -0.07], ; 56.5% vs. 59%).
+Table 21: Accuracy GLMM Results
+Term
+	Estimate
+	SE
+	statistic
+	p
+	95% CI
+	Intercept
+	2.08
+	0.11065432
+	18.759250
+	<.001
+	[1.86, 2.29]
+	Difficulty: Hard
+	-2.98
+	0.04812558
+	-61.915433
+	<.001
+	[-3.07, -2.89]
+	Effort: High_40_MVC
+	-0.16
+	0.04330828
+	-3.619704
+	<.001
+	[-0.24, -0.07]
+	
+
+	  
+
+Figure 21: Accuracy distribution by condition. Individual subject trajectories (light gray) and group means by effort with approximate 95% CI (mean ± 1.96 SE). Faceted by task and difficulty. Each facet shows cell means (Low vs High effort) within that task × difficulty combination. Narrative text reports marginal mean accuracy across task × effort (Hard vs Easy only); this figure shows cell means for visual inspection. Error bars represent within-subject standard errors calculated using the Cousineau-Morey correction.
+	Mean subject accuracy on Easy and Hard trials: M = 57.3%, SD = 12.9% (Table 22). With Standard trials included, overall accuracy was 63.5%. Range across subjects: 22.2–92.5%.
+Table 22: Overall Accuracy Summary for Easy and Hard Trials
+N Subjects
+	Mean %
+	SD %
+	Median %
+	Min %
+	Max %
+	Total Trials
+	67
+	57.3
+	12.9
+	56.8
+	22.2
+	92.5
+	14,237
+	
+
+	A7.3 Reaction Time Results
+Hard trials were slower than Easy (, 95% CI [0.213, 0.274], ; medians 1.01 s vs. 0.75 s; Table 23, Figure 22). Effort did not affect RT credibly (, 95% CI [-0.019, 0.041]).
+Table 23: RT LMM Results
+Term
+	Estimate (seconds)
+	SE
+	statistic
+	95% CI
+	Intercept
+	0.777
+	0.03260457
+	23.836465
+	[0.713, 0.841]
+	Difficulty: Hard
+	0.243
+	0.01542622
+	15.774029
+	[0.213, 0.274]
+	Effort: High_40_MVC
+	0.011
+	0.01542622
+	0.721441
+	[-0.019, 0.041]
+	
+
+	  
+
+Figure 22: RT Distribution by Condition. Density plots showing empirical RT distributions for each Task × Difficulty × Effort combination. The x-axis spans 0–3 s, matching the 3-s response window. RTs are strongly right-skewed, with most responses in the 0.5–1.5 s range. Easy conditions show faster RTs (peaks shifted left); Hard and Standard conditions show slower RTs (peaks shifted right). Effort effects are subtle compared to difficulty effects.
+	Difficulty affected accuracy and RT; effort affected accuracy only. Both manipulations worked as intended.
+A8. Exploratory LC Structural Correlates
+LC MRI in a subset of participants ((Bennett et al., 2024); overlapping BAP cohort). Exploratory only — not used for hypothesis tests or model selection.
+Sample. 67 participants had LC metrics and DDM random effects; 57 had complete NODDI data. The LC subset did not differ from others on accuracy, RT, effort cost, or age (p > .19).
+Metrics. LC CNR, NODDI fISO/fICVF, and composites (Compositev2, PC1v2). Outcomes: d′ variability and mean, |RT effort cost|, baseline DDM parameters (v, a, z), mean TEPR. Partial correlations controlled for age and sex.
+Results. Higher LC fISO predicted greater d′ variability (partial r = 0.40, p = 0.002, n = 57) but not mean d′ (p = 0.18). LC fISO correlated with lower baseline a (partial r = -0.39, p = 0.003); not with v (p = 0.24), z (p > .80), or TEPR (p = 0.10; CNR vs. TEPR: p = 0.19).
+Table 24 lists targeted associations. Figure 23 and Figure 24 show the main patterns.
+These results do not change the group-level effort → drift finding. They suggest LC free-water diffusion may relate to between-person variability in sensitivity and baseline caution.
+Table 24: Exploratory partial correlations between LC metrics and behavioral/DDM outcomes (age and sex partialled).
+Predictor
+	Outcome
+	Partial r
+	p
+	FDR q
+	n
+	LC CNR (max)
+	d′ variability
+	0.199
+	0.133
+	0.303
+	58
+	LC CNR (max)
+	Mean TEPR
+	0.175
+	0.188
+	0.389
+	58
+	LC CNR (max)
+	Baseline drift (v)
+	-0.006
+	0.966
+	0.98
+	58
+	LC fISO (free water)
+	Baseline boundary (a)
+	-0.389
+	0.00276
+	0.046
+	57
+	LC fISO (free water)
+	Mean d′
+	-0.182
+	0.177
+	0.384
+	57
+	LC fISO (free water)
+	d′ variability
+	0.397
+	0.00222
+	0.046
+	57
+	LC fISO (free water)
+	|RT cost| (High − Low)
+	-0.311
+	0.0186
+	0.113
+	57
+	LC fISO (free water)
+	Mean TEPR
+	0.219
+	0.101
+	0.266
+	57
+	LC fISO (free water)
+	Baseline drift (v)
+	-0.158
+	0.239
+	0.46
+	57
+	LC fISO (free water)
+	Baseline bias (z)
+	-0.033
+	0.808
+	0.878
+	57
+	
+
+	  
+
+Figure 23: Exploratory association between LC free-water fraction (fISO) and cross-intensity d′ variability, controlling for age and sex. Higher fISO predicted greater sensitivity variability across stimulus levels but not mean d′ (see Appendix A8).
+	  
+
+Figure 24: LC fISO in relation to behavioral variability, mean d′, baseline DDM boundary separation (a), and mean TEPR. Partial correlations control for age and sex. Only variability and baseline a showed associations at p < .05.
+	A9. Extended Baseline Characteristics and Neuropsychological Profile
+Extended baseline descriptives for the DDM sample (N = 67). Table 1 in the main text covers core demographics.
+Sample. Older adults with intact cognition (Telephone MoCA M = 19.8 (1.5), n = 62). Right-handed; 34 (50.7%) female; 51 (76.1%) White (Table 25; race coding matches Table 1).
+Battery. Table 26 lists executive, language, and self-report measures (TMT, Boston Naming, SILS, GDS, GAD-7, EMQ). Scores were typical for healthy older adults (e.g., Boston Naming M = 20.6/23; GDS M = 1.7/15).
+DDM associations (exploratory). MoCA did not correlate with baseline drift (p = 0.94) or RT effort cost (p = 0.66) (Table 27). Uncorrected p < .05 links included SILS with accuracy/RT and GDS with d′ variability (partial r = -0.27, p = 0.034; none FDR q < .05). Secondary context only.
+Table 25: Extended baseline characteristics: categorical demographics (DDM analytic sample).
+Characteristic
+	Value
+	Female, n (%)
+	34 (50.7%)
+	Right-handed, n (%)
+	67 (100.0%)
+	White race, n (%)
+	51 (76.1%)
+	Hispanic/Latino ethnicity, n (%)
+	10 (15.4%)
+	
+
+	 
+Table 26: Extended baseline characteristics: neuropsychological and demographic continuous measures (DDM analytic sample).
+Measure
+	M (SD)
+	Range
+	n
+	Age (years)
+	69.5 (6.4)
+	60.0–87.0
+	67
+	Education (years)
+	15.8 (2.6)
+	10.0–21.0
+	64
+	MoCA (telephone screen /22)
+	19.8 (1.5)
+	17.0–22.0
+	62
+	Trail Making A (seconds)
+	32.3 (9.2)
+	17.8–58.7
+	63
+	Trail Making B (seconds)
+	52.5 (28.2)
+	12.1–159.6
+	63
+	TMT B − A (seconds)
+	20.2 (25.6)
+	-33.7–126.1
+	63
+	Boston Naming (/23)
+	20.6 (2.6)
+	14.0–23.0
+	62
+	SILS (/40)
+	33.0 (3.6)
+	18.0–38.0
+	63
+	GDS (/15)
+	1.7 (2.0)
+	0.0–10.0
+	61
+	GAD-7 (/8)
+	2.3 (2.3)
+	0.0–10.0
+	61
+	EMQ-13
+	6.7 (4.7)
+	1.0–28.0
+	62
+	
+
+	 
+Table 27: Exploratory partial correlations between neuropsychological measures and DDM/behavioral outcomes (age and sex partialled). MoCA null effects and selected p < .05 associations shown; none survived FDR correction at q < .05.
+Predictor
+	Outcome
+	Partial r
+	p
+	FDR q
+	n
+	Education (years)
+	Mean accuracy
+	0.304
+	0.0146
+	0.15
+	64
+	GDS
+	d′ variability
+	-0.272
+	0.0337
+	0.266
+	61
+	GDS
+	Baseline bias (z)
+	-0.253
+	0.0492
+	0.295
+	61
+	MoCA
+	|Accuracy cost|
+	0.179
+	0.164
+	0.483
+	62
+	MoCA
+	|RT cost|
+	0.057
+	0.658
+	0.908
+	62
+	MoCA
+	Baseline drift (v)
+	-0.010
+	0.937
+	0.981
+	62
+	SILS
+	Mean accuracy
+	0.368
+	0.00304
+	0.13
+	63
+	SILS
+	d′ variability
+	0.263
+	0.0377
+	0.266
+	63
+	SILS
+	|RT cost|
+	-0.259
+	0.0406
+	0.266
+	63
+	SILS
+	Mean RT
+	-0.356
+	0.00422
+	0.13
+	63
+	
+
+	________________
+
+
+A10. Exploratory Temporal Dynamics
+These models evaluate choice history and within-run fatigue. They are reported here because they support interpretation of the main effort effects but do not directly test H1-H4 or the pupil-linked analysis.
+A10.1 Choice-history models
+We fit two hierarchical Wiener DDM variants to test whether high somatic load increased reliance on recent responses (N = 17,199 trials after block-boundary exclusions; see Supplementary Methods). Both models added the previous response (coded ±0.5 for “Different”/“Same”) to the starting-point bias subformula. The history model tested perseveration and its modulation by effort. The win-stay/lose-shift (WSLS) model also included previous-trial accuracy, asking whether carry-over differed after correct versus incorrect responses. The history model met the pre-specified  criterion (max  = 1.003). The WSLS variant had a slightly elevated maximum  (1.014). Neither model had divergent transitions.
+Baseline perseveration. Older adults showed a small but reliable tendency to repeat their previous response. In the history model, the previous-trial response coefficient on bias was positive with its 95% CrI excluding zero ( = 0.065, 95% CrI [0.005, 0.125], P( > 0) = 98.2%). On the logit scale, this corresponds to approximately a 1.5 percentage-point shift in the probability of choosing “Different” following a “Different” response. The same direction and magnitude emerged in the WSLS model (0.137 [0.017, 0.256]).
+Effort does not amplify heuristic reliance. The previous-trial response × effort interaction was near zero in both models: history model  = −0.001 (95% CrI [−0.065, 0.064], P( > 0) = 48.8%); WSLS model −0.001 ([−0.065, 0.064]). Perseveration did not differ between High effort (40% MVC) and Low effort (5% MVC).
+Win-stay/lose-shift dynamics. In the WSLS model, the interaction between previous-trial response and previous-trial accuracy was  = −0.107 (95% CrI [−0.225, 0.009], P( > 0) = 3.6%). The CrI just includes zero. The direction indicates that the perseveration effect was larger after incorrect trials than after correct ones. Neither the main effect of previous accuracy on bias ( ≈ 0, CrI [−0.060, 0.059]) nor the effort contrast differed from zero.
+History effect on drift rate. Previous-trial response also predicted current-trial drift rate in both models ( = 0.054 [0.008, 0.100], P( > 0) = 99.1%). Drift was slightly higher when the current response direction matched the previous response.
+The main estimates from both models are shown in Figure 25 (Panel C).
+A10.2 Within-session fatigue trajectory
+We also tested whether processing efficiency or caution changed within a run. A supplementary hierarchical Wiener DDM (N = 17,834 trials, 67 participants) included a within-run temporal factor. Each 30-trial run was split at the median trial position within each participant × task × run combination, producing first-half and second-half labels (maximum 1-trial imbalance across runs). The drift-rate subformula included effort, run half, continuous age (z-scored; 1 unit ≈ 6.4 years), and their three-way interaction. Boundary separation included effort, run half, and their interaction, with age as a main effect. The model converged satisfactorily (max  = 1.004; 0 divergent transitions).
+Within-run boundary relaxation. The only parameter contrast with a 95% CrI excluding zero was the second-half change in boundary separation:  = −0.022 (95% CrI [−0.040, −0.004], P( < 0) = 99.3%). On the exponentiated scale, this corresponds to a drop from about 2.04 to 1.99 across run halves under Low effort (5% MVC). The effort × run-half interaction was positive but non-credible ( = +0.011, 95% CrI [−0.014, 0.037]). Under High effort (40% MVC), the expected boundary in the second half (≈ 2.03) was close to the first-half value. Boundary trajectories for all four condition cells are shown in Figure 25 (Panel A).
+No credible drift-rate decline. The effort × run-half interaction on drift was negative but spanned zero:  = −0.035 (95% CrI [−0.100, 0.032], P( < 0) = 85.3%). Drift did not credibly decay in the second half of a run under High effort. The effort main effect on drift was directionally consistent with the primary model ( = −0.038, 95% CrI [−0.085, 0.008], P( < 0) = 94.8%), but it was non-credible in this expanded model.
+Age does not moderate the trajectory. The three-way interaction (effort × run half × age on drift) was  = −0.023 (95% CrI [−0.091, 0.044], P( < 0) = 74.0%). The CrI spans zero, so there is no clear age gradient in within-run drift dynamics.
+Secondary pattern. The run-half × age interaction on drift was positive and 95.8% probable ( = +0.048, 95% CrI [−0.006, 0.102]), with the CrI just including zero. Older-within-cohort participants tended to show slightly higher drift in the second half under Low effort. This pattern is exploratory.
+The fatigue coefficients are plotted in Figure 25 (Panel B).
+  
+
+Figure 25: Effort degraded evidence quality upstream but did not amplify heuristic responding or produce within-run accumulation-stage exhaustion; the only credible temporal effect was a modest boundary relaxation across run halves. (A) Population-average boundary separation (, exponentiated scale) across the first and second halves of each 30-trial run, by effort condition (95% CrI). (B) Focal coefficients from the within-run fatigue model; only the 2nd-vs-1st-half boundary decline (marked *) has a 95% CrI excluding zero; the effort  run-half interaction on  and the effort  run-half interaction on  both span zero. (C) Posterior distributions of the perseveration-on-bias coefficient and the effort  previous-response interaction on bias, from the history model (teal) and WSLS model (gold), plotted on the logit scale. Statistical note: Boundary decline, 2nd vs. 1st half: , 95% CrI [, ], %. Effort  run-half on boundary:  [, ]. Effort  previous-response on bias:  [, ]. Perseveration on bias:  [, ], %.
+	References
+Allaire, J., Xie, Y., Dervieux, C., McPherson, J., Luraschi, J., Ushey, K., Atkins, A., Wickham, H., Cheng, J., Chang, W., & Iannone, R. (2022). Quarto. https://quarto.org
+Anderson, Z., Robbins, A., Gabry, J., Couch, S., Seidel, D., & Wickham, H. (2024). Broom.mixed: Tidying methods for mixed models. https://CRAN.R-project.org/package=broom.mixed
+Aston-Jones, G., & Cohen, J. D. (2005). An integrative theory of locus coeruleus–norepinephrine function: Adaptive gain and optimal performance. Annual Review of Neuroscience, 28, 403–450. https://doi.org/10.1146/annurev.neuro.28.061604.135709
+Azer, L., Xie, W., Park, H.-B., & Zhang, W. (2023). Detrimental effects of effortful physical exertion on a working memory dual-task in older adults. Psychology and Aging, 38(4), 291–304. https://doi.org/10.1037/pag0000730
+Bates, D., Mächler, M., Bolker, B., & Walker, S. (2015). Fitting linear mixed-effects models using lme4. Journal of Statistical Software, 67(1), 1–48. https://doi.org/10.18637/jss.v067.i01
+Beatty, J. (1982). Task-evoked pupillary responses, processing load, and the structure of processing resources. Psychological Bulletin, 91(2), 276–292. https://doi.org/10.1037/0033-2909.91.2.276
+Bennett, I. J., Langley, J., Sun, A., Solis, K., Seitz, A. R., & Hu, X. P. (2024). Locus coeruleus contrast and diffusivity metrics differentially relate to age and memory performance. Scientific Reports, 14, 15372. https://doi.org/10.1038/s41598-024-66238-z
+Birren, J. E. (1965). Age changes in speed of behavior: Its central nature and physiological correlates. Behavior, Aging, and the Nervous System, 191–216.
+Brainard, D. H., & Vision, S. (1997). The psychophysics toolbox. Spatial Vision, 10(4), 433–436.
+Bürkner, P.-C. (2017). Brms: An R package for bayesian multilevel models using Stan. Journal of Statistical Software, 80(1), 1–28. https://doi.org/10.18637/jss.v080.i01
+Bürkner, P.-C. (2018). Advanced bayesian multilevel modeling with the R package brms. The R Journal, 10(1), 395–411. https://doi.org/10.32614/RJ-2018-017
+Bürkner, P.-C., Gabry, J., Kay, M., & Vehtari, A. (2022). Posterior: Tools for working with posterior distributions. Journal of Statistical Software, 102(10), 1–37. https://doi.org/10.18637/jss.v102.i10
+Cavanagh, J. F., Wiecki, T. V., Kochar, A., & Frank, M. J. (2014). Eye tracking and pupillometry are indicators of dissociable latent decision processes. Journal of Experimental Psychology: General, 143(4), 1476–1488. https://doi.org/10.1037/a0035813
+de Gee, J. W., Colizoli, O., Kloosterman, N. A., Knapen, T., Nieuwenhuis, S., & Donner, T. H. (2017). Dynamic modulation of decision biases by brainstem arousal systems. Elife, 6, e23232.
+de Gee, J. W., Tsetsos, K., Schwabe, L., Urai, A. E., & Donner, T. H. (2020). Pupil-linked phasic arousal predicts a reduction of choice bias across species and decision domains. eLife, 9, e54014. https://doi.org/10.7554/eLife.54014
+Drugowitsch, J., Moreno-Bote, R., Churchland, A. K., Shadlen, M. N., & Pouget, A. (2012). The cost of accumulating evidence in perceptual decision making. Journal of Neuroscience, 32(11), 3612–3628. https://doi.org/10.1523/JNEUROSCI.4010-11.2012
+Farell, B. (1985). "Same"–"different" judgments: A review of current controversies in perceptual comparisons. Psychological Bulletin, 98(3), 419–456. https://doi.org/10.1037/0033-2909.98.3.419
+Faul, F., Erdfelder, E., Lang, A.-G., & Buchner, A. (2007). G* power 3: A flexible statistical power analysis program for the social, behavioral, and biomedical sciences. Behavior Research Methods, 39(2), 175–191.
+Feller, W. (1968). An introduction to probability theory and its applications (3rd ed., Vol. 1). John Wiley & Sons.
+Fischer, J., & Whitney, D. (2014). Serial dependence in visual perception. Nature Neuroscience, 17(5), 738–743. https://doi.org/10.1038/nn.3689
+Gabry, J., & Češnovar, R. (2021). Cmdstanr: R interface to ’CmdStan’. https://doi.org/10.32614/RJ-2021-123
+Gabry, J., Simpson, D., Vehtari, A., Betancourt, M., & Gelman, A. (2019). Visualization in Bayesian workflow. Journal of the Royal Statistical Society Series A: Statistics in Society, 182(2), 389–402. https://doi.org/10.1111/rssa.12377
+Gilzenrat, M. S., Nieuwenhuis, S., Jepma, M., & Cohen, J. D. (2010). Pupil diameter tracks changes in control state predicted by the adaptive gain theory of locus coeruleus function. Cognitive, Affective, & Behavioral Neuroscience, 10(2), 252–269. https://doi.org/10.3758/CABN.10.2.252
+Hess, T. M., & Ennis, G. (2012). Age differences in the effort and costs associated with cognitive activity. Journal of Gerontology: Psychological Sciences, 67B(4), 447–455. https://doi.org/10.1093/geronb/gbr129
+Hoffman, M. D., & Gelman, A. (2014). The no-u-turn sampler: Adaptively setting path lengths in hamiltonian monte carlo. Journal of Machine Learning Research, 15, 1593–1623.
+Huang, R., & Clewett, D. (2024). The locus coeruleus: Where cognitive and emotional processing meet the eye. In Modern pupillometry (pp. 3–75). Springer International Publishing.
+Iannone, R., Cheng, J., Schloerke, B., Hughes, E., Lauer, A., & Seo, J. (2024). Gt: Easily create presentation-ready display tables. https://CRAN.R-project.org/package=gt
+Joshi, S., Li, Y., Kalwani, R. M., & Gold, J. I. (2016). Relationships between pupil diameter and neuronal activity in the locus coeruleus, colliculi, and cingulate cortex. Neuron, 89(1), 221–234. https://doi.org/10.1016/j.neuron.2015.11.028
+Kahneman, D., & Beatty, J. (1966). Pupil diameter and load on memory. Science, 154(3756), 1583–1585. https://doi.org/10.1126/science.154.3756.1583
+Kleiner, M., Brainard, D., & Pelli, D. (2007). What’s new in psychtoolbox-3?
+Kret, M. E., & Sjak-Shie, E. E. (2019). Preprocessing pupil size data: Guidelines and code. Behavior Research Methods, 51(3), 1336–1342.
+Loewenfeld, I. E., & Lowenstein, O. (1999). The pupil: Anatomy, physiology, and clinical applications. (No Title).
+Madden, D. J., & Allen, P. A. (1991). Adult age differences in the rate of information extraction during visual search. Journal of Gerontology, 46(3), P124–P126. https://doi.org/10.1093/geronj/46.3.P124
+Mather, M., & Harley, C. W. (2016). The locus coeruleus: Essential for maintaining cognitive function and the aging brain. Trends in Cognitive Sciences, 20(3), 214–226. https://doi.org/10.1016/j.tics.2016.01.001
+Mathôt, S. (2018). Pupillometry: Psychology, physiology, and function. Journal of Cognition, 1(1), 16. https://doi.org/10.5334/joc.18
+Mikneviciute, G., Ballhausen, N., Rimmele, U., & Kliegel, M. (2022). Does older adults’ cognition particularly suffer from stress? A systematic review of acute stress effects on cognition in older age. Neuroscience & Biobehavioral Reviews, 132, 583–602. https://doi.org/10.1016/j.neubiorev.2021.12.010
+Nosofsky, R. M., & Palmeri, T. J. (1997). An exemplar-based random walk model of speeded classification. Psychological Review, 104(2), 266–300. https://doi.org/10.1037/0033-295X.104.2.266
+R Core Team. (2025). R: A language and environment for statistical computing. R Foundation for Statistical Computing. https://www.R-project.org/
+Rabbitt, P. (1979). How old and young subjects monitor and control responses for accuracy and speed. British Journal of Psychology, 70(2), 305–311.
+Ratcliff, R. (1978). A theory of memory retrieval. Psychological Review, 85(2), 59–108. https://doi.org/10.1037/0033-295X.85.2.59
+Ratcliff, R. (1985). Theoretical interpretations of the speed and accuracy of positive and negative responses. Psychological Review, 92(2), 212–225. https://doi.org/10.1037/0033-295X.92.2.212
+Ratcliff, R., & McKoon, G. (2008). The diffusion decision model: Theory and data for two-choice decision tasks. Neural Computation, 20(4), 873–922. https://doi.org/10.1162/neco.2008.12-06-420
+Ratcliff, R., Thapar, A., & McKoon, G. (2001). The effects of aging on reaction time in a signal detection task. Psychology and Aging, 16(2), 323–341. https://doi.org/10.1037/0882-7974.16.2.323
+Ratcliff, R., Thapar, A., & McKoon, G. (2004). A diffusion model analysis of the effects of aging in the lexical-decision task. Psychology and Aging, 19(2), 278–289. https://doi.org/10.1037/0882-7974.19.2.278
+Ratcliff, R., Thapar, A., & McKoon, G. (2007). Application of the diffusion model to two-choice tasks for adults 75-90 years old. Psychology and Aging, 22(1), 56.
+Ratcliff, R., & Tuerlinckx, F. (2002). Estimating parameters of the diffusion model: Approaches to dealing with contaminant reaction times and parameter variability. Psychonomic Bulletin & Review, 9(3), 438–481. https://doi.org/10.3758/BF03196302
+Salthouse, T. A. (1985). Speed of behavior and its implications for cognition.
+Salthouse, T. A. (1996). The processing-speed theory of adult age differences in cognition. Psychological Review, 103(3), 403–428. https://doi.org/10.1037/0033-295X.103.3.403
+Spaniol, J., Madden, D. J., & Voss, A. (2006). A diffusion model analysis of adult age differences in episodic and semantic long-term memory retrieval. Journal of Experimental Psychology: Learning, Memory, and Cognition, 32(1), 101–117. https://doi.org/10.1037/0278-7393.32.1.101
+Stan Development Team. (2024). CmdStan user’s guide (Version 2.34). https://mc-stan.org/docs/cmdstan-guide/
+Starns, J. J., & Ratcliff, R. (2010). The effects of aging on the speed–accuracy compromise: Boundary optimality in the diffusion model. Psychology and Aging, 25(2), 377–390. https://doi.org/10.1037/a0018022
+Tajima, S., Drugowitsch, J., & Pouget, A. (2016). Optimal policy for value-based decision-making. Nature Communications, 7, 12400. https://doi.org/10.1038/ncomms12400
+Van Gerven, P. W., Paas, F., Van Merriënboer, J. J., & Schmidt, H. G. (2004). Memory load and the cognitive pupillary response in aging. Psychophysiology, 41(2), 167–174. https://doi.org/10.1111/j.1469-8986.2003.00148.x
+Vehtari, A., Gelman, A., & Gabry, J. (2017). Practical bayesian model evaluation using leave-one-out cross-validation and WAIC. Statistics and Computing, 27(5), 1413–1432. https://doi.org/10.1007/s11222-016-9696-4
+Verhaeghen, P., Steitz, D. W., Sliwinski, M. J., & Cerella, J. (2003). Aging and dual-task performance: A meta-analysis. Psychology and Aging, 18(3), 443–460. https://doi.org/10.1037/0882-7974.18.3.443
+Voss, A., Rothermund, K., & Voss, J. (2004). Interpreting the parameters of the diffusion model: An empirical validation. Memory & Cognition, 32(7), 1206–1220.
+Wabersich, D., & Vandekerckhove, J. (2014). The RWiener package: An R package providing distribution functions for the wiener diffusion model. The R Journal, 6(1), 49–56. https://doi.org/10.32614/RJ-2014-005
+Wickens, C. D. (2008). Multiple resources and mental workload. Human Factors, 50(3), 449–455. https://doi.org/10.1518/001872008X288394
+Wickham, H. (2016). ggplot2: Elegant graphics for data analysis. Springer-Verlag New York. https://ggplot2.tidyverse.org
+Wickham, H., François, R., Henry, L., Müller, K., & Vaughan, D. (2023). Dplyr: A grammar of data manipulation. https://CRAN.R-project.org/package=dplyr
+Wickham, H., Hester, J., François, R., & Bryan, J. (2024). Readr: Read rectangular text data. https://CRAN.R-project.org/package=readr
+Wickham, H., Vaughan, D., & Girlich, M. (2023). Tidyr: Tidy messy data. https://CRAN.R-project.org/package=tidyr
+Wiecki, T. V., Sofer, I., & Frank, M. J. (2013). HDDM: Hierarchical bayesian estimation of the drift-diffusion model in python. Frontiers in Neuroinformatics, 7, 14. https://doi.org/10.3389/fninf.2013.00014
+Woollacott, M., & Shumway-Cook, A. (2002). Attention and the control of posture and gait: A review of an emerging area of research. Gait & Posture, 16(1), 1–14. https://doi.org/10.1016/S0966-6362(01)00156-4
+Yerkes, R. M., & Dodson, J. D. (1908). The relation of strength of stimulus to rapidity of habit-formation. Journal of Comparative Neurology and Psychology, 18(5), 459–482. https://doi.org/10.1002/cne.920180503

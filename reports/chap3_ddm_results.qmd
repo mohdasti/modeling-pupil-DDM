@@ -4643,11 +4643,11 @@ Several limitations constrain the interpretation of these findings. First, the s
 
 `r pupil_xref_limitations`
 
-Third, Hard-trial accuracy fell near or below chance for many participants (Appendix A7), indicating that some Hard offsets sat near perceptual threshold rather than forming a clean graded difficulty manipulation above chance. Parameter estimates for Hard conditions should be interpreted with this floor effect in mind. Complementary sensitivity analyses for task-on-drift pooling and related robustness checks are reported in Appendix A4 (@tbl-task-sensitivity, @tbl-h1-h2-by-cutoff) where already completed; a Standard+Easy-only primary refit excluding Hard trials remains planned.
+Fourth, Hard-trial accuracy fell near or below chance for many participants (Appendix A7), indicating that some Hard offsets sat near perceptual threshold rather than forming a clean graded difficulty manipulation above chance. Parameter estimates for Hard conditions should be interpreted with this floor effect in mind. Complementary sensitivity analyses for task-on-drift pooling and related robustness checks are reported in Appendix A4 (@tbl-task-sensitivity, @tbl-h1-h2-by-cutoff) where already completed; a Standard+Easy-only primary refit excluding Hard trials remains planned.
 
-Fourth, the concurrent isometric handgrip manipulation (40% MVC) may interact with motor execution in ways not fully captured by small fixed effects on $t_0$; future work integrating EMG or kinematic measures could disentangle central resource competition from peripheral motor interference. Linear Ballistic Accumulator or race models may also better accommodate the fast-tail RT dynamics observed in Easy-difficulty conditions, and future work could explore whether these model families yield the same substantive pattern of effort and difficulty effects on decision parameters.
+Fifth, the concurrent isometric handgrip manipulation (40% MVC) may interact with motor execution in ways not fully captured by small fixed effects on $t_0$; future work integrating EMG or kinematic measures could disentangle central resource competition from peripheral motor interference. Linear Ballistic Accumulator or race models may also better accommodate the fast-tail RT dynamics observed in Easy-difficulty conditions, and future work could explore whether these model families yield the same substantive pattern of effort and difficulty effects on decision parameters.
 
-Fifth, exploratory LC-MRI and neuropsychological correlates (Appendices A8 and A9) were underpowered for individual-differences moderation and did not enter the primary inferential framework; they are reported as descriptive context for sample characterization and do not alter the group-level DDM conclusions below.
+Sixth, exploratory LC-MRI and neuropsychological correlates (Appendices A8 and A9) were underpowered for individual-differences moderation and did not enter the primary inferential framework; they are reported as descriptive context for sample characterization and do not alter the group-level DDM conclusions below.
 
 
 ## Conclusions
@@ -5752,7 +5752,7 @@ if (!is.null(sensitivity_summary) && exists("has_sensitivity_summary") && has_se
 
 ### A4.2 RT Cutoff Thresholds {.unnumbered}
 
-The difficulty gradient and effort effect on drift were similar at RT cutoffs of 0.15, 0.20, and 0.25 s (@tbl-app-sensitivity-full, @tbl-h1-h2-by-cutoff and figures below).
+The difficulty gradient and effort effect on drift were similar at RT cutoffs of 0.15, 0.20, and 0.25 s (@tbl-h1-h2-by-cutoff and figures below).
 
 LOOIC is not comparable across cutoffs because trial counts differ; we therefore compare parameter estimates and effect direction only (@tbl-h1-h2-by-cutoff). @tbl-h1-h2-by-cutoff reports H1 (effort on drift) and H2 (effort on boundary) contrasts from additive probe-onset-locked models refit at each cutoff (0.15 / 0.20 / 0.25 s). Coefficients at 0.20 s match the canonical primary model (max $\hat{R}$ = 1.006 in the primary fit; Appendix A1). Cutoff-sweep refits are reported for directional stability only.
 
@@ -5823,7 +5823,7 @@ if (file.exists(h1h2_cutoff_path)) {
 
 ```{r}
 #| label: tbl-app-sensitivity-full
-#| tbl-cap: "Full sensitivity analysis results across RT cutoffs (0.15, 0.20, 0.25 s)."
+#| tbl-cap: "Full sensitivity analysis results across RT cutoffs (0.15, 0.20, 0.25 s). LOOIC columns are omitted because trial counts differ across cutoffs and prior exports mixed baseline-model LOOIC with additive refits."
 #| tbl-pos: "htbp"
 #| eval: !expr has_tbl_sens
 # Print full tbl_sens table (exclude LOOIC columns — not comparable across cutoffs)
