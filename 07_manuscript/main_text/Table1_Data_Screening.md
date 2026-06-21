@@ -1,12 +1,19 @@
 # Table 1. Data Screening and Retention
 
-| Screening Step | *N* Trials | % Retained | Notes |
-|---|---|---|---|
-| **Total trials collected** | 987 | 100.0 | Original dataset |
-| **RT outliers removed** | 601 | 60.9 | RT < 200 ms or > 3,000 ms |
-| **High missing pupil removed** | 215 | 21.8 | >40% missing pupil data |
-| **Final retained trials** | **386** | **39.1** | Analysis dataset |
+| Screening Step | *N* Participants | *N* Trials | % Retained (trials) | Notes |
+|---|---:|---:|---:|---|
+| **Enrolled** | 69 | — | — | Initial consent |
+| **Post-enrollment excluded** | 2 | — | — | MCI; essential tremor |
+| **Analytic cohort** | **67** | 18,097 | 100.0 | After behavioral artifact screening |
+| **Cue-locked RT < 0.20 s excluded** | 67 | 240 | 98.7 | Anticipatory/fast responses |
+| **Primary behavioral DDM** | **67** | **17,857** | **98.7** | Probe-onset-locked RT |
+| **Pupil-linked DDM (pooled)** | **59** | **12,287** | 68.8 | Valid TEPR + behavioral inclusion |
 
-## Per-Participant Retention (Appendix)
+## Task-Specific Samples
 
-*Note*: RT outlier criteria: < 200 ms or > 3,000 ms; pupil missing criteria: >40% missing data points. Final analysis included 26 participants with mean retention rate of 39.1% (range: 15.2% - 68.4%).
+| Task | Behavioral *N* | Behavioral trials | Pupil-linked *N* | Pupil-linked trials |
+|---|---:|---:|---:|---:|
+| Auditory (ADT) | 64 | 8,774 | 47 | 5,654 |
+| Visual (VDT) | 65 | 9,083 | 54 | 6,633 |
+
+*Note*: Full flow diagram in Supplementary Figure S1. Cue-locked RT exclusion applied before probe-onset-locked RT construction. Pupil-linked percentages are relative to the behavioral RT-filtered trial set (17,857 trials).

@@ -184,6 +184,21 @@ main_fig <- function(fig_name) {
   f
 }
 
+PARTICIPANT_FLOW_FIG_DIR <- file.path(proj_root, "07_manuscript", "supplementary", "figures")
+participant_flow_fig <- function() {
+  is_latex <- knitr::is_latex_output()
+  pandoc_to <- knitr::opts_knit$get("rmarkdown.pandoc.to") %||% ""
+  ext <- if (is_latex || grepl("docx|word", pandoc_to, ignore.case = TRUE)) "pdf" else "png"
+  f <- file.path(proj_root, "output", "figures", paste0("s1_participant_flow.", ext))
+  if (!file.exists(f)) {
+    stop(
+      "Participant flow figure not found: ", f,
+      "\nRun: Rscript 07_manuscript/scripts/plot_participant_flow.R"
+    )
+  }
+  normalizePath(f, wins = "/")
+}
+
 p <- file.path(proj_root, "output/publish")
 # Canonical DDM refit tables (single source of truth — never use stale publish copies for these)
 run_tables_dir <- file.path(proj_root, params$run_dir, "tables")
@@ -1161,13 +1176,55 @@ for (.dp in .ddm_paths) {
     length(setdiff(.vdt_subs, .adt_subs))
   break
 }
+
+# Participant / trial flow counts (Appendix A2.1 figure caption)
+ch3_participant_flow <- NULL
+tryCatch({
+  source(here::here("R", "participant_flow_helpers.R"), local = TRUE)
+  ch3_participant_flow <- summarize_ch3_participant_flow(repo_root = proj_root)
+}, error = function(e) {
+  message("Participant flow counts unavailable: ", conditionMessage(e))
+})
+
+participant_flow_fig_cap <- if (!is.null(ch3_participant_flow)) {
+  flow <- ch3_participant_flow
+  sprintf(
+    paste0(
+      "Participant and analytic-sample flow. Of %s enrolled individuals, %s were excluded ",
+      "post-enrollment (MCI; essential tremor), yielding an analytic cohort of %s older adults. ",
+      "After artifact screening, %s behavioral trials were available; %s trials with cue-locked ",
+      "RT < %.2f s were excluded, leaving %s trials for the primary behavioral DDM (%s participants). ",
+      "Task-specific behavioral samples were ADT *N* = %s (%s trials) and VDT *N* = %s (%s trials). ",
+      "Pupil-linked DDM models required valid Decision-Response TEPR on the same behavioral subset ",
+      "(*N* = %s; %s trials pooled; ADT *N* = %s, VDT *N* = %s)."
+    ),
+    format_flow_n(flow$enrolled),
+    format_flow_n(flow$post_enroll_excluded),
+    format_flow_n(flow$analytic_cohort),
+    format_flow_n(flow$trials_collected),
+    format_flow_n(flow$trials_rt_excluded),
+    flow$primary_thr,
+    format_flow_n(flow$trials_behavioral),
+    format_flow_n(flow$subs_behavioral),
+    format_flow_n(flow$behavioral$adt$n_sub),
+    format_flow_n(flow$behavioral$adt$n_trials),
+    format_flow_n(flow$behavioral$vdt$n_sub),
+    format_flow_n(flow$behavioral$vdt$n_trials),
+    format_flow_n(flow$subs_pupil),
+    format_flow_n(flow$trials_pupil),
+    format_flow_n(flow$pupil$adt$n_sub),
+    format_flow_n(flow$pupil$vdt$n_sub)
+  )
+} else {
+  "Participant and analytic-sample flow for enrollment, behavioral DDM, and pupil-linked DDM analytic paths."
+}
 ```
 
 ## Participants
 
 Participants were recruited from communities surrounding the University of California, Riverside, through multiple channels including direct mail, posted flyers, social media advertisements, and word-of-mouth referrals. Eligibility criteria required participants to be aged 60–90 years, possess normal or corrected-to-normal vision and hearing, demonstrate sufficient English language comprehension to follow experimental instructions, and exhibit right-hand dominance. Exclusion criteria comprised contraindications for magnetic resonance imaging (MRI), current use of psychotropic medications, clinically significant neurological disorders, and major systemic health conditions including diabetes mellitus. 
 
-Sixty-nine individuals initially enrolled in the study. Two participants were excluded following enrollment: one due to suspected mild cognitive impairment (MCI) and another due to possible essential tremor, yielding a final sample of `r methods_n_sample` older adults (age *M* = `r methods_age_mean` years, *SD* = `r methods_age_sd`, range = `r methods_age_range` years). Table 1 reports baseline demographics for the full sample; the extended neuropsychological battery and additional baseline descriptives are provided in Appendix A9. After applying the RT threshold and quality criteria (fewer than 100 analyzable trials in a given task), `r if (exists("n_single_task_ddm") && !is.na(n_single_task_ddm)) n_single_task_ddm else "five"` participants contributed data to only one task, yielding task-specific analytic samples of *N* = `r if (exists("n_subj_adt_ddm")) n_subj_adt_ddm else 64` (Auditory) and *N* = `r if (exists("n_subj_vdt_ddm")) n_subj_vdt_ddm else 65` (Visual). Sample size was determined via a priori power analysis (G\*Power 3.1; [@faul2007g]). For a repeated-measures ANOVA with two within-subject conditions, medium effect size ($f = 0.25$), $\alpha = .05$, and power = .80, a minimum of 34 participants was required. The achieved sample of $N = 67$ exceeds this threshold by approximately 2$\times$ and is consistent with published hierarchical DDM studies reliably detecting group-level condition effects with $N = 30$–$60$ [@ratcliff2004aging; @wiecki2013hddm]. Twelve participants performed at or near chance level ($\leq$ 55% accuracy, compared to the 50% two-alternative forced-choice chance baseline) in some experimental conditions but were retained in analyses to maximize sample size, as hierarchical modeling approaches borrow statistical strength across participants to stabilize individual-level parameter estimates.
+Sixty-nine individuals initially enrolled in the study. Two participants were excluded following enrollment: one due to suspected mild cognitive impairment (MCI) and another due to possible essential tremor, yielding a final sample of `r methods_n_sample` older adults (age *M* = `r methods_age_mean` years, *SD* = `r methods_age_sd`, range = `r methods_age_range` years). @fig-participant-flow summarizes participant and trial retention through behavioral and pupil-linked analytic paths. Table 1 reports baseline demographics for the full sample; the extended neuropsychological battery and additional baseline descriptives are provided in Appendix A9. After applying the RT threshold and quality criteria (fewer than 100 analyzable trials in a given task), `r if (exists("n_single_task_ddm") && !is.na(n_single_task_ddm)) n_single_task_ddm else "five"` participants contributed data to only one task, yielding task-specific analytic samples of *N* = `r if (exists("n_subj_adt_ddm")) n_subj_adt_ddm else 64` (Auditory) and *N* = `r if (exists("n_subj_vdt_ddm")) n_subj_vdt_ddm else 65` (Visual). Sample size was determined via a priori power analysis (G\*Power 3.1; [@faul2007g]). For a repeated-measures ANOVA with two within-subject conditions, medium effect size ($f = 0.25$), $\alpha = .05$, and power = .80, a minimum of 34 participants was required. The achieved sample of $N = 67$ exceeds this threshold by approximately 2$\times$ and is consistent with published hierarchical DDM studies reliably detecting group-level condition effects with $N = 30$–$60$ [@ratcliff2004aging; @wiecki2013hddm]. Twelve participants performed at or near chance level ($\leq$ 55% accuracy, compared to the 50% two-alternative forced-choice chance baseline) in some experimental conditions but were retained in analyses to maximize sample size, as hierarchical modeling approaches borrow statistical strength across participants to stabilize individual-level parameter estimates.
 
 All participants provided written informed consent and received either course credit or monetary compensation for their participation. Study procedures were approved by the Institutional Review Board of the University of California, Riverside, and all experimental procedures were conducted in accordance with approved guidelines and regulations.
 
@@ -1789,6 +1846,17 @@ message("Tables directory: ", tables_dir)
 # Check tables_dir exists
 if (!dir.exists(tables_dir)) {
   stop(sprintf("Tables directory does not exist: %s\n\nRun the DDM postprocess pipeline and re-render.", tables_dir), call. = FALSE)
+}
+
+participant_flow_png <- file.path(proj_root, "output", "figures", "s1_participant_flow.png")
+participant_flow_pdf <- file.path(proj_root, "output", "figures", "s1_participant_flow.pdf")
+if (!file.exists(participant_flow_png) || !file.exists(participant_flow_pdf)) {
+  stop(
+    "Participant flow figure missing. Run:\n",
+    "  Rscript 07_manuscript/scripts/plot_participant_flow.R\n",
+    "Expected:\n  ", participant_flow_png, "\n  ", participant_flow_pdf,
+    call. = FALSE
+  )
 }
 
 # Define all required table files (core files only - optional files checked later)
@@ -3572,7 +3640,7 @@ if (is.na(tc_mean_trials_per_subj) && !is.na(primary_n_trials) && exists("n_subj
 n_subj_final <- if (exists("n_subj_inclusion") && !is.na(n_subj_inclusion)) n_subj_inclusion else 67L
 ```
 
-The DDM analysis included `r n_subj_inclusion` older adults ($N_{ADT}$ = `r n_subj_adt_ddm`, $N_{VDT}$ = `r n_subj_vdt_ddm` after task-specific exclusions). `r n_single_task_ddm` participants contributed to only one task after exclusions because the other task had fewer than 100 valid trials. The primary additive model retained `r format(primary_n_trials, big.mark = ",")` probe-onset-locked trials after the cue-locked RT $<$ 0.20 s cutoff (`r if (!is.na(tc_mean_trials_per_subj) && !is.na(tc_min_cell_trials)) sprintf("mean %.0f trials per subject across cells; cell totals %.0f–%.0f", tc_mean_trials_per_subj, tc_min_cell_trials, tc_max_cell_trials) else "cell counts in Appendix A2"`, @tbl-trial-counts). Manipulation checks showed that difficulty and effort affected accuracy and RT as intended (Appendix A7).
+The DDM analysis included `r n_subj_inclusion` older adults ($N_{ADT}$ = `r n_subj_adt_ddm`, $N_{VDT}$ = `r n_subj_vdt_ddm` after task-specific exclusions). `r n_single_task_ddm` participants contributed to only one task after exclusions because the other task had fewer than 100 valid trials. The primary additive model retained `r format(primary_n_trials, big.mark = ",")` probe-onset-locked trials after the cue-locked RT $<$ 0.20 s cutoff (`r if (!is.na(tc_mean_trials_per_subj) && !is.na(tc_min_cell_trials)) sprintf("mean %.0f trials per subject across cells; cell totals %.0f–%.0f", tc_mean_trials_per_subj, tc_min_cell_trials, tc_max_cell_trials) else "cell counts in Appendix A2"`, @tbl-trial-counts; @fig-participant-flow). Manipulation checks showed that difficulty and effort affected accuracy and RT as intended (Appendix A7).
 
 All primary behavioral models met convergence criteria ($\hat{R}$ < 1.01, bulk ESS > 400, zero divergent transitions; Appendix A1). Posterior predictive checks were less clean. All `r if (!is.na(ppc_n_cells_inline)) as.integer(ppc_n_cells_inline) else 12` experimental cells crossed the pre-specified KS/QP flagging thresholds (max KS = `r if (!is.na(ppc_max_ks_inline)) sprintf("%.3f", ppc_max_ks_inline) else "—"`, max full-range QP RMSE = `r if (!is.na(ppc_max_qp_inline)) sprintf("%.3f", ppc_max_qp_inline) else "—"` s; @tbl-convergence-ppc-gate-appendix), mainly because of fast-tail RT misfit. Mid-body quantile–probability fit was acceptable (Appendix A3). The key effort contrasts also held under alternative RT lower-bound thresholds (Appendix A4.2).
 
@@ -4816,9 +4884,20 @@ save_manuscript_fig(p_loo, "fig_loo_comparison", 7, 4.5)
 
 ## A2. Standard-Only Calibration and Supplementary Parameter Tables {.unnumbered}
 
-Individual-level drift plots are in the main text (@fig-individual-diffs). This section reports trial counts (**A2.1**), primary-model posterior estimates (**A2.2**), standard-only and primary-model starting-point bias (**A2.3**), baseline pupil diameter (**A2.4**), and the standard-only drift intercept (**A2.5**).
+Individual-level drift plots are in the main text (@fig-individual-diffs). This section reports participant and trial retention (**A2.1**), trial counts by condition (**A2.2**), primary-model posterior estimates (**A2.3**), standard-only and primary-model starting-point bias (**A2.4**), baseline pupil diameter (**A2.5**), and the standard-only drift intercept (**A2.6**).
 
-### A2.1 Trial counts by condition {.unnumbered}
+### A2.1 Participant and analytic sample flow {#sec-participant-flow .unnumbered}
+
+```{r}
+#| label: fig-participant-flow
+#| fig-cap: !expr participant_flow_fig_cap
+#| fig-align: center
+#| fig-pos: "htbp"
+#| out-width: "95%"
+include_graphics_safe(participant_flow_fig())
+```
+
+### A2.2 Trial counts by condition {.unnumbered}
 
 ```{r}
 #| label: tbl-trial-counts
@@ -4905,7 +4984,7 @@ if (!is.null(trial_counts_data)) {
 }
 ```
 
-### A2.2 Primary model posterior estimates {.unnumbered}
+### A2.3 Primary model posterior estimates {.unnumbered}
 
 Posterior medians [95% CrI] for the additive primary model. $v$ and $a$ do not vary by task in this specification; $z$ is constant across difficulty (randomized design). $t_0$ was a single intercept (`r t0_median` s; @sec-ddm-spec) and is not listed.
 
@@ -4945,7 +5024,7 @@ if (!is.null(pred_params) && nrow(pred_params) > 0) {
 }
 ```
 
-### A2.3 Standard-only calibration {.unnumbered}
+### A2.4 Standard-only calibration {.unnumbered}
 
 ```{r}
 #| label: tbl-standard-only-bias-levels
@@ -5066,7 +5145,7 @@ save_manuscript_fig(fig_bias_panel, "fig_a2_bias_calibration_panel", 12, 4.5)
 
 Panel B shows primary-model estimates of starting-point bias across tasks and effort conditions, complementing the canonical standard-only estimates in Panel A and the main text (@sec-starting-point-bias, @tbl-standard-only-bias-levels).
 
-### A2.4 Baseline pupil diameter {.unnumbered}
+### A2.5 Baseline pupil diameter {.unnumbered}
 
 @tbl-baseline-pupil reports descriptive baseline pupil diameter by Task and Effort condition, reflecting tonic arousal state prior to evidence accumulation onset.
 
@@ -5184,7 +5263,7 @@ if (!is.null(pupil_data) && "baseline_B0" %in% names(pupil_data) && "task" %in% 
 }
 ```
 
-### A2.5 Standard-only drift intercept {.unnumbered}
+### A2.6 Standard-only drift intercept {.unnumbered}
 
 ```{r}
 #| label: tbl-bias-drift-intercept
