@@ -37,6 +37,9 @@ format:
   docx:
     toc: true
     number-sections: true
+    prefer-html: false
+    fig-format: png
+    dpi: 300
 
 execute:
   echo: false
@@ -61,7 +64,7 @@ on.exit(options(op), add = TRUE)
 `%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
 
 # For docx output: kable_styling with bootstrap_options produces HTML, which breaks docx.
-# Override to strip bootstrap_options when rendering to Word.
+# Additional DOCX patches live in R/docx_export_helpers.R (patch_docx_export_handlers).
 if (requireNamespace("kableExtra", quietly = TRUE)) {
   tryCatch({
     to <- tryCatch(knitr::pandoc_to(), error = function(e) NULL)
@@ -146,6 +149,8 @@ if (basename(current_dir) == "reports") {
 source(here::here("R", "colors_manuscript.R"))
 source(here::here("R", "fig_save_utils.R"))
 source(here::here("R", "appendix_panel_helpers.R"))
+source(here::here("R", "docx_export_helpers.R"))
+patch_docx_export_handlers()
 stopifnot(length(cond_colors) == 6, length(param_colors) == 4, length(task_colors) == 2)
 
 # Derived palettes for figure labels that differ from vector names
@@ -186,9 +191,7 @@ main_fig <- function(fig_name) {
 
 PARTICIPANT_FLOW_FIG_DIR <- file.path(proj_root, "07_manuscript", "supplementary", "figures")
 participant_flow_fig <- function() {
-  is_latex <- knitr::is_latex_output()
-  pandoc_to <- knitr::opts_knit$get("rmarkdown.pandoc.to") %||% ""
-  ext <- if (is_latex || grepl("docx|word", pandoc_to, ignore.case = TRUE)) "pdf" else "png"
+  ext <- docx_figure_ext()
   f <- file.path(proj_root, "output", "figures", paste0("s1_participant_flow.", ext))
   if (!file.exists(f)) {
     stop(
@@ -213,7 +216,7 @@ if (!grepl(CANONICAL_DDM_RUN, basename(params$run_dir), fixed = TRUE)) {
 if (length(p) > 1) p <- p[1]
 
 # Helper: figure path resolution
-# Returns PNG for HTML output, PDF for DOCX output
+# Returns PNG for HTML/DOCX (Google Docs), PDF for LaTeX
 fig_path <- function(fig_name) {
   # Get base name without extension
   base_name <- tools::file_path_sans_ext(fig_name)
@@ -314,10 +317,10 @@ fig_path <- function(fig_name) {
     } else {
       # HTML/DOCX: Return relative paths from root.dir (which is set to project root)
       if (!is.null(output_format) && grepl("docx|word", output_format, ignore.case = TRUE)) {
-        if (!is.null(pdf_abs)) {
-          return(file.path("output/figures", pdf_name))
-        } else if (!is.null(png_abs)) {
+        if (!is.null(png_abs)) {
           return(file.path("output/figures", png_name))
+        } else if (!is.null(pdf_abs)) {
+          return(file.path("output/figures", pdf_name))
         } else if (!is.null(jpg_abs)) {
           return(file.path("output/figures", jpg_name))
         }
@@ -334,7 +337,7 @@ fig_path <- function(fig_name) {
     }
   } else {
     # Return absolute paths when root.dir is not set
-    if (!is.null(output_format) && grepl("docx|word", output_format, ignore.case = TRUE)) {
+    if (knitr::is_latex_output()) {
       if (!is.null(pdf_abs)) {
         return(pdf_abs)
       } else if (!is.null(png_abs)) {
@@ -343,12 +346,12 @@ fig_path <- function(fig_name) {
         return(jpg_abs)
       }
     } else {
-      if (!is.null(pdf_abs)) {
-        return(pdf_abs)
-      } else if (!is.null(png_abs)) {
+      if (!is.null(png_abs)) {
         return(png_abs)
       } else if (!is.null(jpg_abs)) {
         return(jpg_abs)
+      } else if (!is.null(pdf_abs)) {
+        return(pdf_abs)
       }
     }
   }
@@ -358,15 +361,43 @@ fig_path <- function(fig_name) {
   if (is_latex) {
     return(file.path("../output/figures", pdf_name))
   } else {
-    return(file.path("output/figures", if (!is.null(output_format) && grepl("docx|word", output_format, ignore.case = TRUE)) pdf_name else png_name))
+    return(file.path("output/figures", if (!is.null(output_format) && grepl("docx|word", output_format, ignore.case = TRUE)) png_name else png_name))
   }
 }
 
 # Wrapper for include_graphics that handles LaTeX path issues
 include_graphics_safe <- function(fig_path_result) {
-  # For LaTeX with root.dir set, fig_path() returns "../output/figures/..." 
-  # which works for LaTeX but knitr::include_graphics() validates relative to root.dir
-  # Use error=FALSE to skip validation since we know the file exists (we checked in fig_path)
+  if (!knitr::is_latex_output()) {
+    if (!grepl("\\.png$", fig_path_result, ignore.case = TRUE)) {
+      base <- tools::file_path_sans_ext(basename(fig_path_result))
+      png_name <- paste0(base, ".png")
+      candidates <- c(
+        sub("\\.[^.]+$", ".png", fig_path_result),
+        file.path(proj_root, "output/figures", png_name),
+        file.path("output/figures", png_name),
+        file.path("../output/figures", png_name)
+      )
+      for (candidate in unique(candidates)) {
+        if (file.exists(candidate)) {
+          fig_path_result <- candidate
+          break
+        }
+      }
+    }
+    # Pandoc resolves images from reports/; absolute paths avoid PDF fallbacks for
+    # pre-rendered figures under output/figures/.
+    resolve_candidates <- unique(c(
+      fig_path_result,
+      file.path(proj_root, fig_path_result),
+      file.path(proj_root, "output/figures", basename(fig_path_result))
+    ))
+    for (candidate in resolve_candidates) {
+      if (length(candidate) == 1 && file.exists(candidate)) {
+        fig_path_result <- normalizePath(candidate, wins = "/")
+        break
+      }
+    }
+  }
   knitr::include_graphics(fig_path_result, error = FALSE)
 }
 
@@ -1421,7 +1452,7 @@ demographics_table <- tibble(
 # Note: Quarto will automatically add "Table X:" prefix to the caption
 demographics_table %>%
   knitr::kable(
-    format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    format = table_kable_format(),
     booktabs = TRUE,
     linesep = c("", "", "", "", "", "", "", "", "", "", "\\addlinespace"),
     col.names = c("", "Full Sample"),
@@ -3897,7 +3928,7 @@ if (file.exists(loo_diffonly_path) && "difficulty_only" %in% tbl_loo_comp_raw$mo
 }
 
 tbl_loo_comp %>%
-  knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), 
+  knitr::kable(format = table_kable_format(), 
                booktabs = TRUE, 
                linesep = "",
                escape = !knitr::is_latex_output()) %>%
@@ -4750,7 +4781,7 @@ This appendix supplements the main text with model diagnostics, sensitivity anal
 #| tbl-pos: "htbp"
 #| echo: false
 tbl_loo_comp %>%
-  knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+  knitr::kable(format = table_kable_format(),
                booktabs = TRUE,
                linesep = "",
                escape = !knitr::is_latex_output()) %>%
@@ -4787,7 +4818,7 @@ tbl_conv_appendix <- tbl_convergence %>%
   )
 
 tbl_conv_appendix %>%
-  knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+  knitr::kable(format = table_kable_format(),
                booktabs = TRUE, linesep = "") %>%
   kableExtra::kable_styling(
     latex_options = c("striped", "hold_position", "scale_down"),
@@ -5008,7 +5039,7 @@ if (!is.null(pred_params) && nrow(pred_params) > 0) {
            `Drift (v)`, `Boundary (a)`, `Bias (z)`)
   ddm_posterior %>%
     knitr::kable(
-      format = ifelse(knitr::is_latex_output(), "latex", "html"),
+      format = table_kable_format(),
       booktabs = TRUE, linesep = "",
       align = c("l", "l", "l", "r", "r", "r"),
       escape = FALSE
@@ -5048,7 +5079,7 @@ tbl_bias_bycond <- std_bias_levels %>%
   )
 
 tbl_bias_bycond %>%
-  knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), 
+  knitr::kable(format = table_kable_format(), 
                booktabs = TRUE, 
                linesep = "") %>%
   kableExtra::kable_styling(
@@ -5285,7 +5316,7 @@ if (!is.null(tbl_sob_fixef)) {
     q97_col <- if ("Q97.5" %in% names(drift_intercept_raw)) "Q97.5" else if ("q97.5" %in% names(drift_intercept_raw)) "q97.5" else NA_character_
     if (is.na(q2_col) || is.na(q97_col)) {
       tibble(Note = "CI columns not found in standard_only_bias_fixef_link_scale.csv.") %>%
-        knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
+        knitr::kable(format = table_kable_format(), booktabs = TRUE, linesep = "") %>%
         kableExtra::kable_styling(latex_options = c("hold_position"), full_width = FALSE)
     } else {
       drift_intercept <- drift_intercept_raw %>%
@@ -5299,17 +5330,17 @@ if (!is.null(tbl_sob_fixef)) {
         select(estimate, `95% CrI`) %>%
         rename(`Estimate` = estimate)
       drift_intercept %>%
-        knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
+        knitr::kable(format = table_kable_format(), booktabs = TRUE, linesep = "") %>%
         kableExtra::kable_styling(latex_options = c("striped", "hold_position"), bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE)
     }
   } else {
     tibble(Note = "Drift intercept not found in standard_only_bias_fixef_link_scale.csv.") %>%
-      knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
+      knitr::kable(format = table_kable_format(), booktabs = TRUE, linesep = "") %>%
       kableExtra::kable_styling(latex_options = c("hold_position"), full_width = FALSE)
   }
 } else {
   tibble(Note = "Data not available for drift intercept table.") %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE, linesep = "") %>%
+    knitr::kable(format = table_kable_format(), booktabs = TRUE, linesep = "") %>%
     kableExtra::kable_styling(latex_options = c("hold_position"), full_width = FALSE)
 }
 ```
@@ -5541,7 +5572,7 @@ if (file.exists(ppc_mid_path)) {
       )
     ) %>%
     dplyr::select(Task, Effort, Difficulty, `Mid-body QP RMSE (s)`, `Full QP RMSE (s)`, KS, `Mid-body flag`, `KS flag`) %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    knitr::kable(format = table_kable_format(),
                  booktabs = TRUE, linesep = "") %>%
     kableExtra::kable_styling(
       latex_options = c("striped", "hold_position", "scale_down"),
@@ -5551,7 +5582,7 @@ if (file.exists(ppc_mid_path)) {
 } else {
   ppc_midbody_max_inline <- NA_real_
   tibble(Note = "Run scripts/R/export_ppc_primary_diagnostic.R to generate ppc_cells_midbody.csv.") %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE) %>%
+    knitr::kable(format = table_kable_format(), booktabs = TRUE) %>%
     kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
 }
 ```
@@ -5811,12 +5842,12 @@ if (!is.null(sensitivity_summary) && exists("has_sensitivity_summary") && has_se
       )
   } else {
     tibble(Note = "No sensitivity data available.") %>%
-      knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE) %>%
+      knitr::kable(format = table_kable_format(), booktabs = TRUE) %>%
       kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
   }
 } else {
   tibble(Note = "Sensitivity summary data not loaded.") %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE) %>%
+    knitr::kable(format = table_kable_format(), booktabs = TRUE) %>%
     kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
 }
 ```
@@ -5859,7 +5890,7 @@ if (!is.null(tbl_sens) && nrow(tbl_sens) > 0) {
   }
 
   tbl_sens_compact %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    knitr::kable(format = table_kable_format(),
                  booktabs = TRUE,
                  linesep = "") %>%
     kableExtra::kable_styling(
@@ -5886,7 +5917,7 @@ if (file.exists(h1h2_cutoff_path)) {
       `H2: Effort on boundary` = sprintf("beta = %.3f [%.3f, %.3f]", h2_beta, h2_q2.5, h2_q97.5)
     ) %>%
     dplyr::select(`Threshold (s)`, `N trials`, `H1: Effort on drift`, `H2: Effort on boundary`) %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    knitr::kable(format = table_kable_format(),
                  booktabs = TRUE, linesep = "") %>%
     kableExtra::kable_styling(
       latex_options = c("striped", "hold_position"),
@@ -5895,7 +5926,7 @@ if (file.exists(h1h2_cutoff_path)) {
     )
 } else {
   tibble(Note = "Run scripts/fit_sensitivity_additive_thresholds.R (GCP) to populate all cutoffs.") %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE) %>%
+    knitr::kable(format = table_kable_format(), booktabs = TRUE) %>%
     kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
 }
 ```
@@ -5913,7 +5944,7 @@ if (!is.null(tbl_sens) && nrow(tbl_sens) > 0) {
     mutate(
       across(where(is.numeric) & !matches("threshold"), ~round(.x, 3))
     ) %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), 
+    knitr::kable(format = table_kable_format(), 
                  booktabs = TRUE, 
                  linesep = "") %>%
     kableExtra::kable_styling(
@@ -6295,7 +6326,7 @@ if (file.exists(pupil_loo_all_path)) {
     ) %>%
     dplyr::select(Window, Model, `ELPD LOO`, `SE(ELPD)`, `Delta ELPD vs m0`, `Max Pareto-k`, n_trials) %>%
     dplyr::rename(`N trials` = n_trials) %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    knitr::kable(format = table_kable_format(),
                  booktabs = TRUE, linesep = "",
                  escape = !knitr::is_latex_output()) %>%
     kableExtra::kable_styling(
@@ -6306,7 +6337,7 @@ if (file.exists(pupil_loo_all_path)) {
     )
 } else {
   tibble(Note = "pupil_loo_all_models.csv not found. Run scripts/build_pupil_extended_loo_table.R.") %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE) %>%
+    knitr::kable(format = table_kable_format(), booktabs = TRUE) %>%
     kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
 }
 ```
@@ -6388,7 +6419,7 @@ if (file.exists(pupil_key_terms_file)) {
       mutate(across(where(is.numeric), ~ round(.x, 3)))
   }
   kbl_args <- list(
-    format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    format = table_kable_format(),
     booktabs = TRUE,
     linesep = "",
     digits = 3
@@ -6409,7 +6440,7 @@ if (file.exists(pupil_key_terms_file)) {
     )
 } else {
   tibble(Note = "Pupil key effects not available. See @sec-pupil-ddm-integration.") %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE) %>%
+    knitr::kable(format = table_kable_format(), booktabs = TRUE) %>%
     kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
 }
 ```
@@ -6462,7 +6493,7 @@ if (length(pupil_boundary_rows) > 0) {
     )
   kbl_args <- list(
     pupil_boundary_tbl,
-    format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    format = table_kable_format(),
     booktabs = TRUE,
     linesep = ""
   )
@@ -6488,7 +6519,7 @@ if (length(pupil_boundary_rows) > 0) {
     )
 } else {
   tibble(Note = "Cavanagh boundary LOO not available. See @sec-pupil-ddm-integration.") %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"), booktabs = TRUE) %>%
+    knitr::kable(format = table_kable_format(), booktabs = TRUE) %>%
     kableExtra::kable_styling(latex_options = "hold_position", full_width = FALSE)
 }
 ```
@@ -7767,7 +7798,7 @@ if (file.exists(lc_tbl_path)) {
     select(Predictor, Outcome, `Partial r`, `p`, `FDR q`, n)
 
   lc_supp_tbl %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    knitr::kable(format = table_kable_format(),
                  booktabs = TRUE, linesep = "",
                  escape = !knitr::is_latex_output()) %>%
     kableExtra::kable_styling(
@@ -7850,7 +7881,7 @@ if (file.exists(np_cat_path)) {
       mutate(Value = if_else(grepl("^White race", Characteristic), full_stats$white, Value))
   }
   np_cat_tbl %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    knitr::kable(format = table_kable_format(),
                  booktabs = TRUE, col.names = c("Characteristic", "Value"), linesep = "") %>%
     kableExtra::kable_styling(
       latex_options = c("striped", "hold_position"),
@@ -7869,7 +7900,7 @@ if (file.exists(np_cat_path)) {
 #| echo: false
 if (file.exists(np_cont_path)) {
   read_csv(np_cont_path, show_col_types = FALSE) %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    knitr::kable(format = table_kable_format(),
                  booktabs = TRUE,
                  col.names = c("Measure", "M (SD)", "Range", "n"),
                  linesep = "") %>%
@@ -7914,7 +7945,7 @@ if (file.exists(np_cor_path)) {
       n = n
     ) %>%
     select(Predictor, Outcome, `Partial r`, `p`, `FDR q`, n) %>%
-    knitr::kable(format = ifelse(knitr::is_latex_output(), "latex", "html"),
+    knitr::kable(format = table_kable_format(),
                  booktabs = TRUE, linesep = "",
                  escape = !knitr::is_latex_output()) %>%
     kableExtra::kable_styling(
