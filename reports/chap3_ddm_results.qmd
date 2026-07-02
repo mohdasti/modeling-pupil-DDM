@@ -14,7 +14,7 @@ format:
     number-sections: true
     embed-resources: true
   pdf:
-    toc: False
+    toc: false
     toc-depth: 3
     number-sections: true
     pdf-engine: xelatex  # ensures Unicode symbols render correctly
@@ -5949,19 +5949,6 @@ if (!is.null(tbl_sens) && nrow(tbl_sens) > 0) {
 ```
 
 Full sensitivity analysis results across RT cutoffs (0.15, 0.20, 0.25 s). LOOIC columns are omitted because trial counts differ across cutoffs and prior exports mixed baseline-model LOOIC with additive refits.
-:::
-
-::: {#suppfig-app-sensitivity-looic}
-```{r}
-#| fig-align: center
-#| fig-pos: "htbp"
-#| out-width: "70%"
-#| eval: false
-# LOOIC across cutoffs intentionally omitted — see @supptbl-sensitivity-thresholds footnote.
-invisible(NULL)
-```
-
-LOOIC across RT cutoff thresholds (disabled: prior exports reported baseline-model LOOIC and are not comparable to the primary additive model).
 :::
 
 ::: {#suppfig-a4-2a-drift-by-difficulty}
