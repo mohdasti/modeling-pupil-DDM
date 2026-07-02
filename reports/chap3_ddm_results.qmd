@@ -14,7 +14,7 @@ format:
     number-sections: true
     embed-resources: true
   pdf:
-    toc: true
+    toc: False
     toc-depth: 3
     number-sections: true
     pdf-engine: xelatex  # ensures Unicode symbols render correctly
@@ -1070,13 +1070,7 @@ fig1_cap <- sprintf(
 
 # Abstract {.unnumbered}
 
-Sixty-seven older adults completed auditory and visual same–different judgments under low (5% MVC) or high (40% MVC) isometric grip while pupil diameter was recorded. A hierarchical Wiener DDM was fit with probe-onset-locked RT. Difficulty entered drift ($v$) and boundary separation ($a$); task and effort entered starting-point bias ($z$), held constant across difficulty because trials were randomized.
-
-High effort lowered drift relative to low (`r h1_beta_str`, `r h1_cri_str``r h1_p0_str`; `r h1_p_in_rope_pct` ROPE mass). High effort produced a directionally positive boundary-separation contrast that was practically negligible under the project ROPE (`r h2_beta_str`, `r h2_cri_str``r h2_p0_str`). Effort did not credibly change bias (`r h4_beta_str`, `r h4_cri_str``r h4_p0_str`). Non-decision time ($t_0$) was group-level only in the primary model, so effort on peripheral timing was not tested there; an exploratory log-$t_0$ effort term was small and wide ($\hat{\beta} = 0.02$, 95% CrI [−0.05, 0.09]).
-
-Exploratory pupil-linked models showed near-zero TEPR associations with drift and bias, no predictive gain over the behavioral baseline on the pupil subset, and no LOO advantage for Cavanagh-style models in which pupil modulated boundary separation (@sec-pupil-ddm-integration). A pupil-by-difficulty interaction on drift did not support demand-dependent arousal effects (@sec-pupil-ddm-integration).
-
-Primary contrasts held under alternative RT cutoffs and when task modality was included as a sensitivity check. Under concurrent grip, older adults mainly accumulated less evidence per unit time; caution and pre-response bias changed little.
+Everyday human cognition frequently occurs during physical exertion, yet how concurrent motor effort impacts the underlying computational dynamics of decision-making in older adults remains poorly understood. We addressed this by combining pupillometry with hierarchical Bayesian Drift-Diffusion Modeling (DDM) to evaluate whether physical load limits central processing capacity or alters strategic thresholds. Sixty-seven healthy older adults completed auditory and visual same–different judgment tasks while continuously exerting either low (5% MVC) or high (40% MVC) isometric handgrip effort. Behaviorally, high physical effort selectively reduced discrimination accuracy without reliably altering response execution latencies. Computational decomposition revealed that concurrent high effort systematically degraded the drift rate ($v$), indicating a robust reduction in the efficiency and quality of evidence accumulation per unit time. Conversely, the impact of physical load on boundary separation ($a$; response caution) and pre-stimulus starting-point bias ($z$) was practically negligible. Exploratory single-trial pupil-linked extensions demonstrated that task-evoked pupil responses provided no additional predictive gain over pure behavioral baselines, yielding near-zero associations with processing efficiency or choice bias. Together, these results demonstrate that concurrent physical demands place an immediate somatic burden on the aging nervous system, selectively compromising the signal-to-noise ratio of active information processing rather than driving a strategic adaptation of decision thresholds.
 
 \newpage
 
@@ -3994,7 +3988,7 @@ central_fig_cap <- paste0(
   else "95% CrI spans zero.",
   " Statistical note: H1 on $v$: ", h1_beta_str, ", ", h1_cri_str, h1_p0_str, ". ",
   "H2 on $a$: ", h2_beta_str, ", ", h2_cri_str, h2_p0_str,
-  "; ", .h2_rope_pct, " of posterior mass within $\\pm$0.05 log-scale ROPE."
+  "; ", .h2_rope_pct, " of posterior mass within ±0.05 log-scale ROPE."
 )
 ```
 
@@ -4671,7 +4665,7 @@ Exploratory choice-history and within-session fatigue models are reported in Sup
 
 # Discussion
 
-Concurrent physical effort selectively degraded the quality of evidence accumulation in older adults. High effort reduced drift rate, consistent with resource competition or supra-optimal arousal (H1; @sec-key-contrasts), while leaving the other decision components largely unchanged. The boundary-separation contrast was directionally positive (H2; `r h2_beta_str`, `r h2_cri_str``r h2_p0_str`) but `r if (h2_rope_practically_null) "fell entirely within the project ROPE, so we do not interpret it as meaningful strategic caution" else "small relative to difficulty-driven variation in $a$"`, and starting-point bias showed a near-zero, uncertain effort contrast with no credible evidence of a shift toward neutrality (H4; @sec-starting-point-bias). Non-decision time could not be tested directly, because the response-signal design required an intercept-only $t_0$ (H3; see Limitations and future directions). The behavioral signature reinforces this localization: High effort reduced **accuracy** (manipulation check: $\beta = -0.16$, $p < .001$) without reliably slowing **reaction time** ($\beta = `r rt_effort_beta_str`, 95% CI `r rt_effort_ci_str`). The diffusion decomposition explains this dissociation — lower accuracy without RT slowing follows from a decline in drift rate (evidence quality) alongside a negligible change in boundary separation. The effect of effort on drift held when task was added as a predictor of drift, although task itself modulated absolute drift (@sec-key-contrasts, Supplementary Section~S4.3). `r pupil_xref_discussion` Overall, concurrent physical effort degraded evidence accumulation quality while producing only a negligible boundary adjustment, rather than a large strategic reconfiguration of decision thresholds or pre-stimulus bias.
+Concurrent physical effort selectively degraded the quality of evidence accumulation in older adults. High effort reduced drift rate, consistent with resource competition or supra-optimal arousal (H1; @sec-key-contrasts), while leaving the other decision components largely unchanged. The boundary-separation contrast was directionally positive (H2; `r h2_beta_str`, `r h2_cri_str``r h2_p0_str`) but `r if (h2_rope_practically_null) "fell entirely within the project ROPE, so we do not interpret it as meaningful strategic caution" else "small relative to difficulty-driven variation in $a$"`, and starting-point bias showed a near-zero, uncertain effort contrast with no credible evidence of a shift toward neutrality (H4; @sec-starting-point-bias). Non-decision time could not be tested directly, because the response-signal design required an intercept-only $t_0$ (H3; see Limitations and future directions). The behavioral signature reinforces this localization: High effort reduced **accuracy** (manipulation check: $\beta = -0.16$, $p < .001$) without reliably slowing **reaction time** ($\beta$ = `r rt_effort_beta_str`, 95% CI `r rt_effort_ci_str`). The diffusion decomposition explains this dissociation — lower accuracy without RT slowing follows from a decline in drift rate (evidence quality) alongside a negligible change in boundary separation. The effect of effort on drift held when task was added as a predictor of drift, although task itself modulated absolute drift (@sec-key-contrasts, Supplementary Section~S4.3). `r pupil_xref_discussion` Overall, concurrent physical effort degraded evidence accumulation quality while producing only a negligible boundary adjustment, rather than a large strategic reconfiguration of decision thresholds or pre-stimulus bias.
 
 The reduction in drift rate under High effort (40% MVC) relative to Low effort is the central finding and directly supports H1. Interpreted through Adaptive Gain Theory [@astonjones2005], this pattern is consistent with supra-optimal arousal under sustained grip: noise in neural representations degrades the signal-to-noise ratio driving evidence accumulation [@mather2016; @mikneviciute2022]. The diffusion model localizes the primary cost to evidence quality ($v$), with little accompanying change in caution or bias.
 
@@ -5594,7 +5588,7 @@ PPC Residual Heatmaps. KS statistic and QP RMSE by Task × Effort × Difficulty 
 
 ### S4.1 Exclusion of Sub-Chance Participants {.unnumbered}
 
-Twelve participants were at or near chance ($\leq$55% accuracy in some conditions). We refit the primary model on the full sample (N = 67) and after excluding them (N = 55).
+Twelve participants were at or near chance ($\le$55% accuracy in some conditions). We refit the primary model on the full sample (N = 67) and after excluding them (N = 55).
 
 **Method.** Model3_Difficulty and Model4_Additive were refit on the reduced sample. We compared sensitivity − baseline (Δ) with 95% CrIs. Overlapping CIs and a Δ CI including zero indicate little change.
 
