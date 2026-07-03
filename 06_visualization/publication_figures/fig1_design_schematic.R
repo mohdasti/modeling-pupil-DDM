@@ -39,12 +39,24 @@ theme_panel_tag <- function(tag) {
                                   margin = margin(l = 0, b = 1)))
 }
 
-# ── Helper: embed PNG preserving native aspect ratio (letterboxed, not stretched) ─
-image_panel <- function(img_path, tag, bg = "white") {
-  if (!file.exists(img_path)) {
-    stop("Image not found: ", img_path)
+# ── Helper: trim outer whitespace, then embed PNG at native aspect ratio ─────
+crop_image_whitespace <- function(img, threshold = 0.97, pad = 6) {
+  is_content <- (img[, , 1] < threshold | img[, , 2] < threshold | img[, , 3] < threshold)
+  rows <- which(rowSums(is_content) > 4)
+  cols <- which(colSums(is_content) > 4)
+  r0 <- max(1L, min(rows) - pad)
+  r1 <- min(nrow(img), max(rows) + pad)
+  c0 <- max(1L, min(cols) - pad)
+  c1 <- min(ncol(img), max(cols) + pad)
+  img[r0:r1, c0:c1, , drop = FALSE]
+}
+
+image_panel <- function(img, tag, bg = "white") {
+  if (is.character(img)) {
+    if (!file.exists(img)) stop("Image not found: ", img)
+    img <- readPNG(img)
   }
-  img <- readPNG(img_path)
+  img <- crop_image_whitespace(img)
   img_w <- ncol(img)
   img_h <- nrow(img)
   asp   <- img_w / img_h
@@ -55,11 +67,14 @@ image_panel <- function(img_path, tag, bg = "white") {
       rasterGrob(img, interpolate = TRUE),
       xmin = 0, xmax = asp, ymin = 0, ymax = 1
     ) +
+    annotate("text", x = 0.015, y = 0.985, label = tag,
+             hjust = 0, vjust = 1, size = 3.5, fontface = "bold") +
     coord_fixed(ratio = asp, xlim = c(0, asp), ylim = c(0, 1), clip = "off", expand = FALSE) +
-    labs(title = tag) +
     theme_void() +
-    theme_panel_tag(tag) +
-    theme(plot.margin = margin(2, 3, 2, 3, "pt"))
+    theme(
+      aspect.ratio = img_h / img_w,
+      plot.margin  = margin(0, 0, 0, 0)
+    )
 }
 
 # ── Panel A: reuse published trial-structure schematic ────────────────────────
@@ -67,7 +82,9 @@ trial_img <- file.path(repo, "output", "figures", "Trial_Structure.png")
 if (!file.exists(trial_img)) {
   trial_img <- file.path(repo, "output", "figures", "manuscript_palette", "Trial_Structure.png")
 }
-panel_a <- image_panel(trial_img, "A")
+trial_img_data <- crop_image_whitespace(readPNG(trial_img))
+trial_asp <- ncol(trial_img_data) / nrow(trial_img_data)
+panel_a <- image_panel(trial_img_data, "A")
 
 
 # ── Panel B: DDM schematic (adapted from scripts/R/fig_ddm_process.R) ─────────
@@ -290,21 +307,26 @@ panel_c <- ggplot(grid_df, aes(x = param_idx, y = pred_idx)) +
 
 
 # ── Combine ───────────────────────────────────────────────────────────────────
-# Panel A (trial timeline) is portrait (~0.92 w/h); give it the full top row so
-# labels remain legible; B and C share the bottom row.
+# Panel A uses theme(aspect.ratio) so patchwork allocates only the height needed
+# at full figure width (avoids empty band below the trial schematic).
+fig_w_mm <- 230
+panel_a_h_mm <- fig_w_mm / trial_asp
+panel_bc_h_mm <- 44
+
 fig1 <- panel_a + panel_b + panel_c +
   plot_layout(
     design   = "AA\nBC",
-    heights  = c(1.85, 1.35),
+    heights  = c(panel_a_h_mm, panel_bc_h_mm),
     widths   = c(1.15, 1.45)
   ) +
-  plot_annotation(theme = theme(plot.margin = margin(2, 2, 2, 2, "pt")))
+  plot_annotation(theme = theme(plot.margin = margin(0, 0, 0, 0)))
+
+fig1 <- fig1 & theme(plot.margin = margin(0, 0, 0, 0))
 
 out_dir <- here("output", "figures", "manuscript")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-fig_w_mm <- 180
-fig_h_mm <- 148
+fig_h_mm <- panel_a_h_mm + panel_bc_h_mm
 
 ggsave(
   filename = file.path(out_dir, "fig1_design_schematic.pdf"),
