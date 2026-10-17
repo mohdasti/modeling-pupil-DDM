@@ -1,0 +1,161 @@
+---
+title: "[TITLE — to be supplied]"
+author: "Mohammad Dastgheib"
+dissertation: false
+bibliography: references.bib
+csl: apa-7th-edition.csl
+prefer-html: true
+always_allow_html: true
+params:
+  run_dir: "output/ddm_refits/runs/final_20261016"
+  tables_dir: "output/ddm_refits/runs/final_20261016/tables/final"
+  figures_dir: "output/ddm_refits/runs/final_20261016/figures/final"
+  pupil_run: "r8_20261017_015218"   # will be switched to the r10 run id; display only
+  draft_watermark: true
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    embed-resources: true
+  pdf:
+    toc: false
+    toc-depth: 3
+    number-sections: true
+    pdf-engine: xelatex  # ensures Unicode symbols render correctly
+    documentclass: article
+    geometry:
+      - margin=1in
+    fontsize: 11pt
+    linestretch: 1.5
+    fig-pos: "htbp"  # QC fix: Changed from "H" to "htbp" to allow flexible float placement and reduce blank pages
+    include-in-header:
+      text: |
+        % XeLaTeX (pdf-engine: xelatex): Unicode supported natively; avoid fontenc/inputenc
+        \usepackage{pdflscape}
+        \usepackage{caption}
+        \usepackage{adjustbox}
+        \usepackage{longtable}
+        \usepackage{amsmath}
+        \usepackage{amssymb}
+        \usepackage{placeins}
+  docx:
+    toc: true
+    number-sections: true
+    prefer-html: false
+    fig-format: png
+    dpi: 300
+
+crossref:
+  custom:
+    - kind: float
+      key: suppfig
+      latex-env: suppfig
+      reference-prefix: "Figure S"
+      space-before-numbering: false
+    - kind: float
+      key: supptbl
+      latex-env: supptbl
+      reference-prefix: "Table S"
+      space-before-numbering: false
+      caption-location: top
+
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| echo: false
+#| results: asis
+if (isTRUE(params$draft_watermark)) {
+  cat(sprintf(
+    "**DRAFT — numbers from run %s for pupil results; behavioral results final.**\n",
+    params$pupil_run
+  ))
+}
+```
+
+# Abstract {.unnumbered}
+
+# 1 Introduction {.unnumbered}
+
+# 2 Methods {.unnumbered}
+
+## 2.1 Participants {.unnumbered}
+
+## 2.2 Task and stimuli {.unnumbered}
+
+## 2.3 Maximum voluntary contraction calibration {.unnumbered}
+
+## 2.4 Apparatus {.unnumbered}
+
+## 2.5 Behavioral data processing {.unnumbered}
+
+## 2.6 Pupillometry {.unnumbered}
+
+## 2.7 Drift-diffusion model {.unnumbered}
+
+### 2.7.1 Response coding and parameterization {.unnumbered}
+
+### 2.7.2 Model specification {.unnumbered}
+
+### 2.7.3 Priors and estimation {.unnumbered}
+
+## 2.8 Pupil-linked extensions {.unnumbered}
+
+## 2.9 Statistical inference and model comparison {.unnumbered}
+
+# 3 Results {.unnumbered}
+
+## 3.1 Behavioral performance {.unnumbered}
+
+## 3.2 Effort effects on decision parameters {.unnumbered}
+
+## 3.3 Task and difficulty effects {.unnumbered}
+
+## 3.4 Robustness {.unnumbered}
+
+## 3.5 Pupil-linked decision dynamics {.unnumbered}
+
+## 3.6 Model adequacy {.unnumbered}
+
+# 4 Discussion {.unnumbered}
+
+## 4.1 Limitations and future directions {.unnumbered}
+
+# References {.unnumbered}
+
+::: {#refs}
+:::
+
+# Supplementary Materials {.unnumbered}
+
+## S1 Participant and trial flow {.unnumbered}
+
+## S2 Model comparison and convergence {.unnumbered}
+
+## S3 Posterior predictive checks {.unnumbered}
+
+## S4 Robustness analyses {.unnumbered}
+
+## S5 Pupil-linked models {.unnumbered}
+
+## S6 Model specification details {.unnumbered}
+
+::: {.content-visible when-meta="dissertation"}
+
+## S7 Behavioral mixed-effects models (dissertation only) {.unnumbered}
+
+## S8 Exploratory LC structural correlates (dissertation only) {.unnumbered}
+
+## S9 Extended baseline and neuropsychological profile (dissertation only) {.unnumbered}
+
+## S10 Exploratory temporal dynamics (dissertation only; pre-revision model structure) {.unnumbered}
+
+## S11 Additional diagnostics (dissertation only): CAF, RT distributions, DAG {.unnumbered}
+
+## S12 Analysis provenance (dissertation only) {.unnumbered}
+
+:::
