@@ -59,6 +59,15 @@ test_that("fmt_num keeps decimals and uses a Unicode minus", {
   expect_true(grepl(minus, fmt_num(-1.25, 2), fixed = TRUE))
 })
 
+test_that("fmt_num prints a negative zero as an unsigned zero", {
+  expect_identical(fmt_num(-0.04, 1), "0.0")
+  expect_identical(fmt_num(-1e-8, 1), "0.0")
+  expect_identical(fmt_num(-0.0004, 3), "0.000")
+  expect_false(grepl("-", fmt_num(-0.04, 1), fixed = TRUE))
+  expect_false(grepl(minus, fmt_num(-0.04, 1), fixed = TRUE))
+  expect_false(grepl(minus, fmt_num(-1e-12, 2), fixed = TRUE))
+})
+
 test_that("fmt_int uses a thousands separator", {
   expect_identical(fmt_int(17857), "17,857")
   expect_identical(fmt_int(0), "0")

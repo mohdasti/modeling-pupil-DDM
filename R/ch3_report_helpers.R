@@ -69,7 +69,8 @@ fmt_num <- function(x, d) {
     .stop_value("fmt_num expects a non-negative digit count")
   }
   s <- sprintf(paste0("%.", as.integer(d), "f"), x)
-  if (grepl("^-(0+(\\.0+)?)$", s)) {
+  # A formatted zero is unsigned, including a negative zero such as -0.0.
+  if (!is.na(suppressWarnings(as.numeric(s))) && as.numeric(s) == 0) {
     s <- sub("^-", "", s)
   } else {
     s <- sub("-", .minus, s, fixed = TRUE)
@@ -429,11 +430,13 @@ make_table <- function(df, cols, col_labels, digits_map = NULL, footnote = NULL)
     format = "pipe",
     align = c("l", rep("r", max(0, ncol(shown) - 1)))
   )
+  # as.character() is one string per line. paste0() would recycle a footnote onto every line.
+  body <- paste(as.character(kb), collapse = "\n")
   note <- ""
   if (!is.null(footnote) && length(footnote) == 1L && !is.na(footnote) && nzchar(footnote)) {
     note <- paste0("\n\n*Note.* ", footnote)
   }
-  knitr::asis_output(paste0(as.character(kb), note, "\n"))
+  knitr::asis_output(paste0(body, note, "\n"))
 }
 
 ch3_tbl_demographics <- function(df) {
