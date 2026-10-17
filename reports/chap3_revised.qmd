@@ -10,18 +10,19 @@ params:
   run_dir: "output/ddm_refits/runs/final_20261016"
   tables_dir: "output/ddm_refits/runs/final_20261016/tables/final"
   figures_dir: "output/ddm_refits/runs/final_20261016/figures/final"
+  diag_dir: "output/diagnostics/qmd_current"
   pupil_run: "r8_20261017_015218"   # will be switched to the r10 run id; display only
   draft_watermark: true
 format:
   html:
     toc: true
     toc-depth: 3
-    number-sections: true
+    number-sections: false
     embed-resources: true
   pdf:
     toc: false
     toc-depth: 3
-    number-sections: true
+    number-sections: false
     pdf-engine: xelatex  # ensures Unicode symbols render correctly
     documentclass: article
     geometry:
@@ -41,7 +42,7 @@ format:
         \usepackage{placeins}
   docx:
     toc: true
-    number-sections: true
+    number-sections: false
     prefer-html: false
     fig-format: png
     dpi: 300
@@ -145,7 +146,7 @@ Tables/figures in this section: @tbl-demographics.
 
 ```{r}
 #| label: tbl-demographics
-#| tbl-cap: "​[CAPTION TO BE SUPPLIED]"
+#| tbl-cap: "[CAPTION TO BE SUPPLIED]"
 ch3_tbl_demographics(tbl$T1_demographics)
 ```
 
@@ -197,7 +198,7 @@ Tables/figures in this section: none.
 ::: {.callout-warning appearance="minimal"}
 **[PROSE TO BE SUPPLIED: 2.6 Pupillometry]**
 Resolves Lani comments: C11, C12, C37, C38, C39, C40, C41, C42, C43, C44.
-Inline value keys available for this section: tepr_window_start, tepr_window_end, tepr_baseline_start, tepr_baseline_end, tepr_window_post_probe, tepr_baseline_pre_probe, n_pupil_matched_trials, n_pupil_matched_subjects, n_pupil_tepr_present_trials, n_pupil_tepr_present_subjects, n_pupil_b1_quality_trials, n_pupil_b1_quality_subjects, n_pupil_window_quality_trials, n_pupil_window_quality_subjects, n_pupil_final_trials, n_pupil_final_subjects, n_pupil_entered_vs_r5, n_pupil_left_vs_r5.
+Inline value keys available for this section: tepr_window_start, tepr_window_end, tepr_baseline_start, tepr_baseline_end, tepr_window_post_probe, tepr_baseline_pre_probe, n_pupil_matched_trials, n_pupil_matched_subjects, n_pupil_tepr_present_trials, n_pupil_tepr_present_subjects, n_pupil_b1_quality_trials, n_pupil_b1_quality_subjects, n_pupil_window_quality_trials, n_pupil_window_quality_subjects, n_pupil_final_trials, n_pupil_final_subjects.
 Tables/figures in this section: none.
 :::
 
@@ -223,7 +224,7 @@ Tables/figures in this section: none.
 
 ::: {.callout-warning appearance="minimal"}
 **[PROSE TO BE SUPPLIED: 2.7.2 Model specification]**
-Resolves Lani comments: none.
+Resolves Lani comments: C51.
 Inline value keys available for this section: none.
 Tables/figures in this section: none.
 :::
@@ -298,7 +299,7 @@ suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_
 
 ```{r}
 #| label: tbl-effort-effects
-#| tbl-cap: "​[CAPTION TO BE SUPPLIED]"
+#| tbl-cap: "[CAPTION TO BE SUPPLIED]"
 ch3_tbl_effort_effects(tbl$T2_effort_effects_M4)
 ```
 
@@ -332,7 +333,7 @@ Tables/figures in this section: none.
 ::: {.callout-warning appearance="minimal"}
 **[PROSE TO BE SUPPLIED: 3.5 Pupil-linked decision dynamics]**
 Resolves Lani comments: C76, C77, C78.
-Inline value keys available for this section: P3_bs, P3_rt_bs, P5_bs, P6_bs, P7_bs, P8_bs, P1_bias, P2_drift_tepr, P2_drift_tepr_x_stim, P4_bias_base, P0_crit, P0_qual, P0_bs, P0_bias, delta_elpd_P3_vs_P0, delta_elpd_P3rt_vs_P0rt, delta_elpd_P5_vs_P0base, delta_elpd_P6_vs_P0lag, delta_elpd_P7_vs_P0pre, delta_elpd_P8_vs_P0grip, delta_elpd_P1_vs_P0, delta_elpd_P2_vs_P0, delta_elpd_P4_vs_P0base, tepr_rt_r, grip_high_low_ADT, grip_high_low_VDT, tepr_high_low_ADT_B1, tepr_high_low_VDT_B1, tepr_high_low_ADT_B0, tepr_high_low_VDT_B0, n_pupil_matched_trials, n_pupil_matched_subjects, n_pupil_tepr_present_trials, n_pupil_tepr_present_subjects, n_pupil_b1_quality_trials, n_pupil_b1_quality_subjects, n_pupil_window_quality_trials, n_pupil_window_quality_subjects, n_pupil_final_trials, n_pupil_final_subjects, n_pupil_base_trials, n_pupil_rt80_trials, n_pupil_lag_trials, n_pupil_pre_trials, n_pupil_grip_trials, n_pupil_entered_vs_r5, n_pupil_left_vs_r5, n_pupil_models_k_gt_0.7, pct_gain_lost_rt_trim, max_k_pupil_models.
+Inline value keys available for this section: P3_bs, P3_rt_bs, P5_bs, P6_bs, P7_bs, P8_bs, P1_bias, P2_drift_tepr, P2_drift_tepr_x_stim, P4_bias_base, P0_crit, P0_qual, P0_bs, P0_bias, delta_elpd_P3_vs_P0, delta_elpd_P3rt_vs_P0rt, delta_elpd_P5_vs_P0base, delta_elpd_P6_vs_P0lag, delta_elpd_P7_vs_P0pre, delta_elpd_P8_vs_P0grip, delta_elpd_P1_vs_P0, delta_elpd_P2_vs_P0, delta_elpd_P4_vs_P0base, tepr_rt_r, grip_high_low_ADT, grip_high_low_VDT, tepr_high_low_ADT_B1, tepr_high_low_VDT_B1, tepr_high_low_ADT_B0, tepr_high_low_VDT_B0, n_pupil_matched_trials, n_pupil_matched_subjects, n_pupil_tepr_present_trials, n_pupil_tepr_present_subjects, n_pupil_b1_quality_trials, n_pupil_b1_quality_subjects, n_pupil_window_quality_trials, n_pupil_window_quality_subjects, n_pupil_final_trials, n_pupil_final_subjects, n_pupil_base_trials, n_pupil_rt80_trials, n_pupil_lag_trials, n_pupil_pre_trials, n_pupil_grip_trials, n_pupil_models_k_gt_0.7, pct_gain_lost_rt_trim, max_k_pupil_models.
 Tables/figures in this section: @fig-pupil-boundary, @tbl-pupil-ordering.
 :::
 
@@ -345,7 +346,7 @@ suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_
 
 ```{r}
 #| label: tbl-pupil-ordering
-#| tbl-cap: "​[CAPTION TO BE SUPPLIED]"
+#| tbl-cap: "[CAPTION TO BE SUPPLIED]"
 ch3_tbl_pupil_ordering(tbl$T8_pupil_ordering)
 ```
 
@@ -547,7 +548,7 @@ ch3_tbl_m4b(tbl$T4b_M4b_task_effort)
 ::: {.callout-warning appearance="minimal"}
 **[PROSE TO BE SUPPLIED: S5 Pupil-linked models]**
 Resolves Lani comments: none.
-Inline value keys available for this section: P3_bs, P3_rt_bs, P5_bs, P6_bs, P7_bs, P8_bs, P1_bias, P2_drift_tepr, P2_drift_tepr_x_stim, P4_bias_base, P0_crit, P0_qual, P0_bs, P0_bias, delta_elpd_P3_vs_P0, delta_elpd_P3rt_vs_P0rt, delta_elpd_P5_vs_P0base, delta_elpd_P6_vs_P0lag, delta_elpd_P7_vs_P0pre, delta_elpd_P8_vs_P0grip, delta_elpd_P1_vs_P0, delta_elpd_P2_vs_P0, delta_elpd_P4_vs_P0base, tepr_rt_r, grip_high_low_ADT, grip_high_low_VDT, tepr_high_low_ADT_B1, tepr_high_low_VDT_B1, tepr_high_low_ADT_B0, tepr_high_low_VDT_B0, n_pupil_matched_trials, n_pupil_matched_subjects, n_pupil_tepr_present_trials, n_pupil_tepr_present_subjects, n_pupil_b1_quality_trials, n_pupil_b1_quality_subjects, n_pupil_window_quality_trials, n_pupil_window_quality_subjects, n_pupil_final_trials, n_pupil_final_subjects, n_pupil_base_trials, n_pupil_rt80_trials, n_pupil_lag_trials, n_pupil_pre_trials, n_pupil_grip_trials, n_pupil_entered_vs_r5, n_pupil_left_vs_r5, n_pupil_models_k_gt_0.7, pct_gain_lost_rt_trim, max_k_pupil_models.
+Inline value keys available for this section: P3_bs, P3_rt_bs, P5_bs, P6_bs, P7_bs, P8_bs, P1_bias, P2_drift_tepr, P2_drift_tepr_x_stim, P4_bias_base, P0_crit, P0_qual, P0_bs, P0_bias, delta_elpd_P3_vs_P0, delta_elpd_P3rt_vs_P0rt, delta_elpd_P5_vs_P0base, delta_elpd_P6_vs_P0lag, delta_elpd_P7_vs_P0pre, delta_elpd_P8_vs_P0grip, delta_elpd_P1_vs_P0, delta_elpd_P2_vs_P0, delta_elpd_P4_vs_P0base, tepr_rt_r, grip_high_low_ADT, grip_high_low_VDT, tepr_high_low_ADT_B1, tepr_high_low_VDT_B1, tepr_high_low_ADT_B0, tepr_high_low_VDT_B0, n_pupil_matched_trials, n_pupil_matched_subjects, n_pupil_tepr_present_trials, n_pupil_tepr_present_subjects, n_pupil_b1_quality_trials, n_pupil_b1_quality_subjects, n_pupil_window_quality_trials, n_pupil_window_quality_subjects, n_pupil_final_trials, n_pupil_final_subjects, n_pupil_base_trials, n_pupil_rt80_trials, n_pupil_lag_trials, n_pupil_pre_trials, n_pupil_grip_trials, n_pupil_models_k_gt_0.7, pct_gain_lost_rt_trim, max_k_pupil_models.
 Tables/figures in this section: @supptbl-pupil-models, @supptbl-pupil-descriptives, @suppfig-tepr.
 :::
 
@@ -796,7 +797,7 @@ suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_
 ::: {.callout-warning appearance="minimal"}
 **[PROSE TO BE SUPPLIED: S12 Analysis provenance (dissertation only)]**
 Resolves Lani comments: none.
-Inline value keys available for this section: none.
+Inline value keys available for this section: n_pupil_entered_vs_r5, n_pupil_left_vs_r5.
 Tables/figures in this section: none.
 :::
 
@@ -804,9 +805,14 @@ Tables/figures in this section: none.
 
 ```{r}
 #| include: false
+diag_dir <- params$diag_dir
+if (is.null(diag_dir) || !nzchar(diag_dir)) {
+  diag_dir <- "output/diagnostics/qmd_current"
+}
+dir.create(file.path(proj_root, diag_dir), recursive = TRUE, showWarnings = FALSE)
 utils::write.csv(
   data.frame(call_order = seq_along(.keys_used), key = .keys_used, stringsAsFactors = FALSE),
-  file.path(proj_root, "output/diagnostics/qmd_phase1/keys_used.csv"),
+  file.path(proj_root, diag_dir, "keys_used.csv"),
   row.names = FALSE
 )
 ```
