@@ -200,11 +200,16 @@ term_levels <- c(
   "b_bs_effort_conditionhigh", "b_bias_effort_conditionhigh"
 )
 model_order <- c("M4", "M4r", "M4_thr0.15", "M4_thr0.25", "M4_subchance")
+t6_raw <- read_csv(file.path(TAB, "T6a_robustness_effort_terms.csv"), show_col_types = FALSE)
+fail_rhat <- function(model_id) {
+  rows <- t6_raw[t6_raw$model == model_id, , drop = FALSE]
+  nrow(rows) > 0 && any(rows$max_rhat >= 1.01)
+}
 # First factor level is drawn at the bottom, so reverse the requested top-to-bottom order.
 model_lab_top <- c(
   "M4 (primary)",
   "Random effort slopes",
-  "RT cutoff 0.15 s\u2021",
+  if (fail_rhat("M4_thr0.15")) "RT cutoff 0.15 s\u2021" else "RT cutoff 0.15 s",
   "RT cutoff 0.25 s",
   "Near-chance excluded (N = 54)"
 )
@@ -212,11 +217,12 @@ model_lab <- c(
   M4 = model_lab_top[1], M4r = model_lab_top[2], M4_thr0.15 = model_lab_top[3],
   M4_thr0.25 = model_lab_top[4], M4_subchance = model_lab_top[5]
 )
-t6 <- read_csv(file.path(TAB, "T6a_robustness_effort_terms.csv"), show_col_types = FALSE) %>%
+t6 <- t6_raw %>%
   filter(term %in% term_levels, model %in% model_order) %>%
   mutate(
     term = factor(term, levels = term_levels),
     model = factor(model, levels = model_order),
+    fail_rhat = max_rhat >= 1.01,
     model_lab = factor(unname(model_lab[as.character(model)]), levels = rev(model_lab_top))
   )
 draw_forest <- function(term_id, title, axis_lab, show_y) {
@@ -236,7 +242,7 @@ draw_forest <- function(term_id, title, axis_lab, show_y) {
       aes(
         xmin = q2.5, xmax = q97.5,
         linewidth = model == "M4",
-        linetype = model == "M4_thr0.15"
+        linetype = fail_rhat
       ),
       orientation = "y", width = 0.18, color = "#374151"
     ) +
@@ -266,8 +272,10 @@ f3 <- draw_forest("b_effort_conditionhigh", "Drift criterion", axis_same, TRUE) 
   draw_forest("b_effort_x_stim", "Evidence quality", axis_quality, FALSE) +
   draw_forest("b_bs_effort_conditionhigh", "Boundary separation", "(log scale)", FALSE) +
   draw_forest("b_bias_effort_conditionhigh", "Starting point", "(logit scale)", FALSE) +
-  plot_layout(nrow = 1) +
-  plot_annotation(caption = "\u2021 did not meet the R-hat < 1.01 criterion")
+  plot_layout(nrow = 1)
+if (any(t6$fail_rhat)) {
+  f3 <- f3 + plot_annotation(caption = "\u2021 did not meet the R-hat < 1.01 criterion")
+}
 save_final(
   f3, "F3_effort_forest", 12.2, 4.6,
   paste(
@@ -277,7 +285,7 @@ save_final(
     "Rows from top to bottom: M4 (primary), random effort slopes, RT cutoff 0.15 s, RT cutoff 0.25 s, near-chance excluded (N = 54).",
     "The drift-criterion axis uses same/different. The evidence-quality axis uses lower/higher evidence quality, because that coefficient is the effort by stimulus interaction.",
     "Boundary and starting-point axes are labeled log scale and logit scale.",
-    "The RT cutoff 0.15 s row is an open dashed interval because its max R-hat is above 1.01.",
+    "A row is an open dashed interval, and carries a dagger, only when its max R-hat is at least 1.01.",
     sep = " "
   )
 )
