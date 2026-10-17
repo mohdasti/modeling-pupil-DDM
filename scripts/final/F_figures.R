@@ -29,7 +29,24 @@ REVISE_STEMS <- c(
 revise_only <- Sys.getenv("REVISE_ONLY", "") == "1"
 save_final <- function(plot, stem, width, height, source_note) {
   if (revise_only && !stem %in% REVISE_STEMS) return(invisible(NULL))
-  save_manuscript_fig(plot, stem, width, height, dpi = 300, out_dir = FIG, also_legacy = FALSE)
+  only <- Sys.getenv("FIG_ONLY", "")
+  if (nzchar(only) && !stem %in% strsplit(only, ",", fixed = TRUE)[[1]]) {
+    return(invisible(NULL))
+  }
+  png_path <- file.path(FIG, paste0(stem, ".png"))
+  if (capabilities("cairo")) {
+    ggsave(
+      png_path, plot, width = width, height = height, dpi = 300,
+      device = function(filename, width, height, ...) {
+        grDevices::png(
+          filename, width = width, height = height,
+          units = "in", res = 300, type = "cairo"
+        )
+      }
+    )
+  } else {
+    save_manuscript_fig(plot, stem, width, height, dpi = 300, out_dir = FIG, also_legacy = FALSE)
+  }
   if (capabilities("cairo")) {
     ggsave(
       file.path(FIG, paste0(stem, ".pdf")), plot,
@@ -187,7 +204,7 @@ model_order <- c("M4", "M4r", "M4_thr0.15", "M4_thr0.25", "M4_subchance")
 model_lab_top <- c(
   "M4 (primary)",
   "Random effort slopes",
-  "RT cutoff 0.15 s",
+  "RT cutoff 0.15 s\u2021",
   "RT cutoff 0.25 s",
   "Near-chance excluded (N = 54)"
 )
@@ -202,12 +219,13 @@ t6 <- read_csv(file.path(TAB, "T6a_robustness_effort_terms.csv"), show_col_types
     model = factor(model, levels = model_order),
     model_lab = factor(unname(model_lab[as.character(model)]), levels = rev(model_lab_top))
   )
-draw_forest <- function(term_id, title, drift_note, show_y) {
+draw_forest <- function(term_id, title, axis_lab, show_y) {
   d <- t6 %>% filter(term == term_id)
   rope_hw <- unique(d$rope_halfwidth)
   stopifnot(length(rope_hw) == 1L)
   lo <- min(c(d$q2.5, -1.4 * rope_hw))
   hi <- max(c(d$q97.5, 1.4 * rope_hw))
+  has_axis <- !is.null(axis_lab) && nzchar(axis_lab)
   ggplot(d, aes(x = median, y = model_lab)) +
     geom_rect(
       aes(xmin = -rope_hw, xmax = rope_hw, ymin = -Inf, ymax = Inf),
@@ -215,33 +233,41 @@ draw_forest <- function(term_id, title, drift_note, show_y) {
     ) +
     geom_vline(xintercept = 0, color = stat_colors["zero_line"], linewidth = 0.3) +
     geom_errorbar(
-      aes(xmin = q2.5, xmax = q97.5, linewidth = model == "M4"),
+      aes(
+        xmin = q2.5, xmax = q97.5,
+        linewidth = model == "M4",
+        linetype = model == "M4_thr0.15"
+      ),
       orientation = "y", width = 0.18, color = "#374151"
     ) +
     geom_point(aes(shape = model == "M4", size = model == "M4"), fill = "white", color = "#111827") +
     scale_shape_manual(values = c(`TRUE` = 16, `FALSE` = 21), guide = "none") +
     scale_size_manual(values = c(`TRUE` = 2.4, `FALSE` = 1.6), guide = "none") +
     scale_linewidth_manual(values = c(`TRUE` = 0.7, `FALSE` = 0.3), guide = "none") +
+    scale_linetype_manual(values = c(`TRUE` = "dashed", `FALSE` = "solid"), guide = "none") +
     scale_x_continuous(limits = c(lo, hi), expand = expansion(mult = 0.06)) +
     labs(
       title = title,
-      x = if (drift_note) "\u2190 toward 'same'          toward 'different' \u2192" else " ",
+      x = if (has_axis) axis_lab else " ",
       y = NULL
     ) +
     theme_ms() +
     theme(
       legend.position = "none",
       plot.title = element_text(face = "bold", size = 11, hjust = 0.5),
-      axis.title.x = element_text(size = 7.5, color = if (drift_note) "#374151" else "white"),
+      axis.title.x = element_text(size = 7.5, color = if (has_axis) "#374151" else "white"),
       axis.text.y = if (show_y) element_text(size = 8) else element_blank(),
       axis.ticks.y = if (show_y) element_line() else element_blank()
     )
 }
-f3 <- draw_forest("b_effort_conditionhigh", "Drift criterion", TRUE, TRUE) +
-  draw_forest("b_effort_x_stim", "Evidence quality", TRUE, FALSE) +
-  draw_forest("b_bs_effort_conditionhigh", "Boundary separation (log)", FALSE, FALSE) +
-  draw_forest("b_bias_effort_conditionhigh", "Starting point (logit)", FALSE, FALSE) +
-  plot_layout(nrow = 1)
+axis_same <- "\u2190 toward 'same'          toward 'different' \u2192"
+axis_quality <- "\u2190 lower evidence quality / higher evidence quality \u2192"
+f3 <- draw_forest("b_effort_conditionhigh", "Drift criterion", axis_same, TRUE) +
+  draw_forest("b_effort_x_stim", "Evidence quality", axis_quality, FALSE) +
+  draw_forest("b_bs_effort_conditionhigh", "Boundary separation", "(log scale)", FALSE) +
+  draw_forest("b_bias_effort_conditionhigh", "Starting point", "(logit scale)", FALSE) +
+  plot_layout(nrow = 1) +
+  plot_annotation(caption = "\u2021 did not meet the R-hat < 1.01 criterion")
 save_final(
   f3, "F3_effort_forest", 12.2, 4.6,
   paste(
@@ -249,7 +275,9 @@ save_final(
     "Shaded band is the ROPE: drift \u00b10.02, log boundary and logit starting point \u00b10.05.",
     "Each x-axis includes at least 1.4 times the ROPE half-width on both sides, and is widened further when a credible interval extends past that.",
     "Rows from top to bottom: M4 (primary), random effort slopes, RT cutoff 0.15 s, RT cutoff 0.25 s, near-chance excluded (N = 54).",
-    "The notes under the two drift panels mark the direction of the effort contrast.",
+    "The drift-criterion axis uses same/different. The evidence-quality axis uses lower/higher evidence quality, because that coefficient is the effort by stimulus interaction.",
+    "Boundary and starting-point axes are labeled log scale and logit scale.",
+    "The RT cutoff 0.15 s row is an open dashed interval because its max R-hat is above 1.01.",
     sep = " "
   )
 )
@@ -282,11 +310,29 @@ save_final(f4, "F4_brinley", 5.4, 5.2, "Primary 17,857-trial file. One point per
 # F5 pupil boundary slopes
 # ---------------------------------------------------------------------------
 message("F5")
+iv_fig <- readRDS(file.path(TAB, "inline_values.rds"))
+tepr_post <- iv_fig$tepr_window_post_probe
+if (is.null(tepr_post) || !nzchar(as.character(tepr_post))) {
+  stop("tepr_window_post_probe is missing from inline values")
+}
+tepr_post <- as.character(tepr_post)
+tepr_after <- sub(" s$", " s after probe", tepr_post)
+fmt_elpd_lab <- function(delta, se) {
+  one <- function(x) {
+    s <- sprintf("%.1f", x)
+    if (!is.na(suppressWarnings(as.numeric(s))) && as.numeric(s) == 0) {
+      sub("^-", "", s)
+    } else {
+      sub("-", "\u2212", s)
+    }
+  }
+  paste0(one(delta), " \u00b1 ", one(se))
+}
 # Top-to-bottom within each group. Factor levels are stored bottom-to-top.
 f5_order <- c("P8", "P5", "P6", "P7", "P3_rt", "P3")
 f5_labels <- c(
-  P3 = "Decision-window TEPR (0.3\u20133.3 s)",
-  P3_rt = "Decision-window TEPR, slowest 20% removed",
+  P3 = paste0("Post-probe TEPR (", tepr_after, ")"),
+  P3_rt = "Post-probe TEPR, slowest 20% removed",
   P7 = "Pre-response window (0.5 s)",
   P6 = "Previous-trial TEPR",
   P5 = "Pre-trial baseline pupil",
@@ -301,7 +347,7 @@ t8 <- read_csv(file.path(TAB, "T8_pupil_ordering.csv"), show_col_types = FALSE) 
     model = as.character(model),
     row_lab = factor(unname(f5_labels[model]), levels = unname(f5_labels[f5_order])),
     group = factor(unname(f5_groups[model]), levels = c("Within the current trial", "Precedes the current decision")),
-    elpd_lab = sprintf("%+.2f \u00b1 %.2f", delta_elpd_vs_baseline, se_delta_elpd)
+    elpd_lab = mapply(fmt_elpd_lab, delta_elpd_vs_baseline, se_delta_elpd, USE.NAMES = FALSE)
   )
 stopifnot(setequal(t8$model, names(f5_labels)))
 f5_forest <- ggplot(t8, aes(x = pct_change_median, y = row_lab)) +
@@ -339,9 +385,10 @@ save_final(
   f5, "F5_pupil_boundary", 10.4, 5.4,
   paste(
     "T8_pupil_ordering.csv.",
-    "P3 and P5 use the r5 P0 baseline because those models are fit to the same 4,569 trials.",
-    "P3_rt, P6, P7, and P8 keep the matched baselines already stored in T8 (P0_rt, P0_lag, P0_pre, P0_grip).",
-    "The right-hand column is delta ELPD (model minus baseline) plus or minus its standard error.",
+    "P3 is compared with P0. P5 is compared with P0_base.",
+    "P3_rt, P6, P7, and P8 use the matched baselines stored in T8 (P0_rt, P0_lag, P0_pre, P0_grip).",
+    "The post-probe window text is tepr_window_post_probe from inline_values.rds.",
+    "The right-hand column is delta ELPD at one decimal, with a Unicode minus. A negative zero is printed as 0.0.",
     "Labels replace the model codes. Within each group the order is the order in the figure request.",
     sep = " "
   )

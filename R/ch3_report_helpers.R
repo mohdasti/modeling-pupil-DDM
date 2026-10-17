@@ -719,6 +719,7 @@ ch3_tbl_ppc_choice <- function(df) {
 }
 
 ch3_tbl_robustness <- function(df) {
+  fail <- df$max_rhat >= 1.01
   out <- data.frame(
     Model = df$model,
     Parameter = ch3_map_labels(df$term, .effort_label_map, "T6a"),
@@ -726,11 +727,20 @@ ch3_tbl_robustness <- function(df) {
     `In ROPE` = ch3_rope_col(df$pct_in_rope),
     Trials = ch3_fmt_cells(df$n_trials, fmt_int),
     Subjects = ch3_fmt_cells(df$n_subjects, fmt_int),
-    Pass = ifelse(df$passes_convergence_rule, "Yes", "No"),
+    Pass = ifelse(fail, paste0("No", "\u2021"), "Yes"),
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
-  make_table(out, cols = names(out), col_labels = names(out))
+  footnote <- if (any(fail)) {
+    paste0(
+      "\u2021 did not meet the R-hat < 1.01 criterion. ",
+      paste(unique(df$model[fail]), collapse = ", "),
+      "."
+    )
+  } else {
+    NULL
+  }
+  make_table(out, cols = names(out), col_labels = names(out), footnote = footnote)
 }
 
 ch3_tbl_random_slopes <- function(df) {
