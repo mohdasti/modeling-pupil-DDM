@@ -1,0 +1,1 @@
+T13d_accuracy_effort_contrasts.csv was not written. Both the correlated and the uncorrelated by-subject effort slopes were singular, so no High − Low contrasts were exported.
