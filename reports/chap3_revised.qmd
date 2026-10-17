@@ -140,8 +140,14 @@ Tables/figures in this section: none.
 **[PROSE TO BE SUPPLIED: 2.1 Participants]**
 Resolves Lani comments: C23, C24, C25, C56.
 Inline value keys available for this section: n_enrolled, n_excluded, n_final, n_adt, n_vdt, n_subchance_excluded, n_subchance_remaining.
-Tables/figures in this section: tbl-demographics.
+Tables/figures in this section: @tbl-demographics.
 :::
+
+```{r}
+#| label: tbl-demographics
+#| tbl-cap: "​[CAPTION TO BE SUPPLIED]"
+ch3_tbl_demographics(tbl$T1_demographics)
+```
 
 ## 2.2 Task and stimuli {.unnumbered}
 
@@ -149,8 +155,15 @@ Tables/figures in this section: tbl-demographics.
 **[PROSE TO BE SUPPLIED: 2.2 Task and stimuli]**
 Resolves Lani comments: C26, C27.
 Inline value keys available for this section: none.
-Tables/figures in this section: fig-design.
+Tables/figures in this section: @fig-design.
 :::
+
+```{r}
+#| label: fig-design
+#| fig-cap: "[CAPTION TO BE SUPPLIED]"
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F1_design_model.png"), mustWork = TRUE), error = FALSE))
+```
 
 ## 2.3 Maximum voluntary contraction calibration {.unnumbered}
 
@@ -257,8 +270,15 @@ Tables/figures in this section: none.
 **[PROSE TO BE SUPPLIED: 3.1 Behavioral performance]**
 Resolves Lani comments: C58, C71.
 Inline value keys available for this section: acc_high_low_Standard, acc_high_low_Hard, acc_high_low_Easy, n_final, n_adt, n_vdt, n_trials_primary.
-Tables/figures in this section: fig-brinley.
+Tables/figures in this section: @fig-brinley.
 :::
+
+```{r}
+#| label: fig-brinley
+#| fig-cap: "[CAPTION TO BE SUPPLIED]"
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F4_brinley.png"), mustWork = TRUE), error = FALSE))
+```
 
 ## 3.2 Effort effects on decision parameters {.unnumbered}
 
@@ -266,8 +286,21 @@ Tables/figures in this section: fig-brinley.
 **[PROSE TO BE SUPPLIED: 3.2 Effort effects on decision parameters]**
 Resolves Lani comments: C62, C63, C66, C69, C70, C72, C73.
 Inline value keys available for this section: crit, qual, bs, bias, drift_diff_trials, drift_same_trials, bs_pct_change, rope_v, rope_a, rope_z.
-Tables/figures in this section: fig-effort-forest, tbl-effort-effects.
+Tables/figures in this section: @fig-effort-forest, @tbl-effort-effects.
 :::
+
+```{r}
+#| label: fig-effort-forest
+#| fig-cap: "[CAPTION TO BE SUPPLIED]"
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F3_effort_forest.png"), mustWork = TRUE), error = FALSE))
+```
+
+```{r}
+#| label: tbl-effort-effects
+#| tbl-cap: "​[CAPTION TO BE SUPPLIED]"
+ch3_tbl_effort_effects(tbl$T2_effort_effects_M4)
+```
 
 ## 3.3 Task and difficulty effects {.unnumbered}
 
@@ -275,8 +308,15 @@ Tables/figures in this section: fig-effort-forest, tbl-effort-effects.
 **[PROSE TO BE SUPPLIED: 3.3 Task and difficulty effects]**
 Resolves Lani comments: C74.
 Inline value keys available for this section: task_v, task_hard_x_vdt, task_easy_x_vdt, task_bs, task_bias.
-Tables/figures in this section: fig-condition-params.
+Tables/figures in this section: @fig-condition-params.
 :::
+
+```{r}
+#| label: fig-condition-params
+#| fig-cap: "[CAPTION TO BE SUPPLIED]"
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F2_condition_parameters.png"), mustWork = TRUE), error = FALSE))
+```
 
 ## 3.4 Robustness {.unnumbered}
 
@@ -293,8 +333,21 @@ Tables/figures in this section: none.
 **[PROSE TO BE SUPPLIED: 3.5 Pupil-linked decision dynamics]**
 Resolves Lani comments: C76, C77, C78.
 Inline value keys available for this section: P3_bs, P3_rt_bs, P5_bs, P6_bs, P7_bs, P8_bs, P1_bias, P2_drift_tepr, P2_drift_tepr_x_stim, P4_bias_base, P0_crit, P0_qual, P0_bs, P0_bias, delta_elpd_P3_vs_P0, delta_elpd_P3rt_vs_P0rt, delta_elpd_P5_vs_P0base, delta_elpd_P6_vs_P0lag, delta_elpd_P7_vs_P0pre, delta_elpd_P8_vs_P0grip, delta_elpd_P1_vs_P0, delta_elpd_P2_vs_P0, delta_elpd_P4_vs_P0base, tepr_rt_r, grip_high_low_ADT, grip_high_low_VDT, tepr_high_low_ADT_B1, tepr_high_low_VDT_B1, tepr_high_low_ADT_B0, tepr_high_low_VDT_B0, n_pupil_matched_trials, n_pupil_matched_subjects, n_pupil_tepr_present_trials, n_pupil_tepr_present_subjects, n_pupil_b1_quality_trials, n_pupil_b1_quality_subjects, n_pupil_window_quality_trials, n_pupil_window_quality_subjects, n_pupil_final_trials, n_pupil_final_subjects, n_pupil_base_trials, n_pupil_rt80_trials, n_pupil_lag_trials, n_pupil_pre_trials, n_pupil_grip_trials, n_pupil_entered_vs_r5, n_pupil_left_vs_r5, n_pupil_models_k_gt_0.7, pct_gain_lost_rt_trim, max_k_pupil_models.
-Tables/figures in this section: fig-pupil-boundary, tbl-pupil-ordering.
+Tables/figures in this section: @fig-pupil-boundary, @tbl-pupil-ordering.
 :::
+
+```{r}
+#| label: fig-pupil-boundary
+#| fig-cap: "[CAPTION TO BE SUPPLIED]"
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F5_pupil_boundary.png"), mustWork = TRUE), error = FALSE))
+```
+
+```{r}
+#| label: tbl-pupil-ordering
+#| tbl-cap: "​[CAPTION TO BE SUPPLIED]"
+ch3_tbl_pupil_ordering(tbl$T8_pupil_ordering)
+```
 
 ## 3.6 Model adequacy {.unnumbered}
 
@@ -336,7 +389,30 @@ Tables/figures in this section: none.
 **[PROSE TO BE SUPPLIED: S1 Participant and trial flow]**
 Resolves Lani comments: none.
 Inline value keys available for this section: n_enrolled, n_excluded, n_final, n_trials_primary, n_pupil_matched_trials, n_pupil_final_trials, n_pupil_final_subjects.
-Tables/figures in this section: suppfig-flow, supptbl-trial-counts.
+Tables/figures in this section: @suppfig-flow, @supptbl-trial-counts.
+:::
+
+::: {#suppfig-flow}
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "S_participant_flow.png"), mustWork = TRUE), error = FALSE))
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#supptbl-trial-counts}
+
+```{r}
+#| echo: false
+ch3_tbl_trial_counts(tbl$T12a_trial_counts)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
 :::
 
 ## S2 Model comparison and convergence {.unnumbered}
@@ -345,7 +421,51 @@ Tables/figures in this section: suppfig-flow, supptbl-trial-counts.
 **[PROSE TO BE SUPPLIED: S2 Model comparison and convergence]**
 Resolves Lani comments: none.
 Inline value keys available for this section: delta_elpd_M0_vs_M1, se_delta_elpd_M0_vs_M1, delta_elpd_M3_vs_M4, se_delta_elpd_M3_vs_M4, delta_elpd_M4b_vs_M4, se_delta_elpd_M4b_vs_M4, max_rhat_M4, min_bulk_ess_M4, min_tail_ess_M4, n_chains, n_iter, n_warmup.
-Tables/figures in this section: supptbl-model-comparison, supptbl-convergence, supptbl-fixef-m4, supptbl-condition-cells.
+Tables/figures in this section: @supptbl-model-comparison, @supptbl-convergence, @supptbl-fixef-m4, @supptbl-condition-cells.
+:::
+
+::: {#supptbl-model-comparison}
+
+```{r}
+#| echo: false
+ch3_tbl_model_comparison(tbl$T5_model_comparison)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#supptbl-convergence}
+
+```{r}
+#| echo: false
+ch3_tbl_convergence(tbl$T10_convergence_all)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#supptbl-fixef-m4}
+
+```{r}
+#| echo: false
+ch3_tbl_fixef(tbl$T4_fixef_M4)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#supptbl-condition-cells}
+
+```{r}
+#| echo: false
+ch3_tbl_condition_cells(tbl$T3_condition_cells_M4)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
 :::
 
 ## S3 Posterior predictive checks {.unnumbered}
@@ -354,7 +474,30 @@ Tables/figures in this section: supptbl-model-comparison, supptbl-convergence, s
 **[PROSE TO BE SUPPLIED: S3 Posterior predictive checks]**
 Resolves Lani comments: none.
 Inline value keys available for this section: ppc_choice_inside_M4, ppc_rt_inside_pct_M4, ppc_rt_median_bias_ms_M4.
-Tables/figures in this section: suppfig-ppc, supptbl-ppc-choice.
+Tables/figures in this section: @suppfig-ppc, @supptbl-ppc-choice.
+:::
+
+::: {#suppfig-ppc}
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "S_ppc_M4.png"), mustWork = TRUE), error = FALSE))
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#supptbl-ppc-choice}
+
+```{r}
+#| echo: false
+ch3_tbl_ppc_choice(tbl$T11a_ppc_choice)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
 :::
 
 ## S4 Robustness analyses {.unnumbered}
@@ -363,7 +506,40 @@ Tables/figures in this section: suppfig-ppc, supptbl-ppc-choice.
 **[PROSE TO BE SUPPLIED: S4 Robustness analyses]**
 Resolves Lani comments: none.
 Inline value keys available for this section: crit_M4r, qual_M4r, crit_thr015, qual_thr015, crit_thr025, qual_thr025, crit_subchance, qual_subchance, sd_effort_M4r, sd_bs_effort_M4r, m4b_effort_x_task, m4b_quality_x_task, crit_ADT_M4b, crit_VDT_M4b, n_trials_thr015, n_trials_thr025, n_subchance_excluded, n_subchance_remaining, n_trials_cutoff_excluded.
-Tables/figures in this section: supptbl-robustness, supptbl-random-slopes, supptbl-m4b.
+Tables/figures in this section: @supptbl-robustness, @supptbl-random-slopes, @supptbl-m4b.
+:::
+
+::: {#supptbl-robustness}
+
+```{r}
+#| echo: false
+ch3_tbl_robustness(tbl$T6a_robustness_effort_terms)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#supptbl-random-slopes}
+
+```{r}
+#| echo: false
+ch3_tbl_random_slopes(tbl$T6b_M4r_random_slopes)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#supptbl-m4b}
+
+```{r}
+#| echo: false
+ch3_tbl_m4b(tbl$T4b_M4b_task_effort)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
 :::
 
 ## S5 Pupil-linked models {.unnumbered}
@@ -372,7 +548,41 @@ Tables/figures in this section: supptbl-robustness, supptbl-random-slopes, suppt
 **[PROSE TO BE SUPPLIED: S5 Pupil-linked models]**
 Resolves Lani comments: none.
 Inline value keys available for this section: P3_bs, P3_rt_bs, P5_bs, P6_bs, P7_bs, P8_bs, P1_bias, P2_drift_tepr, P2_drift_tepr_x_stim, P4_bias_base, P0_crit, P0_qual, P0_bs, P0_bias, delta_elpd_P3_vs_P0, delta_elpd_P3rt_vs_P0rt, delta_elpd_P5_vs_P0base, delta_elpd_P6_vs_P0lag, delta_elpd_P7_vs_P0pre, delta_elpd_P8_vs_P0grip, delta_elpd_P1_vs_P0, delta_elpd_P2_vs_P0, delta_elpd_P4_vs_P0base, tepr_rt_r, grip_high_low_ADT, grip_high_low_VDT, tepr_high_low_ADT_B1, tepr_high_low_VDT_B1, tepr_high_low_ADT_B0, tepr_high_low_VDT_B0, n_pupil_matched_trials, n_pupil_matched_subjects, n_pupil_tepr_present_trials, n_pupil_tepr_present_subjects, n_pupil_b1_quality_trials, n_pupil_b1_quality_subjects, n_pupil_window_quality_trials, n_pupil_window_quality_subjects, n_pupil_final_trials, n_pupil_final_subjects, n_pupil_base_trials, n_pupil_rt80_trials, n_pupil_lag_trials, n_pupil_pre_trials, n_pupil_grip_trials, n_pupil_entered_vs_r5, n_pupil_left_vs_r5, n_pupil_models_k_gt_0.7, pct_gain_lost_rt_trim, max_k_pupil_models.
-Tables/figures in this section: supptbl-pupil-models, supptbl-pupil-descriptives, suppfig-tepr.
+Tables/figures in this section: @supptbl-pupil-models, @supptbl-pupil-descriptives, @suppfig-tepr.
+:::
+
+::: {#supptbl-pupil-models}
+
+```{r}
+#| echo: false
+ch3_tbl_pupil_models(tbl$T7_pupil_models, tbl$T7_P0_effort_terms)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#supptbl-pupil-descriptives}
+
+```{r}
+#| echo: false
+ch3_tbl_pupil_descriptives(tbl$T9_pupil_descriptives)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#suppfig-tepr}
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "S_tepr_timecourse.png"), mustWork = TRUE), error = FALSE))
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
 :::
 
 ## S6 Model specification details {.unnumbered}
@@ -381,7 +591,19 @@ Tables/figures in this section: supptbl-pupil-models, supptbl-pupil-descriptives
 **[PROSE TO BE SUPPLIED: S6 Model specification details]**
 Resolves Lani comments: none.
 Inline value keys available for this section: t0_M4, t0_thr015, t0_thr025, rope_v, rope_a, rope_z, n_chains, n_iter, n_warmup, adapt_delta, max_treedepth, seed.
-Tables/figures in this section: suppfig-ndt.
+Tables/figures in this section: @suppfig-ndt.
+:::
+
+::: {#suppfig-ndt}
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "S_ndt_prior_posterior.png"), mustWork = TRUE), error = FALSE))
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
 :::
 
 ::: {.content-visible when-meta="dissertation"}
@@ -392,7 +614,41 @@ Tables/figures in this section: suppfig-ndt.
 **[PROSE TO BE SUPPLIED: S7 Behavioral mixed-effects models (dissertation only)]**
 Resolves Lani comments: none.
 Inline value keys available for this section: acc_high_low_Standard, acc_high_low_Hard, acc_high_low_Easy.
-Tables/figures in this section: supptbl-acc-glmm, supptbl-rt-lmm, suppfig-accuracy.
+Tables/figures in this section: @supptbl-acc-glmm, @supptbl-rt-lmm, @suppfig-accuracy.
+:::
+
+::: {#supptbl-acc-glmm}
+
+```{r}
+#| echo: false
+ch3_tbl_glmm(tbl$T13b_accuracy_glmm, "T13b")
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#supptbl-rt-lmm}
+
+```{r}
+#| echo: false
+ch3_tbl_glmm(tbl$T13c_rt_lmm, "T13c")
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#suppfig-accuracy}
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "S_accuracy_by_condition.png"), mustWork = TRUE), error = FALSE))
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
 :::
 
 ## S8 Exploratory LC structural correlates (dissertation only) {.unnumbered}
@@ -401,7 +657,42 @@ Tables/figures in this section: supptbl-acc-glmm, supptbl-rt-lmm, suppfig-accura
 **[PROSE TO BE SUPPLIED: S8 Exploratory LC structural correlates (dissertation only)]**
 Resolves Lani comments: none.
 Inline value keys available for this section: none.
-Tables/figures in this section: supptbl-lc, suppfig-lc-variability, suppfig-lc-four-panel.
+Tables/figures in this section: @supptbl-lc, @suppfig-lc-variability, @suppfig-lc-four-panel.
+:::
+
+::: {#supptbl-lc}
+
+```{r}
+#| echo: false
+ch3_tbl_associations(tbl$T14_lc_neuropsych_ddm, "lc", "T14 LC")
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#suppfig-lc-variability}
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "S_lc_fiso_dprime_variability.png"), mustWork = TRUE), error = FALSE))
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#suppfig-lc-four-panel}
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "S_lc_fiso_four_panel.png"), mustWork = TRUE), error = FALSE))
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
 :::
 
 ## S9 Extended baseline and neuropsychological profile (dissertation only) {.unnumbered}
@@ -410,7 +701,18 @@ Tables/figures in this section: supptbl-lc, suppfig-lc-variability, suppfig-lc-f
 **[PROSE TO BE SUPPLIED: S9 Extended baseline and neuropsychological profile (dissertation only)]**
 Resolves Lani comments: none.
 Inline value keys available for this section: none.
-Tables/figures in this section: supptbl-neuropsych.
+Tables/figures in this section: @supptbl-neuropsych.
+:::
+
+::: {#supptbl-neuropsych}
+
+```{r}
+#| echo: false
+ch3_tbl_associations(tbl$T14_lc_neuropsych_ddm, c("neuropsych", "neuropsych_baseline_continuous", "neuropsych_baseline_categorical"), "T14 neuropsych")
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
 :::
 
 ## S10 Exploratory temporal dynamics (dissertation only; pre-revision model structure) {.unnumbered}
@@ -419,7 +721,18 @@ Tables/figures in this section: supptbl-neuropsych.
 **[PROSE TO BE SUPPLIED: S10 Exploratory temporal dynamics (dissertation only; pre-revision model structure)]**
 Resolves Lani comments: none.
 Inline value keys available for this section: none.
-Tables/figures in this section: supptbl-temporal.
+Tables/figures in this section: @supptbl-temporal.
+:::
+
+::: {#supptbl-temporal}
+
+```{r}
+#| echo: false
+ch3_tbl_temporal(tbl$T15_legacy_temporal_dynamics)
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
 :::
 
 ## S11 Additional diagnostics (dissertation only): CAF, RT distributions, DAG {.unnumbered}
@@ -428,7 +741,43 @@ Tables/figures in this section: supptbl-temporal.
 **[PROSE TO BE SUPPLIED: S11 Additional diagnostics (dissertation only): CAF, RT distributions, DAG]**
 Resolves Lani comments: none.
 Inline value keys available for this section: none.
-Tables/figures in this section: suppfig-caf, suppfig-rtdist, suppfig-dag.
+Tables/figures in this section: @suppfig-caf, @suppfig-rtdist, @suppfig-dag.
+:::
+
+::: {#suppfig-caf}
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "S_caf.png"), mustWork = TRUE), error = FALSE))
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#suppfig-rtdist}
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "S_rt_distributions.png"), mustWork = TRUE), error = FALSE))
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
+:::
+
+::: {#suppfig-dag}
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "S_dag_plate.png"), mustWork = TRUE), error = FALSE))
+```
+
+\[CAPTION TO BE SUPPLIED\]
+
 :::
 
 ## S12 Analysis provenance (dissertation only) {.unnumbered}
