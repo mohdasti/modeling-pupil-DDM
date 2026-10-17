@@ -1,3 +1,4 @@
+# historical; not used for final outputs
 # Part A: which flat-file generation is on the trial clock?
 # Reads flat files only. Writes only under output/diagnostics/pupil_rebuild/.
 

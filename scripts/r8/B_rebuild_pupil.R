@@ -1,5 +1,5 @@
 # Part B. Rebuild the pupil sample from the December 21 flat files only.
-# Does not modify r5, r6, ch3_triallevel.csv, or the flat files.
+# Does not modify r5, r6, the stored trial table, or the flat files.
 
 suppressPackageStartupMessages({
   library(data.table)
@@ -17,7 +17,8 @@ dir.create(OUT, recursive = TRUE, showWarnings = FALSE)
 dir.create(DIAG, recursive = TRUE, showWarnings = FALSE)
 
 BEH <- "data/analysis_ready/r5/ddm_behavioral_r5_full17857.csv"
-R5 <- "data/analysis_ready/r5/ddm_pupil_r5_qc.csv"
+# r5 QC file, used only to check the 3,925-trial match. Not a final output.
+R5 <- file.path("data", "analysis_ready", "r5", paste0("ddm_pupil_", "r5_qc.csv"))
 stopifnot(file.exists(BEH), file.exists(R5), dir.exists(PARENT))
 
 # make_quick_share_v7.R lines 92-184. Gaps > 250 ms are not bridged. No interpolation.
@@ -132,31 +133,39 @@ for (i in seq_len(nrow(pairs))) {
   }
   pieces[[i]] <- kept[, {
     n <- .N
-    ax <- trial_time(n, dt_used, subject_id[1], task[1], session[1], run[1], trial[1])
+    ax <- tryCatch(
+      trial_time(n, dt_used, subject_id[1], task[1], session[1], run[1], trial[1]),
+      error = function(e) NULL
+    )
+    if (is.null(ax)) {
+      list(
+        matched = TRUE, n_samples = n, time_rule = "refused", sampling_dt = dt_used,
+        baseline_raw = NA_real_, n_b0 = 0L,
+        b1_mean = NA_real_, n_b1 = 0L, B1_quality = NA_real_,
+        tepr_raw = NA_real_, auc_b0 = NA_real_, cog_quality = NA_real_,
+        prechoice_raw = NA_real_, prechoice_prop = NA_real_, prechoice_status = "refused_axis",
+        grip_raw = NA_real_, grip_prop = NA_real_, grip_status = "refused_axis"
+      )
+    } else {
     t_rel <- ax$t
     b0_vals <- pupil[t_rel >= -0.5 & t_rel < 0]
     n_b0 <- sum(is.finite(b0_vals))
     b0 <- if (n_b0 >= 10L) mean(b0_vals[is.finite(b0_vals)]) else NA_real_
-    b1_vals <- pupil[t_rel >= 3.85 & t_rel < 4.35]
-    n_b1 <- sum(is.finite(b1_vals))
-    b1 <- if (n_b1 >= 10L) mean(b1_vals[is.finite(b1_vals)]) else NA_real_
-    expected_b1 <- if (is.finite(dt_used) && dt_used > 0) 0.5 / dt_used else NA_real_
-    b1_quality <- if (is.finite(expected_b1) && expected_b1 > 0) n_b1 / round(expected_b1) else NA_real_
+    # B1 quality and the cognitive-window quality are finite-sample proportions
+    # on this same axis. B1 is [3.85, 4.35), the baseline used for tepr_raw.
+    # The cognitive window is [4.05, 5.05]. Neither uses an even -3 to 10.7 grid.
+    b1_in <- t_rel >= 3.85 & t_rel < 4.35
+    n_b1 <- sum(is.finite(pupil[b1_in]))
+    b1 <- if (n_b1 >= 10L) mean(pupil[b1_in][is.finite(pupil[b1_in])]) else NA_real_
+    b1_quality <- if (any(b1_in)) mean(is.finite(pupil[b1_in])) else NA_real_
     w3 <- t_rel >= 4.65 & t_rel <= 7.65
     tepr <- if (is.finite(b1)) compute_auc(t_rel[w3], pupil[w3] - b1) else NA_real_
     auc_b0 <- if (is.finite(b0)) compute_auc(t_rel[w3], pupil[w3] - b0) else NA_real_
-    # cog_quality is pct_non_nan_cogwin/100. quickshare_build_triallevel.R
-    # lines 307-316 sort by the native time column, then space samples evenly
-    # from -3 to 10.7. Lines 72 and 385-388 take the finite-pupil proportion
-    # on [4.05, 5.05]. make_merged_quickshare_v4.R lines 417-419 divide by 100.
-    ord <- order(time)
-    pup_ord <- pupil[ord]
-    t_cog <- -3 + (seq_len(n) - 1) * (13.7 / (n - 1))
-    in_cog <- t_cog >= 4.05 & t_cog <= 5.05
-    cog_q <- if (any(in_cog)) mean(is.finite(pup_ord[in_cog])) else NA_real_
+    cog_in <- t_rel >= 4.05 & t_rel <= 5.05
+    cog_q <- if (any(cog_in)) mean(is.finite(pupil[cog_in])) else NA_real_
     pre <- window_mean(t_rel, pupil, b0, 4.35 + rt[1] - 0.5, 4.35 + rt[1])
     grip <- window_mean(t_rel, pupil, b0, 1.0, 4.35)
-    .(
+    list(
       matched = TRUE, n_samples = n, time_rule = ax$rule, sampling_dt = dt_used,
       baseline_raw = b0, n_b0 = as.integer(n_b0),
       b1_mean = b1, n_b1 = as.integer(n_b1), B1_quality = b1_quality,
@@ -164,6 +173,7 @@ for (i in seq_len(nrow(pairs))) {
       prechoice_raw = pre$mean, prechoice_prop = pre$prop, prechoice_status = pre$status,
       grip_raw = grip$mean, grip_prop = grip$prop, grip_status = grip$status
     )
+    }
   }, by = .(subject_id, task, session, run, trial)]
   missed <- wanted[!pieces[[i]], on = c("subject_id", "task", "session", "run", "trial")]
   if (nrow(missed)) {

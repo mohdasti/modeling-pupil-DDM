@@ -668,7 +668,7 @@ lc4 <- one_sc("dprime_variability", "d' variability", "Variability") +
 save_final(lc4, "S_lc_fiso_four_panel", 9, 7, "T14_subject_points.csv for the points. Partial-correlation annotation from T14_lc_neuropsych_ddm.csv. The boundary panel uses the M4 subject intercept.")
 
 # ---------------------------------------------------------------------------
-# S-tepr. Cleaned 250 Hz flat files, restricted to the 4,569 QC trials.
+# S-tepr. Cleaned flat files, restricted to the 4,952-trial r8 QC set.
 # ---------------------------------------------------------------------------
 message("S-tepr")
 suppressPackageStartupMessages(library(data.table))
@@ -688,7 +688,7 @@ infer_dt <- function(time_vec) {
   if (!is.finite(dt_median) || dt_median <= 0 || dt_median > 0.05) 0.004 else dt_median
 }
 
-qc_tepr <- fread(file.path(FINAL, "data/ddm_pupil_r5_qc.csv"))
+qc_tepr <- fread("data/analysis_ready/r8/ddm_pupil_r8_qc.csv")
 qc_tepr[, `:=`(
   subject_id = as.character(subject_id),
   task = as.character(task),
@@ -697,7 +697,7 @@ qc_tepr[, `:=`(
   trial = as.integer(trial),
   effort_condition = as.character(effort_condition)
 )]
-stopifnot(nrow(qc_tepr) == 4569L)
+stopifnot(nrow(qc_tepr) == 4952L)
 grid <- seq(-0.5, 8, by = 0.02)
 pairs <- unique(qc_tepr[, .(subject_id, task)])
 subj_pieces <- vector("list", nrow(pairs))
@@ -761,7 +761,7 @@ for (i in seq_len(nrow(pairs))) {
   ), by = .(subject_id, task, effort_condition, time)]
   rm(dt, kept, series)
 }
-stopifnot(n_joined == 4569L)
+stopifnot(n_joined == 4952L)
 subj_means <- rbindlist(subj_pieces)
 subj_means <- subj_means[is.finite(pupil)]
 subj_means[, effort_label := ifelse(effort_condition == "high", "High", "Low")]
@@ -826,12 +826,12 @@ save_final(
   sprintf(
     paste(
       "Cleaned flat timecourses in %s, the same files and the same clock as the r6 prechoice and grip predictors.",
-      "Restricted to the 4,569 trials in data/ddm_pupil_r5_qc.csv.",
+      "Restricted to the 4,952 trials in data/analysis_ready/r8/ddm_pupil_r8_qc.csv.",
       "Join keys: subject, task, session, run, trial, with flat-file columns session_used, run_used, and trial_in_run_raw, sessions 2 and 3 only.",
       "Time zero is squeeze onset. The first sample is placed at -3.0 s; if stepping by the file's median interval does not end between 8 and 15 s, samples are placed evenly from -3.0 to 10.7 s.",
       "Each trial is baseline-corrected by its mean pupil on [-0.5, 0), requiring at least 10 finite samples, then interpolated onto a 50 Hz grid from -0.5 to 8 s.",
       "The line is the unweighted mean of the within-participant means. The band is the Morey within-participant standard error, with effort as the repeated factor inside each task.",
-      "Joined %d of 4,569 trials to a timecourse; %d of those had a usable baseline and enter the average. The rest are omitted.",
+      "Joined %d of 4,952 trials to a timecourse; %d of those had a usable baseline and enter the average. The rest are omitted.",
       "The average uses %d subject-by-task-by-effort cells.",
       sep = " "
     ),
