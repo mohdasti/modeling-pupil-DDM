@@ -16,6 +16,7 @@ suppressPackageStartupMessages({
   library(data.table)
   library(ggplot2)
 })
+source(file.path(here::here(), "R", "trial_time_axis.R"))
 
 cat("=== MAKING QUICK-SHARE v7: FIXED BASELINE ALIGNMENT ===\n\n")
 
@@ -415,14 +416,14 @@ process_flat_file_v7 <- function(flat_path) {
         time_info$dt_median
       }
       
-      t_rel <- seq(from = -3.0, by = dt_used, length.out = n_samples)
-      
-      # Sanity check: t_rel should end around 10.7 seconds
-      t_rel_max <- max(t_rel, na.rm = TRUE)
-      if (t_rel_max < 8 || t_rel_max > 15) {
-        # Recalibrate: ensure t_rel spans [-3.0, 10.7]
-        t_rel <- seq(from = -3.0, to = 10.7, length.out = n_samples)
-      }
+      seg_start <- if ("seg_start_rel_used" %in% names(.x)) .x$seg_start_rel_used[1] else NA_real_
+      seg_end <- if ("seg_end_rel_used" %in% names(.x)) .x$seg_end_rel_used[1] else NA_real_
+      t_rel <- build_trial_time(
+        n_samples, dt_used,
+        seg_start = seg_start, seg_end = seg_end,
+        subject = trial_keys$sub, task = trial_keys$task,
+        session = trial_keys$session_used, run = trial_keys$run_used, trial = trial_num
+      )$t
       
       # Try to find squeeze onset for timing source tracking (optional, not required)
       squeeze_onset <- find_squeeze_onset(.x)
