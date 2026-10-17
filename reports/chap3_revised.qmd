@@ -67,6 +67,36 @@ execute:
 ---
 
 ```{r}
+#| include: false
+proj_root <- if (basename(getwd()) == "reports") {
+  normalizePath("..", mustWork = TRUE)
+} else {
+  normalizePath(getwd(), mustWork = TRUE)
+}
+knitr::opts_knit$set(root.dir = proj_root)
+```
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center"
+)
+.keys_used <- character(0)
+iv <- readRDS(file.path(params$tables_dir, "inline_values.rds"))
+tbl_paths <- list.files(params$tables_dir, pattern = "\\.csv$", full.names = TRUE)
+tbl <- stats::setNames(
+  lapply(tbl_paths, function(f) {
+    utils::read.csv(f, check.names = FALSE, stringsAsFactors = FALSE)
+  }),
+  tools::file_path_sans_ext(basename(tbl_paths))
+)
+source(file.path(proj_root, "R", "ch3_report_helpers.R"), local = knitr::knit_global())
+```
+
+```{r}
 #| echo: false
 #| results: asis
 if (isTRUE(params$draft_watermark)) {
