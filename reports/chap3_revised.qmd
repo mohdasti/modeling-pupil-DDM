@@ -790,3 +790,12 @@ Tables/figures in this section: none.
 :::
 
 :::
+
+```{r}
+#| include: false
+utils::write.csv(
+  data.frame(call_order = seq_along(.keys_used), key = .keys_used, stringsAsFactors = FALSE),
+  file.path(proj_root, "output/diagnostics/qmd_phase1/keys_used.csv"),
+  row.names = FALSE
+)
+```

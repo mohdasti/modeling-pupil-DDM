@@ -1,0 +1,55 @@
+line,number,context,classification
+6,7,csl: apa-7th-edition.csl,format
+10,20261016,"run_dir: ""output/ddm_refits/runs/final_20261016""",format
+11,20261016,"tables_dir: ""output/ddm_refits/runs/final_20261016/tables/final""",format
+12,20261016,"figures_dir: ""output/ddm_refits/runs/final_20261016/figures/final""",format
+13,8,"pupil_run: ""r8_20261017_015218""   # will be switched to the r10",identifier
+13,20261017,"pupil_run: ""r8_20261017_015218""   # will be switched to the r10 run id; d",identifier
+13,015218,"pupil_run: ""r8_20261017_015218""   # will be switched to the r10 run id; display",identifier
+13,10,"""r8_20261017_015218""   # will be switched to the r10 run id; display only",identifier
+18,3,toc-depth: 3,format
+23,3,toc-depth: 3,format
+28,1,- margin=1in,format
+29,11,fontsize: 11pt,format
+30,1.5,linestretch: 1.5,format
+47,300,dpi: 300,format
+119,1,# 1 Introduction {.unnumbered},heading
+128,2,# 2 Methods {.unnumbered},heading
+137,2.1,## 2.1 Participants {.unnumbered},heading
+152,2.2,## 2.2 Task and stimuli {.unnumbered},heading
+168,2.3,## 2.3 Maximum voluntary contraction calibration {.unnum,heading
+177,2.4,## 2.4 Apparatus {.unnumbered},heading
+186,2.5,## 2.5 Behavioral data processing {.unnumbered},heading
+195,2.6,## 2.6 Pupillometry {.unnumbered},heading
+204,2.7,## 2.7 Drift-diffusion model {.unnumbered},heading
+213,2.7,### 2.7.1 Response coding and parameterization {.unnumber,heading
+213,1,### 2.7.1 Response coding and parameterization {.unnumbered,heading
+222,2.7,### 2.7.2 Model specification {.unnumbered},heading
+222,2,### 2.7.2 Model specification {.unnumbered},heading
+231,2.7,### 2.7.3 Priors and estimation {.unnumbered},heading
+231,3,### 2.7.3 Priors and estimation {.unnumbered},heading
+240,2.8,## 2.8 Pupil-linked extensions {.unnumbered},heading
+249,2.9,## 2.9 Statistical inference and model comparison {.unnu,heading
+258,3,# 3 Results {.unnumbered},heading
+267,3.1,## 3.1 Behavioral performance {.unnumbered},heading
+283,3.2,## 3.2 Effort effects on decision parameters {.unnumbere,heading
+305,3.3,## 3.3 Task and difficulty effects {.unnumbered},heading
+321,3.4,## 3.4 Robustness {.unnumbered},heading
+330,3.5,## 3.5 Pupil-linked decision dynamics {.unnumbered},heading
+352,3.6,## 3.6 Model adequacy {.unnumbered},heading
+361,4,# 4 Discussion {.unnumbered},heading
+370,4.1,## 4.1 Limitations and future directions {.unnumbered},heading
+386,1,## S1 Participant and trial flow {.unnumbered},heading
+418,2,## S2 Model comparison and convergence {.unnumbered},heading
+449,4,::: {#supptbl-fixef-m4},crossref
+471,3,## S3 Posterior predictive checks {.unnumbered},heading
+503,4,## S4 Robustness analyses {.unnumbered},heading
+534,4,::: {#supptbl-m4b},crossref
+545,5,## S5 Pupil-linked models {.unnumbered},heading
+588,6,## S6 Model specification details {.unnumbered},heading
+611,7,## S7 Behavioral mixed-effects models (dissertation onl,heading
+654,8,## S8 Exploratory LC structural correlates (dissertatio,heading
+698,9,## S9 Extended baseline and neuropsychological profile,heading
+718,10,## S10 Exploratory temporal dynamics (dissertation only;,heading
+738,11,"## S11 Additional diagnostics (dissertation only): CAF,",heading
+783,12,## S12 Analysis provenance (dissertation only) {.unnumbe,heading

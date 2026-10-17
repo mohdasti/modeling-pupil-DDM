@@ -1,0 +1,75 @@
+july_label,july_line,kind,reason,note
+setup,64,chunk,cut,"July render plumbing, not a result display"
+fig-ddm-process,1086,option,replaced by fig-design,design schematic
+methods-demographics-inline,1112,chunk,superseded,sample counts now come from inline_values.rds
+ddm-sample-counts-early,1153,chunk,superseded,sample counts now come from inline_values.rds
+tbl-trial-exclusions,1507,option,cut,no exclusion table in the placement list; processing is prose in section 2.5
+setup_ddm_results_run,1621,chunk,cut,"July render plumbing, not a result display"
+crossref_audit,1632,chunk,cut,"July render plumbing, not a result display"
+pre_render_checks,1847,chunk,cut,"July render plumbing, not a result display"
+ddm-paths-and-imports,1980,chunk,cut,July render plumbing that read superseded run paths
+h-evidence-setup,2465,option,cut,old H1-H4 hypothesis tables
+null-evidence-helpers,2886,chunk,cut,old H1-H4 hypothesis tables
+trial-counts-inline,3588,chunk,superseded,trial counts now come from inline_values.rds and T12a
+ddm-params-inline,3931,chunk,superseded,parameter summaries now come from inline_values.rds
+fig-central-result,3996,option,replaced by fig-condition-params,condition-parameter figure
+fig-parameter-forest,4046,option,replaced by fig-effort-forest,effort forest
+pupil-quality-inline,4056,chunk,superseded,pupil gate counts now come from inline_values.rds
+tbl-hyp-summary,4109,option,cut,old H1-H4 hypothesis table
+drift-standard-compute,4254,chunk,cut,standard-only bias calibration
+fig-individual-diffs,4303,option,cut,subject-level effort panels dropped; Brinley is the new fig-brinley
+pupil-evidence-setup,4320,option,superseded,r5/r6 pupil output
+pupil-interaction-stats,4333,chunk,superseded,r5/r6 pupil output
+null-evidence-pupil-apply,4425,chunk,superseded,r5/r6 pupil output
+fig-difficulty-posterior-diffs,4565,option,cut,difficulty-posterior-differences figure
+bias-inline-compute,4686,chunk,cut,standard-only bias calibration
+supptbl-loo-comparison,4740,div,replaced by supptbl-model-comparison,model comparison table
+supptbl-convergence-detailed,4761,div,replaced by supptbl-convergence,convergence table
+suppfig-ndt-prior-posterior,4794,div,replaced by suppfig-ndt,non-decision time prior figure
+suppfig-loo-comparison,4838,div,cut,old LOO-comparison figure
+suppfig-participant-flow,4890,div,replaced by suppfig-flow,participant flow figure
+supptbl-ddm-posterior-estimates,4994,div,replaced by supptbl-fixef-m4 and supptbl-condition-cells,fixed effects and condition cells
+supptbl-standard-only-bias-levels,5033,div,cut,standard-only bias calibration
+suppfig-a2-bias-calibration-panel,5066,div,cut,standard-only bias calibration
+supptbl-baseline-pupil,5159,div,superseded,r5/r6 pupil output; descriptives replaced by supptbl-pupil-descriptives
+supptbl-bias-drift-intercept,5279,div,cut,standard-only bias calibration
+supptbl-convergence-ppc-gate-appendix,5332,div,replaced by supptbl-convergence and supptbl-ppc-choice,convergence and choice PPC
+supptbl-ppc-midbody,5532,div,replaced by supptbl-ppc-choice,choice posterior predictive check
+suppfig-ppc-heatmaps,5576,div,replaced by suppfig-ppc,posterior predictive check figure
+supptbl-sensitivity-subchance,5599,div,replaced by supptbl-robustness,robustness effort terms
+supptbl-sensitivity-thresholds,5860,div,replaced by supptbl-robustness,robustness effort terms
+supptbl-h1-h2-by-cutoff,5898,div,cut,old H1-H4 hypothesis table
+supptbl-app-sensitivity-full,5927,div,replaced by supptbl-robustness,robustness effort terms
+suppfig-a4-2a-drift-by-difficulty,5954,div,cut,cutoff drift-by-difficulty figure
+suppfig-suppl-drift-by-task,6003,div,cut,task-modality sensitivity profiles
+suppfig-additivity-check,6084,div,cut,additivity check
+supptbl-task-sensitivity,6179,div,cut,task-sensitivity table
+pdf-sanity-check,6222,chunk,cut,"July render plumbing, not a result display"
+supptbl-pupil-loo-unified,6294,div,superseded,r5/r6 pupil output; replaced by supptbl-pupil-models
+supptbl-pupil-key-effects-appendix,6390,div,superseded,r5/r6 pupil output
+supptbl-pupil-boundary-appendix,6486,div,superseded,r5/r6 pupil output; replaced by tbl-pupil-ordering
+supptbl-tepr,6568,div,superseded,r5/r6 pupil output; replaced by supptbl-pupil-descriptives
+suppfig-tepr-timecourse-supp,6646,div,replaced by suppfig-tepr,TEPR time course
+suppfig-tepr-slopes-supp,6858,div,cut,TEPR x difficulty slopes
+suppfig-timing-supp,6979,div,replaced by fig-design,design and timing schematic
+suppfig-rt-distributions,6992,div,replaced by suppfig-rtdist,RT distributions
+suppfig-ddm-dag-plate,7074,div,replaced by suppfig-dag,model DAG
+mc-sample-size,7137,chunk,cut,"July render plumbing, not a result display"
+supptbl-accuracy-glmm,7231,div,replaced by supptbl-acc-glmm,accuracy mixed model
+suppfig-accuracy-distribution,7315,div,replaced by suppfig-accuracy,accuracy by condition
+overall-accuracy-compute,7444,chunk,cut,"July render plumbing, not a result display"
+supptbl-overall-accuracy,7483,div,cut,not in the revised table list; accuracy display is suppfig-accuracy and supptbl-acc-glmm
+rt-medians-compute,7581,chunk,cut,"July render plumbing, not a result display"
+suppfig-rt-distribution,7698,div,replaced by suppfig-rtdist,RT distributions
+lc-a8-setup,7803,option,cut,"July render plumbing, not a result display"
+supptbl-lc-exploratory-correlations,7836,div,replaced by supptbl-lc,LC correlates
+suppfig-lc-fiso-dprime-variability,7880,div,replaced by suppfig-lc-variability,LC variability figure
+suppfig-lc-fiso-four-panel,7896,div,replaced by suppfig-lc-four-panel,LC four-panel figure
+np-a9-setup,7915,option,cut,"July render plumbing, not a result display"
+supptbl-extended-baseline-categorical,7942,div,replaced by supptbl-neuropsych,baseline rows of T14
+supptbl-extended-baseline,7967,div,replaced by supptbl-neuropsych,baseline rows of T14
+supptbl-neuropsych-ddm-exploratory,7989,div,replaced by supptbl-neuropsych,neuropsych rows of T14
+choice-history-load,8062,chunk,superseded,pre-revision temporal structure; replaced by supptbl-temporal
+fatigue-trajectory-load,8098,chunk,superseded,pre-revision temporal structure; replaced by supptbl-temporal
+fatigue-build-figure,8124,chunk,superseded,pre-revision temporal structure; replaced by supptbl-temporal
+suppfig-temporal-dynamics,8286,div,superseded,pre-revision temporal figure; replaced by supptbl-temporal
