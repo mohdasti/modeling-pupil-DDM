@@ -1,0 +1,112 @@
+citekey,first_author,year,title,journal,doi
+quarto,Allaire,2022,Quarto,,
+broommixed,Anderson,2024,Broom.mixed: Tidying methods for mixed models,,
+astonjones2005,Aston-Jones,2005,An integrative theory of locus coeruleus–norepinephrine function: Adaptive gain and optimal performance,Annual Review of Neuroscience,10.1146/annurev.neuro.28.061604.135709
+azer2023,Azer,2023,Detrimental effects of effortful physical exertion on a working memory dual-task in older adults,Psychology and Aging,10.1037/pag0000730
+bachman2023,Bachman,2023,Isometric handgrip exercise speeds working memory responses in younger and older adults,Psychology and Aging,10.1037/pag0000728
+bates2015lme4,Bates,2015,Fitting linear mixed-effects models using lme4,Journal of Statistical Software,10.18637/jss.v067.i01
+beatty1982,Beatty,1982,"Task-evoked pupillary responses, processing load, and the structure of processing resources",Psychological Bulletin,10.1037/0033-2909.91.2.276
+bennett2024lc,Bennett,2024,Locus coeruleus contrast and diffusivity metrics differentially relate to age and memory performance,Scientific Reports,10.1038/s41598-024-66238-z
+birren1965age,Birren,1965,Age changes in speed of behavior: Its central nature and physiological correlates,"Behavior, aging, and the nervous system",
+brainard1997psychophysics,Brainard,1997,The psychophysics toolbox,Spatial vision,
+brinley1965cognitive,Brinley,1965,"Cognitive sets, speed and accuracy of performance in the elderly","Behavior, aging and the nervous system",
+burkner2017brms,Bürkner,2017,Brms: An R package for bayesian multilevel models using Stan,Journal of Statistical Software,10.18637/jss.v080.i01
+burkner2018brms,Bürkner,2018,Advanced bayesian multilevel modeling with the R package brms,The R Journal,10.32614/RJ-2018-017
+burkner2022posterior,Bürkner,2022,Posterior: Tools for working with posterior distributions,Journal of Statistical Software,10.18637/jss.v102.i10
+cabeza2002,Cabeza,2002,Hemispheric asymmetry reduction in older adults: The HAROLD model,Psychology and Aging,10.1037/0882-7974.17.1.85
+cavanagh2014,Cavanagh,2014,Eye tracking and pupillometry are indicators of dissociable latent decision processes,Journal of Experimental Psychology: General,10.1037/a0035813
+cerella1985,Cerella,1985,Information processing rates in the elderly,Psychological Bulletin,10.1037/0033-2909.98.1.67
+dave2025,Dave,2025,Locus coeruleus activity and connectivity in older adults during ambiguous decision-making,Under Review,
+david2022,David,2022,New approaches for the quantification and targeting of noradrenergic dysfunction in alzheimer’s disease,Annals of Clinical and Translational Neurology,10.1002/acn3.51540
+drugowitsch2012,Drugowitsch,2012,The cost of accumulating evidence in perceptual decision making,Journal of Neuroscience,10.1523/JNEUROSCI.4010-11.2012
+eldar2013,Eldar,2013,The effects of neural gain on attention and learning,Nature Neuroscience,10.1038/nn.3428
+farell1985,Farell,1985,"""Same""–""different"" judgments: A review of current controversies in perceptual comparisons",Psychological Bulletin,10.1037/0033-2909.98.3.419
+faul2007g,Faul,2007,"G* power 3: A flexible statistical power analysis program for the social, behavioral, and biomedical sciences",Behavior research methods,
+feller1968introduction,Feller,1968,An introduction to probability theory and its applications,,
+fink2024,Fink,2024,Best practices for preprocessing and analysis of pupillometry data,Psychophysiology,10.1111/psyp.14478
+fischer2014serial,Fischer,2014,Serial dependence in visual perception,Nature Neuroscience,10.1038/nn.3689
+frank2006,Frank,2006,Hold your horses: A dynamic computational role for the subthalamic nucleus in decision making,Neural Networks,10.1016/j.neunet.2006.03.006
+cmdstanr,Gabry,2021,Cmdstanr: R interface to ’CmdStan’,,10.32614/RJ-2021-123
+gabry2019bayesplot,Gabry,2019,Visualization in Bayesian workflow,Journal of the Royal Statistical Society Series A: Statistics in Society,10.1111/rssa.12377
+de2017dynamic,Gee,2017,Dynamic modulation of decision biases by brainstem arousal systems,elife,
+degee2020pupil,Gee,2020,Pupil-linked phasic arousal predicts a reduction of choice bias across species and decision domains,eLife,10.7554/eLife.54014
+gelman1992inference,Gelman,1992,Inference from iterative simulation using multiple sequences,Statistical Science,10.1214/ss/1177011136
+gelman2013bda,Gelman,2013,Bayesian data analysis,,
+gilzenrat2010,Gilzenrat,2010,Pupil diameter tracks changes in control state predicted by the adaptive gain theory of locus coeruleus function,"Cognitive, Affective, & Behavioral Neuroscience",10.3758/CABN.10.2.252
+hanoch2004,Hanoch,2004,"When less is more: Information, emotional arousal, and the ecological reframing of the yerkes-dodson law",Theory & Psychology,10.1177/0959354304044918
+hess2012,Hess,2012,Age differences in the effort and costs associated with cognitive activity,Journal of Gerontology: Psychological Sciences,10.1093/geronb/gbr129
+glue,Hester,2024,Glue: Interpreted string literals,,
+hoffman2014nuts,Hoffman,2014,The no-u-turn sampler: Adaptively setting path lengths in hamiltonian monte carlo,Journal of Machine Learning Research,
+huang2024,Huang,2024,The locus coeruleus: Where cognitive and emotional processing meet the eye,Modern pupillometry,
+gt,Iannone,2024,Gt: Easily create presentation-ready display tables,,
+joshi2016,Joshi,2016,"Relationships between pupil diameter and neuronal activity in the locus coeruleus, colliculi, and cingulate cortex",Neuron,10.1016/j.neuron.2015.11.028
+kahneman1966,Kahneman,1966,Pupil diameter and load on memory,Science,10.1126/science.154.3756.1583
+kleiner2007s,Kleiner,2007,What’s new in psychtoolbox-3?,,
+koen2016,Koen,2016,The role of the hippocampus in difficulty-based trade-offs between memory quantity and quality,Journal of Neuroscience,10.1523/JNEUROSCI.0389-16.2016
+kolnes2024,Kolnes,2024,Broadening of attention dilates the pupil,"Attention, Perception, & Psychophysics",
+kret2019,Kret,2019,"Pupillometry: Psychology, physiology, and function",Cognition and Emotion,10.1080/02699931.2018.1520428
+kret2019preprocessing,Kret,2019,Preprocessing pupil size data: Guidelines and code,Behavior research methods,
+laeng2012,Laeng,2012,Bright illusions reduce the eye’s pupil,Proceedings of the National Academy of Sciences,
+lee2018,Lee,2018,Arousal increases neural gain via the locus coeruleus-noradrenaline system in younger adults but not in older adults,Nature Human Behaviour,10.1038/s41562-018-0344-1
+li2001aging,Li,2001,Aging cognition: From neuromodulation to representation,Trends in cognitive sciences,
+lindenberger1994sensory,Lindenberger,1994,Sensory functioning and intelligence in old age: A strong connection.,Psychology and aging,
+loewenfeld1999,Loewenfeld,1999,"The pupil: Anatomy, physiology, and clinical applications",(No Title),
+madden1991,Madden,1991,Adult age differences in the rate of information extraction during visual search,Journal of Gerontology,10.1093/geronj/46.3.P124
+mata2007aging,Mata,2007,The aging decision maker: Cognitive aging and the adaptive selection of decision strategies.,Psychology and aging,
+mather2016,Mather,2016,The locus coeruleus: Essential for maintaining cognitive function and the aging brain,Trends in Cognitive Sciences,10.1016/j.tics.2016.01.001
+mather2016neural,Mather,2016,Norepinephrine ignites local hotspots of neuronal excitation: How arousal amplifies selectivity in perception and memory,Behavioral and Brain Sciences,10.1017/S0140525X15000667
+mathot2018,Mathôt,2018,"Pupillometry: Psychology, physiology, and function",Journal of Cognition,10.5334/joc.18
+mikneviciute2022,Mikneviciute,2022,Does older adults’ cognition particularly suffer from stress? A systematic review of acute stress effects on cognition in older age,Neuroscience & Biobehavioral Reviews,10.1016/j.neubiorev.2021.12.010
+murphy2014,Murphy,2014,Pupil diameter covaries with BOLD activity in human locus coeruleus,Human Brain Mapping,10.1002/hbm.22466
+neagu2023,Neagu,2023,Investigating the reliability of pupillometry as a measure of individualized listening effort,"Attention, Perception, & Psychophysics",
+nosofsky1997palmeri,Nosofsky,1997,An exemplar-based random walk model of speeded classification,Psychological Review,10.1037/0033-295X.104.2.266
+paananen2021,Paananen,2021,Implicitly adaptive importance sampling,Statistics and Computing,10.1007/s11222-020-09982-2
+R,R Core Team,2025,R: A language and environment for statistical computing,,
+rabbitt1979old,Rabbitt,1979,How old and young subjects monitor and control responses for accuracy and speed,British Journal of Psychology,
+ratcliff1978theory,Ratcliff,1978,A theory of memory retrieval,Psychological Review,10.1037/0033-295X.85.2.59
+ratcliff1985,Ratcliff,1985,Theoretical interpretations of the speed and accuracy of positive and negative responses,Psychological Review,10.1037/0033-295X.92.2.212
+ratcliff2001aging,Ratcliff,2001,The effects of aging on reaction time in a signal detection task,Psychology and Aging,10.1037/0882-7974.16.2.323
+ratcliff2002estimating,Ratcliff,2002,Estimating parameters of the diffusion model: Approaches to dealing with contaminant reaction times and parameter variability,Psychonomic Bulletin & Review,10.3758/BF03196302
+ratcliff2003diffusion,Ratcliff,2003,A diffusion model analysis of the effects of aging on brightness discrimination,Perception & psychophysics,
+ratcliff2004aging,Ratcliff,2004,A diffusion model analysis of the effects of aging in the lexical-decision task,Psychology and Aging,10.1037/0882-7974.19.2.278
+ratcliff2006aging,Ratcliff,2006,Aging and individual differences in rapid two-choice decisions,Psychonomic bulletin & review,
+ratcliff2007application,Ratcliff,2007,Application of the diffusion model to two-choice tasks for adults 75-90 years old.,Psychology and aging,
+ratcliff2008diffusion,Ratcliff,2008,The diffusion decision model: Theory and data for two-choice decision tasks,Neural Computation,10.1162/neco.2008.12-06-420
+ratcliff2010,Ratcliff,2010,"Individual differences, aging, and IQ in two-choice tasks",Cognitive Psychology,10.1016/j.cogpsych.2009.09.001
+reuterlorenz2008,Reuter-Lorenz,2008,Neurocognitive aging and the compensation hypothesis,Current Directions in Psychological Science,10.1111/j.1467-8721.2008.00570.x
+salthouse1985speed,Salthouse,1985,Speed of behavior and its implications for cognition.,,
+salthouse1996,Salthouse,1996,The processing-speed theory of adult age differences in cognition,Psychological Review,10.1037/0033-295X.103.3.403
+seidler2010motor,Seidler,2010,"Motor control and aging: Links to age-related brain structural, functional, and biochemical effects",Neuroscience & Biobehavioral Reviews,
+servan1990,Servan-Schreiber,1990,"A network model of catecholamine effects: Gain, signal-to-noise ratio, and behavior",Science,10.1126/science.2392679
+spaniol2006,Spaniol,2006,A diffusion model analysis of adult age differences in episodic and semantic long-term memory retrieval,"Journal of Experimental Psychology: Learning, Memory, and Cognition",10.1037/0278-7393.32.1.101
+cmdstan2024,Stan Development Team,2024,CmdStan user’s guide,,
+stan2024,Stan Development Team,2024,Stan modeling language users guide and reference manual,,
+starns2010,Starns,2010,The effects of aging on the speed–accuracy compromise: Boundary optimality in the diffusion model,Psychology and Aging,10.1037/a0018022
+starns2010effects,Starns,2010,The effects of aging on the speed–accuracy compromise: Boundary optimality in the diffusion model.,Psychology and aging,
+steinhauer2022,Steinhauer,2022,"Pupillometry: Psychology, physiology, and function",Journal of Psychophysiology,10.1027/0269-8803/a000304
+tajima2016,Tajima,2016,Optimal policy for value-based decision-making,Nature Communications,10.1038/ncomms12400
+urai2017,Urai,2017,Pupil-linked arousal is driven by decision uncertainty and alters serial choice bias,Nature Communications,10.1038/ncomms14637
+urai2019choice,Urai,2019,Choice history biases subsequent evidence accumulation,eLife,10.7554/eLife.46331
+vangerven2004,Van Gerven,2004,Memory load and the cognitive pupillary response in aging,Psychophysiology,10.1111/j.1469-8986.2003.00148.x
+vehtari2017loo,Vehtari,2017,Practical bayesian model evaluation using leave-one-out cross-validation and WAIC,Statistics and Computing,10.1007/s11222-016-9696-4
+vehtari2017practical,Vehtari,2017,Practical bayesian model evaluation using leave-one-out cross-validation and WAIC,Statistics and computing,
+vehtari2020rank,Vehtari,2021,"Rank-normalization, folding, and localization: An improved r ̂ for assessing convergence of MCMC (with discussion)",Bayesian analysis,
+vehtari2021rank,Vehtari,2021,"Rank-normalization, folding, and localization: An improved R̂ for assessing convergence of MCMC (with discussion)",Bayesian Analysis,10.1214/20-BA1221
+verhaeghen2003,Verhaeghen,2003,Aging and dual-task performance: A meta-analysis,Psychology and Aging,10.1037/0882-7974.18.3.443
+voss2004interpreting,Voss,2004,Interpreting the parameters of the diffusion model: An empirical validation,Memory & cognition,
+wabersich2014rwiener,Wabersich,2014,The RWiener package: An R package providing distribution functions for the wiener diffusion model,The R Journal,10.32614/RJ-2014-005
+vanderwel2018,Wel,2018,Pupil dilation as an index of effort in cognitive control tasks: A review,Psychonomic Bulletin & Review,10.3758/s13423-018-1432-y
+west2005,West,2005,Adjustments of cognitive control in younger and older adults,Cortex,10.1016/s0010-9452(08)70197-7
+whelan2008effective,Whelan,2008,Effective analysis of reaction time data,The Psychological Record,10.1007/BF03395630
+wickens2008,Wickens,2008,Multiple resources and mental workload,Human Factors,10.1518/001872008X288394
+dplyr,Wickham,2023,Dplyr: A grammar of data manipulation,,
+readr,Wickham,2024,Readr: Read rectangular text data,,
+stringr,Wickham,2022,"Stringr: Simple, consistent wrappers for common string operations",,
+tidyr,Wickham,2023,Tidyr: Tidy messy data,,
+wickham2016ggplot2,Wickham,2016,ggplot2: Elegant graphics for data analysis,,
+wickham2019tidyverse,Wickham,2019,Welcome to the tidyverse,Journal of Open Source Software,10.21105/joss.01686
+wiecki2013hddm,Wiecki,2013,HDDM: Hierarchical bayesian estimation of the drift-diffusion model in python,Frontiers in Neuroinformatics,10.3389/fninf.2013.00014
+woods2015age,Woods,2015,Age-related slowing of response selection and production in a visual choice reaction time task,Frontiers in Human Neuroscience,10.3389/fnhum.2015.00193
+woollacott2002,Woollacott,2002,Attention and the control of posture and gait: A review of an emerging area of research,Gait & Posture,10.1016/S0966-6362(01)00156-4
+yerkes1908,Yerkes,1908,The relation of strength of stimulus to rapidity of habit-formation,Journal of Comparative Neurology and Psychology,10.1002/cne.920180503
+zenon2014,Zénon,2014,Pupil size variations correlate with physical effort perception,Frontiers in Behavioral Neuroscience,10.3389/fnbeh.2014.00286
