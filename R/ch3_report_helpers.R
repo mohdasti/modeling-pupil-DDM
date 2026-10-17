@@ -440,11 +440,48 @@ make_table <- function(df, cols, col_labels, digits_map = NULL, footnote = NULL)
 }
 
 ch3_tbl_demographics <- function(df) {
-  make_table(
-    df,
-    cols = c("Characteristic", "Full_Sample"),
-    col_labels = c("Characteristic", "Full sample")
+  char <- df$Characteristic
+  value <- df$Full_Sample
+  char[char == "MoCA, score (SD)"] <- "MoCA-telephone, score /22 (SD)"
+  n <- as.integer(value[char == "N"])
+  if (length(n) != 1L || is.na(n)) {
+    stop("T1 has no N row", call. = FALSE)
+  }
+  race_rows <- c(
+    "  White/Caucasian",
+    "  Black/African American",
+    "  Asian",
+    "  Other"
   )
+  race_counts <- vapply(race_rows, function(lab) {
+    cell <- value[char == lab]
+    if (length(cell) != 1L) stop("T1 is missing race row: ", lab, call. = FALSE)
+    as.integer(sub("^([0-9]+).*", "\\1", cell))
+  }, integer(1))
+  n_missing <- n - sum(race_counts)
+  if (n_missing < 0) stop("T1 race counts exceed N", call. = FALSE)
+  missing_cell <- sprintf("%d (%.1f%%)", n_missing, round(100 * n_missing / n, 1))
+  # The two unclassified source rows are blank race fields, so the label is Not reported.
+  out_char <- character(0)
+  out_val <- character(0)
+  for (i in seq_along(char)) {
+    out_char <- c(out_char, char[[i]])
+    out_val <- c(out_val, value[[i]])
+    if (char[[i]] == "  Other") {
+      out_char <- c(out_char, "  Not reported")
+      out_val <- c(out_val, missing_cell)
+    }
+    if (char[[i]] == "Hispanic/Latino") {
+      out_char[length(out_char)] <- "  Hispanic/Latino"
+    }
+  }
+  hisp <- which(out_char == "  Hispanic/Latino")
+  if (length(hisp) != 1L) stop("T1 has no Hispanic/Latino row", call. = FALSE)
+  out_char <- append(out_char, "Ethnicity, count (%)", after = hisp - 1L)
+  out_val <- append(out_val, "", after = hisp - 1L)
+  out_char <- gsub("^  ", "\u00a0\u00a0", out_char)
+  out <- data.frame(Characteristic = out_char, `Full sample` = out_val, check.names = FALSE, stringsAsFactors = FALSE)
+  make_table(out, cols = names(out), col_labels = names(out))
 }
 
 ch3_tbl_effort_effects <- function(df) {
@@ -526,7 +563,32 @@ ch3_tbl_model_comparison <- function(df) {
 }
 
 ch3_tbl_convergence <- function(df) {
-  df <- df[df$model != "P0_r6", , drop = FALSE]
+  drop_models <- c("P0_r6", "M3_thr0.15", "M3_thr0.25")
+  df <- df[!df$model %in% drop_models, , drop = FALSE]
+  if (!"P0_base" %in% df$model) {
+    stop("convergence display is missing P0_base", call. = FALSE)
+  }
+  order_models <- c(
+    "M4",
+    "M0", "M1", "M2", "M3", "M4b",
+    "M4r", "M4_thr0.15", "M4_thr0.25", "M4_subchance",
+    "P0", "P0_base", "P0_rt", "P0_lag", "P0_pre", "P0_grip",
+    "P1", "P2", "P3", "P3_rt", "P4", "P5", "P6", "P7", "P8"
+  )
+  if (!setequal(df$model, order_models)) {
+    stop(
+      "convergence display models do not match the expected set: ",
+      paste(setdiff(union(df$model, order_models), intersect(df$model, order_models)), collapse = ", "),
+      call. = FALSE
+    )
+  }
+  df <- df[match(order_models, df$model), , drop = FALSE]
+  pass <- df$max_rhat < 1.01 & df$min_bulk_ess >= 400 & df$min_tail_ess >= 400 & df$divergences == 0
+  fail <- df$model[!pass]
+  footnote <- paste0(
+    "A model passes when max R-hat < 1.01, bulk ESS and tail ESS are at least 400, and there are 0 divergences. ",
+    if (length(fail)) paste0("Fails: ", paste(fail, collapse = ", "), ".") else "Every displayed model passes."
+  )
   out <- data.frame(
     Model = df$model,
     Role = df$role,
@@ -534,19 +596,41 @@ ch3_tbl_convergence <- function(df) {
     `Min bulk ESS` = ch3_fmt_cells(df$min_bulk_ess, fmt_int),
     `Min tail ESS` = ch3_fmt_cells(df$min_tail_ess, fmt_int),
     Divergences = ch3_fmt_cells(df$divergences, fmt_int),
-    Pass = ifelse(df$passes_convergence_rule, "Yes", "No"),
+    Pass = ifelse(pass, "Yes", "No"),
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
-  make_table(out, cols = names(out), col_labels = names(out))
+  make_table(out, cols = names(out), col_labels = names(out), footnote = footnote)
 }
 
 ch3_tbl_fixef <- function(df) {
+  effort_terms <- c(
+    "b_effort_conditionhigh",
+    "b_effort_x_stim",
+    "b_bs_effort_conditionhigh",
+    "b_bias_effort_conditionhigh"
+  )
+  scale_word <- c(identity = "identity", log = "log", logit = "logit")
+  labels <- ch3_map_labels(df$term, .fixef_label_map, "T4")
+  labels[df$term == "b_bs_effort_conditionhigh"] <- "High effort (boundary separation)"
+  labels[df$term == "b_bias_effort_conditionhigh"] <- "High effort (starting point)"
+  if (!all(df$link %in% names(scale_word))) {
+    stop("T4 has an unknown link scale", call. = FALSE)
+  }
+  scale <- unname(scale_word[df$link])
+  labels <- vapply(seq_along(labels), function(i) {
+    if (grepl("\\)$", labels[[i]])) {
+      sub("\\)$", paste0(", ", scale[[i]], ")"), labels[[i]])
+    } else {
+      paste0(labels[[i]], " (", scale[[i]], ")")
+    }
+  }, character(1))
+  keep <- df$term %in% effort_terms
   out <- data.frame(
-    Parameter = ch3_map_labels(df$term, .fixef_label_map, "T4"),
+    Parameter = labels,
     ch3_posterior_cols(df$median, df$q2.5, df$q97.5, 3),
-    Direction = ch3_direction_col(df$median, df$p_lt0, df$p_gt0),
-    `In ROPE` = ch3_rope_col(df$pct_in_rope),
+    Direction = ifelse(keep, ch3_direction_col(df$median, df$p_lt0, df$p_gt0), ""),
+    `In ROPE` = ifelse(keep, ch3_rope_col(df$pct_in_rope), ""),
     `R-hat` = ch3_fmt_cells(df$rhat, function(v) fmt_num(v, 3)),
     check.names = FALSE,
     stringsAsFactors = FALSE
@@ -554,17 +638,66 @@ ch3_tbl_fixef <- function(df) {
   make_table(out, cols = names(out), col_labels = names(out))
 }
 
+.cell_est <- function(med, lo, hi) {
+  if (is.na(med) || is.na(lo) || is.na(hi)) "" else paste(fmt_num(med, 3), fmt_ci(lo, hi, 3))
+}
+
 ch3_tbl_condition_cells <- function(df) {
-  out <- data.frame(
-    Task = df$task,
-    Difficulty = df$difficulty_3,
-    Effort = tools::toTitleCase(df$effort_condition),
-    Parameter = ch3_map_labels(df$quantity, .quantity_map, "T3"),
-    ch3_posterior_cols(df$median, df$q2.5, df$q97.5, 3),
-    check.names = FALSE,
-    stringsAsFactors = FALSE
+  # Wide layout: task x difficulty rows; drift and boundary at each effort.
+  # Starting point depends only on task x effort, and non-decision time is one value.
+  pick <- function(task, difficulty, effort, quantity) {
+    hit <- df$task == task & df$difficulty_3 == difficulty &
+      df$effort_condition == effort & df$quantity == quantity
+    df[hit, , drop = FALSE]
+  }
+  tasks <- c("ADT", "VDT")
+  diffs <- c("Standard", "Hard", "Easy")
+  rows <- list()
+  for (task in tasks) {
+    for (difficulty in diffs) {
+      cell <- function(effort, quantity) {
+        hit <- pick(task, difficulty, effort, quantity)
+        if (nrow(hit) != 1L) {
+          stop("T3 expected one ", quantity, " cell for ", task, " ", difficulty, " ", effort, call. = FALSE)
+        }
+        .cell_est(hit$median, hit$q2.5, hit$q97.5)
+      }
+      rows[[length(rows) + 1L]] <- data.frame(
+        Task = task,
+        Difficulty = difficulty,
+        `Drift, low` = cell("low", "v"),
+        `Drift, high` = cell("high", "v"),
+        `Boundary, low` = cell("low", "a"),
+        `Boundary, high` = cell("high", "a"),
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  z_bits <- character(0)
+  for (task in tasks) {
+    for (effort in c("low", "high")) {
+      hits <- df[df$task == task & df$effort_condition == effort & df$quantity == "z", , drop = FALSE]
+      if (!nrow(hits)) stop("T3 is missing starting point for ", task, " ", effort, call. = FALSE)
+      if (length(unique(round(hits$median, 8))) != 1L) {
+        stop("T3 starting point is not constant across difficulty for ", task, " ", effort, call. = FALSE)
+      }
+      z_bits <- c(z_bits, paste0(task, " ", effort, " ", .cell_est(hits$median[1], hits$q2.5[1], hits$q97.5[1])))
+    }
+  }
+  t0 <- df[df$quantity == "t0", , drop = FALSE]
+  if (!nrow(t0) || length(unique(round(t0$median, 8))) != 1L) {
+    stop("T3 non-decision time is not a single value", call. = FALSE)
+  }
+  footnote <- paste0(
+    "Starting point varies by task and effort only: ",
+    paste(z_bits, collapse = "; "),
+    ". Non-decision time is ",
+    .cell_est(t0$median[1], t0$q2.5[1], t0$q97.5[1]),
+    " in every cell. These note values are the condition-cell summaries, not the link-scale coefficients."
   )
-  make_table(out, cols = names(out), col_labels = names(out))
+  out <- do.call(rbind, rows)
+  make_table(out, cols = names(out), col_labels = names(out), footnote = footnote)
 }
 
 ch3_tbl_ppc_choice <- function(df) {
@@ -635,6 +768,12 @@ ch3_tbl_m4b <- function(df) {
 }
 
 ch3_tbl_pupil_models <- function(slopes, effort) {
+  delta <- mapply(function(d, s) {
+    if (is.na(d) || is.na(s)) "" else paste0(fmt_num(d, 1), " \u00b1 ", fmt_num(s, 1))
+  }, slopes$delta_elpd_vs_baseline, slopes$se_delta_elpd, USE.NAMES = FALSE)
+  # The interaction row repeats the model-level ELPD. Show it once, on the first P2 row.
+  interaction <- slopes$term == "b_tepr_c:stim_sign"
+  delta[interaction] <- ""
   slope_out <- data.frame(
     Block = "Pupil slope",
     Model = slopes$model,
@@ -643,15 +782,13 @@ ch3_tbl_pupil_models <- function(slopes, effort) {
     `Change in a` = ch3_pct_change_col(
       slopes$pct_change_median, slopes$pct_change_q2.5, slopes$pct_change_q97.5
     ),
-    `Delta ELPD` = mapply(function(d, s) {
-      if (is.na(d) || is.na(s)) "" else paste0(fmt_num(d, 1), " \u00b1 ", fmt_num(s, 1))
-    }, slopes$delta_elpd_vs_baseline, slopes$se_delta_elpd, USE.NAMES = FALSE),
+    `Delta ELPD` = delta,
     Trials = ch3_fmt_cells(slopes$n_trials, fmt_int),
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
   effort_out <- data.frame(
-    Block = "P0 effort term",
+    Block = "Effort effects in the pupil subsample (P0)",
     Model = effort$model,
     Parameter = ch3_map_labels(effort$term, .effort_label_map, "T7 P0"),
     ch3_posterior_cols(effort$median, effort$q2.5, effort$q97.5, 3),
@@ -664,33 +801,82 @@ ch3_tbl_pupil_models <- function(slopes, effort) {
     stringsAsFactors = FALSE
   )
   out <- rbind(slope_out, effort_out)
-  make_table(out, cols = names(out), col_labels = names(out))
+  make_table(
+    out,
+    cols = names(out),
+    col_labels = names(out),
+    footnote = paste(
+      "P1, P2, and P3 are compared with P0.",
+      "P4 and P5 are compared with P0_base.",
+      "P3_rt is compared with P0_rt.",
+      "P6 is compared with P0_lag, P7 with P0_pre, and P8 with P0_grip.",
+      "P5, P3_rt, P6, P7, and P8 are in the ordering table rather than this slope table."
+    )
+  )
+}
+
+ch3_ms_sd <- function(mean, sd) {
+  if (is.na(mean) || is.na(sd)) "" else paste0(fmt_num(mean, 3), " (", fmt_num(sd, 3), ")")
 }
 
 ch3_tbl_pupil_descriptives <- function(df) {
-  out <- data.frame(
-    Gate = ifelse(is.na(df$gate), "", df$gate),
-    Block = ifelse(is.na(df$block), "", df$block),
-    Task = ifelse(is.na(df$task), "", df$task),
-    Effort = ifelse(is.na(df$effort_condition), "", as.character(df$effort_condition)),
-    Outcome = ifelse(is.na(df$outcome), "", df$outcome),
-    Trials = ch3_fmt_cells(df$n_trials, fmt_int),
-    Subjects = ch3_fmt_cells(df$n_subjects, fmt_int),
-    Mean = ch3_fmt_cells(df$mean, function(v) fmt_num(v, 3)),
-    SD = ch3_fmt_cells(df$sd, function(v) fmt_num(v, 3)),
-    `High minus low` = ch3_fmt_cells(df$mean_high_minus_low, function(v) fmt_num(v, 3)),
-    t = ch3_fmt_cells(df$t, function(v) fmt_num(v, 2)),
-    df = ch3_fmt_cells(df$df, fmt_int),
-    p = ch3_fmt_cells(df$p, fmt_p),
-    r = ch3_fmt_cells(df$mean_r_fisher, function(v) paste0("r = ", .drop_lead0(fmt_num(v, 2)))),
-    `r CrI` = mapply(function(a, b) {
-      if (is.na(a) || is.na(b)) "" else paste0("[", .drop_lead0(fmt_num(a, 2)), ", ", .drop_lead0(fmt_num(b, 2)), "]")
-    }, df$ci_lo, df$ci_hi, USE.NAMES = FALSE),
-    `Grip mean` = ch3_fmt_cells(df$mean_grip, function(v) fmt_num(v, 3)),
-    check.names = FALSE,
-    stringsAsFactors = FALSE
+  gate <- df$n_subjects[!is.na(df$gate) & df$gate == "subject_task_ge_20"]
+  if (length(gate) != 1L || is.na(gate)) {
+    stop("T9 is missing the subject_task_ge_20 gate count", call. = FALSE)
+  }
+  measures <- list(
+    list(block_mean = "raw_means", block_pair = "paired_high_minus_low", outcome = "tepr_raw",
+         label = "TEPR (B1 baseline)", mean_col = "mean", sd_col = "sd"),
+    list(block_mean = "raw_means", block_pair = "paired_high_minus_low", outcome = "auc_b0",
+         label = "TEPR (B0 baseline)", mean_col = "mean", sd_col = "sd"),
+    list(block_mean = "grip_means", block_pair = "grip_paired", outcome = NA_character_,
+         label = "Grip-period pupil", mean_col = "mean_grip", sd_col = "sd_grip")
   )
-  make_table(out, cols = names(out), col_labels = names(out))
+  rows <- list()
+  for (spec in measures) {
+    for (task in c("ADT", "VDT")) {
+      means <- df[df$block == spec$block_mean & df$task == task, , drop = FALSE]
+      if (!is.na(spec$outcome)) means <- means[means$outcome == spec$outcome, , drop = FALSE]
+      high <- means[means$effort_condition == "high", , drop = FALSE]
+      low <- means[means$effort_condition == "low", , drop = FALSE]
+      paired <- df[df$block == spec$block_pair & df$task == task, , drop = FALSE]
+      if (!is.na(spec$outcome)) paired <- paired[paired$outcome == spec$outcome, , drop = FALSE]
+      if (nrow(high) != 1L || nrow(low) != 1L || nrow(paired) != 1L) {
+        stop("T9 is missing a pupil effort row for ", spec$label, " ", task, call. = FALSE)
+      }
+      row <- data.frame(
+        Measure = spec$label,
+        Task = task,
+        n = fmt_int(paired$n_subjects),
+        high = ch3_ms_sd(high[[spec$mean_col]], high[[spec$sd_col]]),
+        low = ch3_ms_sd(low[[spec$mean_col]], low[[spec$sd_col]]),
+        diff = fmt_num(paired$mean_high_minus_low, 3),
+        tstat = {
+          df_s <- if (abs(paired$df - round(paired$df)) < 1e-8) as.character(as.integer(round(paired$df))) else fmt_num(paired$df, 2)
+          paste0("t(", df_s, ") = ", fmt_num(paired$t, 2))
+        },
+        p = fmt_p(paired$p),
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+      names(row) <- c(
+        "Measure", "Task", "n", "High M (SD)", "Low M (SD)",
+        paste0("High ", .minus, " Low"), "t (df)", "p"
+      )
+      rows[[length(rows) + 1L]] <- row
+    }
+  }
+  out <- do.call(rbind, rows)
+  make_table(
+    out,
+    cols = names(out),
+    col_labels = names(out),
+    footnote = paste0(
+      "n is the number of participants with both effort levels for that task. ",
+      "The paired test drops anyone missing one level. ",
+      "The final pupil sample is ", fmt_int(gate), " participants."
+    )
+  )
 }
 
 ch3_tbl_glmm <- function(df, what) {
@@ -709,28 +895,153 @@ ch3_tbl_glmm <- function(df, what) {
       if (is.na(a) || is.na(b)) "" else fmt_ci(a, b, 3)
     }, df$conf.low, df$conf.high, USE.NAMES = FALSE)
   }
-  make_table(out, cols = names(out), col_labels = names(out))
+  footnote <- if (identical(what, "T13b")) {
+    paste(
+      "Binomial GLMM. Coefficients are on the logit scale. The statistic is a Wald z; lme4 does not report denominator df.",
+      "Reference levels: Standard difficulty, low effort, auditory task (ADT)."
+    )
+  } else if (identical(what, "T13c")) {
+    paste(
+      "The outcome is the median RT in each subject x task x difficulty x effort cell, in seconds, not log RT.",
+      "lme4::lmer supplied no p values and no Satterthwaite df.",
+      "Reference levels: Standard difficulty, low effort, auditory task (ADT)."
+    )
+  } else {
+    NULL
+  }
+  make_table(out, cols = names(out), col_labels = names(out), footnote = footnote)
 }
 
-ch3_tbl_associations <- function(df, analysis_keep, what) {
-  df <- df[df$analysis %in% analysis_keep, , drop = FALSE]
-  if (!nrow(df)) {
-    stop(what, " has no rows", call. = FALSE)
-  }
+.assoc_predictor_map <- c(
+  LC_CNR_max = "LC contrast-to-noise (max)",
+  LC_Composite_v2 = "LC composite",
+  LC_fICVF = "LC neurite density (fICVF)",
+  LC_fISO = "LC free-water fraction (fISO)",
+  PC1_v2 = "LC principal component 1",
+  boston_naming = "Boston Naming",
+  sils = "Shipley vocabulary (SILS)",
+  tmt_a = "Trail Making A",
+  tmt_b_minus_a = "TMT B \u2212 A",
+  emq = "EMQ-13",
+  gds = "GDS",
+  gad = "GAD-7",
+  edu = "education",
+  moca = "MoCA-telephone, score /22"
+)
+
+.assoc_outcome_map <- c(
+  rt_mean = "mean RT",
+  rt_diff_abs = "|RT effort difference|",
+  grip_sd = "grip force variability",
+  tepr_mean = "mean TEPR",
+  pf_slope = "psychometric slope",
+  a_mean = "subject-level boundary (M4 random intercept)",
+  v_mean = "subject-level drift (M4 random intercept)",
+  z_mean = "subject-level starting point (M4 random intercept)",
+  accuracy = "mean accuracy",
+  accuracy_diff_abs = "|accuracy difference|",
+  dprime_mean = "d\u2032 (descriptive)",
+  dprime_variability = "d\u2032 (descriptive)",
+  dprime_var = "d\u2032 (descriptive)"
+)
+
+.ddm_outcomes <- c("a_mean", "v_mean", "z_mean")
+
+ch3_assoc_table <- function(df, family_name) {
+  if (!nrow(df)) stop(family_name, " has no rows", call. = FALSE)
+  df$p_fdr <- stats::p.adjust(df$p, method = "BH")
   out <- data.frame(
-    Predictor = df$predictor,
-    Outcome = df$outcome,
-    Analysis = df$analysis,
+    Predictor = ch3_map_labels(df$predictor, .assoc_predictor_map, family_name),
+    Outcome = ch3_map_labels(df$outcome, .assoc_outcome_map, family_name),
     r = ch3_fmt_cells(df$r, function(v) paste0("r = ", .drop_lead0(fmt_num(v, 2)))),
     p = ch3_fmt_cells(df$p, fmt_p),
+    `p (FDR)` = ch3_fmt_cells(df$p_fdr, fmt_p),
     n = ch3_fmt_cells(df$n, fmt_int),
+    check.names = FALSE,
     stringsAsFactors = FALSE
   )
-  make_table(out, cols = names(out), col_labels = names(out))
+  out
+}
+
+ch3_tbl_lc <- function(df) {
+  df <- df[df$analysis == "lc", , drop = FALSE]
+  beh <- df[!df$outcome %in% .ddm_outcomes, , drop = FALSE]
+  ddm <- df[df$outcome %in% .ddm_outcomes, , drop = FALSE]
+  out <- rbind(
+    ch3_assoc_table(beh, "LC x behavioral"),
+    ch3_assoc_table(ddm, "LC x DDM")
+  )
+  make_table(
+    out, cols = names(out), col_labels = names(out),
+    footnote = paste0(
+      "Benjamini-Hochberg FDR is computed within family. ",
+      "LC x behavioral outcomes: ", nrow(beh), " tests. ",
+      "LC x DDM parameters: ", nrow(ddm), " tests. ",
+      "d\u2032 rows are descriptive. The LC table has no accuracy column, so they were not replaced."
+    )
+  )
+}
+
+ch3_tbl_neuropsych <- function(df) {
+  df <- df[df$analysis == "neuropsych", , drop = FALSE]
+  beh <- df[!df$outcome %in% .ddm_outcomes, , drop = FALSE]
+  ddm <- df[df$outcome %in% .ddm_outcomes, , drop = FALSE]
+  out <- rbind(
+    ch3_assoc_table(beh, "neuropsych x behavioral"),
+    ch3_assoc_table(ddm, "neuropsych x DDM")
+  )
+  make_table(
+    out, cols = names(out), col_labels = names(out),
+    footnote = paste0(
+      "Benjamini-Hochberg FDR is computed within family. ",
+      "Neuropsych x behavioral outcomes: ", nrow(beh), " tests. ",
+      "Neuropsych x DDM parameters: ", nrow(ddm), " tests. ",
+      "d\u2032 (descriptive) is the SD of d\u2032 across grip conditions. ",
+      "No SD of accuracy across conditions is in the source table."
+    )
+  )
+}
+
+ch3_tbl_baseline <- function() {
+  cont_path <- "output/neuropsych_demographics/extended_baseline_continuous.csv"
+  cat_path <- "output/neuropsych_demographics/extended_baseline_categorical.csv"
+  if (!file.exists(cont_path) || !file.exists(cat_path)) {
+    stop("July S9 baseline files are missing", call. = FALSE)
+  }
+  cont <- utils::read.csv(cont_path, check.names = FALSE, stringsAsFactors = FALSE)
+  cat <- utils::read.csv(cat_path, check.names = FALSE, stringsAsFactors = FALSE)
+  range <- gsub("(^|–)-", paste0("\\1", .minus), cont$Range, perl = TRUE)
+  cont_out <- data.frame(
+    Measure = cont$Measure,
+    n = ch3_fmt_cells(cont$n, fmt_int),
+    `M (SD) or n (%)` = cont[["M (SD)"]],
+    Range = range,
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  cat_out <- data.frame(
+    Measure = cat$Characteristic,
+    n = "",
+    `M (SD) or n (%)` = cat$Value,
+    Range = "",
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  out <- rbind(cont_out, cat_out)
+  make_table(
+    out, cols = names(out), col_labels = names(out),
+    footnote = paste(
+      "Values are from output/neuropsych_demographics/extended_baseline_continuous.csv",
+      "and extended_baseline_categorical.csv, the July S9 source.",
+      "T14 stored the means but dropped the ranges."
+    )
+  )
 }
 
 ch3_tbl_temporal <- function(df) {
-  model <- ifelse(is.na(df$model), "", df$model)
+  model <- as.character(df$model)
+  # The fatigue posterior file has no model column. Those rows are the within-session fatigue model.
+  model[is.na(model) | !nzchar(model)] <- "fatigue"
   out <- data.frame(
     Model = model,
     Parameter = ch3_map_labels(df$parameter, .temporal_label_map, "T15"),
@@ -743,7 +1054,7 @@ ch3_tbl_temporal <- function(df) {
     out,
     cols = names(out),
     col_labels = names(out),
-    footnote = "Fit on the pre-revision model structure."
+    footnote = "Fit on the pre-revision model structure. The fatigue block is exploratory_fatigue_trajectory; that file has no model column."
   )
 }
 

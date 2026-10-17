@@ -439,7 +439,7 @@ ch3_tbl_model_comparison(tbl$T5_model_comparison)
 
 ```{r}
 #| echo: false
-ch3_tbl_convergence(tbl$T10_convergence_all)
+ch3_tbl_convergence(tbl$T10b_convergence_display)
 ```
 
 \[CAPTION TO BE SUPPLIED\]
@@ -569,7 +569,7 @@ ch3_tbl_pupil_models(tbl$T7_pupil_models, tbl$T7_P0_effort_terms)
 ch3_tbl_pupil_descriptives(tbl$T9_pupil_descriptives)
 ```
 
-\[CAPTION TO BE SUPPLIED\]
+\[CAPTION TO BE SUPPLIED: Effort effects on pupil measures\]
 
 :::
 
@@ -624,7 +624,7 @@ Tables/figures in this section: @supptbl-acc-glmm, @supptbl-rt-lmm, @suppfig-acc
 ch3_tbl_glmm(tbl$T13b_accuracy_glmm, "T13b")
 ```
 
-\[CAPTION TO BE SUPPLIED\]
+\[CAPTION TO BE SUPPLIED: accuracy, binomial GLMM on the logit scale\]
 
 :::
 
@@ -635,7 +635,7 @@ ch3_tbl_glmm(tbl$T13b_accuracy_glmm, "T13b")
 ch3_tbl_glmm(tbl$T13c_rt_lmm, "T13c")
 ```
 
-\[CAPTION TO BE SUPPLIED\]
+\[CAPTION TO BE SUPPLIED: median RT in seconds\]
 
 :::
 
@@ -664,7 +664,7 @@ Tables/figures in this section: @supptbl-lc, @suppfig-lc-variability, @suppfig-l
 
 ```{r}
 #| echo: false
-ch3_tbl_associations(tbl$T14_lc_neuropsych_ddm, "lc", "T14 LC")
+ch3_tbl_lc(tbl$T14_lc_neuropsych_ddm)
 ```
 
 \[CAPTION TO BE SUPPLIED\]
@@ -701,14 +701,25 @@ suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_
 **[PROSE TO BE SUPPLIED: S9 Extended baseline and neuropsychological profile (dissertation only)]**
 Resolves Lani comments: none.
 Inline value keys available for this section: none.
-Tables/figures in this section: @supptbl-neuropsych.
+Tables/figures in this section: @supptbl-baseline, @supptbl-neuropsych.
+:::
+
+::: {#supptbl-baseline}
+
+```{r}
+#| echo: false
+ch3_tbl_baseline()
+```
+
+\[CAPTION TO BE SUPPLIED: Baseline characteristics\]
+
 :::
 
 ::: {#supptbl-neuropsych}
 
 ```{r}
 #| echo: false
-ch3_tbl_associations(tbl$T14_lc_neuropsych_ddm, c("neuropsych", "neuropsych_baseline_continuous", "neuropsych_baseline_categorical"), "T14 neuropsych")
+ch3_tbl_neuropsych(tbl$T14_lc_neuropsych_ddm)
 ```
 
 \[CAPTION TO BE SUPPLIED\]
