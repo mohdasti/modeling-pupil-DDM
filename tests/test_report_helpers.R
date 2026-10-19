@@ -87,6 +87,16 @@ test_that("fmt_num prints a negative zero as an unsigned zero", {
   expect_false(grepl(minus, fmt_num(-1e-12, 2), fixed = TRUE))
 })
 
+test_that("nw spells integers from zero through nine", {
+  expect_identical(nw(0), "zero")
+  expect_identical(nw(2), "two")
+  expect_identical(nw(5), "five")
+  expect_identical(nw(9), "nine")
+  expect_identical(nw(13), "13")
+  expect_identical(Nw(2), "Two")
+  expect_identical(Nw(13), "13")
+})
+
 test_that("fmt_int uses a thousands separator", {
   expect_identical(fmt_int(17857), "17,857")
   expect_identical(fmt_int(0), "0")

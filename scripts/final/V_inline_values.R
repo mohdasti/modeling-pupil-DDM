@@ -108,6 +108,57 @@ if (n_cutoff_excluded != 240) {
   )
   stop("n_trials_cutoff_excluded is not 240")
 }
+stop2c <- function(msg) {
+  dir.create("output/diagnostics/qmd_phase2c", recursive = TRUE, showWarnings = FALSE)
+  writeLines(msg, "output/diagnostics/qmd_phase2c/STOPPED.md")
+  stop(msg, call. = FALSE)
+}
+r11_conv_path <- "output/ddm_refits/runs/r11_20261019_052113/tables/convergence.csv"
+if (!file.exists(r11_conv_path)) stop2c(paste("Missing", r11_conv_path))
+r11_conv <- read.csv(r11_conv_path, stringsAsFactors = FALSE)
+r11_ok <- setequal(r11_conv$model, c("M1", "M2", "M4_thr0.15")) &&
+  nrow(r11_conv) == 3L && all(r11_conv$iter == 4500)
+if (!r11_ok) {
+  stop2c(paste(
+    "r11 convergence table is not exactly M1, M2, and M4_thr0.15 at 4,500 iterations:",
+    paste(r11_conv$model, r11_conv$iter, collapse = "; ")
+  ))
+}
+dip_path <- "output/diagnostics/qmd_phase2c/dip_r10_summary.txt"
+if (!file.exists(dip_path)) stop2c(paste("Missing", dip_path))
+dip_lines <- readLines(dip_path, warn = FALSE)
+dip_n_cells <- as.integer(sub("^n_cells ", "", dip_lines[grepl("^n_cells ", dip_lines)][1]))
+dip_latency_median <- as.numeric(sub("^median ", "", dip_lines[grepl("^median ", dip_lines)][1]))
+if (length(dip_n_cells) != 1L || is.na(dip_n_cells) ||
+    length(dip_latency_median) != 1L || !is.finite(dip_latency_median)) {
+  stop2c("r10 dip summary does not contain one cell count and one finite median.")
+}
+stop2d <- function(msg) {
+  dir.create("output/diagnostics/qmd_phase2d", recursive = TRUE, showWarnings = FALSE)
+  writeLines(msg, "output/diagnostics/qmd_phase2d/STOPPED.md")
+  stop(msg, call. = FALSE)
+}
+raw_path <- "/Users/mohdasti/Documents/LC-BAP/BAP/Nov2025/bap_beh_trialdata_v3.csv"
+if (!file.exists(raw_path)) stop2d(paste("Missing raw trial file:", raw_path))
+raw_rt <- as.numeric(read.csv(raw_path, stringsAsFactors = FALSE)$same_diff_resp_secs)
+n_trials_raw <- length(raw_rt)
+n_trials_negative_rt <- sum(is.finite(raw_rt) & raw_rt < 0)
+n_both_tasks <- num(flow("task_ADT")$n_subjects) + num(flow("task_VDT")$n_subjects) -
+  num(flow("analytic_sample")$n_subjects)
+n_one_task <- 2 * num(flow("analytic_sample")$n_subjects) -
+  num(flow("task_ADT")$n_subjects) - num(flow("task_VDT")$n_subjects)
+if (n_trials_raw - n_trials_negative_rt != n_trials_collected ||
+    n_trials_collected - n_cutoff_excluded != n_trials_primary_n ||
+    n_both_tasks != 62 || n_one_task != 5) {
+  stop2d(sprintf(
+    paste(
+      "Counts failed: raw %s, negative RT %s, collected %s, excluded %s, primary %s,",
+      "both tasks %s, one task %s."
+    ),
+    n_trials_raw, n_trials_negative_rt, n_trials_collected, n_cutoff_excluded,
+    n_trials_primary_n, n_both_tasks, n_one_task
+  ))
+}
 thr015 <- t10[t10$model == "M4_thr0.15", , drop = FALSE]
 if (nrow(thr015) != 1) stop("T10 rows for M4_thr0.15 = ", nrow(thr015))
 pass_M4_thr015 <- isTRUE(
@@ -118,6 +169,10 @@ pass_M4_thr015 <- isTRUE(
 )
 
 vals <- c(gate_list, list(
+  dip_n_cells = dip_n_cells,
+  dip_latency_median = dip_latency_median,
+  n_iter_refit = as.integer(r11_conv$iter[1]),
+  refit_models = "M1, M2 and the 0.15-s cutoff model",
   n_enrolled = num(flow("enrolled")$n_subjects),
   n_excluded = num(flow("excluded_after_enrollment")$n_subjects),
   n_final = num(flow("analytic_sample")$n_subjects),
@@ -126,6 +181,8 @@ vals <- c(gate_list, list(
   n_trials_primary = n_trials_primary_n,
   n_trials_collected = n_trials_collected,
   n_trials_cutoff_excluded = n_cutoff_excluded,
+  n_trials_raw = n_trials_raw,
+  n_trials_negative_rt = n_trials_negative_rt,
   n_trials_thr015 = num(flow("cutoff_0.15_trials")$n_trials),
   n_trials_thr025 = num(flow("cutoff_0.25_trials")$n_trials),
   n_subchance_excluded = 13,

@@ -89,6 +89,28 @@ fmt_int <- function(x) {
   paste0(sign, prettyNum(abs(rounded), big.mark = ",", scientific = FALSE, trim = TRUE))
 }
 
+.number_words <- c(
+  "zero", "one", "two", "three", "four",
+  "five", "six", "seven", "eight", "nine"
+)
+
+nw <- function(x) {
+  x <- .as_single_number(x, "nw")
+  rounded <- round(x)
+  if (abs(x - rounded) > 1e-8) {
+    .stop_value("nw expects an integer")
+  }
+  if (rounded >= 0 && rounded <= 9) {
+    return(.number_words[[rounded + 1L]])
+  }
+  fmt_int(rounded)
+}
+
+Nw <- function(x) {
+  s <- nw(x)
+  paste0(toupper(substr(s, 1, 1)), substr(s, 2, nchar(s)))
+}
+
 fmt_ci <- function(lo, hi, d) {
   paste0("[", fmt_num(lo, d), ", ", fmt_num(hi, d), "]")
 }
@@ -324,6 +346,12 @@ pt_s <- function(key) {
     stop("rope_a != rope_z", call. = FALSE)
   }
 }
+
+cap_fig_design <- function() paste0(
+  "Task and model. (A) Trial timeline from squeeze onset: grip gauge (low effort, 5% MVC; high effort, 40% MVC), standard and probe stimuli, ",
+  "response cue and response window. (B) Diffusion model with response coding: evidence accumulates from the starting point (z) toward the ",
+  "\u201cdifferent\u201d (upper) or \u201csame\u201d (lower) boundary, separated by a, at drift rate v; t\u2080 is non-decision time. ",
+  "(C) Predictors of each parameter in the primary model (M4).")
 
 cap_fig_condition_params <- function() paste0(
   "Posterior drift rate (top) and boundary separation (bottom) by task, stimulus type and effort in the primary model (M4). ",
@@ -576,6 +604,105 @@ make_table <- function(df, cols, col_labels, digits_map = NULL, footnote = NULL)
     note <- paste0("\n\n*Note.* ", footnote)
   }
   knitr::asis_output(paste0(body, note, "\n"))
+}
+
+ch3_tbl_priors <- function() {
+  out <- data.frame(
+    Parameter = c(
+      "Drift intercept",
+      "Drift slopes",
+      "Boundary separation intercept",
+      "Boundary separation slopes",
+      "Non-decision time intercept",
+      "Starting point intercept and slopes",
+      "Random-effect SDs"
+    ),
+    Prior = c(
+      "Normal(0, 1)",
+      "Normal(0, 0.5)",
+      "Normal(log 1.3, 0.25)",
+      "Normal(0, 0.2)",
+      "Normal(log 0.35, 0.15)",
+      "Normal(0, 0.5)",
+      "Exponential(5), drift and starting point; Exponential(10), boundary separation"
+    ),
+    Bounds = c(
+      "\u2014",
+      "\u2014",
+      "log 0.3 to log 5",
+      "\u2014",
+      "log 0.02 to log(shortest RT \u2212 0.01)",
+      "\u2014",
+      "\u2014"
+    ),
+    stringsAsFactors = FALSE
+  )
+  make_table(
+    out,
+    cols = names(out),
+    col_labels = c("Parameter", "Prior", "Bounds"),
+    footnote = "Pupil slopes used the class priors of the parameter they entered."
+  )
+}
+
+ch3_tbl_formulas <- function() {
+  # One brms formula per reported model. P0_* copies use the P0 formula.
+  f <- function(...) paste(c(...), collapse = "; ")
+  m0_v <- "rt | dec(choice_binary) ~ difficulty_3 + (1 | subject_id)"
+  m0_bs <- "bs ~ difficulty_3 + (1 | subject_id)"
+  m1_v <- "rt | dec(choice_binary) ~ difficulty_3 + effort_condition + (1 | subject_id)"
+  m1_bs <- "bs ~ difficulty_3 + effort_condition + (1 | subject_id)"
+  m2_v <- "rt | dec(choice_binary) ~ difficulty_3 * effort_condition + (1 | subject_id)"
+  m2_bs <- "bs ~ difficulty_3 * effort_condition + (1 | subject_id)"
+  m3_v <- "rt | dec(choice_binary) ~ difficulty_3 + effort_condition + effort_x_stim + (1 | subject_id)"
+  m4_v <- "rt | dec(choice_binary) ~ difficulty_3 * task + effort_condition + effort_x_stim + (1 | subject_id)"
+  m4b_v <- "rt | dec(choice_binary) ~ difficulty_3 * task + effort_condition + effort_x_stim + effort_condition:task + effort_x_stim:task + (1 | subject_id)"
+  m4r_v <- "rt | dec(choice_binary) ~ difficulty_3 * task + effort_condition + effort_x_stim + (1 + effort_condition | subject_id)"
+  m4_bs <- "bs ~ difficulty_3 + task + effort_condition + (1 | subject_id)"
+  m4r_bs <- "bs ~ difficulty_3 + task + effort_condition + (1 + effort_condition | subject_id)"
+  ndt <- "ndt ~ 1"
+  bias <- "bias ~ task + effort_condition + (1 | subject_id)"
+  p0 <- f(m4_v, m4_bs, ndt, bias)
+  rows <- list(
+    M0 = f(m0_v, m0_bs, ndt, bias),
+    M1 = f(m1_v, m1_bs, ndt, bias),
+    M2 = f(m2_v, m2_bs, ndt, bias),
+    M3 = f(m3_v, m1_bs, ndt, bias),
+    M4 = p0,
+    M4b = f(m4b_v, m4_bs, ndt, bias),
+    M4r = f(m4r_v, m4r_bs, ndt, bias),
+    P0 = p0,
+    P1 = f(m4_v, m4_bs, ndt, "bias ~ task + effort_condition + tepr_c + (1 | subject_id)"),
+    P2 = f(
+      "rt | dec(choice_binary) ~ difficulty_3 * task + effort_condition + effort_x_stim + tepr_c + tepr_c:stim_sign + (1 | subject_id)",
+      m4_bs, ndt, bias
+    ),
+    P3 = f(m4_v, "bs ~ difficulty_3 + task + effort_condition + tepr_c + (1 | subject_id)", ndt, bias),
+    P3_rt = f(m4_v, "bs ~ difficulty_3 + task + effort_condition + tepr_c + (1 | subject_id)", ndt, bias),
+    P4 = f(m4_v, m4_bs, ndt, "bias ~ task + effort_condition + base_c + (1 | subject_id)"),
+    P5 = f(m4_v, "bs ~ difficulty_3 + task + effort_condition + base_c + (1 | subject_id)", ndt, bias),
+    P6 = f(m4_v, "bs ~ difficulty_3 + task + effort_condition + lag_tepr_c + (1 | subject_id)", ndt, bias),
+    P7 = f(m4_v, "bs ~ difficulty_3 + task + effort_condition + prechoice_c + (1 | subject_id)", ndt, bias),
+    P8 = f(m4_v, "bs ~ difficulty_3 + task + effort_condition + grip_c + (1 | subject_id)", ndt, bias),
+    P0_base = p0,
+    P0_lag = p0,
+    P0_pre = p0,
+    P0_grip = p0,
+    P0_rt = p0
+  )
+  formula <- sprintf("`%s`", unname(unlist(rows)))
+  model <- names(rows)
+  width_m <- max(nchar(c("Model", model)))
+  width_f <- max(nchar(c("Formula", formula)))
+  pad <- function(x, w) sprintf(paste0("%-", w, "s"), x)
+  line <- function(a, b) paste(pad(a, width_m), pad(b, width_f), sep = "  ")
+  body <- vapply(seq_along(model), function(i) line(model[[i]], formula[[i]]), character(1))
+  knitr::asis_output(paste(c(
+    line("Model", "Formula"),
+    line(strrep("-", width_m), strrep("-", width_f)),
+    body,
+    ""
+  ), collapse = "\n"))
 }
 
 ch3_tbl_demographics <- function(df) {
