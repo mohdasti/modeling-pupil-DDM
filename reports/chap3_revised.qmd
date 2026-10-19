@@ -11,7 +11,7 @@ params:
   tables_dir: "output/ddm_refits/runs/final_20261016/tables/final"
   figures_dir: "output/ddm_refits/runs/final_20261016/figures/final"
   diag_dir: "output/diagnostics/qmd_current"
-  pupil_run: "r8_20261017_015218"   # will be switched to the r10 run id; display only
+  pupil_run: "r10_20261017_081458"
   draft_watermark: true
 format:
   html:
@@ -614,8 +614,21 @@ suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_
 ::: {.callout-warning appearance="minimal"}
 **[PROSE TO BE SUPPLIED: S7 Behavioral mixed-effects models (dissertation only)]**
 Resolves Lani comments: none.
-Inline value keys available for this section: acc_high_low_Standard, acc_high_low_Hard, acc_high_low_Easy.
-Tables/figures in this section: @supptbl-acc-glmm, @supptbl-rt-lmm, @suppfig-accuracy.
+Inline value keys available for this section: acc_high_low_Standard, acc_high_low_Hard, acc_high_low_Easy, rt_high_low_Standard, rt_high_low_Hard, rt_high_low_Easy, acc_model_re.
+Tables/figures in this section: @supptbl-reduction, @supptbl-acc-glmm, @supptbl-acc-contrasts, @supptbl-rt-lmm, @supptbl-rt-contrasts, @suppfig-accuracy.
+:::
+
+Random slopes for effort were singular on both the accuracy and the median-RT models, so each model uses a random intercept only, `r v("acc_model_re")`, following @barr2013maximal, @bates2015parsimonious, and @brauer2018lmm.
+
+::: {#supptbl-reduction}
+
+```{r}
+#| echo: false
+ch3_tbl_reduction(tbl$T13a_reduction_log)
+```
+
+\[CAPTION TO BE SUPPLIED: reduction from maximal random slopes to a random intercept\]
+
 :::
 
 ::: {#supptbl-acc-glmm}
@@ -627,6 +640,19 @@ ch3_tbl_glmm(tbl$T13b_accuracy_glmm, "T13b")
 
 \[CAPTION TO BE SUPPLIED: accuracy, binomial GLMM on the logit scale\]
 
+The High-effort coefficient is the Standard contrast on the logit scale. Cell contrasts are in @supptbl-acc-contrasts.
+
+:::
+
+::: {#supptbl-acc-contrasts}
+
+```{r}
+#| echo: false
+ch3_tbl_acc_contrasts(tbl$T13d_accuracy_effort_contrasts)
+```
+
+\[CAPTION TO BE SUPPLIED: High minus low accuracy at each difficulty\]
+
 :::
 
 ::: {#supptbl-rt-lmm}
@@ -637,6 +663,19 @@ ch3_tbl_glmm(tbl$T13c_rt_lmm, "T13c")
 ```
 
 \[CAPTION TO BE SUPPLIED: median RT in seconds\]
+
+df and *p* use the Satterthwaite approximation. Cell contrasts, in milliseconds, are in @supptbl-rt-contrasts.
+
+:::
+
+::: {#supptbl-rt-contrasts}
+
+```{r}
+#| echo: false
+ch3_tbl_rt_contrasts(tbl$T13e_rt_effort_contrasts)
+```
+
+\[CAPTION TO BE SUPPLIED: High minus low median RT at each difficulty\]
 
 :::
 
@@ -797,7 +836,7 @@ suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_
 ::: {.callout-warning appearance="minimal"}
 **[PROSE TO BE SUPPLIED: S12 Analysis provenance (dissertation only)]**
 Resolves Lani comments: none.
-Inline value keys available for this section: n_pupil_entered_vs_r5, n_pupil_left_vs_r5.
+Inline value keys available for this section: n_pupil_entered_vs_r8, n_pupil_left_vs_r8.
 Tables/figures in this section: none.
 :::
 

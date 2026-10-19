@@ -894,9 +894,12 @@ ch3_tbl_glmm <- function(df, what) {
     Effect = ch3_map_labels(df$term, .glmm_label_map, what),
     Estimate = ch3_fmt_cells(df$estimate, function(v) fmt_num(v, 3)),
     SE = ch3_fmt_cells(df$std.error, function(v) fmt_num(v, 3)),
-    Statistic = ch3_fmt_cells(df$statistic, function(v) fmt_num(v, 2)),
     stringsAsFactors = FALSE
   )
+  if ("df" %in% names(df)) {
+    out$df <- ch3_fmt_cells(df$df, function(v) fmt_num(v, 1))
+  }
+  out$Statistic <- ch3_fmt_cells(df$statistic, function(v) fmt_num(v, 2))
   if ("p.value" %in% names(df)) {
     out$p <- ch3_fmt_cells(df$p.value, fmt_p)
   }
@@ -908,18 +911,82 @@ ch3_tbl_glmm <- function(df, what) {
   footnote <- if (identical(what, "T13b")) {
     paste(
       "Binomial GLMM. Coefficients are on the logit scale. The statistic is a Wald z; lme4 does not report denominator df.",
+      "Random slopes for effort were singular, so the model keeps a random intercept only (Barr et al., 2013; Bates et al., 2015; Brauer & Curtin, 2018).",
       "Reference levels: Standard difficulty, low effort, auditory task (ADT)."
     )
   } else if (identical(what, "T13c")) {
     paste(
       "The outcome is the median RT in each subject x task x difficulty x effort cell, in seconds, not log RT.",
-      "lme4::lmer supplied no p values and no Satterthwaite df.",
+      "df and p use the Satterthwaite approximation.",
+      "Random slopes for effort were singular, so the model keeps a random intercept only (Barr et al., 2013; Bates et al., 2015; Brauer & Curtin, 2018).",
       "Reference levels: Standard difficulty, low effort, auditory task (ADT)."
     )
   } else {
     NULL
   }
   make_table(out, cols = names(out), col_labels = names(out), footnote = footnote)
+}
+
+ch3_tbl_reduction <- function(df) {
+  out <- data.frame(
+    Outcome = ifelse(df$outcome == "rt", "Median RT", "Accuracy"),
+    Step = df$step,
+    `Random effects` = df$formula_re,
+    Singular = ifelse(df$singular %in% c(TRUE, "TRUE"), "Yes", "No"),
+    slope_sd = vapply(df$slope_sd, function(v) if (is.na(v)) "" else fmt_num(v, 3), character(1)),
+    intercept_sd = vapply(df$intercept_sd, function(v) fmt_num(v, 3), character(1)),
+    Used = ifelse(df$used %in% c(TRUE, "TRUE"), "Yes", "No"),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  names(out)[names(out) == "slope_sd"] <- "Slope SD"
+  names(out)[names(out) == "intercept_sd"] <- "Intercept SD"
+  make_table(
+    out, cols = names(out), col_labels = names(out),
+    footnote = "Singular random slopes were dropped in the order in Barr et al. (2013), Bates et al. (2015), and Brauer and Curtin (2018). The intercept-only model is the one used."
+  )
+}
+
+ch3_tbl_acc_contrasts <- function(df) {
+  out <- data.frame(
+    Difficulty = df$difficulty,
+    pp = ch3_fmt_cells(df$pp, function(v) fmt_num(v, 2)),
+    ci_pp = mapply(function(a, b) fmt_ci(a, b, 2), df$pp_lo, df$pp_hi, USE.NAMES = FALSE),
+    or = ch3_fmt_cells(df$or, function(v) fmt_num(v, 2)),
+    ci_or = mapply(function(a, b) fmt_ci(a, b, 2), df$or_lo, df$or_hi, USE.NAMES = FALSE),
+    z = ch3_fmt_cells(df$z, function(v) fmt_num(v, 2)),
+    p = ch3_fmt_cells(df$p, fmt_p),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  names(out) <- c(
+    "Difficulty", paste0("High ", .minus, " low (pp)"), "95% CI (pp)",
+    "Odds ratio", "95% CI (OR)", "z", "p"
+  )
+  make_table(
+    out, cols = names(out), col_labels = names(out),
+    footnote = "High minus low, averaged over task with equal weights. Percentage points are 100 times the probability difference. The odds ratio, z, and p are the logit-scale contrast. df is asymptotic."
+  )
+}
+
+ch3_tbl_rt_contrasts <- function(df) {
+  out <- data.frame(
+    Difficulty = df$difficulty,
+    ms = ch3_fmt_cells(df$ms, function(v) fmt_num(v, 1)),
+    ci = mapply(function(a, b) fmt_ci(a, b, 1), df$ms_lo, df$ms_hi, USE.NAMES = FALSE),
+    t = ch3_fmt_cells(df$t, function(v) fmt_num(v, 2)),
+    df = ch3_fmt_cells(df$df, function(v) fmt_num(v, 1)),
+    p = ch3_fmt_cells(df$p, fmt_p),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  names(out) <- c(
+    "Difficulty", paste0("High ", .minus, " low (ms)"), "95% CI (ms)", "t", "df", "p"
+  )
+  make_table(
+    out, cols = names(out), col_labels = names(out),
+    footnote = "High minus low, in milliseconds, averaged over task with equal weights. df and p use the Satterthwaite approximation."
+  )
 }
 
 .assoc_predictor_map <- c(

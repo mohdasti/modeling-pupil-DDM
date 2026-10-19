@@ -539,7 +539,7 @@ save_final(
     sprintf("Cue-locked exclusion: %d of %d trials in data/ddm_ready_data_unthresholded.csv have rt < 0.20. That column is cue-locked RT; the probe-onset column in the same file is never below 0.20 s. The %d remaining trials match the primary file.", n_cue_excluded, n_collected, n_cue_kept),
     raw_note,
     sprintf("Near-chance sample recomputed from the primary file: overall accuracy <= 0.55 excludes %d participants and leaves %d participants and %s trials.", n_near, n_near_subj, fmt_n(n_near_trials)),
-    "Pupil counts are the r5 QC gates in T12b. The dashed box is not a further exclusion from the primary analysis.",
+    "Pupil counts are the r10 gates stored in T12b. The dashed box is not a further exclusion from the primary analysis.",
     sep = " "
   )
 )
@@ -661,6 +661,11 @@ sr <- ggplot(rt_long, aes(x = rt, fill = rt_type)) +
   theme_ms() + theme(legend.position = "none")
 save_final(sr, "S_rt_distributions", 7, 5.2, "Primary 17,857-trial file, columns rt and rt_cue.")
 
+want_fig <- function(stem) {
+  only <- Sys.getenv("FIG_ONLY", "")
+  !nzchar(only) || stem %in% strsplit(only, ",", fixed = TRUE)[[1]]
+}
+if (want_fig("S_accuracy_by_condition")) {
 acc <- read_csv(file.path(TAB, "T13a_accuracy_rt_descriptives.csv"), show_col_types = FALSE) %>%
   filter(record == "subject") %>%
   mutate(
@@ -679,10 +684,11 @@ sa <- ggplot(acc, aes(x = difficulty_3, y = accuracy, group = interaction(subjec
   labs(x = "Difficulty", y = "Accuracy") +
   theme_ms()
 save_final(sa, "S_accuracy_by_condition", 8, 4.6, "T13a_accuracy_rt_descriptives.csv, record = subject. Lines are participants. Points are the mean across participants.")
+}
 
 # ---------------------------------------------------------------------------
 # S-dag copy. S-lc: copy the non-DDM figure; redraw the panel whose y is boundary.
-# S-tepr is not drawn: the cached waveforms are not the 4,569-trial QC set.
+# S-tepr is drawn from the r10 pupil sample.
 # ---------------------------------------------------------------------------
 message("S-dag S-lc")
 dag_from <- "output/figures/manuscript_palette/fig-ddm-dag-plate-2.png"
@@ -723,7 +729,7 @@ lc4 <- one_sc("dprime_variability", "d' variability", "Variability") +
 save_final(lc4, "S_lc_fiso_four_panel", 9, 7, "T14_subject_points.csv for the points. Partial-correlation annotation from T14_lc_neuropsych_ddm.csv. The boundary panel uses the M4 subject intercept.")
 
 # ---------------------------------------------------------------------------
-# S-tepr. Cleaned flat files, restricted to the 4,952-trial r8 QC set.
+# S-tepr. Cleaned flat files, restricted to the r10 pupil sample.
 # ---------------------------------------------------------------------------
 message("S-tepr")
 suppressPackageStartupMessages(library(data.table))
@@ -743,7 +749,7 @@ infer_dt <- function(time_vec) {
   if (!is.finite(dt_median) || dt_median <= 0 || dt_median > 0.05) 0.004 else dt_median
 }
 
-qc_tepr <- fread("data/analysis_ready/r8/ddm_pupil_r8_qc.csv")
+qc_tepr <- fread("data/analysis_ready/r10/ddm_pupil_r10.csv")
 qc_tepr[, `:=`(
   subject_id = as.character(subject_id),
   task = as.character(task),
@@ -752,7 +758,7 @@ qc_tepr[, `:=`(
   trial = as.integer(trial),
   effort_condition = as.character(effort_condition)
 )]
-stopifnot(nrow(qc_tepr) == 4952L)
+stopifnot(nrow(qc_tepr) == iv_fig$n_pupil_final_trials)
 grid <- seq(-0.5, 8, by = 0.02)
 pairs <- unique(qc_tepr[, .(subject_id, task)])
 subj_pieces <- vector("list", nrow(pairs))
@@ -816,7 +822,7 @@ for (i in seq_len(nrow(pairs))) {
   ), by = .(subject_id, task, effort_condition, time)]
   rm(dt, kept, series)
 }
-stopifnot(n_joined == 4952L)
+stopifnot(n_joined == iv_fig$n_pupil_final_trials)
 subj_means <- rbindlist(subj_pieces)
 subj_means <- subj_means[is.finite(pupil)]
 subj_means[, effort_label := ifelse(effort_condition == "high", "High", "Low")]
@@ -855,7 +861,7 @@ plot_tepr <- as_tibble(plot_tepr) %>%
 
 p_tepr <- ggplot(plot_tepr, aes(x = time, y = mean_pupil, color = effort_label, fill = effort_label)) +
   annotate("rect", xmin = 1.0, xmax = 4.35, ymin = -Inf, ymax = Inf, fill = "#E5E7EB", alpha = 0.85) +
-  annotate("rect", xmin = 4.65, xmax = 7.65, ymin = -Inf, ymax = Inf, fill = "#DBEAFE", alpha = 0.55) +
+  annotate("rect", xmin = iv_fig$tepr_window_start, xmax = iv_fig$tepr_window_end, ymin = -Inf, ymax = Inf, fill = "#DBEAFE", alpha = 0.55) +
   geom_vline(xintercept = 4.35, linewidth = 0.35, color = "#111827") +
   geom_vline(xintercept = 4.70, linewidth = 0.35, linetype = "dashed", color = "#111827") +
   geom_ribbon(aes(ymin = mean_pupil - se, ymax = mean_pupil + se), alpha = 0.22, color = NA) +
@@ -873,7 +879,10 @@ p_tepr <- ggplot(plot_tepr, aes(x = time, y = mean_pupil, color = effort_label, 
   labs(
     x = "Time from squeeze onset (s)",
     y = "Baseline-corrected pupil (a.u.)",
-    caption = "Grey band: grip period (1.0\u20134.35 s). Blue band: decision-window AUC (4.65\u20137.65 s). Solid line: probe (4.35 s). Dashed line: response cue (4.70 s)."
+    caption = sprintf(
+      "Grey band: grip period (1.0\u20134.35 s). Blue band: post-probe AUC (%s\u2013%s s). Solid line: probe (4.35 s). Dashed line: response cue (4.70 s).",
+      iv_fig$tepr_window_start, iv_fig$tepr_window_end
+    )
   ) +
   theme_ms()
 save_final(
@@ -881,16 +890,18 @@ save_final(
   sprintf(
     paste(
       "Cleaned flat timecourses in %s, the same files and the same clock as the r6 prechoice and grip predictors.",
-      "Restricted to the 4,952 trials in data/analysis_ready/r8/ddm_pupil_r8_qc.csv.",
+      "Restricted to the r10 pupil sample in data/analysis_ready/r10/ddm_pupil_r10.csv (n = %d).",
       "Join keys: subject, task, session, run, trial, with flat-file columns session_used, run_used, and trial_in_run_raw, sessions 2 and 3 only.",
       "Time zero is squeeze onset. The first sample is placed at -3.0 s; if stepping by the file's median interval does not end between 8 and 15 s, samples are placed evenly from -3.0 to 10.7 s.",
       "Each trial is baseline-corrected by its mean pupil on [-0.5, 0), requiring at least 10 finite samples, then interpolated onto a 50 Hz grid from -0.5 to 8 s.",
       "The line is the unweighted mean of the within-participant means. The band is the Morey within-participant standard error, with effort as the repeated factor inside each task.",
-      "Joined %d of 4,952 trials to a timecourse; %d of those had a usable baseline and enter the average. The rest are omitted.",
+      "Joined %d of %d trials to a timecourse; %d of those had a usable baseline and enter the average. The rest are omitted.",
       "The average uses %d subject-by-task-by-effort cells.",
+      "The blue band is tepr_window_start to tepr_window_end from inline_values.rds.",
       sep = " "
     ),
-    flat_dir, n_joined, n_b0, uniqueN(subj_means, by = c("subject_id", "task", "effort_label"))
+    flat_dir, iv_fig$n_pupil_final_trials, n_joined, iv_fig$n_pupil_final_trials, n_b0,
+    uniqueN(subj_means, by = c("subject_id", "task", "effort_label"))
   )
 )
 message("Part F finished: ", FIG)
