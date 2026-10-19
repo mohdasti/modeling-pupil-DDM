@@ -113,7 +113,7 @@ if (isTRUE(params$draft_watermark)) {
 ::: {.callout-warning appearance="minimal"}
 **[PROSE TO BE SUPPLIED: Abstract]**
 Resolves Lani comments: C0, C1, C2, C3, C5, C6.
-Inline value keys available for this section: n_enrolled, n_excluded, n_final, n_trials_primary, crit, qual, bs, bias, drift_diff_trials, drift_same_trials, bs_pct_change, P3_bs, delta_elpd_P3_vs_P0.
+Inline value keys available for this section: n_enrolled, n_excluded, n_final, n_trials_primary, crit, qual, bs, bias, drift_diff_trials, drift_same_trials, P3_bs, delta_elpd_P3_vs_P0.
 Tables/figures in this section: none.
 :::
 
@@ -258,113 +258,71 @@ Tables/figures in this section: none.
 
 # 3 Results {.unnumbered}
 
-::: {.callout-warning appearance="minimal"}
-**[PROSE TO BE SUPPLIED: 3 Results]**
-Resolves Lani comments: C54, C55, C59, C60, C61, C64, C65, C67, C68, C75.
-Inline value keys available for this section: n_final, n_trials_primary, max_rhat_M4, min_bulk_ess_M4, min_tail_ess_M4, delta_elpd_M3_vs_M4, se_delta_elpd_M3_vs_M4.
-Tables/figures in this section: none.
-:::
+## 3.1 Primary diffusion model {.unnumbered}
 
-## 3.1 Behavioral performance {.unnumbered}
+Allowing drift rate to differ between tasks improved out-of-sample prediction (M4 vs. M3: `r elpd_s("delta_elpd_M3_vs_M4", "se_delta_elpd_M3_vs_M4", flip = TRUE)`). Allowing the effort effects to differ between tasks did not (M4b vs. M4: `r elpd_s("delta_elpd_M4b_vs_M4", "se_delta_elpd_M4b_vs_M4")`; @supptbl-model-comparison). M4 is therefore reported below.
 
-::: {.callout-warning appearance="minimal"}
-**[PROSE TO BE SUPPLIED: 3.1 Behavioral performance]**
-Resolves Lani comments: C58, C71.
-Inline value keys available for this section: acc_high_low_Standard, acc_high_low_Hard, acc_high_low_Easy, n_final, n_adt, n_vdt, n_trials_primary.
-Tables/figures in this section: @fig-brinley.
-:::
+**Stimulus and task effects.** The upper boundary corresponds to a "different" response. Drift was therefore negative on Standard trials, where "same" is correct, and positive on Easy trials (@fig-condition-params). Drift was also negative on Hard trials (low effort; ADT: `r cell_s("v_cell_ADT_Hard")`; VDT: `r cell_s("v_cell_VDT_Hard")`). These stimuli differed from the standard, but evidence still accumulated toward "same", so most Hard trials ended in an incorrect response. Relative to Standard trials, drift was higher on Hard (`r eff("diff_hard_v")`) and Easy trials (`r eff("diff_easy_v")`). Both differences were larger in the VDT than in the ADT (Hard × VDT: `r eff("task_hard_x_vdt")`; Easy × VDT: `r eff("task_easy_x_vdt")`). Boundary separation was narrower on Hard (`r eff("diff_hard_bs", pct = TRUE)`) and Easy trials (`r eff("diff_easy_bs", pct = TRUE)`) than on Standard trials. Standard, Hard and Easy trials were randomly intermixed, so these boundary differences cannot reflect a setting chosen before the trial [@ratcliff2008diffusion]. We treat them as descriptive (see Limitations). Boundary separation did not differ between tasks (`r eff("task_bs", rope = TRUE)`). In both tasks the starting point lay closer to the "different" boundary (ADT: *z* = `r prob_s("z_ADT")`; VDT: *z* = `r prob_s("z_VDT")`), slightly less so in the VDT (`r eff("task_bias")`).
+
+**Effort effects.** Effort effects were estimated in the same model and are reported in the same way (@fig-effort-forest; @tbl-effort-effects). High effort shifted drift toward "same" on all trials (drift criterion: `r eff("crit")`). There was no evidence that it changed how strongly drift separated identical from different stimuli (evidence quality: `r eff("qual")`), although the interval does not rule out a small decline. Drift decreased on trials with a different comparison stimulus (`r eff("drift_diff_trials")`); on Standard trials the change was smaller and its interval included zero (`r eff("drift_same_trials")`). High effort widened the boundary by `r pct_s("bs")`. This change lay entirely within the region of practical equivalence (`r fmt_rope("bs")`). The starting point was unchanged (`r eff("bias", rope = TRUE)`).
+
+In observed accuracy, high effort was associated with lower accuracy on Hard trials (High − Low: `r acc_s("acc_high_low_Hard")`). On Standard trials accuracy was slightly higher, a difference that was not significant (`r acc_s("acc_high_low_Standard")`). Accuracy on Easy trials did not change (`r acc_s("acc_high_low_Easy")`; @supptbl-acc-contrasts).
 
 ```{r}
-#| label: fig-brinley
-#| fig-cap: "[CAPTION TO BE SUPPLIED]"
+#| label: fig-condition-params
+#| fig-cap: !expr cap_fig_condition_params()
 #| out-width: "100%"
-suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F4_brinley.png"), mustWork = TRUE), error = FALSE))
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F2_condition_parameters.png"), mustWork = TRUE), error = FALSE))
 ```
-
-## 3.2 Effort effects on decision parameters {.unnumbered}
-
-::: {.callout-warning appearance="minimal"}
-**[PROSE TO BE SUPPLIED: 3.2 Effort effects on decision parameters]**
-Resolves Lani comments: C62, C63, C66, C69, C70, C72, C73.
-Inline value keys available for this section: crit, qual, bs, bias, drift_diff_trials, drift_same_trials, bs_pct_change, rope_v, rope_a, rope_z.
-Tables/figures in this section: @fig-effort-forest, @tbl-effort-effects.
-:::
 
 ```{r}
 #| label: fig-effort-forest
-#| fig-cap: "[CAPTION TO BE SUPPLIED]"
+#| fig-cap: !expr cap_fig_effort_forest()
 #| out-width: "100%"
 suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F3_effort_forest.png"), mustWork = TRUE), error = FALSE))
 ```
 
 ```{r}
 #| label: tbl-effort-effects
-#| tbl-cap: "[CAPTION TO BE SUPPLIED]"
-ch3_tbl_effort_effects(tbl$T2_effort_effects_M4)
+#| tbl-cap: "Effects of high versus low effort on decision parameters in the primary model (M4)"
+ch3_tbl_effort_effects(tbl$T2_effort_effects_M4, footnote = note_tbl_effort_effects())
 ```
 
-## 3.3 Task and difficulty effects {.unnumbered}
+## 3.2 Robustness of the effort effects {.unnumbered}
 
-::: {.callout-warning appearance="minimal"}
-**[PROSE TO BE SUPPLIED: 3.3 Task and difficulty effects]**
-Resolves Lani comments: C74.
-Inline value keys available for this section: task_v, task_hard_x_vdt, task_easy_x_vdt, task_bs, task_bias.
-Tables/figures in this section: @fig-condition-params.
-:::
+The drift criterion shift was unchanged when the effort effects were allowed to vary across participants (M4r: `r eff("crit_M4r")`). The between-participant SD of that effect was small (`r est_s("sd_effort_M4r")`). The shift was also stable at RT cutoffs of 0.15 s (`r eff("crit_thr015")`) and 0.25 s (`r eff("crit_thr025")`). Excluding the `r v("n_subchance_excluded")` participants with near-chance accuracy left the point estimate unchanged. With N = `r v("n_subchance_remaining")`, however, the interval included zero (`r eff("crit_subchance")`). When effort effects were allowed to differ by task (M4b), the criterion shift was larger in the ADT (`r eff("crit_ADT_M4b")`) than in the VDT (`r eff("crit_VDT_M4b")`), but the task difference was uncertain (`r eff("m4b_effort_x_task")`). Evidence quality was null in every variant. The boundary effect was positive at the 0.25-s cutoff (`r eff("bs_thr025", pct = TRUE)`) and after the near-chance exclusion (`r eff("bs_subchance", pct = TRUE)`), but at the 0.15-s cutoff its interval included zero (`r eff("bs_thr015", pct = TRUE)`; @supptbl-robustness).
 
-```{r}
-#| label: fig-condition-params
-#| fig-cap: "[CAPTION TO BE SUPPLIED]"
-#| out-width: "100%"
-suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F2_condition_parameters.png"), mustWork = TRUE), error = FALSE))
-```
+## 3.3 Pupil-linked decision dynamics {.unnumbered}
 
-## 3.4 Robustness {.unnumbered}
+**Effort and pupil size.** High effort dilated the pupil during the grip period in both tasks (ADT: `r pt_s("grip_high_low_ADT")`; VDT: `r pt_s("grip_high_low_VDT")`). In the post-probe window, the direction of the effort effect depended on the baseline. Relative to the pre-probe baseline used for the TEPR, the response was smaller under high effort (ADT: `r pt_s("tepr_high_low_ADT_B1")`; VDT: `r pt_s("tepr_high_low_VDT_B1")`). Relative to the pre-squeeze baseline, it was larger in the ADT (`r pt_s("tepr_high_low_ADT_B0")`) and unchanged in the VDT (`r pt_s("tepr_high_low_VDT_B0")`; @supptbl-pupil-descriptives; @suppfig-tepr). In the pupil subsample, high effort widened the boundary (`r eff("P0_bs", pct = TRUE)`). The drift criterion shift had the same sign as in the full sample, with a wider interval (`r eff("P0_crit")`).
 
-::: {.callout-warning appearance="minimal"}
-**[PROSE TO BE SUPPLIED: 3.4 Robustness]**
-Resolves Lani comments: C57.
-Inline value keys available for this section: crit_M4r, qual_M4r, crit_thr015, qual_thr015, crit_thr025, qual_thr025, crit_subchance, qual_subchance, sd_effort_M4r, sd_bs_effort_M4r, m4b_effort_x_task, m4b_quality_x_task, crit_ADT_M4b, crit_VDT_M4b, n_trials_thr015, n_trials_thr025, n_subchance_excluded, n_subchance_remaining, n_trials_cutoff_excluded.
-Tables/figures in this section: none.
-:::
+**Which parameter tracked the TEPR.** Trial-wise TEPR predicted boundary separation. Each within-person SD increase in TEPR widened the boundary by `r pct_s("P3_bs")` and improved out-of-sample prediction (P3: `r fmt_elpd("delta_elpd_P3_vs_P0")`; @fig-pupil-boundary; @tbl-pupil-ordering). TEPR did not predict the starting point (P1: `r eff("P1_bias")`, `r fmt_elpd("delta_elpd_P1_vs_P0")`). In the drift model, higher TEPR was associated with weaker separation between identical and different stimuli (TEPR × stimulus: `r eff("P2_drift_tepr_x_stim")`), with a smaller and less certain predictive gain (`r fmt_elpd("delta_elpd_P2_vs_P0")`; @supptbl-pupil-models).
 
-## 3.5 Pupil-linked decision dynamics {.unnumbered}
-
-::: {.callout-warning appearance="minimal"}
-**[PROSE TO BE SUPPLIED: 3.5 Pupil-linked decision dynamics]**
-Resolves Lani comments: C76, C77, C78.
-Inline value keys available for this section: P3_bs, P3_rt_bs, P5_bs, P6_bs, P7_bs, P8_bs, P1_bias, P2_drift_tepr, P2_drift_tepr_x_stim, P4_bias_base, P0_crit, P0_qual, P0_bs, P0_bias, delta_elpd_P3_vs_P0, delta_elpd_P3rt_vs_P0rt, delta_elpd_P5_vs_P0base, delta_elpd_P6_vs_P0lag, delta_elpd_P7_vs_P0pre, delta_elpd_P8_vs_P0grip, delta_elpd_P1_vs_P0, delta_elpd_P2_vs_P0, delta_elpd_P4_vs_P0base, tepr_rt_r, grip_high_low_ADT, grip_high_low_VDT, tepr_high_low_ADT_B1, tepr_high_low_VDT_B1, tepr_high_low_ADT_B0, tepr_high_low_VDT_B0, n_pupil_matched_trials, n_pupil_matched_subjects, n_pupil_tepr_present_trials, n_pupil_tepr_present_subjects, n_pupil_b1_quality_trials, n_pupil_b1_quality_subjects, n_pupil_window_quality_trials, n_pupil_window_quality_subjects, n_pupil_final_trials, n_pupil_final_subjects, n_pupil_base_trials, n_pupil_rt80_trials, n_pupil_lag_trials, n_pupil_pre_trials, n_pupil_grip_trials, n_pupil_models_k_gt_0.7, pct_gain_lost_rt_trim, max_k_pupil_models.
-Tables/figures in this section: @fig-pupil-boundary, @tbl-pupil-ordering.
-:::
+**Timing of the TEPR–boundary association.** The TEPR window overlapped the response on most trials, and TEPR correlated with RT within participants (`r fmt_r(v("tepr_rt_r", "r"), v("tepr_rt_r", "lo"), v("tepr_rt_r", "hi"))`). The association with boundary separation remained after the slowest 20% of trials in each participant and task were removed (P3_rt: `r pct_s("P3_rt_bs")`, `r fmt_elpd("delta_elpd_P3rt_vs_P0rt")`). Pupil size in the 0.5 s before the response did not predict boundary separation (P7: `r pct_s("P7_bs")`, `r fmt_elpd("delta_elpd_P7_vs_P0pre")`). Measures taken before the decision showed small associations in the same direction: previous-trial TEPR (P6: `r pct_s("P6_bs")`, `r fmt_elpd("delta_elpd_P6_vs_P0lag")`) and pre-squeeze baseline pupil (P5: `r pct_s("P5_bs")`, `r fmt_elpd("delta_elpd_P5_vs_P0base")`). Grip-period pupil showed a small association in the opposite direction (P8: `r pct_s("P8_bs")`, `r fmt_elpd("delta_elpd_P8_vs_P0grip")`). Of the measures preceding the decision, only the previous-trial TEPR improved prediction by more than two standard errors.
 
 ```{r}
 #| label: fig-pupil-boundary
-#| fig-cap: "[CAPTION TO BE SUPPLIED]"
+#| fig-cap: !expr cap_fig_pupil_boundary()
 #| out-width: "100%"
 suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F5_pupil_boundary.png"), mustWork = TRUE), error = FALSE))
 ```
 
 ```{r}
 #| label: tbl-pupil-ordering
-#| tbl-cap: "[CAPTION TO BE SUPPLIED]"
-ch3_tbl_pupil_ordering(tbl$T8_pupil_ordering)
+#| tbl-cap: "Pupil predictors of boundary separation"
+ch3_tbl_pupil_ordering(tbl$T8_pupil_ordering, footnote = note_tbl_pupil_ordering())
 ```
 
-## 3.6 Model adequacy {.unnumbered}
+## 3.4 Model adequacy {.unnumbered}
 
-::: {.callout-warning appearance="minimal"}
-**[PROSE TO BE SUPPLIED: 3.6 Model adequacy]**
-Resolves Lani comments: none.
-Inline value keys available for this section: ppc_choice_inside_M4, ppc_rt_inside_pct_M4, ppc_rt_median_bias_ms_M4, t0_M4, t0_thr015, t0_thr025, max_rhat_M4, min_bulk_ess_M4, min_tail_ess_M4.
-Tables/figures in this section: none.
-:::
+M4 reproduced the observed choice proportions in `r v("ppc_choice_inside_M4")` of 12 condition cells (@supptbl-ppc-choice). It fit the RT distributions less well. `r fmt_num(v("ppc_rt_inside_pct_M4"), 1)`% of observed RT quantiles fell inside the 95% predictive intervals, and observed median RTs were on average `r fmt_int(v("ppc_rt_median_bias_ms_M4"))` ms slower than predicted (@suppfig-ppc). The misfit was concentrated in minority responses ("different" on Standard trials, "same" on Easy trials and "different" on Hard trials), which were slower than predicted. Non-decision time tracked the RT cutoff: `r fmt_num(v("t0_thr015", "median"), 3)` s, `r fmt_num(v("t0_M4", "median"), 3)` s and `r fmt_num(v("t0_thr025", "median"), 3)` s at cutoffs of 0.15 s, 0.20 s and 0.25 s.
 
 # 4 Discussion {.unnumbered}
 
 ::: {.callout-warning appearance="minimal"}
 **[PROSE TO BE SUPPLIED: 4 Discussion]**
 Resolves Lani comments: none.
-Inline value keys available for this section: crit, qual, bs, bs_pct_change, P3_bs, delta_elpd_P3_vs_P0, tepr_rt_r, grip_high_low_ADT, grip_high_low_VDT.
+Inline value keys available for this section: crit, qual, bs, P3_bs, delta_elpd_P3_vs_P0, tepr_rt_r, grip_high_low_ADT, grip_high_low_VDT.
 Tables/figures in this section: none.
 :::
 
@@ -501,13 +459,13 @@ ch3_tbl_ppc_choice(tbl$T11a_ppc_choice)
 
 :::
 
-## S4 Robustness analyses {.unnumbered}
+## S4 Robustness analyses and observed accuracy {.unnumbered}
 
 ::: {.callout-warning appearance="minimal"}
-**[PROSE TO BE SUPPLIED: S4 Robustness analyses]**
+**[PROSE TO BE SUPPLIED: S4 Robustness analyses and observed accuracy]**
 Resolves Lani comments: none.
-Inline value keys available for this section: crit_M4r, qual_M4r, crit_thr015, qual_thr015, crit_thr025, qual_thr025, crit_subchance, qual_subchance, sd_effort_M4r, sd_bs_effort_M4r, m4b_effort_x_task, m4b_quality_x_task, crit_ADT_M4b, crit_VDT_M4b, n_trials_thr015, n_trials_thr025, n_subchance_excluded, n_subchance_remaining, n_trials_cutoff_excluded.
-Tables/figures in this section: @supptbl-robustness, @supptbl-random-slopes, @supptbl-m4b.
+Inline value keys available for this section: crit_M4r, qual_M4r, bs_M4r, crit_thr015, qual_thr015, bs_thr015, crit_thr025, qual_thr025, bs_thr025, crit_subchance, qual_subchance, bs_subchance, sd_effort_M4r, sd_bs_effort_M4r, m4b_effort_x_task, m4b_quality_x_task, crit_ADT_M4b, crit_VDT_M4b, n_trials_thr015, n_trials_thr025, n_subchance_excluded, n_subchance_remaining, n_trials_cutoff_excluded, n_trials_collected, pass_M4_thr015, acc_high_low_Standard, acc_high_low_Hard, acc_high_low_Easy.
+Tables/figures in this section: @supptbl-robustness, @supptbl-random-slopes, @supptbl-m4b, @supptbl-acc-contrasts.
 :::
 
 ::: {#supptbl-robustness}
@@ -543,12 +501,23 @@ ch3_tbl_m4b(tbl$T4b_M4b_task_effort)
 
 :::
 
+::: {#supptbl-acc-contrasts}
+
+```{r}
+#| echo: false
+ch3_tbl_acc_contrasts(tbl$T13d_accuracy_effort_contrasts)
+```
+
+Observed accuracy, high minus low effort, at each stimulus type. Estimates are from a binomial GLMM with a random intercept for participant (see S7 in the dissertation version); percentage points are averaged over task.
+
+:::
+
 ## S5 Pupil-linked models {.unnumbered}
 
 ::: {.callout-warning appearance="minimal"}
 **[PROSE TO BE SUPPLIED: S5 Pupil-linked models]**
 Resolves Lani comments: none.
-Inline value keys available for this section: P3_bs, P3_rt_bs, P5_bs, P6_bs, P7_bs, P8_bs, P1_bias, P2_drift_tepr, P2_drift_tepr_x_stim, P4_bias_base, P0_crit, P0_qual, P0_bs, P0_bias, delta_elpd_P3_vs_P0, delta_elpd_P3rt_vs_P0rt, delta_elpd_P5_vs_P0base, delta_elpd_P6_vs_P0lag, delta_elpd_P7_vs_P0pre, delta_elpd_P8_vs_P0grip, delta_elpd_P1_vs_P0, delta_elpd_P2_vs_P0, delta_elpd_P4_vs_P0base, tepr_rt_r, grip_high_low_ADT, grip_high_low_VDT, tepr_high_low_ADT_B1, tepr_high_low_VDT_B1, tepr_high_low_ADT_B0, tepr_high_low_VDT_B0, n_pupil_matched_trials, n_pupil_matched_subjects, n_pupil_tepr_present_trials, n_pupil_tepr_present_subjects, n_pupil_b1_quality_trials, n_pupil_b1_quality_subjects, n_pupil_window_quality_trials, n_pupil_window_quality_subjects, n_pupil_final_trials, n_pupil_final_subjects, n_pupil_base_trials, n_pupil_rt80_trials, n_pupil_lag_trials, n_pupil_pre_trials, n_pupil_grip_trials, n_pupil_models_k_gt_0.7, pct_gain_lost_rt_trim, max_k_pupil_models.
+Inline value keys available for this section: P3_bs, P3_rt_bs, P5_bs, P6_bs, P7_bs, P8_bs, P1_bias, P2_drift_tepr, P2_drift_tepr_x_stim, P4_bias_base, P0_crit, P0_qual, P0_bs, P0_bias, delta_elpd_P3_vs_P0, delta_elpd_P3rt_vs_P0rt, delta_elpd_P5_vs_P0base, delta_elpd_P6_vs_P0lag, delta_elpd_P7_vs_P0pre, delta_elpd_P8_vs_P0grip, delta_elpd_P1_vs_P0, delta_elpd_P2_vs_P0, delta_elpd_P4_vs_P0base, tepr_rt_r, grip_high_low_ADT, grip_high_low_VDT, tepr_high_low_ADT_B1, tepr_high_low_VDT_B1, tepr_high_low_ADT_B0, tepr_high_low_VDT_B0, n_pupil_matched_trials, n_pupil_matched_subjects, n_pupil_tepr_present_trials, n_pupil_tepr_present_subjects, n_pupil_b1_quality_trials, n_pupil_b1_quality_subjects, n_pupil_window_quality_trials, n_pupil_window_quality_subjects, n_pupil_final_trials, n_pupil_final_subjects, n_pupil_base_trials, n_pupil_rt80_trials, n_pupil_lag_trials, n_pupil_pre_trials, n_pupil_grip_trials, n_pupil_models_k_gt_0.7, max_k_pupil_models.
 Tables/figures in this section: @supptbl-pupil-models, @supptbl-pupil-descriptives, @suppfig-tepr.
 :::
 
@@ -615,7 +584,7 @@ suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_
 **[PROSE TO BE SUPPLIED: S7 Behavioral mixed-effects models (dissertation only)]**
 Resolves Lani comments: none.
 Inline value keys available for this section: acc_high_low_Standard, acc_high_low_Hard, acc_high_low_Easy, rt_high_low_Standard, rt_high_low_Hard, rt_high_low_Easy, acc_model_re.
-Tables/figures in this section: @supptbl-reduction, @supptbl-acc-glmm, @supptbl-acc-contrasts, @supptbl-rt-lmm, @supptbl-rt-contrasts, @suppfig-accuracy.
+Tables/figures in this section: @supptbl-reduction, @supptbl-acc-glmm, @supptbl-rt-lmm, @supptbl-rt-contrasts, @suppfig-accuracy.
 :::
 
 Random slopes for effort were singular on both the accuracy and the median-RT models, so each model uses a random intercept only, `r v("acc_model_re")`, following @barr2013maximal, @bates2015parsimonious, and @brauer2018lmm.
@@ -641,17 +610,6 @@ ch3_tbl_glmm(tbl$T13b_accuracy_glmm, "T13b")
 \[CAPTION TO BE SUPPLIED: accuracy, binomial GLMM on the logit scale\]
 
 The High-effort coefficient is the Standard contrast on the logit scale. Cell contrasts are in @supptbl-acc-contrasts.
-
-:::
-
-::: {#supptbl-acc-contrasts}
-
-```{r}
-#| echo: false
-ch3_tbl_acc_contrasts(tbl$T13d_accuracy_effort_contrasts)
-```
-
-\[CAPTION TO BE SUPPLIED: High minus low accuracy at each difficulty\]
 
 :::
 
@@ -792,7 +750,19 @@ ch3_tbl_temporal(tbl$T15_legacy_temporal_dynamics)
 **[PROSE TO BE SUPPLIED: S11 Additional diagnostics (dissertation only): CAF, RT distributions, DAG]**
 Resolves Lani comments: none.
 Inline value keys available for this section: none.
-Tables/figures in this section: @suppfig-caf, @suppfig-rtdist, @suppfig-dag.
+Tables/figures in this section: @suppfig-brinley, @suppfig-caf, @suppfig-rtdist, @suppfig-dag.
+:::
+
+::: {#suppfig-brinley}
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F4_brinley.png"), mustWork = TRUE), error = FALSE))
+```
+
+Participant mean RT on Hard versus Easy trials. The line is the least-squares fit with 95% CI; the dashed line is identity.
+
 :::
 
 ::: {#suppfig-caf}

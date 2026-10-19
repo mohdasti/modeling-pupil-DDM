@@ -434,96 +434,12 @@ if (length(failed)) {
   stop(msg, call. = FALSE)
 }
 
-# ---- export into tables/final only when every refit passes ----
-
-backup <- function(path) {
-  if (!file.exists(path)) return(invisible(NULL))
-  dest <- sub("(\\.[A-Za-z0-9]+)$", "_pre_r11\\1", path)
-  if (!file.exists(dest)) file.copy(path, dest, overwrite = FALSE)
-  dest
+# Export is a separate script so it can be re-run against the local Phase 1d
+# tables if this process exported onto an older VM copy.
+status("export", "all three models passed; running scripts/r11/export_r11.R")
+Sys.setenv(R11_RUN_ID = RUN_ID)
+export_status <- system2("Rscript", "scripts/r11/export_r11.R")
+if (!is.null(export_status) && export_status != 0) {
+  stop("scripts/r11/export_r11.R exited with status ", export_status, call. = FALSE)
 }
-status("export", "all three models passed; updating tables/final")
-backup(file.path(TAB, "T5_model_comparison.csv"))
-backup(file.path(TAB, "T5_delta_M0_vs_M1.csv"))
-backup(file.path(TAB, "T6a_robustness_effort_terms.csv"))
-backup(file.path(TAB, "T10_convergence_all.csv"))
-backup(file.path(TAB, "T10b_convergence_display.csv"))
-backup(file.path(TAB, "inline_values.json"))
-backup(file.path(TAB, "inline_values.rds"))
-backup(file.path(FINAL, "figures", "final", "F3_effort_forest.png"))
-backup(file.path(FINAL, "figures", "final", "F3_effort_forest.pdf"))
-
-t5 <- old_t5
-for (id in c("M1", "M2")) {
-  hit <- cmp$model == id
-  row <- t5$model == id
-  t5$elpd_loo[row] <- cmp$elpd_loo[hit]
-  t5$se_elpd_loo[row] <- cmp$se_elpd_loo[hit]
-  t5$p_loo[row] <- cmp$p_loo[hit]
-  t5$delta_elpd_vs_M4[row] <- cmp$delta_elpd_vs_M4[hit]
-  t5$se_delta_elpd_vs_M4[row] <- cmp$se_delta_elpd_vs_M4[hit]
-  t5$n_k_gt_0.7[row] <- cmp$n_k_gt_0.7[hit]
-  t5$max_rhat[row] <- conv$max_rhat[conv$model == id]
-  t5$min_bulk_ess[row] <- conv$min_bulk_ess[conv$model == id]
-  t5$passes_convergence_rule[row] <- TRUE
-  t5$rhat_footnote[row] <- ""
-}
-d01 <- delta_vs("M0", "M1")
-t5_delta <- tibble(
-  contrast = "M0_vs_M1", delta_elpd = unname(d01["delta"]), se = unname(d01["se"]),
-  source_model = "M0,M1", tier = "ms_supp"
-)
-write_csv(t5, file.path(TAB, "T5_model_comparison.csv"))
-write_csv(t5_delta, file.path(TAB, "T5_delta_M0_vs_M1.csv"))
-
-t6 <- read_csv(file.path(TAB, "T6a_robustness_effort_terms.csv"), show_col_types = FALSE)
-info15 <- conv[conv$model == "M4_thr0.15", ]
-for (i in seq_len(nrow(new_eff))) {
-  hit <- which(t6$model == "M4_thr0.15" & t6$term == new_eff$term[i])
-  if (length(hit) != 1L) stop("T6a row for M4_thr0.15 / ", new_eff$term[i], " is not unique.")
-  for (col in intersect(names(new_eff), names(t6))) t6[[col]][hit] <- new_eff[[col]][i]
-  t6$max_rhat[hit] <- info15$max_rhat
-  t6$passes_convergence_rule[hit] <- TRUE
-}
-write_csv(t6, file.path(TAB, "T6a_robustness_effort_terms.csv"))
-
-update_conv <- function(path) {
-  x <- read_csv(path, show_col_types = FALSE)
-  for (id in conv$model) {
-    row <- x$model == id
-    if (!any(row)) stop(id, " is missing from ", path, call. = FALSE)
-    src <- conv[conv$model == id, ]
-    x$chains[row] <- src$chains
-    x$iter[row] <- src$iter
-    x$warmup[row] <- src$warmup
-    x$max_rhat[row] <- src$max_rhat
-    x$max_rhat_b[row] <- src$max_rhat_b
-    x$min_bulk_ess[row] <- src$min_bulk_ess
-    x$min_bulk_ess_b[row] <- src$min_bulk_ess_b
-    x$min_tail_ess[row] <- src$min_tail_ess
-    x$min_tail_ess_b[row] <- src$min_tail_ess_b
-    x$divergences[row] <- src$divergences
-    x$treedepth_hits[row] <- src$treedepth_hits
-    x$passes_convergence_rule[row] <- TRUE
-    if ("note" %in% names(x)) x$note[row] <- paste("max R-hat parameter", src$worst_param)
-    if (id %in% c("M1", "M2")) x$n_k_gt_0.7[row] <- cmp$n_k_gt_0.7[cmp$model == id]
-  }
-  write_csv(x, path)
-}
-update_conv(file.path(TAB, "T10_convergence_all.csv"))
-update_conv(file.path(TAB, "T10b_convergence_display.csv"))
-
-# Copy the new LOO objects over the stored M1 and M2 objects after backing them up.
-for (id in c("M1", "M2")) {
-  dest <- file.path(FINAL, "loo", paste0("loo_", id, ".rds"))
-  backup(dest)
-  file.copy(file.path(DIRS$loo, paste0("loo_", id, ".rds")), dest, overwrite = TRUE)
-}
-run_r <- function(script) {
-  st <- system2("Rscript", script)
-  if (!is.null(st) && st != 0) stop(script, " exited with status ", st, call. = FALSE)
-}
-run_r("scripts/final/V_inline_values.R")
-Sys.setenv(FIG_ONLY = "F3_effort_forest", REVISE_ONLY = "1")
-run_r("scripts/final/F_figures.R")
 status("done", "R11 export finished")

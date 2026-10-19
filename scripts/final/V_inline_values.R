@@ -27,6 +27,7 @@ pick <- function(df, term) {
 }
 
 t2 <- read.csv(file.path(TAB, "T2_effort_effects_M4.csv"), stringsAsFactors = FALSE)
+t3 <- read.csv(file.path(TAB, "T3_condition_cells_M4.csv"), stringsAsFactors = FALSE)
 t4 <- read.csv(file.path(TAB, "T4_fixef_M4.csv"), stringsAsFactors = FALSE)
 t4b <- read.csv(file.path(TAB, "T4b_M4b_task_effort.csv"), stringsAsFactors = FALSE)
 t5 <- read.csv(file.path(TAB, "T5_model_comparison.csv"), stringsAsFactors = FALSE)
@@ -85,6 +86,36 @@ pair_task <- function(df, task) {
   hit <- df[df$task == task, , drop = FALSE]
   list(diff = num(hit$mean_high_minus_low), t = num(hit$t), df = num(hit$df), p = num(hit$p))
 }
+cell_of <- function(task, difficulty, quantity, effort = "low") {
+  hit <- t3[t3$task == task & t3$difficulty_3 == difficulty &
+    t3$effort_condition == effort & t3$quantity == quantity, , drop = FALSE]
+  if (nrow(hit) != 1) {
+    stop("T3 rows for ", task, " ", difficulty, " ", effort, " ", quantity, " = ", nrow(hit))
+  }
+  list(median = num(hit$median), lo = num(hit$q2.5), hi = num(hit$q97.5))
+}
+n_trials_collected <- num(flow("behavioral_trials_collected")$n_trials)
+n_trials_primary_n <- num(flow("primary_analysis_trials")$n_trials)
+n_cutoff_excluded <- n_trials_collected - n_trials_primary_n
+if (n_cutoff_excluded != 240) {
+  dir.create("output/diagnostics/qmd_phase2a", recursive = TRUE, showWarnings = FALSE)
+  writeLines(
+    sprintf(
+      "n_trials_cutoff_excluded = %s, expected 240 (collected %s minus primary %s).",
+      n_cutoff_excluded, n_trials_collected, n_trials_primary_n
+    ),
+    "output/diagnostics/qmd_phase2a/STOPPED.md"
+  )
+  stop("n_trials_cutoff_excluded is not 240")
+}
+thr015 <- t10[t10$model == "M4_thr0.15", , drop = FALSE]
+if (nrow(thr015) != 1) stop("T10 rows for M4_thr0.15 = ", nrow(thr015))
+pass_M4_thr015 <- isTRUE(
+  num(thr015$max_rhat) < 1.01 &&
+    num(thr015$min_bulk_ess) >= 400 &&
+    num(thr015$min_tail_ess) >= 400 &&
+    num(thr015$divergences) == 0
+)
 
 vals <- c(gate_list, list(
   n_enrolled = num(flow("enrolled")$n_subjects),
@@ -92,8 +123,9 @@ vals <- c(gate_list, list(
   n_final = num(flow("analytic_sample")$n_subjects),
   n_adt = num(flow("task_ADT")$n_subjects),
   n_vdt = num(flow("task_VDT")$n_subjects),
-  n_trials_primary = num(flow("primary_analysis_trials")$n_trials),
-  n_trials_cutoff_excluded = num(flow("probe_rt_below_0.20_or_missing")$n_trials),
+  n_trials_primary = n_trials_primary_n,
+  n_trials_collected = n_trials_collected,
+  n_trials_cutoff_excluded = n_cutoff_excluded,
   n_trials_thr015 = num(flow("cutoff_0.15_trials")$n_trials),
   n_trials_thr025 = num(flow("cutoff_0.25_trials")$n_trials),
   n_subchance_excluded = 13,
@@ -122,6 +154,19 @@ vals <- c(gate_list, list(
   task_easy_x_vdt = effect(pick(t4, "b_difficulty_3Easy:taskVDT")),
   task_bs = effect(pick(t4, "b_bs_taskVDT")),
   task_bias = effect(pick(t4, "b_bias_taskVDT")),
+  diff_hard_v = effect(pick(t4, "b_difficulty_3Hard")),
+  diff_easy_v = effect(pick(t4, "b_difficulty_3Easy")),
+  diff_hard_bs = effect(pick(t4, "b_bs_difficulty_3Hard")),
+  diff_easy_bs = effect(pick(t4, "b_bs_difficulty_3Easy")),
+  v_cell_ADT_Hard = cell_of("ADT", "Hard", "v"),
+  v_cell_VDT_Hard = cell_of("VDT", "Hard", "v"),
+  z_ADT = cell_of("ADT", "Standard", "z"),
+  z_VDT = cell_of("VDT", "Standard", "z"),
+  bs_M4r = robust_term("M4r", "b_bs_effort_conditionhigh"),
+  bs_thr015 = robust_term("M4_thr0.15", "b_bs_effort_conditionhigh"),
+  bs_thr025 = robust_term("M4_thr0.25", "b_bs_effort_conditionhigh"),
+  bs_subchance = robust_term("M4_subchance", "b_bs_effort_conditionhigh"),
+  pass_M4_thr015 = pass_M4_thr015,
   t0_M4 = t0_of("M4"),
   t0_thr015 = t0_of("M4_thr0.15"),
   t0_thr025 = t0_of("M4_thr0.25"),
@@ -337,6 +382,8 @@ pupil_added <- list(
   tepr_window_end = 7.65,
   tepr_baseline_start = 3.85,
   tepr_baseline_end = 4.35,
+  grip_window_start = 1.0,
+  grip_window_end = 4.35,
   tepr_window_post_probe = "0.3\u20133.3 s",
   tepr_baseline_pre_probe = "0.5 s",
   max_k_pupil_models = max_k,

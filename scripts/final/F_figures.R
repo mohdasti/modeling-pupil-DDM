@@ -177,7 +177,7 @@ message("F2")
 t3 <- read_csv(file.path(TAB, "T3_condition_cells_M4.csv"), show_col_types = FALSE) %>%
   filter(quantity %in% c("v", "a")) %>%
   mutate(
-    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Hard", "Easy")),
+    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Easy", "Hard")),
     effort_label = ifelse(effort_condition == "high", "High", "Low"),
     quantity = factor(quantity, levels = c("v", "a"), labels = c("Drift rate (v)", "Boundary (a)"))
   )
@@ -666,12 +666,14 @@ want_fig <- function(stem) {
   !nzchar(only) || stem %in% strsplit(only, ",", fixed = TRUE)[[1]]
 }
 if (want_fig("S_accuracy_by_condition")) {
-acc <- read_csv(file.path(TAB, "T13a_accuracy_rt_descriptives.csv"), show_col_types = FALSE) %>%
-  filter(record == "subject") %>%
+acc <- beh %>%
+  filter(is.finite(correct)) %>%
   mutate(
     effort_label = ifelse(effort_condition == "high", "High", "Low"),
-    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Hard", "Easy"))
-  )
+    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Easy", "Hard"))
+  ) %>%
+  group_by(subject_id, task, difficulty_3, effort_label) %>%
+  summarise(accuracy = mean(correct), .groups = "drop")
 means <- acc %>%
   group_by(task, difficulty_3, effort_label) %>%
   summarise(accuracy = mean(accuracy), .groups = "drop")
@@ -683,7 +685,7 @@ sa <- ggplot(acc, aes(x = difficulty_3, y = accuracy, group = interaction(subjec
   facet_wrap(~ task) +
   labs(x = "Difficulty", y = "Accuracy") +
   theme_ms()
-save_final(sa, "S_accuracy_by_condition", 8, 4.6, "T13a_accuracy_rt_descriptives.csv, record = subject. Lines are participants. Points are the mean across participants.")
+save_final(sa, "S_accuracy_by_condition", 8, 4.6, "Primary 17,857-trial file. One line per participant within task and effort. Points are the unweighted mean across participants. Difficulty order is Standard, Easy, Hard.")
 }
 
 # ---------------------------------------------------------------------------
@@ -860,7 +862,7 @@ plot_tepr <- as_tibble(plot_tepr) %>%
   )
 
 p_tepr <- ggplot(plot_tepr, aes(x = time, y = mean_pupil, color = effort_label, fill = effort_label)) +
-  annotate("rect", xmin = 1.0, xmax = 4.35, ymin = -Inf, ymax = Inf, fill = "#E5E7EB", alpha = 0.85) +
+  annotate("rect", xmin = iv_fig$grip_window_start, xmax = iv_fig$grip_window_end, ymin = -Inf, ymax = Inf, fill = "#E5E7EB", alpha = 0.85) +
   annotate("rect", xmin = iv_fig$tepr_window_start, xmax = iv_fig$tepr_window_end, ymin = -Inf, ymax = Inf, fill = "#DBEAFE", alpha = 0.55) +
   geom_vline(xintercept = 4.35, linewidth = 0.35, color = "#111827") +
   geom_vline(xintercept = 4.70, linewidth = 0.35, linetype = "dashed", color = "#111827") +
@@ -880,13 +882,18 @@ p_tepr <- ggplot(plot_tepr, aes(x = time, y = mean_pupil, color = effort_label, 
     x = "Time from squeeze onset (s)",
     y = "Baseline-corrected pupil (a.u.)",
     caption = sprintf(
-      "Grey band: grip period (1.0\u20134.35 s). Blue band: post-probe AUC (%s\u2013%s s). Solid line: probe (4.35 s). Dashed line: response cue (4.70 s).",
+      "Grey band: grip and pre-probe period (%.1f\u2013%.2f s). Blue band: post-probe AUC (%s\u2013%s s).\nSolid line: probe (4.35 s). Dashed line: response cue (4.70 s).",
+      iv_fig$grip_window_start, iv_fig$grip_window_end,
       iv_fig$tepr_window_start, iv_fig$tepr_window_end
     )
   ) +
-  theme_ms()
+  theme_ms() +
+  theme(
+    plot.caption = element_text(hjust = 0, size = 9),
+    plot.margin = margin(6, 12, 8, 12)
+  )
 save_final(
-  p_tepr, "S_tepr_timecourse", 8.2, 7.2,
+  p_tepr, "S_tepr_timecourse", 8.2, 7.5,
   sprintf(
     paste(
       "Cleaned flat timecourses in %s, the same files and the same clock as the r6 prechoice and grip predictors.",

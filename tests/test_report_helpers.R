@@ -42,7 +42,26 @@ setup_iv <- function() {
       pct = "NA"
     ),
     has_na = NA_real_,
-    has_null_field = list(median = NULL, lo = 0, hi = 1)
+    has_null_field = list(median = NULL, lo = 0, hi = 1),
+    task_bs = list(
+      median = -0.003, lo = -0.018, hi = 0.011,
+      p_lt0 = 0.680, p_gt0 = 0.320, pct_rope = 100
+    ),
+    diff_hard_bs = list(
+      median = -0.098, lo = -0.118, hi = -0.078,
+      p_lt0 = 1, p_gt0 = 0, pct_rope = 0
+    ),
+    P3_bs = list(
+      median = log(1.079), lo = log(1.065), hi = log(1.092),
+      p_lt0 = 0, p_gt0 = 1
+    ),
+    sd_effort_M4r = list(median = 0.019, lo = 0.001, hi = 0.062, p_lt0 = 0, p_gt0 = 1, pct_rope = 0),
+    v_cell_ADT_Hard = list(median = -0.575, lo = -0.675, hi = -0.476),
+    z_ADT = list(median = 0.552, lo = 0.536, hi = 0.568),
+    delta_elpd_M3_vs_M4 = -158.3,
+    se_delta_elpd_M3_vs_M4 = 20.0,
+    acc_high_low_Hard = list(pp = -4.51, pp_lo = -6.6, pp_hi = -2.4, or = 0.80, p = 0.0001),
+    grip_high_low_ADT = list(diff = 0.59, t = 3.37, df = 27, p = 0.002)
   )
 }
 
@@ -199,4 +218,58 @@ test_that("negative formatters do not contain an ASCII hyphen", {
     expect_false(grepl("-", s, fixed = TRUE))
     expect_true(grepl(minus, s, fixed = TRUE))
   }
+})
+
+test_that("eff, pct_s, est_s, cell_s, and prob_s match the Results examples", {
+  expect_identical(
+    eff("crit"),
+    paste0(
+      "\u03b2 = ", minus, "0.053, 95% CrI [", minus, "0.103, ", minus, "0.003], ",
+      "P(\u03b2 < 0) = .981"
+    )
+  )
+  expect_identical(
+    eff("task_bs", rope = TRUE),
+    paste0(
+      "\u03b2 = ", minus, "0.003, 95% CrI [", minus, "0.018, 0.011], ",
+      "P(\u03b2 < 0) = .680, 100% in ROPE"
+    )
+  )
+  expect_identical(
+    eff("diff_hard_bs", pct = TRUE),
+    paste0(
+      "\u03b2 = ", minus, "0.098, 95% CrI [", minus, "0.118, ", minus, "0.078], ",
+      "P(\u03b2 < 0) > .999; ", minus, "9.3% [", minus, "11.1, ", minus, "7.5]"
+    )
+  )
+  expect_identical(pct_s("P3_bs"), "+7.9% [6.5, 9.2]")
+  expect_identical(est_s("sd_effort_M4r"), "0.019, 95% CrI [0.001, 0.062]")
+  expect_identical(
+    cell_s("v_cell_ADT_Hard"),
+    paste0("v = ", minus, "0.575, 95% CrI [", minus, "0.675, ", minus, "0.476]")
+  )
+  expect_identical(prob_s("z_ADT"), "0.552 [0.536, 0.568]")
+})
+
+test_that("elpd_s, acc_s, and pt_s", {
+  expect_identical(
+    elpd_s("delta_elpd_M3_vs_M4", "se_delta_elpd_M3_vs_M4", flip = TRUE),
+    "\u0394ELPD = 158.3 \u00b1 20.0"
+  )
+  expect_true(startsWith(acc_s("acc_high_low_Hard"), paste0(minus, "4.5 percentage points")))
+  expect_identical(
+    pt_s("grip_high_low_ADT"),
+    "*M*~diff~ = 0.59, t(27) = 3.37, p = .002"
+  )
+})
+
+test_that("eff stops when rope is requested and pct_rope is missing", {
+  expect_error(eff("P3_bs", rope = TRUE), "pct_rope")
+})
+
+test_that("make_table stops on zero rows and names the caller", {
+  empty_caller <- function() {
+    make_table(data.frame(x = character()), cols = "x", col_labels = "X")
+  }
+  expect_error(empty_caller(), "0 rows from empty_caller")
 })

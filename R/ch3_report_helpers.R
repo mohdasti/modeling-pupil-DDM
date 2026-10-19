@@ -226,6 +226,141 @@ report_effect <- function(key, scale = c("drift", "log", "logit")) {
   out
 }
 
+.direction_clause <- function(key) {
+  med <- v(key, "median")
+  if (med < 0) {
+    plab <- "P(\u03b2 < 0)"
+    prob <- v(key, "p_lt0")
+  } else {
+    plab <- "P(\u03b2 > 0)"
+    prob <- v(key, "p_gt0")
+  }
+  prob_s <- fmt_prob(prob)
+  join <- if (startsWith(prob_s, ">") || startsWith(prob_s, "<")) " " else " = "
+  paste0(plab, join, prob_s)
+}
+
+.pct_from_log <- function(med, lo, hi) {
+  .fmt_pct_triplet(
+    100 * (exp(med) - 1),
+    100 * (exp(lo) - 1),
+    100 * (exp(hi) - 1),
+    1
+  )
+}
+
+.signed_1 <- function(x) {
+  if (x > 0) paste0("+", sprintf("%.1f", x)) else fmt_num(x, 1)
+}
+
+eff <- function(key, rope = FALSE, pct = FALSE, d = 3) {
+  med <- v(key, "median")
+  lo <- v(key, "lo")
+  hi <- v(key, "hi")
+  out <- paste0(
+    "\u03b2 = ", fmt_num(med, d), ", 95% CrI ", fmt_ci(lo, hi, d),
+    ", ", .direction_clause(key)
+  )
+  if (isTRUE(rope)) {
+    obj <- iv[[key]]
+    pct_rope <- if (is.list(obj)) obj[["pct_rope"]] else NULL
+    if (is.null(pct_rope) || (is.atomic(pct_rope) && anyNA(pct_rope))) {
+      .stop_value("eff() rope = TRUE but pct_rope is missing for key: ", key)
+    }
+    out <- paste0(out, ", ", fmt_rope(key))
+  }
+  if (isTRUE(pct)) {
+    out <- paste0(out, "; ", .pct_from_log(med, lo, hi))
+  }
+  out
+}
+
+pct_s <- function(key) {
+  .pct_from_log(v(key, "median"), v(key, "lo"), v(key, "hi"))
+}
+
+est_s <- function(key, d = 3) {
+  paste0(fmt_num(v(key, "median"), d), ", 95% CrI ", fmt_ci(v(key, "lo"), v(key, "hi"), d))
+}
+
+cell_s <- function(key, d = 3) {
+  paste0("v = ", fmt_num(v(key, "median"), d), ", 95% CrI ", fmt_ci(v(key, "lo"), v(key, "hi"), d))
+}
+
+prob_s <- function(key) {
+  paste0(fmt_num(v(key, "median"), 3), " ", fmt_ci(v(key, "lo"), v(key, "hi"), 3))
+}
+
+elpd_s <- function(delta_key, se_key, flip = FALSE) {
+  delta <- v(delta_key)
+  se <- v(se_key)
+  if (isTRUE(flip)) delta <- -delta
+  paste0("\u0394ELPD = ", fmt_num(delta, 1), " \u00b1 ", fmt_num(se, 1))
+}
+
+acc_s <- function(key) {
+  paste0(
+    .signed_1(v(key, "pp")), " percentage points, 95% CI ",
+    fmt_ci(v(key, "pp_lo"), v(key, "pp_hi"), 1),
+    ", OR = ", fmt_num(v(key, "or"), 2),
+    ", ", fmt_p(v(key, "p"))
+  )
+}
+
+pt_s <- function(key) {
+  paste0(
+    "*M*~diff~ = ", fmt_num(v(key, "diff"), 2), ", ",
+    fmt_t(v(key, "t"), v(key, "df"), v(key, "p"))
+  )
+}
+
+.require_rope_match <- function() {
+  if (!isTRUE(all.equal(v("rope_a"), v("rope_z")))) {
+    dir.create("output/diagnostics/qmd_phase2a", recursive = TRUE, showWarnings = FALSE)
+    writeLines(
+      sprintf("rope_a (%s) != rope_z (%s).", v("rope_a"), v("rope_z")),
+      "output/diagnostics/qmd_phase2a/STOPPED.md"
+    )
+    stop("rope_a != rope_z", call. = FALSE)
+  }
+}
+
+cap_fig_condition_params <- function() paste0(
+  "Posterior drift rate (top) and boundary separation (bottom) by task, stimulus type and effort in the primary model (M4). ",
+  "Points are posterior medians and bars 95% credible intervals. Drift is signed toward the \u201cdifferent\u201d boundary, ",
+  "so negative drift on Standard trials accumulates toward the correct \u201csame\u201d response. ",
+  "Starting point and non-decision time did not vary by stimulus type and are not shown.")
+
+cap_fig_effort_forest <- function() {
+  .require_rope_match()
+  paste0(
+    "Effects of high versus low effort in the primary model (M4, filled) and four robustness variants (open). ",
+    "Points are posterior medians and bars 95% credible intervals. Shaded bands mark the region of practical equivalence ",
+    "(drift \u00b1", fmt_num(v("rope_v"), 2), "; log boundary and logit starting point \u00b1", fmt_num(v("rope_a"), 2), "). ",
+    "Drift criterion is the effort effect common to all trials (negative values favor \u201csame\u201d); evidence quality is the effort effect ",
+    "on the separation between identical and different stimuli.",
+    if (!isTRUE(v("pass_M4_thr015"))) " \u2021 Did not meet the convergence criterion (R\u0302 < 1.01)." else "")
+}
+
+cap_fig_pupil_boundary <- function() paste0(
+  "Pupil measures and boundary separation. Each row is a separate model. Points are posterior median percentage changes in boundary ",
+  "separation per within-person SD of the pupil predictor, and bars are 95% credible intervals. \u0394ELPD \u00b1 SE compares each model ",
+  "with a baseline model fit to the same trials. Upper rows: measures from the current trial; lower rows: measures preceding the current decision.")
+
+note_tbl_effort_effects <- function() {
+  .require_rope_match()
+  paste0(
+    "Estimates are posterior medians with 95% credible intervals (CrI) on the link scale: drift, identity; boundary separation, log; ",
+    "starting point, logit. Direction is the posterior probability that the effect has the sign of its median. ",
+    "Change in a is the percentage change in boundary separation. ROPE = region of practical equivalence (drift \u00b1",
+    fmt_num(v("rope_v"), 2), "; boundary and starting point \u00b1", fmt_num(v("rope_a"), 2), ").")
+}
+
+note_tbl_pupil_ordering <- function() paste0(
+  "Each row is a separate model. Estimates are slopes on log boundary separation per within-person SD of the predictor, ",
+  "with the percentage change in a. \u0394ELPD \u00b1 SE is relative to a baseline model without the pupil predictor, fit to the same trials. ",
+  "Trial counts differ because each predictor requires its own valid window.")
+
 load_ch3_design <- function() {
   vals <- lapply(ch3_design_keys, function(k) {
     if (!k %in% names(iv)) {
@@ -389,6 +524,10 @@ ch3_effort_block <- function(df, what) {
 }
 
 make_table <- function(df, cols, col_labels, digits_map = NULL, footnote = NULL) {
+  if (nrow(df) == 0L) {
+    who <- tryCatch(deparse(sys.call(-1)[[1]]), error = function(e) "unknown caller")
+    stop("make_table received 0 rows from ", who, call. = FALSE)
+  }
   missing_cols <- setdiff(cols, names(df))
   if (length(missing_cols)) {
     stop("make_table missing columns: ", paste(missing_cols, collapse = ", "), call. = FALSE)
@@ -484,7 +623,7 @@ ch3_tbl_demographics <- function(df) {
   make_table(out, cols = names(out), col_labels = names(out))
 }
 
-ch3_tbl_effort_effects <- function(df) {
+ch3_tbl_effort_effects <- function(df, footnote = NULL) {
   order_terms <- c(
     "b_effort_conditionhigh",
     "b_effort_x_stim",
@@ -506,18 +645,38 @@ ch3_tbl_effort_effects <- function(df) {
   make_table(
     out,
     cols = names(out),
-    col_labels = names(out)
+    col_labels = names(out),
+    footnote = footnote
   )
 }
 
-ch3_tbl_pupil_ordering <- function(df) {
-  df <- df[df$tier == "main", , drop = FALSE]
+ch3_tbl_pupil_ordering <- function(df, footnote = NULL) {
+  # T8 stores these rows as tier "ms_supp". The six models are the Figure 5 set.
+  order_models <- c("P3", "P3_rt", "P7", "P6", "P5", "P8")
+  missing <- setdiff(order_models, df$model)
+  if (length(missing)) {
+    stop("T8 is missing ", paste(missing, collapse = ", "), call. = FALSE)
+  }
+  df <- df[match(order_models, df$model), , drop = FALSE]
+  tepr_post <- as.character(v("tepr_window_post_probe"))
+  tepr_after <- sub(" s$", " s after probe", tepr_post)
+  # Same names as F5 in scripts/final/F_figures.R.
+  labels <- c(
+    P3 = paste0("Post-probe TEPR (", tepr_after, ")"),
+    P3_rt = "Post-probe TEPR, slowest 20% removed",
+    P7 = "Pre-response window (0.5 s)",
+    P6 = "Previous-trial TEPR",
+    P5 = "Pre-trial baseline pupil",
+    P8 = "Grip-period pupil"
+  )
   out <- data.frame(
     Model = df$model,
-    Predictor = df$predictor,
-    ch3_posterior_cols(df$median, df$q2.5, df$q97.5, 3),
-    `Change in a` = ch3_pct_change_col(df$pct_change_median, df$pct_change_q2.5, df$pct_change_q97.5),
-    `Delta ELPD` = mapply(function(d, s) {
+    Predictor = unname(labels[df$model]),
+    Estimate = mapply(function(med, lo, hi) {
+      paste(fmt_num(med, 3), fmt_ci(lo, hi, 3))
+    }, df$median, df$q2.5, df$q97.5, USE.NAMES = FALSE),
+    Change = ch3_pct_change_col(df$pct_change_median, df$pct_change_q2.5, df$pct_change_q97.5),
+    ELPD = mapply(function(d, s) {
       if (is.na(d) || is.na(s)) "" else paste0(fmt_num(d, 1), " \u00b1 ", fmt_num(s, 1))
     }, df$delta_elpd_vs_baseline, df$se_delta_elpd, USE.NAMES = FALSE),
     Trials = ch3_fmt_cells(df$n_trials, fmt_int),
@@ -525,7 +684,15 @@ ch3_tbl_pupil_ordering <- function(df) {
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
-  make_table(out, cols = names(out), col_labels = names(out))
+  make_table(
+    out,
+    cols = names(out),
+    col_labels = c(
+      "Model", "Predictor", "Estimate [95% CrI]", "Change in a",
+      "\u0394ELPD \u00b1 SE", "Trials", "Subjects"
+    ),
+    footnote = footnote
+  )
 }
 
 ch3_tbl_trial_counts <- function(df) {
@@ -651,7 +818,7 @@ ch3_tbl_condition_cells <- function(df) {
     df[hit, , drop = FALSE]
   }
   tasks <- c("ADT", "VDT")
-  diffs <- c("Standard", "Hard", "Easy")
+  diffs <- c("Standard", "Easy", "Hard")
   rows <- list()
   for (task in tasks) {
     for (difficulty in diffs) {
