@@ -258,7 +258,19 @@ test_that("eff, pct_s, est_s, cell_s, and prob_s match the Results examples", {
     cell_s("v_cell_ADT_Hard"),
     paste0("v = ", minus, "0.575, 95% CrI [", minus, "0.675, ", minus, "0.476]")
   )
-  expect_identical(prob_s("z_ADT"), "0.552 [0.536, 0.568]")
+  expect_identical(prob_s("z_ADT"), ".552 [.536, .568]")
+})
+
+test_that("proportions and table p values have no leading zero and no p equals", {
+  expect_identical(fmt_prob(0.023), ".023")
+  expect_identical(fmt_prob(0.0004), "< .001")
+  expect_false(grepl("^0\\.", prob_s("z_ADT")))
+  expect_false(grepl("p =", fmt_prob(0.023), fixed = TRUE))
+  expect_identical(ch3_model_label("P3_rt"), "P3 without slowest trials")
+  expect_identical(ch3_model_label("M4_thr0.15"), "M4, 0.15-s cutoff")
+  expect_identical(.italic_stat_header("SE"), "*SE*")
+  expect_identical(.italic_stat_header("p"), "*p*")
+  expect_identical(.italic_stat_header("Trials"), "Trials")
 })
 
 test_that("elpd_s, acc_s, and pt_s", {

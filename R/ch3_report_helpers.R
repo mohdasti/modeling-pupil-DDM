@@ -310,7 +310,64 @@ cell_s <- function(key, d = 3) {
 }
 
 prob_s <- function(key) {
-  paste0(fmt_num(v(key, "median"), 3), " ", fmt_ci(v(key, "lo"), v(key, "hi"), 3))
+  paste0(
+    .drop_lead0(fmt_num(v(key, "median"), 3)), " ",
+    .drop_lead0_ci(v(key, "lo"), v(key, "hi"), 3)
+  )
+}
+
+# Proportions and probabilities print without a leading zero. Link-scale
+# DDM coefficients keep the zero, because they are not proportions.
+.drop_lead0_ci <- function(lo, hi, d) {
+  paste0("[", .drop_lead0(fmt_num(lo, d)), ", ", .drop_lead0(fmt_num(hi, d)), "]")
+}
+
+ch3_pending <- function(marker) {
+  if (!is.character(marker) || length(marker) != 1L || !grepl("^\\[PENDING r12(\\]|:)", marker)) {
+    .stop_value("ch3_pending expects a [PENDING r12] or [PENDING r12: ...] marker")
+  }
+  if (isTRUE(knitr::is_latex_output())) {
+    return(paste0("\\textcolor{red}{\\textbf{", marker, "}}"))
+  }
+  to <- tryCatch(knitr::pandoc_to(), error = function(e) NA_character_)
+  if (isTRUE(to %in% c("docx", "odt"))) {
+    safe <- gsub("&", "&amp;", marker, fixed = TRUE)
+    safe <- gsub("<", "&lt;", safe, fixed = TRUE)
+    xml <- paste0(
+      "<w:r><w:rPr><w:b/><w:color w:val=\"B00000\"/></w:rPr>",
+      "<w:t xml:space=\"preserve\">", safe, "</w:t></w:r>"
+    )
+    return(paste0("`", xml, "`{=openxml}"))
+  }
+  paste0("<span style=\"color:#b00000;font-weight:700;\">", marker, "</span>")
+}
+
+.model_display <- c(
+  "M4_thr0.15" = "M4, 0.15-s cutoff",
+  "M4_thr0.25" = "M4, 0.25-s cutoff",
+  "M4_subchance" = "M4, near-chance excluded",
+  "P0_base" = "Baseline for P4\u2013P5",
+  "P0_rt" = "Baseline for P3 without slowest trials",
+  "P0_lag" = "Baseline for P6",
+  "P0_pre" = "Baseline for P7",
+  "P0_grip" = "Baseline for P8",
+  "P3_rt" = "P3 without slowest trials"
+)
+
+ch3_model_label <- function(x) {
+  x <- as.character(x)
+  hit <- x %in% names(.model_display)
+  x[hit] <- unname(.model_display[x[hit]])
+  x
+}
+
+.italic_stat_header <- function(label) {
+  gsub(
+    "\\b(b|SE|z|t|p|M|SD|n|N)\\b",
+    "*\\1*",
+    label,
+    perl = TRUE
+  )
 }
 
 elpd_s <- function(delta_key, se_key, flip = FALSE) {
@@ -381,7 +438,8 @@ note_tbl_effort_effects <- function() {
     "Estimates are posterior medians with 95% credible intervals (CrI) on the link scale: drift, identity; boundary separation, log; ",
     "starting point, logit. Direction is the posterior probability that the effect has the sign of its median. ",
     "Change in a is the percentage change in boundary separation. ROPE = region of practical equivalence (drift \u00b1",
-    fmt_num(v("rope_v"), 2), "; boundary and starting point \u00b1", fmt_num(v("rope_a"), 2), ").")
+    fmt_num(v("rope_v"), 2), "; boundary and starting point \u00b1", fmt_num(v("rope_a"), 2), "). ",
+    "DDM coefficients are given to three decimals because the effects are small relative to the region of practical equivalence.")
 }
 
 note_tbl_pupil_ordering <- function() paste0(
@@ -572,7 +630,7 @@ make_table <- function(df, cols, col_labels, digits_map = NULL, footnote = NULL)
       spec <- digits_map[[cn]]
       shown[[cn]] <- ch3_fmt_cells(shown[[cn]], function(v) {
         if (identical(spec, "p")) {
-          fmt_p(v)
+          fmt_prob(v)
         } else if (identical(spec, "prob")) {
           fmt_prob(v)
         } else if (identical(spec, "int")) {
@@ -591,7 +649,7 @@ make_table <- function(df, cols, col_labels, digits_map = NULL, footnote = NULL)
     }
     shown[[cn]] <- ifelse(is.na(shown[[cn]]), "", as.character(shown[[cn]]))
   }
-  names(shown) <- col_labels
+  names(shown) <- vapply(col_labels, .italic_stat_header, character(1))
   kb <- knitr::kable(
     shown,
     format = "pipe",
@@ -797,7 +855,7 @@ ch3_tbl_pupil_ordering <- function(df, footnote = NULL) {
     P8 = "Grip-period pupil"
   )
   out <- data.frame(
-    Model = df$model,
+    Model = ch3_model_label(df$model),
     Predictor = unname(labels[df$model]),
     Estimate = mapply(function(med, lo, hi) {
       paste(fmt_num(med, 3), fmt_ci(lo, hi, 3))
@@ -859,17 +917,24 @@ ch3_tbl_model_comparison <- function(df) {
 ch3_tbl_convergence <- function(df) {
   drop_models <- c("P0_r6", "M3_thr0.15", "M3_thr0.25")
   df <- df[!df$model %in% drop_models, , drop = FALSE]
-  if (!"P0_base" %in% df$model) {
-    stop("convergence display is missing P0_base", call. = FALSE)
-  }
-  order_models <- c(
+  behavioral_models <- c(
     "M4",
     "M0", "M1", "M2", "M3", "M4b",
-    "M4r", "M4_thr0.15", "M4_thr0.25", "M4_subchance",
+    "M4r", "M4_thr0.15", "M4_thr0.25", "M4_subchance"
+  )
+  pupil_models <- c(
     "P0", "P0_base", "P0_rt", "P0_lag", "P0_pre", "P0_grip",
     "P1", "P2", "P3", "P3_rt", "P4", "P5", "P6", "P7", "P8"
   )
-  if (!setequal(df$model, order_models)) {
+  # Pupil rows are absent until the r12 fits replace the quarantined r10 rows.
+  if (setequal(df$model, c(behavioral_models, pupil_models))) {
+    order_models <- c(behavioral_models, pupil_models)
+  } else if (setequal(df$model, behavioral_models)) {
+    order_models <- behavioral_models
+  } else {
+    order_models <- character(0)
+  }
+  if (!length(order_models)) {
     stop(
       "convergence display models do not match the expected set: ",
       paste(setdiff(union(df$model, order_models), intersect(df$model, order_models)), collapse = ", "),
@@ -881,10 +946,10 @@ ch3_tbl_convergence <- function(df) {
   fail <- df$model[!pass]
   footnote <- paste0(
     "A model passes when max R-hat < 1.01, bulk ESS and tail ESS are at least 400, and there are 0 divergences. ",
-    if (length(fail)) paste0("Fails: ", paste(fail, collapse = ", "), ".") else "Every displayed model passes."
+    if (length(fail)) paste0("Fails: ", paste(ch3_model_label(fail), collapse = ", "), ".") else "Every displayed model passes."
   )
   out <- data.frame(
-    Model = df$model,
+    Model = ch3_model_label(df$model),
     Role = df$role,
     `Max R-hat` = ch3_fmt_cells(df$max_rhat, function(v) fmt_num(v, 3)),
     `Min bulk ESS` = ch3_fmt_cells(df$min_bulk_ess, fmt_int),
@@ -1000,10 +1065,10 @@ ch3_tbl_ppc_choice <- function(df) {
     Task = df$task,
     Difficulty = df$difficulty_3,
     Effort = tools::toTitleCase(df$effort_condition),
-    Observed = ch3_fmt_cells(df$observed, function(v) fmt_num(v, 3)),
-    Predicted = ch3_fmt_cells(df$pred_median, function(v) fmt_num(v, 3)),
+    Observed = ch3_fmt_cells(df$observed, function(v) .drop_lead0(fmt_num(v, 3))),
+    Predicted = ch3_fmt_cells(df$pred_median, function(v) .drop_lead0(fmt_num(v, 3))),
     `95% PI` = mapply(function(a, b) {
-      if (is.na(a) || is.na(b)) "" else fmt_ci(a, b, 3)
+      if (is.na(a) || is.na(b)) "" else .drop_lead0_ci(a, b, 3)
     }, df$pred_q2.5, df$pred_q97.5, USE.NAMES = FALSE),
     Inside = ifelse(df$inside, "Yes", "No"),
     check.names = FALSE,
@@ -1015,7 +1080,7 @@ ch3_tbl_ppc_choice <- function(df) {
 ch3_tbl_robustness <- function(df) {
   fail <- df$max_rhat >= 1.01
   out <- data.frame(
-    Model = df$model,
+    Model = ch3_model_label(df$model),
     Parameter = ch3_map_labels(df$term, .effort_label_map, "T6a"),
     ch3_posterior_cols(df$median, df$q2.5, df$q97.5, 3),
     `In ROPE` = ch3_rope_col(df$pct_in_rope),
@@ -1080,7 +1145,7 @@ ch3_tbl_pupil_models <- function(slopes, effort) {
   delta[interaction] <- ""
   slope_out <- data.frame(
     Block = "Pupil slope",
-    Model = slopes$model,
+    Model = ch3_model_label(slopes$model),
     Parameter = ch3_map_labels(slopes$term, .pupil_term_map, "T7"),
     ch3_posterior_cols(slopes$median, slopes$q2.5, slopes$q97.5, 3),
     `Change in a` = ch3_pct_change_col(
@@ -1093,7 +1158,7 @@ ch3_tbl_pupil_models <- function(slopes, effort) {
   )
   effort_out <- data.frame(
     Block = "Effort effects in the pupil subsample (P0)",
-    Model = effort$model,
+    Model = ch3_model_label(effort$model),
     Parameter = ch3_map_labels(effort$term, .effort_label_map, "T7 P0"),
     ch3_posterior_cols(effort$median, effort$q2.5, effort$q97.5, 3),
     `Change in a` = ch3_pct_change_col(
@@ -1111,10 +1176,10 @@ ch3_tbl_pupil_models <- function(slopes, effort) {
     col_labels = names(out),
     footnote = paste(
       "P1, P2, and P3 are compared with P0.",
-      "P4 and P5 are compared with P0_base.",
-      "P3_rt is compared with P0_rt.",
-      "P6 is compared with P0_lag, P7 with P0_pre, and P8 with P0_grip.",
-      "P5, P3_rt, P6, P7, and P8 are in the ordering table rather than this slope table."
+      "P4 and P5 are compared with the baseline for P4\u2013P5.",
+      "P3 without the slowest trials is compared with its own baseline.",
+      "P6 is compared with the baseline for P6, P7 with the baseline for P7, and P8 with the baseline for P8.",
+      "P5, P3 without the slowest trials, P6, P7, and P8 are in the ordering table rather than this slope table."
     )
   )
 }
@@ -1159,7 +1224,7 @@ ch3_tbl_pupil_descriptives <- function(df) {
           df_s <- if (abs(paired$df - round(paired$df)) < 1e-8) as.character(as.integer(round(paired$df))) else fmt_num(paired$df, 2)
           paste0("t(", df_s, ") = ", fmt_num(paired$t, 2))
         },
-        p = fmt_p(paired$p),
+        p = fmt_prob(paired$p),
         check.names = FALSE,
         stringsAsFactors = FALSE
       )
@@ -1195,7 +1260,7 @@ ch3_tbl_glmm <- function(df, what) {
   }
   out$Statistic <- ch3_fmt_cells(df$statistic, function(v) fmt_num(v, 2))
   if ("p.value" %in% names(df)) {
-    out$p <- ch3_fmt_cells(df$p.value, fmt_p)
+    out$p <- ch3_fmt_cells(df$p.value, fmt_prob)
   }
   if (all(c("conf.low", "conf.high") %in% names(df))) {
     out$`95% CI` <- mapply(function(a, b) {
@@ -1249,7 +1314,7 @@ ch3_tbl_acc_contrasts <- function(df) {
     or = ch3_fmt_cells(df$or, function(v) fmt_num(v, 2)),
     ci_or = mapply(function(a, b) fmt_ci(a, b, 2), df$or_lo, df$or_hi, USE.NAMES = FALSE),
     z = ch3_fmt_cells(df$z, function(v) fmt_num(v, 2)),
-    p = ch3_fmt_cells(df$p, fmt_p),
+    p = ch3_fmt_cells(df$p, fmt_prob),
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
@@ -1270,7 +1335,7 @@ ch3_tbl_rt_contrasts <- function(df) {
     ci = mapply(function(a, b) fmt_ci(a, b, 1), df$ms_lo, df$ms_hi, USE.NAMES = FALSE),
     t = ch3_fmt_cells(df$t, function(v) fmt_num(v, 2)),
     df = ch3_fmt_cells(df$df, function(v) fmt_num(v, 1)),
-    p = ch3_fmt_cells(df$p, fmt_p),
+    p = ch3_fmt_cells(df$p, fmt_prob),
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
@@ -1325,8 +1390,8 @@ ch3_assoc_table <- function(df, family_name) {
     Predictor = ch3_map_labels(df$predictor, .assoc_predictor_map, family_name),
     Outcome = ch3_map_labels(df$outcome, .assoc_outcome_map, family_name),
     r = ch3_fmt_cells(df$r, function(v) paste0("r = ", .drop_lead0(fmt_num(v, 2)))),
-    p = ch3_fmt_cells(df$p, fmt_p),
-    `p (FDR)` = ch3_fmt_cells(df$p_fdr, fmt_p),
+    p = ch3_fmt_cells(df$p, fmt_prob),
+    `p (FDR)` = ch3_fmt_cells(df$p_fdr, fmt_prob),
     n = ch3_fmt_cells(df$n, fmt_int),
     check.names = FALSE,
     stringsAsFactors = FALSE

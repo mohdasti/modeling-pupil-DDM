@@ -1,4 +1,4 @@
-# Tests for the guarded trial time axis.
+# Tests for the 250 Hz trial time axis.
 # Run from the repo root: Rscript tests/test_time_axis_guard.R
 
 options(warn = 1)
@@ -10,20 +10,6 @@ BUILD <- file.path(PARENT, "build_20251225_154443")
 fail <- function(msg) stop("TEST FAIL: ", msg, call. = FALSE)
 pass <- function(msg) message("PASS: ", msg)
 
-compute_auc <- function(time, value) {
-  ok <- is.finite(time) & is.finite(value)
-  if (sum(ok) < 2) return(NA_real_)
-  time <- time[ok]
-  value <- value[ok]
-  ord <- order(time)
-  time <- time[ord]
-  value <- value[ord]
-  gap <- diff(time)
-  keep <- which(gap > 0 & gap <= 0.25)
-  if (!length(keep)) return(NA_real_)
-  sum(gap[keep] * (value[keep] + value[keep + 1]) / 2)
-}
-
 file_dt <- function(time_vec) {
   d <- diff(sort(unique(time_vec[is.finite(time_vec)])))
   d <- d[is.finite(d) & d > 0]
@@ -33,18 +19,7 @@ file_dt <- function(time_vec) {
   dt
 }
 
-one_trial <- function(path, with_seg) {
-  cols <- c("session_used", "run_used", "trial_in_run_raw", "time", "pupil")
-  if (with_seg) cols <- c(cols, "seg_start_rel_used", "seg_end_rel_used")
-  dt <- fread(path, select = cols)
-  setnames(dt, c("session_used", "run_used", "trial_in_run_raw"), c("session", "run", "trial"))
-  dt <- dt[session %in% c(2L, 3L)]
-  key <- dt[, .N, by = .(session, run, trial)][N > 100][1]
-  tr <- dt[session == key$session & run == key$run & trial == key$trial]
-  list(tr = tr, key = key, dt_file = file_dt(dt$time))
-}
-
-# 1. December 21 trial whose step end is the expected epoch: AUC unchanged to 1e-12.
+# 1. December 21 full epoch is the 250 Hz grid, not the timestamp step.
 candidates <- c("BAP125", "BAP118", "BAP202", "BAP003")
 found <- NULL
 for (sub in candidates) {
@@ -53,81 +28,73 @@ for (sub in candidates) {
   dt <- fread(path, select = c("session_used", "run_used", "trial_in_run_raw", "time", "pupil"))
   setnames(dt, c("session_used", "run_used", "trial_in_run_raw"), c("session", "run", "trial"))
   dt <- dt[session %in% c(2L, 3L)]
-  dt_file <- file_dt(dt$time)
-  keys <- dt[, .N, by = .(session, run, trial)][N > 100]
-  for (i in seq_len(nrow(keys))) {
-    tr <- dt[session == keys$session[i] & run == keys$run[i] & trial == keys$trial[i]]
-    n <- nrow(tr)
-    old_t <- seq(from = -3.0, by = dt_file, length.out = n)
-    if (!is.finite(old_t[n]) || old_t[n] < 8 || old_t[n] > 15) next
-    b1_vals <- tr$pupil[old_t >= 3.85 & old_t < 4.35]
-    if (sum(is.finite(b1_vals)) < 10) next
-    b1 <- mean(b1_vals, na.rm = TRUE)
-    w <- old_t >= 4.65 & old_t <= 7.65
-    auc_old <- compute_auc(old_t[w], tr$pupil[w] - b1)
-    if (!is.finite(auc_old)) next
-    found <- list(sub = sub, tr = tr, old_t = old_t, n = n, dt_file = dt_file,
-                  session = keys$session[i], run = keys$run[i], trial = keys$trial[i],
-                  auc_old = auc_old, b1 = b1)
-    break
-  }
-  if (!is.null(found)) break
+  keys <- dt[, .N, by = .(session, run, trial)][N %in% c(3425L, 3426L)]
+  if (!nrow(keys)) next
+  tr <- dt[session == keys$session[1] & run == keys$run[1] & trial == keys$trial[1]]
+  found <- list(sub = sub, n = nrow(tr), session = keys$session[1], run = keys$run[1],
+                trial = keys$trial[1], dt_file = file_dt(dt$time))
+  break
 }
-if (is.null(found)) fail("No Dec 21 ADT trial had a step end in [8, 15] s and a finite AUC")
+if (is.null(found)) fail("No December 21 ADT trial had 3425 or 3426 samples")
 new <- build_trial_time(found$n, found$dt_file, subject = found$sub, task = "ADT",
                          session = found$session, run = found$run, trial = found$trial)
-if (!identical(new$rule, "step_from_m3")) fail(paste("Dec 21 rule is", new$rule))
-if (max(abs(new$t - found$old_t)) > 0) fail("Dec 21 axis differs from the step rule")
-w <- new$t >= 4.65 & new$t <= 7.65
-auc_new <- compute_auc(new$t[w], found$tr$pupil[w] - found$b1)
-if (!is.finite(auc_new) || abs(auc_new - found$auc_old) > 1e-12) {
-  fail(sprintf("AUC mismatch: new %.12g old %.12g", auc_new, found$auc_old))
-}
-pass(sprintf("Dec 21 %s ADT s%s r%s t%s end %.4f AUC %.6f matches the step rule",
-             found$sub, found$session, found$run, found$trial, new$implied_end, auc_new))
+if (!identical(new$rule, "fixed_250hz")) fail(paste("December 21 rule is", new$rule))
+expected <- -3 + 0.004 * (seq_len(found$n) - 1)
+if (max(abs(new$t - expected)) > 1e-12) fail("December 21 axis is not t_k = -3 + 0.004(k-1)")
+if (found$n == 3425L && abs(new$implied_end - 10.696) > 1e-9) fail("3425-sample epoch does not end at 10.696 s")
+if (found$n == 3426L && abs(new$implied_end - 10.700) > 1e-9) fail("3426-sample epoch does not end at 10.700 s")
+old_step <- seq(from = -3.0, by = found$dt_file, length.out = found$n)
+if (max(abs(new$t - old_step)) < 1e-6) fail("250 Hz axis matches the timestamp step; the compression was not removed")
+pass(sprintf("December 21 %s ADT s%s r%s t%s n=%d end %.3f s is the 250 Hz grid",
+             found$sub, found$session, found$run, found$trial, found$n, new$implied_end))
 
-# 2. December 25 trial with segment columns stripped: stop.
-p25 <- file.path(BUILD, "BAP003_ADT_flat.csv")
-if (!file.exists(p25)) fail(paste("Missing", p25))
-b <- one_trial(p25, TRUE)
+# 2. A count that is neither the full epoch nor the short epoch stops, and names the trial.
 stopped <- tryCatch(
-  build_trial_time(nrow(b$tr), b$dt_file, subject = "BAP003", task = "ADT",
-                    session = b$key$session, run = b$key$run, trial = b$key$trial),
+  build_trial_time(3091L, 0.004, subject = "BAP003", task = "ADT",
+                    session = 2L, run = 1L, trial = 9L),
   error = function(e) e
 )
-if (!inherits(stopped, "error")) fail("Dec 25 without seg columns did not stop")
+if (!inherits(stopped, "error")) fail("Count 3091 did not stop")
 msg <- conditionMessage(stopped)
-if (!grepl("BAP003", msg) || !grepl("samples", msg) || !grepl("span", msg)) {
-  fail(paste("Stop message is not informative:", msg))
+if (!grepl("BAP003", msg) || !grepl("3091", msg) || !grepl("trial 9", msg)) {
+  fail(paste("Stop message does not name the trial:", msg))
 }
-pass(paste("Dec 25 without seg columns stopped:", msg))
+pass(paste("Unexpected count stopped:", msg))
 
-# 3. December 25 with seg columns: axis from -3 to the segment end; dip at 3.0-3.4 s.
+# 3. December 25 short epochs are accepted on the 250 Hz axis with no segment window.
+#    The gauge-offset light reflex on that axis falls in 3.0-3.6 s.
+p25 <- file.path(BUILD, "BAP003_ADT_flat.csv")
+if (!file.exists(p25)) fail(paste("Missing", p25))
+one <- fread(p25, select = c("session_used", "run_used", "trial_in_run_raw"))
+setnames(one, c("session", "run", "trial"))
+one <- one[session %in% c(2L, 3L), .N, by = .(session, run, trial)][1]
+short <- build_trial_time(one$N, subject = "BAP003", task = "ADT",
+                           session = one$session, run = one$run, trial = one$trial)
+if (!identical(short$rule, "short_epoch_250hz")) fail(paste("December 25 rule is", short$rule))
+if (short$implied_end < 7.65 || short$implied_end > 7.95) {
+  fail(sprintf("Short-epoch end %.3f s is not near 7.72 s", short$implied_end))
+}
+pass(sprintf("December 25 short epoch n=%d end %.3f s accepted without segment columns",
+             one$N, short$implied_end))
+
 subjects <- c("BAP003", "BAP125", "BAP172", "BAP118", "BAP202")
-grid <- seq(2.5, 4.0, by = 0.02)
+grid <- seq(2.5, 4.5, by = 0.02)
 sums <- numeric(length(grid))
 counts <- integer(length(grid))
 n_trials <- 0L
 for (sub in subjects) {
   path <- file.path(BUILD, paste0(sub, "_ADT_flat.csv"))
   if (!file.exists(path)) fail(paste("Missing", path))
-  dt <- fread(path, select = c("session_used", "run_used", "trial_in_run_raw", "time", "pupil",
-                                "seg_start_rel_used", "seg_end_rel_used"))
+  dt <- fread(path, select = c("session_used", "run_used", "trial_in_run_raw", "pupil"))
   setnames(dt, c("session_used", "run_used", "trial_in_run_raw"), c("session", "run", "trial"))
   dt <- dt[session %in% c(2L, 3L)]
-  dt_used <- file_dt(dt$time)
   parts <- split(seq_len(nrow(dt)), paste(dt$session, dt$run, dt$trial))
   for (ix in parts) {
-    if (length(ix) < 100) next
-    ax <- build_trial_time(
-      length(ix), dt_used,
-      seg_start = dt$seg_start_rel_used[ix[1]],
-      seg_end = dt$seg_end_rel_used[ix[1]],
-      subject = sub, task = "ADT",
-      session = dt$session[ix[1]], run = dt$run[ix[1]], trial = dt$trial[ix[1]]
-    )
-    if (!identical(ax$rule, "segment_window")) fail(paste(sub, "did not use the segment window"))
-    if (abs(ax$t[1] - dt$seg_start_rel_used[ix[1]]) > 1e-8) fail("Axis does not start at seg_start")
+    n <- length(ix)
+    if (n < 2673L || n > 2730L) next
+    ax <- build_trial_time(n, subject = sub, task = "ADT",
+                            session = dt$session[ix[1]], run = dt$run[ix[1]], trial = dt$trial[ix[1]])
+    if (!identical(ax$rule, "short_epoch_250hz")) fail(paste(sub, "did not use the short-epoch rule"))
     t <- ax$t
     pup <- dt$pupil[ix]
     in_b0 <- is.finite(t) & is.finite(pup) & t >= -0.5 & t < 0
@@ -141,10 +108,10 @@ for (sub in subjects) {
     n_trials <- n_trials + 1L
   }
 }
-if (n_trials < 50) fail(paste("Too few Dec 25 trials in the average:", n_trials))
+if (n_trials < 50) fail(paste("Too few December 25 trials in the average:", n_trials))
 mean_y <- sums / pmax(counts, 1)
 dip_at <- grid[which.min(mean_y)]
-if (dip_at < 3.0 || dip_at > 3.4) fail(sprintf("Dip at %.2f s is outside 3.0-3.4 (n = %d)", dip_at, n_trials))
-pass(sprintf("Dec 25 segment axis, 5-subject ADT dip at %.2f s (%d trials)", dip_at, n_trials))
+if (dip_at < 3.0 || dip_at > 3.6) fail(sprintf("Dip at %.2f s is outside 3.0-3.6 (n = %d)", dip_at, n_trials))
+pass(sprintf("December 25 250 Hz axis, 5-subject ADT dip at %.2f s (%d trials)", dip_at, n_trials))
 
 message("All time-axis guard tests passed.")
