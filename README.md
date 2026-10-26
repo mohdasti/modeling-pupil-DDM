@@ -6,230 +6,111 @@
 [![Quarto](https://img.shields.io/badge/Quarto-1.7+-0F4C75?logo=quarto&logoColor=white)](https://quarto.org/)
 [![Release](https://img.shields.io/github/v/release/mohdasti/modeling-pupil-DDM?include_prereleases&label=Pre-publication)](https://github.com/mohdasti/modeling-pupil-DDM/releases/tag/Pre-publication)
 
-Hierarchical Bayesian drift-diffusion modeling (DDM) with concurrent pupillometry in older adults performing auditory/visual change-detection under low vs. high isometric handgrip (5% vs. 40% MVC). This repo holds the **Chapter 3 analysis pipeline**, manuscript source, and figure scripts for the BAP effort–arousal–decision project.
+Hierarchical Bayesian drift-diffusion modeling with concurrent pupillometry. Older adults judged whether two tones or two visual patterns were the same or different while holding a handgrip at low (5% MVC) or high (40% MVC) force. This repository holds the Chapter 3 analysis, the current chapter source, and the figure scripts for the BAP effort–decision project.
 
-> **Pre-publication checkpoint:** GitHub release [`Pre-publication`](https://github.com/mohdasti/modeling-pupil-DDM/releases/tag/Pre-publication) on `master` (June 2026; archived on [Zenodo](https://doi.org/10.5281/zenodo.18205122)). Raw trial data and large `.rds` fits are **not** in git; see [Reproducing results](#reproducing-results).
+The chapter on `master` is [`reports/chap3_revised.qmd`](reports/chap3_revised.qmd): *Physical Effort Shifts the Decision Criterion, Not Evidence Quality, in Older Adults*. The June 2026 [`Pre-publication`](https://github.com/mohdasti/modeling-pupil-DDM/releases/tag/Pre-publication) release, archived on [Zenodo](https://doi.org/10.5281/zenodo.18205122), is an earlier checkpoint. Its report is [`reports/chap3_ddm_results.qmd`](reports/chap3_ddm_results.qmd) and its fits are run `20260226_092110`. Those numbers are superseded. The refit history is in [`docs/ch3_analysis_decision_record.md`](docs/ch3_analysis_decision_record.md).
+
+Raw trial data and large `.rds` fits are not in git.
 
 ---
 
-## Study & current results (primary run)
+## Current chapter
 
 | Item | Value |
 |------|--------|
-| **Primary run ID** | `20260226_092110` |
-| **RT convention** | Probe-onset–locked; cue-locked RT ≥ 0.20 s exclusion |
-| **Behavioral *N*** | 17,857 trials · 67 participants |
-| **Primary model** | Additive difficulty + effort on *v* and *a*; effort + task on *z*; *t₀* intercept-only |
-| **Pupil subset *N*** | 12,287 trials · 59 participants (same-*N* nested pupil models) |
+| **Source** | [`reports/chap3_revised.qmd`](reports/chap3_revised.qmd) |
+| **Helpers** | [`R/ch3_report_helpers.R`](R/ch3_report_helpers.R) |
+| **References** | [`reports/references.bib`](reports/references.bib) |
+| **Tables and inline numbers** | `output/ddm_refits/runs/final_20261016/tables/final/` |
+| **Figures** | `output/ddm_refits/runs/final_20261016/figures/final/` |
+| **Behavioral sample** | 17,857 trials, 67 participants. Primary model M4. Unaffected by the pupil time-axis error. |
+| **Pupil sample to cite** | r12 (`r12_20261025_204146`): 6,299 trials, 51 participants. |
 
-**Registered hypotheses (primary additive model):**
+High effort shifted evidence accumulation toward "same" responses. It did not reduce evidence quality overall, and it did not meaningfully change boundary separation or the starting point. Pupil responses during the decision were larger on trials with wider boundaries. No pupil measure taken before the decision predicted boundary separation. Cite the rendered chapter for the estimates. The decision record's earlier "cite r8" section is superseded by the 2026-10-25 note at the end of that file.
 
-| Hypothesis | Result (link scale) |
-|------------|---------------------|
-| **H1** effort → drift *v* | Supported — β ≈ −0.057, 95% CrI excludes 0 |
-| **H2** effort → boundary *a* | Directionally positive but ROPE-negligible (100% mass within ±0.05 log-scale ROPE); not interpreted as strategic caution |
-| **H4** effort → bias *z* | Near-zero null — CrI spans 0 |
-| **H3** effort → *t₀* | Not testable in primary model (response-signal design) |
-| **Pupil → *v* / *z*** | Near-zero coefficients; same-*N* LOO shows no predictive gain; measurement-limited under sustained grip |
+**Do not cite r8, r9, or r10 pupil results.** Those fits used a compressed time axis (`invalid_time_axis`). Behavioral models from the same period are unaffected. A dilation-speed filter and a re-fit of the affected pupil models are deferred to the journal version. The dissertation uses r12.
 
-Full prose, tables, and appendix diagnostics: [`reports/chap3_ddm_results.qmd`](reports/chap3_ddm_results.qmd) → render to HTML/PDF.
+The manuscript is the default render. The dissertation adds the behavioral mixed-effects models, the extended supplement, and the analysis-provenance section. Pass `-M dissertation:true` for that pair.
+
+Rendered copies in `reports/`:
+
+| File | Version |
+|------|---------|
+| `chap3_revised.pdf`, `chap3_revised.docx` | Manuscript |
+| `chap3_revised_dissertation.pdf`, `chap3_revised_dissertation.docx` | Dissertation |
 
 ---
 
-## Reproducing results
+## Rendering the chapter
 
-### Minimal path (manuscript only)
-
-If you already have fitted models and tables on disk (from a colleague, GCP download, or prior local run):
+From the repository root, with `inline_values.rds` and the chapter figures already in `tables/final/` and `figures/final/`:
 
 ```bash
-git clone https://github.com/mohdasti/modeling-pupil-DDM.git
-cd modeling-pupil-DDM
+quarto render reports/chap3_revised.qmd --to docx
+quarto render reports/chap3_revised.qmd --to pdf
 
-# Ensure run_dir tables exist (download from GCP or prior local run), then sync publish PPC/QA exports:
-DDM_RUN_ID=20260226_092110 Rscript scripts/sync_publish_from_run.R
-DDM_RUN_ID=20260226_092110 Rscript scripts/R/make_publish_gate.R
-Rscript scripts/regenerate_task_sensitivity_table.R
-
-# Regenerate five main figures (requires .rds paths in manuscript_paths.R)
-Rscript 06_visualization/publication_figures/fig2_central_result.R   # or all fig1–fig5
-
-# Render Chapter 3 report (reads DDM tables from params$run_dir in the QMD)
-quarto render reports/chap3_ddm_results.qmd
+quarto render reports/chap3_revised.qmd --to docx \
+  -M dissertation:true --output chap3_revised_dissertation.docx
+quarto render reports/chap3_revised.qmd --to pdf \
+  -M dissertation:true --output chap3_revised_dissertation.pdf
 ```
 
-Outputs: `reports/chap3_ddm_results.html` (and PDF/DOCX if configured).
+Render the manuscript PDF last. Quarto can remove `reports/chap3_revised.pdf` when a later format of the same input is rendered. The dissertation `--output` files are written at the repository root; move them into `reports/`.
 
-### Full path (from trial-level data)
+The chapter reads every CSV in `params$tables_dir` and `inline_values.rds`. It does not refit models. The `pupil_run` field in the qmd YAML is not the cited pupil run. The cited pupil numbers are the r12 values stored in `inline_values.rds`.
 
-1. **Behavioral DDM refit** — primary run under `output/ddm_refits/runs/20260226_092110/` (see `scripts/ddm_refit_gcp.R` for GCP workflow). After each refit, sync publish artifacts and PPC gates:
-   ```bash
-   DDM_RUN_ID=20260226_092110 Rscript scripts/sync_publish_from_run.R
-   DDM_RUN_ID=20260226_092110 Rscript scripts/R/make_publish_gate.R
-   Rscript scripts/regenerate_task_sensitivity_table.R
-   ```
-   The QMD reads DDM tables from `params$run_dir` only; `output/publish/` holds PPC/QA/exploratory exports (see `output/publish/ddm_run_manifest.csv`).
-2. **Pupil trial table** — `scripts/build_ddm_pupil_ready_data.R` → merged behavioral + pupil features.
-3. **Pupil-DDM fits** — `scripts/fit_pupil_ddm_models.R` (nested m0–m3 on pupil subset).
-4. **Postprocess** — `scripts/postprocess_pupil_ddm_models.R` → `output/ddm_pupil/tables/`.
-5. **Pack for transfer** — `scripts/pack_pupil_ddm_for_download.sh` (VM → local).
+Figure scripts for the current panels live in [`scripts/final/F_figures.R`](scripts/final/F_figures.R). That file still contains an older pupil time-course data path, so do not run the whole script to refresh the chapter figures.
 
-GCP details: [`docs/GCP_PUPIL_FIT_GUIDE.md`](docs/GCP_PUPIL_FIT_GUIDE.md), [`docs/GCP_UPLOAD_GUIDE.md`](docs/GCP_UPLOAD_GUIDE.md).
+---
 
-### What is (and is not) versioned
+## What is versioned
 
-| Tracked in git | Local / GCP only (`.gitignore`) |
+| Tracked in git | Local or VM only (`.gitignore`) |
 |----------------|----------------------------------|
-| QMD, R scripts, configs | `*.rds` model objects |
-| `output/figures/manuscript_palette/` (supplementary PNG/PDF) | `output/ddm_refits/runs/*/models/` |
-| | `output/ddm_refits/runs/*/tables/` (sync via `scripts/sync_publish_from_run.R`) |
-| | `output/publish/` (PPC/QA exports; regenerate after each refit) |
-| | Raw BAP behavioral/pupil files |
+| `reports/chap3_revised.qmd`, helpers, `references.bib` | `*.rds` model objects |
+| Manuscript and dissertation `.docx` | `*.pdf` |
+| `T10b_convergence_display.csv` | Other tables under `output/` |
+| Decision record | Raw BAP files and `data/analysis_ready/` |
 
 ---
 
-## Key paths
-
-```
-output/ddm_refits/runs/20260226_092110/
-├── models/additive__probe_onset_locked__thr0.20.rds   # primary behavioral fit
-├── models/pupil_interaction__probe_onset_locked__thr0.20.rds
-└── tables/                                            # fixef, LOO, contrasts, PPC
-
-output/ddm_pupil/tables/
-├── pupil_loo_summary.csv
-├── pupil_effects_key_terms.csv
-├── model_info.csv
-└── pupil_fixef_link_scale_pupil_only.csv
-
-reports/chap3_ddm_results.qmd                          # Chapter 3 manuscript (Quarto)
-06_visualization/publication_figures/                  # fig1–fig5 scripts
-R/colors_manuscript.R                                  # shared palette
-```
-
----
-
-## Manuscript figures
-
-Two tiers:
-
-| Tier | Scripts | Output | In QMD |
-|------|---------|--------|--------|
-| **Main** (5 multi-panel) | `06_visualization/publication_figures/fig{1–5}_*.R` | `output/figures/manuscript/` | `main_fig()` |
-| **Supplementary** | `scripts/R/fig_*.R`, `scripts/render_manuscript_figures.R` | `output/figures/manuscript_palette/` | `fig_path()` / appendix |
-
-```bash
-# Run each main figure script (paths in manuscript_paths.R)
-Rscript 06_visualization/publication_figures/fig1_design_schematic.R
-Rscript 06_visualization/publication_figures/fig2_central_result.R
-Rscript 06_visualization/publication_figures/fig3_parameter_forest.R
-Rscript 06_visualization/publication_figures/fig4_temporal_dynamics.R
-Rscript 06_visualization/publication_figures/fig5_individual_differences.R
-
-# Supplementary batch
-Rscript scripts/render_manuscript_figures.R
-```
-
-| Figure | Content |
-|--------|---------|
-| Fig 1 | Trial timeline, DDM schematic, predictor map |
-| Fig 2 | Drift/boundary by difficulty × effort; H1/H2 effort posteriors |
-| Fig 3 | Effort + difficulty contrast forests |
-| Fig 4 | Fatigue trajectories + choice-history coefficients |
-| Fig 5 | Brinley plot, paired drift, caterpillar |
-
-See [`06_visualization/publication_figures/README.md`](06_visualization/publication_figures/README.md).
-
----
-
-## Pupil-linked DDM (nested trial-level models)
-
-Four models on the **same** pupil-available trial set:
-
-1. **m0** — behavioral baseline (no pupil)
-2. **m1** — pupil → bias *z*
-3. **m2** — pupil → drift *v* + bias *z*
-4. **m3** — pupil × difficulty on *v*
-
-```bash
-Rscript scripts/fit_pupil_ddm_models.R          # fit (long; use GCP VM)
-Rscript scripts/postprocess_pupil_ddm_models.R  # LOO, tables, figures
-```
-
-Interpretation framing: [`docs/OPUS_PUPIL_FRAMING_PACKET.md`](docs/OPUS_PUPIL_FRAMING_PACKET.md).
-
----
-
-## Repository layout (abbreviated)
+## Repository layout
 
 ```
 modeling-pupil-DDM/
-├── reports/chap3_ddm_results.qmd      # Chapter 3 Quarto source
-├── 06_visualization/publication_figures/  # Main fig scripts + manuscript_paths.R
-├── R/colors_manuscript.R              # Manuscript color system
-├── scripts/
-│   ├── sync_publish_from_run.R        # copy run_dir tables → output/publish + manifest
-│   ├── regenerate_task_sensitivity_table.R
-│   ├── fit_pupil_ddm_models.R
-│   ├── postprocess_pupil_ddm_models.R
-│   ├── build_ddm_pupil_ready_data.R
-│   ├── ddm_refit_gcp.R
-│   ├── render_manuscript_figures.R
-│   └── R/                             # Supplementary fig + extract scripts (incl. make_publish_gate.R)
-├── output/
-│   ├── ddm_refits/runs/20260226_092110/
-│   ├── ddm_pupil/
-│   ├── figures/manuscript_palette/    # tracked supplementary figures
-│   └── publish/                       # audit & publish tables
-├── docs/                              # GCP guides, integration notes, framing packet
-├── 01_data_preprocessing/ … 07_manuscript/   # staged pipeline wrappers
-└── data/                              # analysis-ready CSVs (large files gitignored)
+├── reports/chap3_revised.qmd          # current chapter
+├── reports/references.bib
+├── reports/chap3_ddm_results.qmd      # June 2026 checkpoint; do not cite
+├── R/ch3_report_helpers.R             # chapter tables and formatters
+├── scripts/final/                     # export, inline values, figure script
+├── docs/ch3_analysis_decision_record.md
+├── output/ddm_refits/runs/final_20261016/
+│   ├── tables/final/                  # what the chapter reads
+│   └── figures/final/
+├── 06_visualization/publication_figures/  # pre-publication fig1–fig5
+└── data/                              # analysis-ready files; large inputs gitignored
 ```
 
-Numbered folders (`01_`–`07_`) are thin wrappers around `scripts/`; canonical logic lives in `scripts/`.
+Numbered folders (`01_`–`07_`) and the Makefile targets (`make report`, `make all`) are the older pipeline. They do not build the current chapter.
 
 ---
 
 ## Installation
 
-**Prerequisites:** R ≥ 4.0, [Quarto](https://quarto.org/), optional Python/MATLAB for upstream preprocessing.
+**Prerequisites:** R ≥ 4.0 and [Quarto](https://quarto.org/). A TeX installation with XeLaTeX is required for the PDF. The manuscript font is STIX Two Text.
 
 ```bash
 git clone https://github.com/mohdasti/modeling-pupil-DDM.git
 cd modeling-pupil-DDM
 
-conda env create -f environment.yml   # or: pip install -r requirements.txt
+conda env create -f environment.yml
 Rscript scripts/setup/install_r_packages.R   # if present
+cp config/paths_config.R.example config/paths_config.R
 ```
 
-**Core R packages:** `brms`, `tidyverse`, `tidybayes`, `ggplot2`, `patchwork`, `here`, `knitr`, `gt`, `kableExtra`, `quarto`.
+**Core R packages:** `brms`, `tidyverse`, `tidybayes`, `ggplot2`, `patchwork`, `here`, `knitr`, `gt`, `kableExtra`.
 
-Copy path templates before first local run:
-
-```bash
-cp config/paths_config.R.example config/paths_config.R   # edit for your machine
-```
-
----
-
-## Quality assurance
-
-After a behavioral refit or before rendering the manuscript:
-
-```bash
-DDM_RUN_ID=20260226_092110 Rscript scripts/sync_publish_from_run.R
-DDM_RUN_ID=20260226_092110 Rscript scripts/R/make_publish_gate.R
-Rscript scripts/regenerate_task_sensitivity_table.R
-quarto render reports/chap3_ddm_results.qmd
-```
-
-Check `output/publish/ddm_run_manifest.csv` — `run_id` must match `params$run_dir` in the QMD.
-
-Legacy design/audit scripts (optional):
-
-```bash
-Rscript scripts/R/audit_design_coding.R   # → output/publish/audit/
-```
+Fitting the models requires the trial tables and a machine with Stan. Those fits are not part of rendering the chapter. GCP notes for earlier runs: [`docs/GCP_PUPIL_FIT_GUIDE.md`](docs/GCP_PUPIL_FIT_GUIDE.md), [`docs/GCP_UPLOAD_GUIDE.md`](docs/GCP_UPLOAD_GUIDE.md).
 
 ---
 
@@ -237,28 +118,17 @@ Rscript scripts/R/audit_design_coding.R   # → output/publish/audit/
 
 | Doc | Purpose |
 |-----|---------|
-| [`docs/OPUS_PUPIL_FRAMING_PACKET.md`](docs/OPUS_PUPIL_FRAMING_PACKET.md) | Pupil Results §3.3 framing + key numbers |
-| [`docs/GCP_PUPIL_FIT_GUIDE.md`](docs/GCP_PUPIL_FIT_GUIDE.md) | Fit pupil models on GCP VM |
-| [`docs/GCP_UPLOAD_GUIDE.md`](docs/GCP_UPLOAD_GUIDE.md) | Upload/download run artifacts |
-| [`docs/DDM_CHAPTER_INTEGRATION.md`](docs/DDM_CHAPTER_INTEGRATION.md) | QMD integration notes |
-| [`docs/PIPELINE_README.md`](docs/PIPELINE_README.md) | Legacy pipeline overview |
-| [`06_visualization/publication_figures/README.md`](06_visualization/publication_figures/README.md) | Main figure paths & run order |
-
----
-
-## Makefile (optional shortcuts)
-
-```bash
-make help      # list targets
-make report    # generate reports / tables
-make all       # full pipeline (if configured)
-```
+| [`docs/ch3_analysis_decision_record.md`](docs/ch3_analysis_decision_record.md) | Which run to cite, and why r8–r10 pupil results are invalid |
+| [`docs/DDM_CHAPTER_INTEGRATION.md`](docs/DDM_CHAPTER_INTEGRATION.md) | Earlier QMD integration notes |
+| [`docs/GCP_PUPIL_FIT_GUIDE.md`](docs/GCP_PUPIL_FIT_GUIDE.md) | Fitting on a GCP VM |
+| [`docs/GCP_UPLOAD_GUIDE.md`](docs/GCP_UPLOAD_GUIDE.md) | Moving run artifacts on and off the VM |
+| [`06_visualization/publication_figures/README.md`](06_visualization/publication_figures/README.md) | Pre-publication figure scripts |
 
 ---
 
 ## Citation & contact
 
-**Software (Zenodo):** [10.5281/zenodo.18205122](https://doi.org/10.5281/zenodo.18205122) (concept; always latest) · [10.5281/zenodo.20621752](https://doi.org/10.5281/zenodo.20621752) (this `Pre-publication` snapshot)
+**Software (Zenodo):** [10.5281/zenodo.18205122](https://doi.org/10.5281/zenodo.18205122) (concept) · [10.5281/zenodo.20621752](https://doi.org/10.5281/zenodo.20621752) (the June 2026 `Pre-publication` snapshot, not the chapter now on `master`)
 
 ```bibtex
 @software{modeling_pupil_ddm,
@@ -281,13 +151,13 @@ make all       # full pipeline (if configured)
 
 | Version | Date | Notes |
 |---------|------|-------|
-| **Pre-publication** | 2026-06 | `Pre-publication` tag: canonical run `20260226_092110`, Chapter 3 consistency fixes, publish sync workflow, H2 ROPE framing |
-| Pre-publication (v1) | 2026-06 | Tag on `c46f8e9`: pupil-DDM Phase B complete, §3.3 prose, Opus audit fixes |
+| **Chapter on master** | 2026-10 | `reports/chap3_revised.qmd` is the chapter. Behavioral results from `final_20261016` (M4; 17,857 trials, 67 participants). Pupil results from r12 (6,299 trials, 51 participants). r8–r10 pupil results are invalid. |
+| Pre-publication | 2026-06 | Tag `Pre-publication`: run `20260226_092110` and `reports/chap3_ddm_results.qmd`. Superseded for citation. |
 | v1.3.1 | 2026-06-05 | Consolidated main figures `fig1`–`fig5`; `manuscript_paths.R` |
 | v1.3.0 | 2026-06-04 | Centralized `colors_manuscript.R`; `manuscript_palette/` versioning |
-| v1.2.0 | 2024-12 | Early pupil–DDM integration scripts; Chapter 3 QMD expansion |
+| v1.2.0 | 2024-12 | Early pupil–DDM integration scripts |
 | v1.0.0 | 2024-01 | Initial public pipeline |
 
 ---
 
-**Note:** This is research code for a dissertation chapter moving toward journal submission. Verify paths and model artifacts after clone; regenerate fits or obtain `output/ddm_refits/` and `output/ddm_pupil/` from the release maintainer if needed.
+This is research code for a dissertation chapter. After cloning, confirm that `output/ddm_refits/runs/final_20261016/tables/final/inline_values.rds` and the figures in `figures/final/` are present before rendering.
