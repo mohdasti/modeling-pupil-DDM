@@ -136,7 +136,7 @@ if (isTRUE(params$draft_watermark)) {
 
 # Abstract {.unnumbered}
 
-Everyday decisions are often made during physical effort, but it is unclear how physical effort changes decision-making in older adults. Effort could reduce the quality of the evidence people accumulate, change how much evidence they require before responding, or bias them toward one response. We tested these possibilities in `r v("n_final")` older adults who judged whether two tones or two visual patterns were the same or different while holding a handgrip at low (5%) or high (40%) force, with pupil size recorded throughout. A hierarchical drift-diffusion model separated the components of each decision. High effort did not reduce the quality of the evidence, and its effects did not depend on how difficult the discrimination was. Instead, high effort shifted evidence accumulation toward "same" responses on every trial, which lowered accuracy on the most difficult trials with a different probe. Effort did not meaningfully change how much evidence participants required, and it did not change their starting bias. `r ch3_pending("[PENDING r12: two sentences on what the pupil showed.]")` Physical effort therefore changed how older adults mapped evidence onto responses, not how well they took in that evidence.
+Everyday decisions are often made during physical effort, but it is unclear how physical effort changes decision-making in older adults. Effort could reduce the quality of the evidence people accumulate, change how much evidence they require before responding, or bias them toward one response. We tested these possibilities in `r v("n_final")` older adults who judged whether two tones or two visual patterns were the same or different while holding a handgrip at low (5%) or high (40%) force, with pupil size recorded throughout. A hierarchical drift-diffusion model separated the components of each decision. High effort did not reduce the quality of the evidence overall, although it lowered evidence for "different" slightly more on the hardest discriminations than on the easiest. Its main effect was to shift evidence accumulation toward "same" responses on every trial, which lowered accuracy on the most difficult trials with a different probe. Effort did not meaningfully change how much evidence participants required, and it did not change their starting bias. High effort increased pupil size during the grip in the auditory task only. Pupil responses during the decision were larger on trials with wider boundaries, but no pupil measure taken before the decision predicted boundary separation. Physical effort therefore mainly changed how older adults mapped evidence onto responses, rather than how well they took in that evidence.
 
 # 1 Introduction {.unnumbered}
 
@@ -217,13 +217,13 @@ M4 was compared with nested models that differed in how effort, stimulus type an
 
 ### 2.7.3 Priors and estimation {.unnumbered}
 
-Priors were weakly informative on the link scale (@supptbl-priors). The boundary-separation intercept was bounded between 0.3 and 5. Non-decision time was bounded between 0.02 s and 0.01 s below the shortest RT. Models used `r v("n_chains")` chains of `r fmt_int(v("n_iter"))` iterations, the first `r fmt_int(v("n_warmup"))` of them warmup (adapt_delta = `r fmt_num(v("adapt_delta"), 2)`, maximum tree depth `r v("max_treedepth")`). `r v("refit_models")` did not meet the convergence criterion at this length and were refit with `r fmt_int(v("n_iter_refit"))` iterations. A model was accepted if every parameter had R̂ < 1.01, bulk and tail effective sample sizes of at least 400 and no divergent transitions [@vehtari2021rank]. Table S4 gives the diagnostics for every model.
+Priors were weakly informative on the link scale (@supptbl-priors). The boundary-separation intercept was bounded between 0.3 and 5. Non-decision time was bounded between 0.02 s and 0.01 s below the shortest RT. Models used `r v("n_chains")` chains of `r fmt_int(v("n_iter"))` iterations, the first `r fmt_int(v("n_warmup"))` of them warmup (adapt_delta = `r fmt_num(v("adapt_delta"), 2)`, maximum tree depth `r v("max_treedepth")`). `r v("refit_models")` did not meet the convergence criterion at this length and were refit with `r fmt_int(v("n_iter_refit"))` iterations. A model was accepted if every parameter had R̂ < 1.01, bulk and tail effective sample sizes of at least 400 and no divergent transitions [@vehtari2021rank]. Table S5 gives the diagnostics for every model.
 
 ## 2.8 Pupil-linked models {.unnumbered}
 
 Each pupil-linked model added one pupil predictor to M4. Each was compared with an M4 baseline fit to the same trials. The TEPR was entered on the starting point (P1), on drift with a TEPR × stimulus term (P2) or on boundary separation (P3). The pre-squeeze baseline was entered on the starting point (P4) and on boundary separation (P5). Because the TEPR window overlapped the response, three further tests asked whether a TEPR–boundary association could reflect decision duration rather than a pupil change before the decision. First, P3 was refit after removing the slowest 20% of trials in each participant × task cell (P3 without the slowest trials). Second, boundary separation was predicted from pupil size in the 0.5 s before the response, a window that ends before the response (P7). Third, boundary separation was predicted from measures that precede the decision: the previous trial's TEPR within a block (P6) and the grip-period pupil size (P8).
 
-Effort effects on pupil size were tested with paired *t* tests on participant means within each task. Only participants with valid trials at both effort levels were included.
+Effort effects on pupil size were tested with paired *t* tests on participant means within each task. The TEPR was compared between effort levels relative to both the pre-probe and the pre-squeeze baseline. Only participants with valid trials at both effort levels were included.
 
 ## 2.9 Statistical inference {.unnumbered}
 
@@ -237,7 +237,7 @@ Observed accuracy was analyzed with a binomial generalized linear mixed model (s
 
 ## 3.1 Primary diffusion model {.unnumbered}
 
-Allowing drift rate to differ between tasks improved out-of-sample prediction (M4 vs. M3: `r elpd_s("delta_elpd_M3_vs_M4", "se_delta_elpd_M3_vs_M4", flip = TRUE)`), whereas allowing the effort effects to differ between tasks did not (M4b vs. M4: `r elpd_s("delta_elpd_M4b_vs_M4", "se_delta_elpd_M4b_vs_M4")`; @supptbl-model-comparison). Allowing the effort effects on drift and boundary separation to vary with difficulty did not improve prediction either (M2 vs. M1: `r elpd_s("delta_elpd_M2_vs_M1", "se_delta_elpd_M2_vs_M1")`).
+Allowing drift rate to differ between tasks improved out-of-sample prediction (M4 vs. M3: `r elpd_s("delta_elpd_M3_vs_M4", "se_delta_elpd_M3_vs_M4", flip = TRUE)`), whereas allowing the effort effects to differ between tasks did not (M4b vs. M4: `r elpd_s("delta_elpd_M4b_vs_M4", "se_delta_elpd_M4b_vs_M4")`; @supptbl-model-comparison).
 
 **Stimulus and task effects.** Drift was negative on Standard trials and positive on Easy trials (@fig-condition-params). Drift on Hard trials was also negative (low effort; ADT: `r cell_s("v_cell_ADT_Hard")`; VDT: `r cell_s("v_cell_VDT_Hard")`). Relative to Standard trials, drift was higher on Hard (`r eff("diff_hard_v")`) and Easy trials (`r eff("diff_easy_v")`), and both differences were larger in the VDT than in the ADT (Hard × VDT: `r eff("task_hard_x_vdt")`; Easy × VDT: `r eff("task_easy_x_vdt")`). Boundary separation was narrower on Hard (`r eff("diff_hard_bs", pct = TRUE)`) and Easy trials (`r eff("diff_easy_bs", pct = TRUE)`) than on Standard trials, and it did not differ between tasks (`r eff("task_bs", rope = TRUE)`). In both tasks the starting point lay above 0.5, toward the "different" boundary (ADT: *z* = `r prob_s("z_ADT")`; VDT: *z* = `r prob_s("z_VDT")`), and it was slightly lower in the VDT (`r eff("task_bias")`).
 
@@ -249,7 +249,7 @@ Allowing drift rate to differ between tasks improved out-of-sample prediction (M
 suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F2_condition_parameters.png"), mustWork = TRUE), error = FALSE))
 ```
 
-**Effort effects.** High effort shifted drift toward "same" on all trials (drift criterion: `r eff("crit")`; @fig-effort-forest; @tbl-effort-effects). The effort × stimulus term, which indexes evidence quality, was close to zero (`r eff("qual")`). Drift decreased on trials with a different comparison stimulus (`r eff("drift_diff_trials")`); on Standard trials the change was smaller, and its interval included zero (`r eff("drift_same_trials")`). High effort widened the boundary by `r pct_s("bs")`, with the whole posterior inside the ROPE (`r fmt_rope("bs")`). The starting point did not change (`r eff("bias", rope = TRUE)`).
+**Effort effects.** High effort shifted drift toward "same" on all trials (drift criterion: `r eff("crit")`; @fig-effort-forest; @tbl-effort-effects). The effort × stimulus term, which indexes evidence quality, was close to zero (`r eff("qual")`). Drift decreased on trials with a different comparison stimulus (`r eff("drift_diff_trials")`); on Standard trials the change was smaller, and its interval included zero (`r eff("drift_same_trials")`). High effort widened the boundary by `r pct_s("bs")`, with the whole posterior inside the ROPE (`r fmt_rope("bs")`). The starting point did not change (`r eff("bias", rope = TRUE)`). Allowing the effort effects on drift and boundary separation to vary with difficulty did not improve prediction (M2 vs. M1: `r elpd_s("delta_elpd_M2_vs_M1", "se_delta_elpd_M2_vs_M1")`). In M2, the effort effect on drift was more negative on Hard than on Easy trials (Hard − Easy: `r eff("m2_v_hard_minus_easy_x_high")`), whereas the corresponding contrast on boundary separation included zero (`r eff("m2_bs_hard_minus_easy_x_high")`; @supptbl-m2-interactions).
 
 Under high effort, observed accuracy was lower on Hard trials (High − Low: `r acc_s("acc_high_low_Hard")`). It was slightly, but not significantly, higher on Standard trials (`r acc_s("acc_high_low_Standard")`) and unchanged on Easy trials (`r acc_s("acc_high_low_Easy")`; @supptbl-acc-contrasts).
 
@@ -273,22 +273,23 @@ The drift criterion shift was unchanged when the effort effects were allowed to 
 
 ## 3.3 Pupil-linked decision dynamics {.unnumbered}
 
-**Effort and pupil size.** `r ch3_pending("[PENDING r12: grip and TEPR effort effects; effort effects in the pupil sample.]")`
+**Effort and pupil size.** High effort increased pupil size during the grip in the ADT (`r pt_s("grip_high_low_ADT")`) and did not differ reliably in the VDT (`r pt_s("grip_high_low_VDT")`). Relative to the pre-probe baseline, the TEPR was smaller under high effort in both tasks (ADT: `r pt_s("tepr_high_low_ADT_B1")`; VDT: `r pt_s("tepr_high_low_VDT_B1")`). Relative to the pre-squeeze baseline, it did not differ between effort levels (ADT: `r pt_s("tepr_high_low_ADT_B0")`; VDT: `r pt_s("tepr_high_low_VDT_B0")`; @supptbl-pupil-descriptives; @suppfig-tepr). In the pupil sample, high effort widened the boundary (`r eff("P0_bs", pct = TRUE)`), and the drift criterion shift had the same sign as in the full sample, with an interval that included zero (`r eff("P0_crit")`).
 
-**Pupil predictors of decision parameters.** `r ch3_pending("[PENDING r12: P1–P3.]")`
+**Pupil predictors of decision parameters.** Each within-person SD increase in TEPR was associated with a `r pct_s("P3_bs")` wider boundary, and adding TEPR improved out-of-sample prediction (P3: `r fmt_elpd("delta_elpd_P3_vs_P0")`; @fig-pupil-boundary; @tbl-pupil-ordering). TEPR did not predict the starting point (P1: `r eff("P1_bias")`, `r fmt_elpd("delta_elpd_P1_vs_P0")`) or drift (P2, TEPR: `r eff("P2_drift_tepr")`; TEPR × stimulus: `r eff("P2_drift_tepr_x_stim")`; `r fmt_elpd("delta_elpd_P2_vs_P0")`; @supptbl-pupil-models).
 
-**Timing of the TEPR–boundary association.** `r ch3_pending("[PENDING r12: TEPR–RT correlation; P3 without the slowest trials; P5–P8.]")`
+**Timing of the TEPR–boundary association.** TEPR correlated with RT within participants (`r fmt_r(v("tepr_rt_r", "r"), v("tepr_rt_r", "lo"), v("tepr_rt_r", "hi"))`). After the slowest 20% of trials in each participant and task were removed, each SD increase in TEPR was associated with a `r pct_s("P3_rt_bs")` wider boundary, and the predictive gain was less than twice its standard error (P3 without slowest trials: `r fmt_elpd("delta_elpd_P3rt_vs_P0rt")`). Pupil size in the 0.5 s before the response was associated with wider boundaries and improved prediction (P7: `r pct_s("P7_bs")`, `r fmt_elpd("delta_elpd_P7_vs_P0pre")`). The measures taken before the decision did not predict boundary separation: previous-trial TEPR (P6: `r pct_s("P6_bs")`, `r fmt_elpd("delta_elpd_P6_vs_P0lag")`), pre-squeeze baseline pupil (P5: `r pct_s("P5_bs")`, `r fmt_elpd("delta_elpd_P5_vs_P0base")`) and grip-period pupil (P8: `r pct_s("P8_bs")`, `r fmt_elpd("delta_elpd_P8_vs_P0grip")`). The pre-squeeze baseline did not predict the starting point either (P4: `r eff("P4_bias_base")`, `r fmt_elpd("delta_elpd_P4_vs_P0base")`).
 
 ```{r}
 #| label: fig-pupil-boundary
-#| results: asis
-cat(ch3_pending("[PENDING r12: Figure 4]"))
+#| fig-cap: !expr cap_fig_pupil_boundary()
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "F5_pupil_boundary.png"), mustWork = TRUE), error = FALSE))
 ```
 
 ```{r}
 #| label: tbl-pupil-ordering
-#| results: asis
-cat(ch3_pending("[PENDING r12: Table 3]"))
+#| tbl-cap: "Pupil predictors of boundary separation"
+ch3_tbl_pupil_ordering(tbl$T8_pupil_ordering, footnote = note_tbl_pupil_ordering())
 ```
 
 ## 3.4 Model adequacy {.unnumbered}
@@ -297,11 +298,11 @@ M4 reproduced the observed choice proportions in `r v("ppc_choice_inside_M4")` o
 
 # 4 Discussion {.unnumbered}
 
-We asked whether concurrent physical effort changes how older adults make perceptual decisions by reducing the quality of the evidence they accumulate, by changing how much evidence they require, or neither. High effort did not reduce evidence quality. Instead it shifted drift toward "same" on all trials. That shift appeared as an accuracy cost on Hard trials and, if anything, a small gain on Standard trials. Effort widened boundary separation by about 2%, an amount inside the region of practical equivalence, and left the starting point unchanged. `r ch3_pending("[PENDING r12: one sentence on the pupil results.]")`
+We asked whether concurrent physical effort changes how older adults make perceptual decisions by reducing the quality of the evidence they accumulate, by changing how much evidence they require, or neither. In the primary model, high effort did not reduce evidence quality. Instead it shifted drift toward "same" on all trials. That shift appeared as an accuracy cost on Hard trials and, if anything, a small gain on Standard trials. Effort widened boundary separation by about 2%, an amount inside the region of practical equivalence, and left the starting point unchanged. In the pupil sample, trials with larger pupil responses during the decision had wider boundaries, whereas no pupil measure taken before the decision predicted boundary separation.
 
 ## 4.1 Drift criterion and evidence quality {.unnumbered}
 
-A capacity account predicts that a concurrent grip draws on resources needed to evaluate the stimulus [@wickens2008]. That would reduce the separation between drift on identical and different trials. The effort × stimulus term, which measures that separation, was close to zero, and its interval allowed a small decline but not a large one. A capacity cost concentrated on the hardest trials would also make the effort effect depend on difficulty [@kahneman1973attention], but allowing it to do so did not improve prediction (`r elpd_s("delta_elpd_M2_vs_M1", "se_delta_elpd_M2_vs_M1")`; @supptbl-model-comparison). The effort effect was a shift common to all trials. In diffusion-model terms, this is a change in the drift criterion: the reference point against which evidence is evaluated as favoring one response or the other [@ratcliff2008diffusion]. Because the upper boundary was "different," the criterion shift lowers drift on trials with a different probe, so those trials more often end in "same." On Standard trials the same shift moves drift further toward the correct response. The accuracy pattern follows from this. The Hard-trial cost is the change that a capacity account would predict, but here it arises from a change in the criterion rather than a loss of evidence quality. Accuracy alone cannot separate the two, because Hard trials were the trials on which the shift was most consequential.
+A capacity account predicts that a concurrent grip draws on resources needed to evaluate the stimulus [@wickens2008]. That would reduce the separation between drift on identical and different trials. The effort × stimulus term, which measures that separation, was close to zero, and its interval allowed a small decline but not a large one. A capacity cost concentrated on the hardest trials would also make the effort effect depend on difficulty [@kahneman1973attention]. In the model that allowed this, effort lowered drift more on Hard than on Easy trials, a contrast whose interval only just excluded zero, but allowing the effort effects to vary with difficulty did not improve prediction (`r elpd_s("delta_elpd_M2_vs_M1", "se_delta_elpd_M2_vs_M1")`; @supptbl-model-comparison; @supptbl-m2-interactions). The data therefore leave room for a small capacity cost on the hardest discriminations, in addition to the criterion shift. The main effort effect was a shift common to all trials. In diffusion-model terms, this is a change in the drift criterion: the reference point against which evidence is evaluated as favoring one response or the other [@ratcliff2008diffusion]. Because the upper boundary was "different," the criterion shift lowers drift on trials with a different probe, so those trials more often end in "same." On Standard trials the same shift moves drift further toward the correct response. The accuracy pattern follows from this. The Hard-trial cost is the change that a capacity account would predict, but here it arises mainly from a change in the criterion rather than a loss of evidence quality. Accuracy alone cannot separate the two, because Hard trials were the trials on which the shift was most consequential.
 
 The pattern is consistent with Chapter 1. Difficulty and effort did not interact in younger adults on any measure, which suggested that the two draw on separate resources at these effort levels. Chapter 2 reached the same conclusion from psychometric functions fitted to the same cohort's responses: high effort lowered "different" responses on identical and different trials alike, without making the psychometric function shallower. In the present older sample, effort likewise did not reduce evidence quality. This chapter has no younger comparison group, though, so it cannot show that the criterion shift is specific to older adults. The two chapters also differ in tasks and analyses.
 
@@ -309,11 +310,13 @@ The boundary results do not support either account of how effort changes caution
 
 ## 4.2 Effort and pupil size {.unnumbered}
 
-`r ch3_pending("[PENDING r12: the grip-period effort result, citing @zenon2014pupil.]")` `r ch3_pending("[PENDING r12: the post-probe result and one sentence of interpretation, without arousal.]")` One interpretation of effort-related pupil changes comes from adaptive gain theory, which links pupil size to activity of the locus coeruleus–noradrenaline system [@astonjones2005; @joshi2016]. Isometric handgrip engages this system [@mather2020isometric], and the locus coeruleus is vulnerable in aging [@mather2016locus]. This study, however, neither manipulated nor measured locus coeruleus activity during the task, and pupil size also covaries with activity outside the locus coeruleus [@joshi2016].
+High effort increased pupil size during the grip in the auditory task, as expected from the pupil's sensitivity to physical exertion [@zenon2014pupil]; in the visual task the difference had the same sign but was not reliable. After the probe, the pupil rose less under high effort from its level before the probe, but pupil size after the probe, measured from before the squeeze, did not differ between effort levels. The smaller response under high effort therefore reflects the higher level from which the pupil rose, not a smaller pupil after the probe, which is why the choice of baseline matters for effort comparisons [@mathot2018]. One interpretation of effort-related pupil changes comes from adaptive gain theory, which links pupil size to activity of the locus coeruleus–noradrenaline system [@astonjones2005; @joshi2016]. Isometric handgrip engages this system [@mather2020isometric], and the locus coeruleus is vulnerable in aging [@mather2016locus]. This study, however, neither manipulated nor measured locus coeruleus activity during the task, and pupil size also covaries with activity outside the locus coeruleus [@joshi2016].
 
 ## 4.3 Pupil size and boundary separation {.unnumbered}
 
-`r ch3_pending("[PENDING r12: Section 4.3.]")`
+Of the pupil measures, trial-wise TEPR had the strongest association with boundary separation, which parallels work in which larger pupil dilation on high-conflict choices predicted higher decision thresholds [@cavanagh2014]. Two results limit how far the association can be read as the pupil response setting the boundary. First, the TEPR window overlapped the response, TEPR correlated with RT within participants, and when the slowest trials were removed the association was about half as large and its predictive gain was no longer clearly above its standard error. A wider boundary lengthens the decision, and a longer decision lets more of the pupil response accumulate in the window. Second, none of the measures taken before the decision (the pre-squeeze baseline, the grip-period pupil and the previous trial's TEPR) predicted boundary separation.
+
+Pupil size in the 0.5 s before the response did predict wider boundaries, so the association is not confined to processing after the response. Because that window was placed relative to the response, however, it sampled later points of the evoked response on longer decisions, so it cannot separate a pupil change that set the boundary from one that accompanied a longer decision. Taken together, pupil size tracked the decision as it unfolded, not a state measured before it. A window fixed to the probe and ending before the earliest response would separate the two, but in this design the 0.35 s between probe onset and the response cue is too short for the pupil response to develop [@mathot2018].
 
 ## 4.4 Limitations and future directions {.unnumbered}
 
@@ -321,7 +324,7 @@ The boundary results do not support either account of how effort changes caution
 
 **Response-signal design.** Because participants waited for a cue, non-decision time absorbed the enforced delay and changed almost one-for-one with the RT cutoff. It cannot be interpreted as encoding or motor time, and effort effects on it were not tested. The design also limits how much RT information constrains boundary separation. A free-response version of the task would test the boundary results more directly.
 
-**Pupil sample and measure.** The pupil analyses used `r v("n_pupil_final_subjects")` of the `r v("n_final")` participants, selected on recording quality, and they are correlational at the level of trials. `r ch3_pending("[PENDING r12: whether the effort effects in the pupil sample match the full sample.]")` The TEPR window included post-decision processing, and the grip-period measure combined effort-related dilation with trial-to-trial variation in the force produced. Entering the recorded trial-wise grip force as a covariate would separate the two.
+**Pupil sample and measure.** The pupil analyses used `r v("n_pupil_final_subjects")` of the `r v("n_final")` participants, selected on recording quality, and they are correlational at the level of trials. In that subsample, the effort effects on the drift criterion and boundary separation had the same sign as in the full sample. The TEPR window included post-decision processing, and because the pre-probe baseline began shortly after the standard, it included the onset of the pupil response to the standard, so the TEPR measures the response to the probe on top of a still-rising response to the standard. The grip-period measure combined effort-related dilation with trial-to-trial variation in the force produced. Entering the recorded trial-wise grip force as a covariate would separate the two.
 
 **Design.** With two effort levels, the study cannot test non-monotonic effects of effort. Hard trials were answered incorrectly more often than correctly, so Hard-trial estimates reflect a strong bias toward "same" as well as low sensitivity. When participants with near-chance accuracy were excluded, the criterion shift kept its size, but its interval included zero. The effect is small and should be replicated.
 
@@ -331,7 +334,7 @@ The boundary results do not support either account of how effort changes caution
 
 ## 4.5 Conclusion {.unnumbered}
 
-In older adults, holding a 40% MVC grip during an auditory or visual same–different judgment shifted the drift criterion toward "same." It did not reduce the quality of the evidence accumulated or change response caution in a meaningful way. `r ch3_pending("[PENDING r12: the pupil sentence.]")`
+In older adults, holding a 40% MVC grip during an auditory or visual same–different judgment shifted the drift criterion toward "same." It did not reduce the overall quality of the evidence accumulated or change response caution in a meaningful way. Pupil responses during the decision were larger on trials with wider boundaries, but pupil size measured before the decision did not predict boundary separation.
 ```{=latex}
 \FloatBarrier
 ```
@@ -391,7 +394,7 @@ Prior distributions (link scale)
 
 :::
 
-Table S3 compares the nested behavioral models, and Table S4 lists convergence diagnostics for every model reported in the chapter. Tables S5 and S6 give the primary model's population-level estimates and its condition-level parameters.
+Table S3 compares the nested behavioral models, and Table S5 lists convergence diagnostics for every model reported in the chapter. Tables S6 and S7 give the primary model's population-level estimates and its condition-level parameters.
 
 ::: {#supptbl-model-comparison}
 
@@ -401,6 +404,17 @@ ch3_tbl_model_comparison(tbl$T5_model_comparison)
 ```
 
 Model comparison (PSIS-LOO). ΔELPD is relative to the primary model (M4); negative values indicate lower expected predictive accuracy. Model formulas are given in Section S6.
+
+:::
+
+::: {#supptbl-m2-interactions}
+
+```{r}
+#| echo: false
+ch3_tbl_m2_interactions(tbl$T_m2_interactions)
+```
+
+Difficulty × effort terms in M2
 
 :::
 
@@ -441,7 +455,7 @@ Posterior drift rate and boundary separation by task, stimulus type and effort (
 \FloatBarrier
 ```
 
-M4 reproduced choice proportions closely (Table S7; Figure S2A). RT quantiles fit less well: observed RTs for minority responses were slower than predicted (Figure S2B), the pattern expected when across-trial variability in drift is not modeled.
+M4 reproduced choice proportions closely (Table S8; Figure S2A). RT quantiles fit less well: observed RTs for minority responses were slower than predicted (Figure S2B), the pattern expected when across-trial variability in drift is not modeled.
 
 ::: {#suppfig-ppc}
 
@@ -486,7 +500,7 @@ Prior (bottom) and posterior (top) distributions of non-decision time in M4. The
 
 ## Robustness {.unnumbered}
 
-Table S8 reports the effort effects in each model variant, Table S9 the between-participant variability of the effort effects, and Table S10 the task-specific effort effects. Table S11 gives the observed accuracy contrasts cited in Section 3.1.
+Table S9 reports the effort effects in each model variant, Table S10 the between-participant variability of the effort effects, and Table S11 the task-specific effort effects. Table S12 gives the observed accuracy contrasts cited in Section 3.1.
 
 ::: {#supptbl-robustness}
 
@@ -538,15 +552,16 @@ Observed accuracy, high minus low effort, at each stimulus type. Estimates are f
 
 ## Pupil data {.unnumbered}
 
-`r ch3_pending("[PENDING r12]")`
+The pupil sample was `r fmt_int(v("n_pupil_final_trials"))` trials from `r v("n_pupil_final_subjects")` participants.
 
 ::: {#supptbl-pupil-models}
 
 ```{r}
 #| echo: false
-#| results: asis
-cat(ch3_pending("[PENDING r12]"))
+ch3_tbl_pupil_models(tbl$T7_pupil_models, tbl$T7_P0_effort_terms)
 ```
+
+Slopes from the pupil-linked models and the effort effects in that sample.
 
 :::
 
@@ -554,9 +569,10 @@ cat(ch3_pending("[PENDING r12]"))
 
 ```{r}
 #| echo: false
-#| results: asis
-cat(ch3_pending("[PENDING r12]"))
+ch3_tbl_pupil_descriptives(tbl$T9_pupil_descriptives)
 ```
+
+Mean pupil by effort and task. The pre-squeeze row is the mean over the TEPR window.
 
 :::
 
@@ -564,9 +580,11 @@ cat(ch3_pending("[PENDING r12]"))
 
 ```{r}
 #| echo: false
-#| results: asis
-cat(ch3_pending("[PENDING r12]"))
+#| out-width: "100%"
+suppressWarnings(knitr::include_graphics(normalizePath(file.path(params$figures_dir, "S_tepr_timecourse.png"), mustWork = TRUE), error = FALSE))
 ```
+
+Mean baseline-corrected pupil by task and effort. The grey band is the grip period and the blue band is the TEPR window. The solid line is probe onset and the dashed line is the response cue. Dotted lines: gauge offset (3.00 s) and standard onset (3.75 s). The brief dip at 6.02 s in the VDT comes from one sample in 58 trials from two participants whose recordings were segmented from eye-tracker event codes; it changes those trials' TEPR by less than 5% of a within-person SD.
 
 :::
 
@@ -582,7 +600,7 @@ cat(ch3_pending("[PENDING r12]"))
 
 ::: {.content-visible when-meta="dissertation"}
 
-Table S14 lists the formula of every model.
+Table S15 lists the formula of every model.
 
 ::: {#supptbl-formulas}
 
@@ -621,9 +639,7 @@ Random-effects reduction for the accuracy and RT models
 ch3_tbl_glmm(tbl$T13b_accuracy_glmm, "T13b")
 ```
 
-Accuracy model: fixed effects (binomial GLMM, logit scale)
-
-The High-effort coefficient is the Standard contrast on the logit scale. Cell contrasts are in @supptbl-acc-contrasts.
+Binomial mixed model of accuracy (logit scale)
 
 :::
 
@@ -634,9 +650,7 @@ The High-effort coefficient is the Standard contrast on the logit scale. Cell co
 ch3_tbl_glmm(tbl$T13c_rt_lmm, "T13c")
 ```
 
-Median RT model: fixed effects (seconds)
-
-df and *p* use the Satterthwaite approximation. Cell contrasts, in milliseconds, are in @supptbl-rt-contrasts.
+Linear mixed model of median RT (seconds)
 
 :::
 
@@ -670,7 +684,7 @@ Observed accuracy by task, stimulus type and effort. Thin lines are individual p
 
 ## Extended baseline and neuropsychological profile (dissertation only) {.unnumbered}
 
-Table S19 describes the sample on the neuropsychological battery. Table S20 reports exploratory correlations between these measures and task outcomes; none is interpreted.
+Table S20 describes the sample on the neuropsychological battery. Table S21 reports exploratory correlations between these measures and task outcomes; none is interpreted.
 
 ::: {#supptbl-baseline}
 

@@ -343,7 +343,7 @@ f5_labels <- c(
   P3_rt = "Post-probe TEPR, slowest 20% removed",
   P7 = "Pre-response window (0.5 s)",
   P6 = "Previous-trial TEPR",
-  P5 = "Pre-trial baseline pupil",
+  P5 = "Pre-squeeze baseline pupil",
   P8 = "Grip-period pupil"
 )
 f5_groups <- c(
@@ -358,37 +358,47 @@ t8 <- read_csv(file.path(TAB, "T8_pupil_ordering.csv"), show_col_types = FALSE) 
     elpd_lab = mapply(fmt_elpd_lab, delta_elpd_vs_baseline, se_delta_elpd, USE.NAMES = FALSE)
   )
 stopifnot(setequal(t8$model, names(f5_labels)))
-f5_forest <- ggplot(t8, aes(x = pct_change_median, y = row_lab)) +
-  geom_vline(xintercept = 0, color = stat_colors["zero_line"]) +
-  geom_errorbar(
-    aes(xmin = pct_change_q2.5, xmax = pct_change_q97.5),
-    orientation = "y", width = 0.18, linewidth = 0.45, color = "#374151"
-  ) +
-  geom_point(size = 2.2, color = "#111827") +
-  facet_grid(group ~ ., scales = "free_y", space = "free_y") +
-  labs(title = " ", x = "Change in boundary per SD of the pupil predictor (%)", y = NULL) +
-  theme_ms() +
-  theme(
-    legend.position = "none",
-    plot.title = element_text(size = 11, face = "bold", color = "white"),
-    strip.text.y = element_text(angle = 0, face = "bold", size = 9)
-  )
-f5_elpd <- ggplot(t8, aes(x = 1, y = row_lab, label = elpd_lab)) +
-  geom_text(size = 3.1, hjust = 0.5) +
-  facet_grid(group ~ ., scales = "free_y", space = "free_y") +
-  scale_x_continuous(limits = c(0.7, 1.3), expand = c(0, 0)) +
-  labs(title = "\u0394ELPD \u00b1 SE", x = " ", y = NULL) +
-  theme_ms() +
-  theme(
-    legend.position = "none",
-    axis.text = element_blank(),
-    axis.ticks = element_blank(),
-    axis.line = element_blank(),
-    axis.title.x = element_text(color = "white", size = 11),
-    strip.text = element_blank(),
-    plot.title = element_text(size = 11, face = "bold", hjust = 0.5)
-  )
-f5 <- f5_forest + f5_elpd + plot_layout(widths = c(4.6, 1.15))
+f5_xlim <- range(c(t8$pct_change_q2.5, t8$pct_change_q97.5, 0), na.rm = TRUE)
+f5_pad <- 0.08 * diff(f5_xlim)
+f5_xlim <- f5_xlim + c(-f5_pad, f5_pad)
+f5_one <- function(models, heading, elpd_title) {
+  d <- t8 %>% filter(model %in% models) %>%
+    mutate(row_lab = factor(row_lab, levels = unname(f5_labels[models])))
+  forest <- ggplot(d, aes(x = pct_change_median, y = row_lab)) +
+    geom_vline(xintercept = 0, color = stat_colors["zero_line"]) +
+    geom_errorbar(
+      aes(xmin = pct_change_q2.5, xmax = pct_change_q97.5),
+      orientation = "y", width = 0.18, linewidth = 0.45, color = "#374151"
+    ) +
+    geom_point(size = 2.2, color = "#111827") +
+    scale_x_continuous(limits = f5_xlim) +
+    labs(title = heading, x = "Change in boundary per SD of the pupil predictor (%)", y = NULL) +
+    theme_ms() +
+    theme(
+      legend.position = "none",
+      plot.title = element_text(face = "bold", size = 11, hjust = 0),
+      plot.title.position = "plot"
+    )
+  elpd <- ggplot(d, aes(x = 1, y = row_lab, label = elpd_lab)) +
+    geom_text(size = 3.1, hjust = 0.5) +
+    scale_x_continuous(limits = c(0.7, 1.3), expand = c(0, 0)) +
+    labs(title = if (nzchar(elpd_title)) elpd_title else " ", x = " ", y = NULL) +
+    theme_ms() +
+    theme(
+      legend.position = "none",
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      axis.line = element_blank(),
+      axis.title.x = element_text(color = "white", size = 11),
+      plot.title = element_text(
+        face = "bold", size = 11, hjust = 0.5,
+        color = if (nzchar(elpd_title)) "black" else "white"
+      )
+    )
+  forest + elpd + plot_layout(widths = c(4.6, 1.15))
+}
+f5 <- f5_one(c("P7", "P3_rt", "P3"), "Within the current trial", "\u0394ELPD \u00b1 SE") /
+  f5_one(c("P8", "P5", "P6"), "Precedes the current decision", "")
 save_final(
   f5, "F5_pupil_boundary", 10.4, 5.4,
   paste(
@@ -866,6 +876,14 @@ p_tepr <- ggplot(plot_tepr, aes(x = time, y = mean_pupil, color = effort_label, 
   annotate("rect", xmin = iv_fig$tepr_window_start, xmax = iv_fig$tepr_window_end, ymin = -Inf, ymax = Inf, fill = "#DBEAFE", alpha = 0.55) +
   geom_vline(xintercept = 4.35, linewidth = 0.35, color = "#111827") +
   geom_vline(xintercept = 4.70, linewidth = 0.35, linetype = "dashed", color = "#111827") +
+  geom_vline(
+    data = data.frame(
+      x = c(3.00, 3.75),
+      event = c("Gauge offset (3.00 s)", "Standard onset (3.75 s)")
+    ),
+    aes(xintercept = x, linetype = event),
+    inherit.aes = FALSE, linewidth = 0.35, color = "#111827"
+  ) +
   geom_ribbon(aes(ymin = mean_pupil - se, ymax = mean_pupil + se), alpha = 0.22, color = NA) +
   geom_line(linewidth = 0.6) +
   facet_wrap(~ task, ncol = 1) +
@@ -877,12 +895,16 @@ p_tepr <- ggplot(plot_tepr, aes(x = time, y = mean_pupil, color = effort_label, 
     values = c(Low = unname(effort_colors["Low"]), High = unname(effort_colors["High"])),
     name = "Effort"
   ) +
+  scale_linetype_manual(
+    values = c("Gauge offset (3.00 s)" = "dotted", "Standard onset (3.75 s)" = "dotted"),
+    name = NULL
+  ) +
   scale_x_continuous(breaks = seq(0, 8, by = 1), limits = c(-0.5, 8)) +
   labs(
     x = "Time from squeeze onset (s)",
     y = "Baseline-corrected pupil (a.u.)",
     caption = sprintf(
-      "Grey band: grip and pre-probe period (%.1f\u2013%.2f s). Blue band: post-probe AUC (%s\u2013%s s).\nSolid line: probe (4.35 s). Dashed line: response cue (4.70 s).",
+      "Grey band: grip and pre-probe period (%.1f\u2013%.2f s). Blue band: post-probe AUC (%s\u2013%s s).\nSolid line: probe (4.35 s). Dashed line: response cue (4.70 s). Dotted lines: gauge offset (3.00 s) and standard onset (3.75 s). The brief dip at 6.02 s in the VDT comes from one sample in 58 trials from two participants whose recordings were segmented from eye-tracker event codes; it changes those trials' TEPR by less than 5%% of a within-person SD.",
       iv_fig$grip_window_start, iv_fig$grip_window_end,
       iv_fig$tepr_window_start, iv_fig$tepr_window_end
     )

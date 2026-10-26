@@ -89,6 +89,23 @@ fmt_int <- function(x) {
   paste0(sign, prettyNum(abs(rounded), big.mark = ",", scientific = FALSE, trim = TRUE))
 }
 
+fmt_signed_comma <- function(x, d) {
+  x <- .as_single_number(x, "fmt_signed_comma")
+  if (length(d) != 1L || !is.numeric(d) || is.na(d) || d < 0) {
+    .stop_value("fmt_signed_comma expects a non-negative digit count")
+  }
+  s <- sprintf(paste0("%.", as.integer(d), "f"), x)
+  if (!is.na(suppressWarnings(as.numeric(s))) && as.numeric(s) == 0) {
+    s <- sub("^-", "", s)
+  }
+  neg <- grepl("^-", s)
+  s <- sub("^-", "", s)
+  parts <- strsplit(s, ".", fixed = TRUE)[[1]]
+  int <- prettyNum(parts[[1]], big.mark = ",", scientific = FALSE, trim = TRUE)
+  out <- if (length(parts) == 2L) paste0(int, ".", parts[[2]]) else int
+  if (neg) paste0(.minus, out) else out
+}
+
 .number_words <- c(
   "zero", "one", "two", "three", "four",
   "five", "six", "seven", "eight", "nine"
@@ -445,7 +462,7 @@ note_tbl_effort_effects <- function() {
 note_tbl_pupil_ordering <- function() paste0(
   "Each row is a separate model. Estimates are slopes on log boundary separation per within-person SD of the predictor, ",
   "with the percentage change in a. \u0394ELPD \u00b1 SE is relative to a baseline model without the pupil predictor, fit to the same trials. ",
-  "Trial counts differ because each predictor requires its own valid window.")
+      "Trial counts differ across predictors, and each predictor requires its own valid window.")
 
 load_ch3_design <- function() {
   vals <- lapply(ch3_design_keys, function(k) {
@@ -516,8 +533,8 @@ ch3_pct_change_col <- function(est, lo, hi) {
   "b_effort_x_stim" = "Evidence quality",
   "b_bs_effort_conditionhigh" = "Boundary separation",
   "b_bias_effort_conditionhigh" = "Starting point",
-  "drift_different" = "Drift on different trials",
-  "drift_same" = "Drift on same trials",
+  "drift_different" = "Drift on Hard and Easy trials",
+  "drift_same" = "Drift on Standard trials",
   "criterion_ADT" = "Drift criterion, auditory",
   "criterion_VDT" = "Drift criterion, visual",
   "b_taskVDT:effort_conditionhigh" = "Drift criterion \u00d7 task",
@@ -749,7 +766,7 @@ ch3_tbl_formulas <- function() {
     P0_rt = p0
   )
   formula <- sprintf("`%s`", unname(unlist(rows)))
-  model <- names(rows)
+  model <- ch3_model_label(names(rows))
   width_m <- max(nchar(c("Model", model)))
   width_f <- max(nchar(c("Formula", formula)))
   pad <- function(x, w) sprintf(paste0("%-", w, "s"), x)
@@ -851,7 +868,7 @@ ch3_tbl_pupil_ordering <- function(df, footnote = NULL) {
     P3_rt = "Post-probe TEPR, slowest 20% removed",
     P7 = "Pre-response window (0.5 s)",
     P6 = "Previous-trial TEPR",
-    P5 = "Pre-trial baseline pupil",
+    P5 = "Pre-squeeze baseline pupil",
     P8 = "Grip-period pupil"
   )
   out <- data.frame(
@@ -865,7 +882,7 @@ ch3_tbl_pupil_ordering <- function(df, footnote = NULL) {
       if (is.na(d) || is.na(s)) "" else paste0(fmt_num(d, 1), " \u00b1 ", fmt_num(s, 1))
     }, df$delta_elpd_vs_baseline, df$se_delta_elpd, USE.NAMES = FALSE),
     Trials = ch3_fmt_cells(df$n_trials, fmt_int),
-    Subjects = ch3_fmt_cells(df$n_subjects, fmt_int),
+    Participants = ch3_fmt_cells(df$n_subjects, fmt_int),
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
@@ -874,7 +891,7 @@ ch3_tbl_pupil_ordering <- function(df, footnote = NULL) {
     cols = names(out),
     col_labels = c(
       "Model", "Predictor", "Estimate [95% CrI]", "Change in a",
-      "\u0394ELPD \u00b1 SE", "Trials", "Subjects"
+      "\u0394ELPD \u00b1 SE", "Trials", "Participants"
     ),
     footnote = footnote
   )
@@ -886,8 +903,8 @@ ch3_tbl_trial_counts <- function(df) {
     Difficulty = df$difficulty_3,
     Effort = tools::toTitleCase(df$effort_condition),
     Trials = ch3_fmt_cells(df$n_trials, fmt_int),
-    Subjects = ch3_fmt_cells(df$n_subjects, fmt_int),
-    `Trials per subject` = ch3_fmt_cells(df$trials_per_subject, function(v) fmt_num(v, 1)),
+    Participants = ch3_fmt_cells(df$n_subjects, fmt_int),
+    `Trials per participant` = ch3_fmt_cells(df$trials_per_subject, function(v) fmt_num(v, 1)),
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
@@ -895,23 +912,32 @@ ch3_tbl_trial_counts <- function(df) {
 }
 
 ch3_tbl_model_comparison <- function(df) {
-  flagged <- df$model[nzchar(df$rhat_footnote)]
-  notes <- df$rhat_footnote[nzchar(df$rhat_footnote)]
-  footnote <- if (length(flagged)) paste(flagged, notes, collapse = " ") else NULL
+  notes <- as.character(df$rhat_footnote)
+  ok <- !is.na(df$rhat_footnote) & nzchar(trimws(notes))
+  footnote <- if (any(ok)) paste(df$model[ok], notes[ok], collapse = " ") else NULL
   out <- data.frame(
     Model = df$model,
-    ELPD = ch3_fmt_cells(df$elpd_loo, function(v) fmt_num(v, 1)),
+    ELPD = ch3_fmt_cells(df$elpd_loo, function(v) fmt_signed_comma(v, 1)),
     SE = ch3_fmt_cells(df$se_elpd_loo, function(v) fmt_num(v, 1)),
-    `Delta ELPD vs M4` = ch3_fmt_cells(df$delta_elpd_vs_M4, function(v) fmt_num(v, 1)),
-    `SE of delta` = ch3_fmt_cells(df$se_delta_elpd_vs_M4, function(v) fmt_num(v, 1)),
-    `k > 0.7` = ch3_fmt_cells(df$n_k_gt_0.7, fmt_int),
-    `Max R-hat` = ch3_fmt_cells(df$max_rhat, function(v) fmt_num(v, 3)),
-    `Min bulk ESS` = ch3_fmt_cells(df$min_bulk_ess, fmt_int),
+    delta = ch3_fmt_cells(df$delta_elpd_vs_M4, function(v) fmt_signed_comma(v, 1)),
+    se_delta = ch3_fmt_cells(df$se_delta_elpd_vs_M4, function(v) fmt_num(v, 1)),
+    k = ch3_fmt_cells(df$n_k_gt_0.7, fmt_int),
+    rhat = ch3_fmt_cells(df$max_rhat, function(v) fmt_num(v, 3)),
+    ess = ch3_fmt_cells(df$min_bulk_ess, fmt_int),
     Pass = ifelse(df$passes_convergence_rule, "Yes", "No"),
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
-  make_table(out, cols = names(out), col_labels = names(out), footnote = footnote)
+  make_table(
+    out,
+    cols = names(out),
+    col_labels = c(
+      "Model", "ELPD", "SE",
+      "\u0394ELPD vs. M4", "SE of \u0394",
+      "*k* > 0.7", "Max *R\u0302*", "Min bulk ESS", "Pass"
+    ),
+    footnote = footnote
+  )
 }
 
 ch3_tbl_convergence <- function(df) {
@@ -1085,7 +1111,7 @@ ch3_tbl_robustness <- function(df) {
     ch3_posterior_cols(df$median, df$q2.5, df$q97.5, 3),
     `In ROPE` = ch3_rope_col(df$pct_in_rope),
     Trials = ch3_fmt_cells(df$n_trials, fmt_int),
-    Subjects = ch3_fmt_cells(df$n_subjects, fmt_int),
+    Participants = ch3_fmt_cells(df$n_subjects, fmt_int),
     Pass = ifelse(fail, paste0("No", "\u2021"), "Yes"),
     check.names = FALSE,
     stringsAsFactors = FALSE
@@ -1197,7 +1223,7 @@ ch3_tbl_pupil_descriptives <- function(df) {
     list(block_mean = "raw_means", block_pair = "paired_high_minus_low", outcome = "tepr_raw",
          label = "TEPR (B1 baseline)", mean_col = "mean", sd_col = "sd"),
     list(block_mean = "raw_means", block_pair = "paired_high_minus_low", outcome = "auc_b0",
-         label = "TEPR (B0 baseline)", mean_col = "mean", sd_col = "sd"),
+         label = "Mean TEPR (pre-squeeze baseline)", mean_col = "mean", sd_col = "sd"),
     list(block_mean = "grip_means", block_pair = "grip_paired", outcome = NA_character_,
          label = "Grip-period pupil", mean_col = "mean_grip", sd_col = "sd_grip")
   )
@@ -1248,6 +1274,50 @@ ch3_tbl_pupil_descriptives <- function(df) {
   )
 }
 
+ch3_tbl_m2_interactions <- function(df) {
+  order_qty <- c(
+    "drift_hard_x_high",
+    "drift_easy_x_high",
+    "drift_hard_minus_easy_x_high",
+    "boundary_hard_x_high",
+    "boundary_easy_x_high",
+    "boundary_hard_minus_easy_x_high"
+  )
+  labels <- c(
+    "Drift, Hard \u00d7 high",
+    "Drift, Easy \u00d7 high",
+    "Drift, Hard \u2212 Easy",
+    "Boundary, Hard \u00d7 high",
+    "Boundary, Easy \u00d7 high",
+    "Boundary, Hard \u2212 Easy"
+  )
+  if (!setequal(df$quantity, order_qty)) {
+    stop("M2 interaction table is missing a term", call. = FALSE)
+  }
+  df <- df[match(order_qty, df$quantity), , drop = FALSE]
+  p_lt <- if ("p_lt0" %in% names(df)) df$p_lt0 else df$p_negative
+  out <- data.frame(
+    Term = labels,
+    Estimate = mapply(function(med, lo, hi) {
+      paste(fmt_num(med, 3), fmt_ci(lo, hi, 3))
+    }, df$median, df$q025, df$q975, USE.NAMES = FALSE),
+    `P(< 0)` = vapply(p_lt, fmt_prob, character(1)),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  names(out) <- c("Term", "Estimate [95% CrI]", "P(< 0)")
+  make_table(
+    out,
+    cols = names(out),
+    col_labels = names(out),
+    footnote = paste(
+      "Terms are deviations of the high-effort effect from its value on Standard trials.",
+      "Hard \u2212 Easy is the difference between the two deviations.",
+      "Estimates are on the link scale."
+    )
+  )
+}
+
 ch3_tbl_glmm <- function(df, what) {
   out <- data.frame(
     Effect = ch3_map_labels(df$term, .glmm_label_map, what),
@@ -1258,7 +1328,14 @@ ch3_tbl_glmm <- function(df, what) {
   if ("df" %in% names(df)) {
     out$df <- ch3_fmt_cells(df$df, function(v) fmt_num(v, 1))
   }
-  out$Statistic <- ch3_fmt_cells(df$statistic, function(v) fmt_num(v, 2))
+  stat_name <- if (identical(what, "T13b")) {
+    "z"
+  } else if (identical(what, "T13c")) {
+    "t"
+  } else {
+    "Statistic"
+  }
+  out[[stat_name]] <- ch3_fmt_cells(df$statistic, function(v) fmt_num(v, 2))
   if ("p.value" %in% names(df)) {
     out$p <- ch3_fmt_cells(df$p.value, fmt_prob)
   }
@@ -1270,13 +1347,14 @@ ch3_tbl_glmm <- function(df, what) {
   footnote <- if (identical(what, "T13b")) {
     paste(
       "Binomial GLMM. Coefficients are on the logit scale. The statistic is a Wald z; lme4 does not report denominator df.",
+      "The High-effort coefficient is the Standard contrast on the logit scale. Cell contrasts are in the observed-accuracy table.",
       "Random slopes for effort were singular, so the model keeps a random intercept only (Barr et al., 2013; Bates et al., 2015; Brauer & Curtin, 2018).",
       "Reference levels: Standard difficulty, low effort, auditory task (ADT)."
     )
   } else if (identical(what, "T13c")) {
     paste(
-      "The outcome is the median RT in each subject x task x difficulty x effort cell, in seconds, not log RT.",
-      "df and p use the Satterthwaite approximation.",
+      "The outcome is the median RT in each participant x task x difficulty x effort cell, in seconds, not log RT.",
+      "df and p use the Satterthwaite approximation. Cell contrasts, in milliseconds, are in the median-RT contrast table.",
       "Random slopes for effort were singular, so the model keeps a random intercept only (Barr et al., 2013; Bates et al., 2015; Brauer & Curtin, 2018).",
       "Reference levels: Standard difficulty, low effort, auditory task (ADT)."
     )
@@ -1476,21 +1554,31 @@ ch3_tbl_baseline <- function() {
 
 ch3_tbl_temporal <- function(df) {
   model <- as.character(df$model)
-  # The fatigue posterior file has no model column. Those rows are the within-session fatigue model.
-  model[is.na(model) | !nzchar(model)] <- "fatigue"
+  # The fatigue posterior file has no model column. Those rows are the within-run model.
+  model[is.na(model) | !nzchar(model)] <- "within_run"
+  labels <- c(
+    M_hist = "Choice history",
+    M_wsls = "Win-stay/lose-shift",
+    within_run = "Within-run trend"
+  )
+  unknown <- setdiff(unique(model), names(labels))
+  if (length(unknown)) {
+    stop("T15 has an unlabeled model code: ", paste(unknown, collapse = ", "), call. = FALSE)
+  }
   out <- data.frame(
-    Model = model,
+    Model = unname(labels[model]),
     Parameter = ch3_map_labels(df$parameter, .temporal_label_map, "T15"),
     Estimate = ch3_fmt_cells(df$median, function(v) fmt_num(v, 3)),
     SD = ch3_fmt_cells(df$sd, function(v) fmt_num(v, 3)),
-    `p > 0` = ch3_fmt_cells(df$p_gt_0, fmt_prob),
+    p_pos = ch3_fmt_cells(df$p_gt_0, fmt_prob),
+    check.names = FALSE,
     stringsAsFactors = FALSE
   )
   make_table(
     out,
     cols = names(out),
-    col_labels = names(out),
-    footnote = "Fit on the pre-revision model structure. The fatigue block is exploratory_fatigue_trajectory; that file has no model column."
+    col_labels = c("Model", "Parameter", "Estimate", "SD", "P(\u03b2 > 0)"),
+    footnote = "Fit on the pre-revision model structure. The within-run rows come from the fatigue-trajectory file, which has no model column. P(\u03b2 > 0) is the posterior probability that the coefficient is positive."
   )
 }
 
