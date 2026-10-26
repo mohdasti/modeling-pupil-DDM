@@ -68,9 +68,11 @@ Figure scripts for the current panels live in [`scripts/final/F_figures.R`](scri
 | Tracked in git | Local or VM only (`.gitignore`) |
 |----------------|----------------------------------|
 | `reports/chap3_revised.qmd`, helpers, `references.bib` | `*.rds` model objects |
-| Manuscript and dissertation `.docx` | `*.pdf` |
+| Manuscript and dissertation `.docx` | `*.pdf`, including the chapter PDFs |
 | `T10b_convergence_display.csv` | Other tables under `output/` |
 | Decision record | Raw BAP files and `data/analysis_ready/` |
+| | Quarto caches and HTML libraries (`reports/*_cache/`, `reports/*_files/`) and `reports/*.tex` |
+| | Upload archives in `archive/bundles/` |
 
 ---
 
@@ -78,13 +80,18 @@ Figure scripts for the current panels live in [`scripts/final/F_figures.R`](scri
 
 ```
 modeling-pupil-DDM/
+├── README.md
+├── START_HERE.md                      # older pipeline steps; not the chapter
+├── QUICK_START_MATLAB.md              # older MATLAB setup
 ├── reports/chap3_revised.qmd          # current chapter
 ├── reports/references.bib
 ├── reports/chap3_ddm_results.qmd      # June 2026 checkpoint; do not cite
 ├── R/ch3_report_helpers.R             # chapter tables and formatters
 ├── scripts/final/                     # export, inline values, figure script
 ├── docs/ch3_analysis_decision_record.md
-├── archive/                         # older summaries, notes, and local upload bundles
+├── archive/
+│   ├── notes/                         # January 2025 organization summaries and audit notes
+│   └── bundles/                       # local GCP uploads; gitignored
 ├── output/ddm_refits/runs/final_20261016/
 │   ├── tables/final/                  # what the chapter reads
 │   └── figures/final/
@@ -92,7 +99,7 @@ modeling-pupil-DDM/
 └── data/                              # analysis-ready files; large inputs gitignored
 ```
 
-Numbered folders (`01_`–`07_`) and the Makefile targets (`make report`, `make all`) are the older pipeline. They do not build the current chapter.
+Numbered folders (`01_`–`07_`) and the Makefile targets (`make report`, `make all`) are the older pipeline. They do not build the current chapter. [`START_HERE.md`](START_HERE.md) and [`QUICK_START_MATLAB.md`](QUICK_START_MATLAB.md) belong to that pipeline.
 
 ---
 
@@ -105,7 +112,7 @@ git clone https://github.com/mohdasti/modeling-pupil-DDM.git
 cd modeling-pupil-DDM
 
 conda env create -f environment.yml
-Rscript scripts/setup/install_r_packages.R   # if present
+Rscript scripts/setup/install_r_packages.R
 cp config/paths_config.R.example config/paths_config.R
 ```
 
@@ -124,6 +131,8 @@ Fitting the models requires the trial tables and a machine with Stan. Those fits
 | [`docs/GCP_PUPIL_FIT_GUIDE.md`](docs/GCP_PUPIL_FIT_GUIDE.md) | Fitting on a GCP VM |
 | [`docs/GCP_UPLOAD_GUIDE.md`](docs/GCP_UPLOAD_GUIDE.md) | Moving run artifacts on and off the VM |
 | [`06_visualization/publication_figures/README.md`](06_visualization/publication_figures/README.md) | Pre-publication figure scripts |
+| [`START_HERE.md`](START_HERE.md) | Older step-by-step pipeline, before the current chapter |
+| [`archive/README.md`](archive/README.md) | Where superseded notes and local uploads were moved |
 
 ---
 
@@ -152,7 +161,7 @@ Fitting the models requires the trial tables and a machine with Stan. Those fits
 
 | Version | Date | Notes |
 |---------|------|-------|
-| **Chapter on master** | 2026-10 | `reports/chap3_revised.qmd` is the chapter. Behavioral results from `final_20261016` (M4; 17,857 trials, 67 participants). Pupil results from r12 (6,299 trials, 51 participants). r8–r10 pupil results are invalid. |
+| **Chapter on master** | 2026-10 | `reports/chap3_revised.qmd` is the chapter. Behavioral results from `final_20261016` (M4; 17,857 trials, 67 participants). Pupil results from r12 (6,299 trials, 51 participants). r8–r10 pupil results are invalid. Quarto caches are not tracked. |
 | Pre-publication | 2026-06 | Tag `Pre-publication`: run `20260226_092110` and `reports/chap3_ddm_results.qmd`. Superseded for citation. |
 | v1.3.1 | 2026-06-05 | Consolidated main figures `fig1`–`fig5`; `manuscript_paths.R` |
 | v1.3.0 | 2026-06-04 | Centralized `colors_manuscript.R`; `manuscript_palette/` versioning |
