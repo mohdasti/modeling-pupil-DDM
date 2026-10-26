@@ -84,6 +84,7 @@ modeling-pupil-DDM/
 ├── R/ch3_report_helpers.R             # chapter tables and formatters
 ├── scripts/final/                     # export, inline values, figure script
 ├── docs/ch3_analysis_decision_record.md
+├── archive/                         # older summaries, notes, and local upload bundles
 ├── output/ddm_refits/runs/final_20261016/
 │   ├── tables/final/                  # what the chapter reads
 │   └── figures/final/

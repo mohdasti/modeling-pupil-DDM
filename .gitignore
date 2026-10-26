@@ -105,6 +105,11 @@ config/paths_config.R
 config/model_config.yaml
 !config/*.example
 
+# Quarto products. The chapter source stays tracked; caches and HTML assets do not.
+reports/*_cache/
+reports/*_files/
+reports/*.tex
+
 # Large files
 *.zip
 *.tar.gz
