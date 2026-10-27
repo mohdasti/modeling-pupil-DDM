@@ -2,9 +2,12 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![DOI](https://zenodo.org/badge/1065131176.svg)](https://doi.org/10.5281/zenodo.18205122)
-[![R](https://img.shields.io/badge/R-4.0+-blue.svg)](https://www.r-project.org/)
+[![R](https://img.shields.io/badge/R-%E2%89%A5%204.0-276DC3?logo=r&logoColor=white)](https://www.r-project.org/)
+[![brms / Stan](https://img.shields.io/badge/brms-Stan-B2353A)](https://paul-buerkner.github.io/brms/)
 [![Quarto](https://img.shields.io/badge/Quarto-1.7+-0F4C75?logo=quarto&logoColor=white)](https://quarto.org/)
+[![Python](https://img.shields.io/badge/Python-3.9-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Release](https://img.shields.io/github/v/release/mohdasti/modeling-pupil-DDM?include_prereleases&label=Pre-publication)](https://github.com/mohdasti/modeling-pupil-DDM/releases/tag/Pre-publication)
+[![Last commit](https://img.shields.io/github/last-commit/mohdasti/modeling-pupil-DDM/master)](https://github.com/mohdasti/modeling-pupil-DDM/commits/master)
 
 Hierarchical Bayesian drift-diffusion modeling with concurrent pupillometry. Older adults judged whether two tones or two visual patterns were the same or different while holding a handgrip at low (5% MVC) or high (40% MVC) force. This repository holds the Chapter 3 analysis, the current chapter source, and the figure scripts for the BAP effort–decision project.
 
