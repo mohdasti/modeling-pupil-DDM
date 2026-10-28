@@ -769,7 +769,9 @@ ch3_tbl_formulas <- function() {
   model <- ch3_model_label(names(rows))
   width_m <- max(nchar(c("Model", model)))
   width_f <- max(nchar(c("Formula", formula)))
-  pad <- function(x, w) sprintf(paste0("%-", w, "s"), x)
+  # sprintf widths count bytes. The en dash in "P4–P5" would shorten
+  # that row's padding and leave the opening backtick on a wrap boundary.
+  pad <- function(x, w) paste0(x, strrep(" ", max(0L, w - nchar(x))))
   line <- function(a, b) paste(pad(a, width_m), pad(b, width_f), sep = "  ")
   body <- vapply(seq_along(model), function(i) line(model[[i]], formula[[i]]), character(1))
   knitr::asis_output(paste(c(
@@ -1353,7 +1355,7 @@ ch3_tbl_glmm <- function(df, what) {
     )
   } else if (identical(what, "T13c")) {
     paste(
-      "The outcome is the median RT in each participant x task x difficulty x effort cell, in seconds, not log RT.",
+      "The outcome is the median RT in each participant \u00d7 task \u00d7 difficulty \u00d7 effort cell, in seconds, not log RT.",
       "df and p use the Satterthwaite approximation. Cell contrasts, in milliseconds, are in the median-RT contrast table.",
       "Random slopes for effort were singular, so the model keeps a random intercept only (Barr et al., 2013; Bates et al., 2015; Brauer & Curtin, 2018).",
       "Reference levels: Standard difficulty, low effort, auditory task (ADT)."
@@ -1439,7 +1441,7 @@ ch3_tbl_rt_contrasts <- function(df) {
   emq = "EMQ-13",
   gds = "GDS",
   gad = "GAD-7",
-  edu = "education",
+  edu = "Education",
   moca = "MoCA-telephone, score /22"
 )
 
@@ -1489,8 +1491,8 @@ ch3_tbl_lc <- function(df) {
     out, cols = names(out), col_labels = names(out),
     footnote = paste0(
       "Benjamini-Hochberg FDR is computed within family. ",
-      "LC x behavioral outcomes: ", nrow(beh), " tests. ",
-      "LC x DDM parameters: ", nrow(ddm), " tests. ",
+      "LC \u00d7 behavioral outcomes: ", nrow(beh), " tests. ",
+      "LC \u00d7 DDM parameters: ", nrow(ddm), " tests. ",
       "d\u2032 rows are descriptive. The LC table has no accuracy column, so they were not replaced."
     )
   )
@@ -1504,14 +1506,18 @@ ch3_tbl_neuropsych <- function(df) {
     ch3_assoc_table(beh, "neuropsych x behavioral"),
     ch3_assoc_table(ddm, "neuropsych x DDM")
   )
+  if (nrow(beh) != 45L || nrow(ddm) != 27L) {
+    stop(
+      "Neuropsych families are ", nrow(beh), " and ", nrow(ddm),
+      " tests, not 45 and 27",
+      call. = FALSE
+    )
+  }
   make_table(
     out, cols = names(out), col_labels = names(out),
-    footnote = paste0(
-      "Benjamini-Hochberg FDR is computed within family. ",
-      "Neuropsych x behavioral outcomes: ", nrow(beh), " tests. ",
-      "Neuropsych x DDM parameters: ", nrow(ddm), " tests. ",
-      "d\u2032 (descriptive) is the SD of d\u2032 across grip conditions. ",
-      "No SD of accuracy across conditions is in the source table."
+    footnote = paste(
+      "False-discovery-rate correction (Benjamini\u2013Hochberg) was applied within each family: neuropsychological measures \u00d7 behavioral outcomes (45 tests) and \u00d7 diffusion-model parameters (27 tests).",
+      "d\u2032 is the across-condition SD of d\u2032 for each participant."
     )
   )
 }
@@ -1542,13 +1548,22 @@ ch3_tbl_baseline <- function() {
     stringsAsFactors = FALSE
   )
   out <- rbind(cont_out, cat_out)
+  gad_row <- which(out$Measure == "GAD-7 (/8)")
+  if (length(gad_row) != 1L) stop("Baseline table has no GAD-7 (/8) row", call. = FALSE)
+  # Spreadsheet header says "Disorder-8", but recorded totals reach 14, so the ceiling is not 8.
+  # GAD-7 totals run from 0 to 21, and no recorded total exceeds 21.
+  out$Measure[gad_row] <- "GAD-7 (/21)"
+  value_col <- "M (SD) or n (%)"
+  hisp <- which(startsWith(out$Measure, "Hispanic/Latino"))
+  if (length(hisp) != 1L) stop("Baseline table has no Hispanic/Latino row", call. = FALSE)
+  hisp_n <- as.integer(sub("^([0-9]+).*", "\\1", out[[value_col]][hisp]))
+  # Table 1 reports this count on the full sample, n = 67. mean() had dropped missing ethnicity.
+  tab1_n <- 67L
+  if (is.na(hisp_n)) stop("Hispanic/Latino cell has no count", call. = FALSE)
+  out[[value_col]][hisp] <- sprintf("%d (%.1f%%)", hisp_n, 100 * hisp_n / tab1_n)
   make_table(
     out, cols = names(out), col_labels = names(out),
-    footnote = paste(
-      "Values are from output/neuropsych_demographics/extended_baseline_continuous.csv",
-      "and extended_baseline_categorical.csv, the July S9 source.",
-      "T14 stored the means but dropped the ranges."
-    )
+    footnote = "Means (SD) or counts (%) among participants with a recorded value; n varies by measure."
   )
 }
 
