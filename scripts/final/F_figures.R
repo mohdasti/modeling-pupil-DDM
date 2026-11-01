@@ -146,7 +146,14 @@ panel_c <- ggplot(grid_df, aes(x = param_idx, y = pred_idx)) +
   ) +
   scale_color_manual(values = c(param_cols, dash = "#9CA3AF", exclude = "#B45309"), guide = "none") +
   scale_x_continuous(limits = c(0.45, 4.55), expand = c(0, 0)) +
-  scale_y_reverse(breaks = seq_along(predictors), labels = predictors, limits = c(length(predictors) + 0.55, 0.15), expand = c(0, 0)) +
+  scale_y_reverse(
+    breaks = seq_along(predictors),
+    labels = c(
+      "Task difficulty", "Task difficulty x task", "Task",
+      "Physical effort", "Physical effort x stimulus"
+    ),
+    limits = c(length(predictors) + 0.55, 0.15), expand = c(0, 0)
+  ) +
   labs(
     title = "C", x = NULL, y = NULL,
     caption = "N = 67 participants, 17,857 trials. Non-decision time is an intercept only."
@@ -185,9 +192,9 @@ v_panels <- t3 %>% filter(grepl("Drift", quantity))
 f2 <- ggplot(t3, aes(x = difficulty_3, y = median, color = effort_label, group = effort_label)) +
   geom_hline(data = v_panels, aes(yintercept = 0), linetype = "dashed", color = stat_colors["zero_line"], linewidth = 0.3) +
   geom_pointrange(aes(ymin = q2.5, ymax = q97.5), position = position_dodge(width = 0.35), linewidth = 0.4, size = 0.35) +
-  scale_color_manual(values = effort_colors, name = "Effort") +
+  scale_color_manual(values = effort_colors, name = "Physical effort") +
   facet_grid(quantity ~ task, scales = "free_y") +
-  labs(x = "Difficulty", y = "Posterior median and 95% CrI") +
+  labs(x = "Stimulus type", y = "Posterior median and 95% CrI") +
   theme_ms()
 save_final(f2, "F2_condition_parameters", 7.2, 6.2, "T3_condition_cells_M4.csv, quantities v and a.")
 
@@ -583,7 +590,7 @@ pb <- ggplot(t11b, aes(x = q, y = rt, color = effort_label, linetype = series, g
   facet_grid(task ~ response + difficulty_3) +
   scale_color_manual(
     values = c(Low = unname(effort_colors["Low"]), High = unname(effort_colors["High"])),
-    name = "Effort"
+    name = "Physical effort"
   ) +
   scale_linetype_manual(values = c(Observed = "solid", Predicted = "dashed"), name = "Series") +
   labs(title = "B", x = "RT quantile", y = "RT (s)") +
@@ -651,7 +658,7 @@ caf <- beh %>%
   summarise(acc_emp = mean(correct), bin_rt_mid = mean(rt), .groups = "drop")
 sc <- ggplot(caf, aes(x = bin_rt_mid, y = acc_emp, color = effort_label, group = effort_label)) +
   geom_point(size = 1.2) + geom_line(linewidth = 0.45) +
-  scale_color_manual(values = effort_colors, name = "Effort") +
+  scale_color_manual(values = effort_colors, name = "Physical effort") +
   facet_grid(task ~ difficulty_3) +
   scale_y_continuous(limits = c(0, 1)) +
   labs(x = "RT bin midpoint (s)", y = "Accuracy") +
@@ -691,9 +698,9 @@ sa <- ggplot(acc, aes(x = difficulty_3, y = accuracy, group = interaction(subjec
   geom_line(alpha = 0.15, linewidth = 0.25) +
   geom_line(data = means, aes(group = effort_label), linewidth = 0.9) +
   geom_point(data = means, aes(group = effort_label), size = 2) +
-  scale_color_manual(values = effort_colors, name = "Effort") +
+  scale_color_manual(values = effort_colors, name = "Physical effort") +
   facet_wrap(~ task) +
-  labs(x = "Difficulty", y = "Accuracy") +
+  labs(x = "Stimulus type", y = "Accuracy") +
   theme_ms()
 save_final(sa, "S_accuracy_by_condition", 8, 4.6, "Primary 17,857-trial file. One line per participant within task and effort. Points are the unweighted mean across participants. Display order is Identical, Hard, Easy; stored level remains Standard.")
 }
@@ -889,11 +896,11 @@ p_tepr <- ggplot(plot_tepr, aes(x = time, y = mean_pupil, color = effort_label, 
   facet_wrap(~ task, ncol = 1) +
   scale_color_manual(
     values = c(Low = unname(effort_colors["Low"]), High = unname(effort_colors["High"])),
-    name = "Effort"
+    name = "Physical effort"
   ) +
   scale_fill_manual(
     values = c(Low = unname(effort_colors["Low"]), High = unname(effort_colors["High"])),
-    name = "Effort"
+    name = "Physical effort"
   ) +
   scale_linetype_manual(
     values = c("Gauge offset (3.00 s)" = "dotted", "Standard onset (3.75 s)" = "dotted"),

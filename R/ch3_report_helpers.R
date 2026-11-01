@@ -422,13 +422,13 @@ pt_s <- function(key) {
 }
 
 cap_fig_design <- function() paste0(
-  "Task and model. (A) Trial timeline from squeeze onset: grip gauge (low effort, 5% MVC; high effort, 40% MVC), standard and probe stimuli, ",
+  "Task and model. (A) Trial timeline from squeeze onset: grip gauge (low physical effort, 5% MVC; high physical effort, 40% MVC), standard and probe stimuli, ",
   "response cue and response window. (B) Diffusion model with response coding: evidence accumulates from the starting point (z) toward the ",
   "\u201cdifferent\u201d (upper) or \u201csame\u201d (lower) boundary, separated by a, at drift rate v; t\u2080 is non-decision time. ",
   "(C) Predictors of each parameter in the primary model (M4).")
 
 cap_fig_condition_params <- function() paste0(
-  "Posterior drift rate (top) and boundary separation (bottom) by task, stimulus type and effort in the primary model (M4). ",
+  "Posterior drift rate (top) and boundary separation (bottom) by task, stimulus type and physical effort in the primary model (M4). ",
   "Points are posterior medians and bars 95% credible intervals. Drift is signed toward the \u201cdifferent\u201d boundary, ",
   "so negative drift on Identical trials accumulates toward the correct \u201csame\u201d response. ",
   "Starting point and non-decision time did not vary by stimulus type and are not shown.")
@@ -436,11 +436,11 @@ cap_fig_condition_params <- function() paste0(
 cap_fig_effort_forest <- function() {
   .require_rope_match()
   paste0(
-    "Effects of high versus low effort in the primary model (M4, filled) and four robustness variants (open). ",
+    "Effects of high versus low physical effort in the primary model (M4, filled) and four robustness variants (open). ",
     "Points are posterior medians and bars 95% credible intervals. Shaded bands mark the region of practical equivalence ",
     "(drift \u00b1", fmt_num(v("rope_v"), 2), "; log boundary and logit starting point \u00b1", fmt_num(v("rope_a"), 2), "). ",
-    "Drift criterion is the effort effect common to all trials (negative values favor \u201csame\u201d); evidence quality is the effort effect ",
-    "on the separation between identical and different stimuli.",
+    "Drift criterion is the physical effort effect common to all trials (negative values favor \u201csame\u201d); evidence quality is the physical effort effect ",
+    "on the separation between Identical trials and trials with a different probe.",
     if (!isTRUE(v("pass_M4_thr015"))) " \u2021 Did not meet the convergence criterion (R\u0302 < 1.01)." else "")
 }
 
@@ -557,13 +557,13 @@ ch3_stim_label <- function(x) {
   "b_bias_Intercept" = "Starting point intercept",
   "b_difficulty_3Hard" = "Hard (drift)",
   "b_difficulty_3Easy" = "Easy (drift)",
-  "b_taskVDT" = "Visual task (drift)",
-  "b_difficulty_3Hard:taskVDT" = "Hard \u00d7 visual (drift)",
-  "b_difficulty_3Easy:taskVDT" = "Easy \u00d7 visual (drift)",
+  "b_taskVDT" = "VDT (drift)",
+  "b_difficulty_3Hard:taskVDT" = "Hard \u00d7 VDT (drift)",
+  "b_difficulty_3Easy:taskVDT" = "Easy \u00d7 VDT (drift)",
   "b_bs_difficulty_3Hard" = "Hard (boundary separation)",
   "b_bs_difficulty_3Easy" = "Easy (boundary separation)",
-  "b_bs_taskVDT" = "Visual task (boundary separation)",
-  "b_bias_taskVDT" = "Visual task (starting point)"
+  "b_bs_taskVDT" = "VDT (boundary separation)",
+  "b_bias_taskVDT" = "VDT (starting point)"
 )
 
 .quantity_map <- c(
@@ -577,10 +577,10 @@ ch3_stim_label <- function(x) {
   "(Intercept)" = "Intercept",
   "difficulty_3Hard" = "Hard",
   "difficulty_3Easy" = "Easy",
-  "effort_conditionhigh" = "High effort",
-  "taskVDT" = "Visual task",
-  "difficulty_3Hard:effort_conditionhigh" = "Hard \u00d7 high effort",
-  "difficulty_3Easy:effort_conditionhigh" = "Easy \u00d7 high effort"
+  "effort_conditionhigh" = "High physical effort",
+  "taskVDT" = "VDT",
+  "difficulty_3Hard:effort_conditionhigh" = "Hard \u00d7 high physical effort",
+  "difficulty_3Easy:effort_conditionhigh" = "Easy \u00d7 high physical effort"
 )
 
 .pupil_term_map <- c(
@@ -601,23 +601,23 @@ ch3_stim_label <- function(x) {
 
 .temporal_label_map <- c(
   "b_bias_Intercept" = "Starting-point intercept",
-  "b_bias_effort_conditionLow_5_MVC" = "Starting point, low effort",
+  "b_bias_effort_conditionLow_5_MVC" = "Starting point, low physical effort",
   "b_bias_prev_choice" = "Starting point, previous choice",
-  "b_bias_prev_choice:effort_conditionLow_5_MVC" = "Starting point, previous choice \u00d7 low effort",
+  "b_bias_prev_choice:effort_conditionLow_5_MVC" = "Starting point, previous choice \u00d7 low physical effort",
   "b_prev_choice" = "Drift, previous choice",
   "b_bias_prev_choice:prev_correct" = "Starting point, previous choice \u00d7 previous correct",
   "b_bias_prev_correct" = "Starting point, previous correct",
   "b_bs_age_z" = "Boundary separation, age",
   "b_bs_block_halfSecond_Half" = "Boundary separation, second half",
-  "b_bs_effort_conditionHigh_40_MVC" = "Boundary separation, high effort",
-  "b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half" = "Boundary separation, high effort \u00d7 second half",
+  "b_bs_effort_conditionHigh_40_MVC" = "Boundary separation, high physical effort",
+  "b_bs_effort_conditionHigh_40_MVC:block_halfSecond_Half" = "Boundary separation, high physical effort \u00d7 second half",
   "b_age_z" = "Drift, age",
   "b_block_halfSecond_Half" = "Drift, second half",
   "b_block_halfSecond_Half:age_z" = "Drift, second half \u00d7 age",
-  "b_effort_conditionHigh_40_MVC" = "Drift, high effort",
-  "b_effort_conditionHigh_40_MVC:age_z" = "Drift, high effort \u00d7 age",
-  "b_effort_conditionHigh_40_MVC:block_halfSecond_Half" = "Drift, high effort \u00d7 second half",
-  "b_effort_conditionHigh_40_MVC:block_halfSecond_Half:age_z" = "Drift, high effort \u00d7 second half \u00d7 age"
+  "b_effort_conditionHigh_40_MVC" = "Drift, high physical effort",
+  "b_effort_conditionHigh_40_MVC:age_z" = "Drift, high physical effort \u00d7 age",
+  "b_effort_conditionHigh_40_MVC:block_halfSecond_Half" = "Drift, high physical effort \u00d7 second half",
+  "b_effort_conditionHigh_40_MVC:block_halfSecond_Half:age_z" = "Drift, high physical effort \u00d7 second half \u00d7 age"
 )
 
 ch3_effort_block <- function(df, what) {
@@ -910,8 +910,8 @@ ch3_tbl_pupil_ordering <- function(df, footnote = NULL) {
 ch3_tbl_trial_counts <- function(df) {
   out <- data.frame(
     Task = df$task,
-    Difficulty = ch3_stim_label(df$difficulty_3),
-    Effort = tools::toTitleCase(df$effort_condition),
+    `Stimulus type` = ch3_stim_label(df$difficulty_3),
+    `Physical effort` = tools::toTitleCase(df$effort_condition),
     Trials = ch3_fmt_cells(df$n_trials, fmt_int),
     Participants = ch3_fmt_cells(df$n_subjects, fmt_int),
     `Trials per participant` = ch3_fmt_cells(df$trials_per_subject, function(v) fmt_num(v, 1)),
@@ -986,7 +986,7 @@ ch3_tbl_convergence <- function(df) {
   )
   out <- data.frame(
     Model = ch3_model_label(df$model),
-    Role = df$role,
+    Role = gsub("random effort slopes", "random physical effort slopes", df$role, fixed = TRUE),
     `Max R-hat` = ch3_fmt_cells(df$max_rhat, function(v) fmt_num(v, 3)),
     `Min bulk ESS` = ch3_fmt_cells(df$min_bulk_ess, fmt_int),
     `Min tail ESS` = ch3_fmt_cells(df$min_tail_ess, fmt_int),
@@ -1007,8 +1007,8 @@ ch3_tbl_fixef <- function(df) {
   )
   scale_word <- c(identity = "identity", log = "log", logit = "logit")
   labels <- ch3_map_labels(df$term, .fixef_label_map, "T4")
-  labels[df$term == "b_bs_effort_conditionhigh"] <- "High effort (boundary separation)"
-  labels[df$term == "b_bias_effort_conditionhigh"] <- "High effort (starting point)"
+  labels[df$term == "b_bs_effort_conditionhigh"] <- "High physical effort (boundary separation)"
+  labels[df$term == "b_bias_effort_conditionhigh"] <- "High physical effort (starting point)"
   if (!all(df$link %in% names(scale_word))) {
     stop("T4 has an unknown link scale", call. = FALSE)
   }
@@ -1059,7 +1059,7 @@ ch3_tbl_condition_cells <- function(df) {
       }
       rows[[length(rows) + 1L]] <- data.frame(
         Task = task,
-        Difficulty = ch3_stim_label(difficulty),
+        `Stimulus type` = ch3_stim_label(difficulty),
         `Drift, low` = cell("low", "v"),
         `Drift, high` = cell("high", "v"),
         `Boundary, low` = cell("low", "a"),
@@ -1085,7 +1085,7 @@ ch3_tbl_condition_cells <- function(df) {
     stop("T3 non-decision time is not a single value", call. = FALSE)
   }
   footnote <- paste0(
-    "Starting point varies by task and effort only: ",
+    "Starting point varies by task and physical effort only: ",
     paste(z_bits, collapse = "; "),
     ". Non-decision time is ",
     .cell_est(t0$median[1], t0$q2.5[1], t0$q97.5[1]),
@@ -1099,8 +1099,8 @@ ch3_tbl_ppc_choice <- function(df) {
   df <- df[df$model == "M4", , drop = FALSE]
   out <- data.frame(
     Task = df$task,
-    Difficulty = ch3_stim_label(df$difficulty_3),
-    Effort = tools::toTitleCase(df$effort_condition),
+    `Stimulus type` = ch3_stim_label(df$difficulty_3),
+    `Physical effort` = tools::toTitleCase(df$effort_condition),
     Observed = ch3_fmt_cells(df$observed, function(v) .drop_lead0(fmt_num(v, 3))),
     Predicted = ch3_fmt_cells(df$pred_median, function(v) .drop_lead0(fmt_num(v, 3))),
     `95% PI` = mapply(function(a, b) {
@@ -1193,7 +1193,7 @@ ch3_tbl_pupil_models <- function(slopes, effort) {
     stringsAsFactors = FALSE
   )
   effort_out <- data.frame(
-    Block = "Effort effects in the pupil subsample (P0)",
+    Block = "Physical effort effects in the pupil sample (P0)",
     Model = ch3_model_label(effort$model),
     Parameter = ch3_map_labels(effort$term, .effort_label_map, "T7 P0"),
     ch3_posterior_cols(effort$median, effort$q2.5, effort$q97.5, 3),
@@ -1277,7 +1277,7 @@ ch3_tbl_pupil_descriptives <- function(df) {
     cols = names(out),
     col_labels = names(out),
     footnote = paste0(
-      "n is the number of participants with both effort levels for that task. ",
+      "n is the number of participants with both physical effort levels for that task. ",
       "The paired test drops anyone missing one level. ",
       "The final pupil sample is ", fmt_int(gate), " participants."
     )
@@ -1321,7 +1321,7 @@ ch3_tbl_m2_interactions <- function(df) {
     cols = names(out),
     col_labels = names(out),
     footnote = paste(
-      "Terms are deviations of the high-effort effect from its value on Identical trials.",
+      "Terms are deviations of the high physical effort effect from its value on Identical trials.",
       "Hard \u2212 Easy is the difference between the two deviations.",
       "Estimates are on the link scale."
     )
@@ -1357,16 +1357,16 @@ ch3_tbl_glmm <- function(df, what) {
   footnote <- if (identical(what, "T13b")) {
     paste(
       "Binomial GLMM. Coefficients are on the logit scale. The statistic is a Wald z; lme4 does not report denominator df.",
-      "The High-effort coefficient is the Identical contrast on the logit scale. Cell contrasts are in the observed-accuracy table.",
-      "Random slopes for effort were singular, so the model keeps a random intercept only (Barr et al., 2013; Bates et al., 2015; Brauer & Curtin, 2018).",
-      "Reference levels: Identical difficulty, low effort, auditory task (ADT)."
+      "The high physical effort coefficient is the Identical contrast on the logit scale. Cell contrasts are in the observed-accuracy table.",
+      "Random slopes for physical effort were singular, so the model keeps a random intercept only (Barr et al., 2013; Bates et al., 2015; Brauer & Curtin, 2018).",
+      "Reference levels: Identical stimulus type, low physical effort, ADT."
     )
   } else if (identical(what, "T13c")) {
     paste(
-      "The outcome is the median RT in each participant \u00d7 task \u00d7 difficulty \u00d7 effort cell, in seconds, not log RT.",
+      "The outcome is the median RT in each participant \u00d7 task \u00d7 stimulus type \u00d7 physical effort cell, in seconds, not log RT.",
       "df and p use the Satterthwaite approximation. Cell contrasts, in milliseconds, are in the median-RT contrast table.",
-      "Random slopes for effort were singular, so the model keeps a random intercept only (Barr et al., 2013; Bates et al., 2015; Brauer & Curtin, 2018).",
-      "Reference levels: Identical difficulty, low effort, auditory task (ADT)."
+      "Random slopes for physical effort were singular, so the model keeps a random intercept only (Barr et al., 2013; Bates et al., 2015; Brauer & Curtin, 2018).",
+      "Reference levels: Identical stimulus type, low physical effort, ADT."
     )
   } else {
     NULL
@@ -1396,7 +1396,7 @@ ch3_tbl_reduction <- function(df) {
 
 ch3_tbl_acc_contrasts <- function(df) {
   out <- data.frame(
-    Difficulty = ch3_stim_label(df$difficulty),
+    `Stimulus type` = ch3_stim_label(df$difficulty),
     pp = ch3_fmt_cells(df$pp, function(v) fmt_num(v, 2)),
     ci_pp = mapply(function(a, b) fmt_ci(a, b, 2), df$pp_lo, df$pp_hi, USE.NAMES = FALSE),
     or = ch3_fmt_cells(df$or, function(v) fmt_num(v, 2)),
@@ -1407,7 +1407,7 @@ ch3_tbl_acc_contrasts <- function(df) {
     stringsAsFactors = FALSE
   )
   names(out) <- c(
-    "Difficulty", paste0("High ", .minus, " low (pp)"), "95% CI (pp)",
+    "Stimulus type", paste0("High ", .minus, " low (pp)"), "95% CI (pp)",
     "Odds ratio", "95% CI (OR)", "z", "p"
   )
   make_table(
@@ -1418,7 +1418,7 @@ ch3_tbl_acc_contrasts <- function(df) {
 
 ch3_tbl_rt_contrasts <- function(df) {
   out <- data.frame(
-    Difficulty = ch3_stim_label(df$difficulty),
+    `Stimulus type` = ch3_stim_label(df$difficulty),
     ms = ch3_fmt_cells(df$ms, function(v) fmt_num(v, 1)),
     ci = mapply(function(a, b) fmt_ci(a, b, 1), df$ms_lo, df$ms_hi, USE.NAMES = FALSE),
     t = ch3_fmt_cells(df$t, function(v) fmt_num(v, 2)),
@@ -1428,7 +1428,7 @@ ch3_tbl_rt_contrasts <- function(df) {
     stringsAsFactors = FALSE
   )
   names(out) <- c(
-    "Difficulty", paste0("High ", .minus, " low (ms)"), "95% CI (ms)", "t", "df", "p"
+    "Stimulus type", paste0("High ", .minus, " low (ms)"), "95% CI (ms)", "t", "df", "p"
   )
   make_table(
     out, cols = names(out), col_labels = names(out),
@@ -1455,7 +1455,7 @@ ch3_tbl_rt_contrasts <- function(df) {
 
 .assoc_outcome_map <- c(
   rt_mean = "mean RT",
-  rt_diff_abs = "|RT effort difference|",
+  rt_diff_abs = "|RT physical effort difference|",
   grip_sd = "grip force variability",
   tepr_mean = "mean TEPR",
   pf_slope = "psychometric slope",
