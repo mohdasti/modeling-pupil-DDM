@@ -177,7 +177,7 @@ message("F2")
 t3 <- read_csv(file.path(TAB, "T3_condition_cells_M4.csv"), show_col_types = FALSE) %>%
   filter(quantity %in% c("v", "a")) %>%
   mutate(
-    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Easy", "Hard")),
+    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Hard", "Easy"), labels = c("Identical", "Hard", "Easy")),
     effort_label = ifelse(effort_condition == "high", "High", "Low"),
     quantity = factor(quantity, levels = c("v", "a"), labels = c("Drift rate (v)", "Boundary (a)"))
   )
@@ -572,7 +572,7 @@ t11b <- read_csv(file.path(TAB, "T11b_ppc_rt_quantiles.csv"), show_col_types = F
   mutate(
     q = as.numeric(sub("rt_q", "", quantity)),
     effort_label = ifelse(effort_condition == "high", "High", "Low"),
-    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Easy", "Hard")),
+    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Hard", "Easy"), labels = c("Identical", "Hard", "Easy")),
     response = factor(ifelse(response == "same", "Same", "Different"), levels = c("Same", "Different"))
   ) %>%
   pivot_longer(c(observed, pred_median), names_to = "series_raw", values_to = "rt") %>%
@@ -642,7 +642,7 @@ caf <- beh %>%
   filter(is.finite(rt), rt > 0, rt < 10) %>%
   mutate(
     effort_label = ifelse(effort_condition == "high", "High", "Low"),
-    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Easy", "Hard"))
+    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Hard", "Easy"), labels = c("Identical", "Hard", "Easy"))
   ) %>%
   group_by(task, effort_label, difficulty_3) %>%
   mutate(bin = cut(rt, breaks = 5, labels = FALSE)) %>%
@@ -656,7 +656,7 @@ sc <- ggplot(caf, aes(x = bin_rt_mid, y = acc_emp, color = effort_label, group =
   scale_y_continuous(limits = c(0, 1)) +
   labs(x = "RT bin midpoint (s)", y = "Accuracy") +
   theme_ms()
-save_final(sc, "S_caf", 9, 6.2, "Primary 17,857-trial file. Five RT bins within task x difficulty x effort. Standard trials included.")
+save_final(sc, "S_caf", 9, 6.2, "Primary 17,857-trial file. Five RT bins within task x difficulty x effort. Identical trials included. Display order is Identical, Hard, Easy; stored level remains Standard.")
 
 rt_long <- beh %>%
   select(rt, rt_cue) %>%
@@ -680,7 +680,7 @@ acc <- beh %>%
   filter(is.finite(correct)) %>%
   mutate(
     effort_label = ifelse(effort_condition == "high", "High", "Low"),
-    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Easy", "Hard"))
+    difficulty_3 = factor(difficulty_3, levels = c("Standard", "Hard", "Easy"), labels = c("Identical", "Hard", "Easy"))
   ) %>%
   group_by(subject_id, task, difficulty_3, effort_label) %>%
   summarise(accuracy = mean(correct), .groups = "drop")
@@ -695,7 +695,7 @@ sa <- ggplot(acc, aes(x = difficulty_3, y = accuracy, group = interaction(subjec
   facet_wrap(~ task) +
   labs(x = "Difficulty", y = "Accuracy") +
   theme_ms()
-save_final(sa, "S_accuracy_by_condition", 8, 4.6, "Primary 17,857-trial file. One line per participant within task and effort. Points are the unweighted mean across participants. Difficulty order is Standard, Easy, Hard.")
+save_final(sa, "S_accuracy_by_condition", 8, 4.6, "Primary 17,857-trial file. One line per participant within task and effort. Points are the unweighted mean across participants. Display order is Identical, Hard, Easy; stored level remains Standard.")
 }
 
 # ---------------------------------------------------------------------------

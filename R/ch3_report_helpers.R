@@ -430,7 +430,7 @@ cap_fig_design <- function() paste0(
 cap_fig_condition_params <- function() paste0(
   "Posterior drift rate (top) and boundary separation (bottom) by task, stimulus type and effort in the primary model (M4). ",
   "Points are posterior medians and bars 95% credible intervals. Drift is signed toward the \u201cdifferent\u201d boundary, ",
-  "so negative drift on Standard trials accumulates toward the correct \u201csame\u201d response. ",
+  "so negative drift on Identical trials accumulates toward the correct \u201csame\u201d response. ",
   "Starting point and non-decision time did not vary by stimulus type and are not shown.")
 
 cap_fig_effort_forest <- function() {
@@ -528,13 +528,21 @@ ch3_pct_change_col <- function(est, lo, hi) {
   }, est, lo, hi, USE.NAMES = FALSE)
 }
 
+# Stored factor level "Standard" is the identical-probe stimulus type.
+# Inline keys and CSV values keep that name; only printed labels change.
+ch3_stim_label <- function(x) {
+  y <- as.character(x)
+  y[!is.na(y) & y == "Standard"] <- "Identical"
+  y
+}
+
 .effort_label_map <- c(
   "b_effort_conditionhigh" = "Drift criterion",
   "b_effort_x_stim" = "Evidence quality",
   "b_bs_effort_conditionhigh" = "Boundary separation",
   "b_bias_effort_conditionhigh" = "Starting point",
   "drift_different" = "Drift on Hard and Easy trials",
-  "drift_same" = "Drift on Standard trials",
+  "drift_same" = "Drift on Identical trials",
   "criterion_ADT" = "Drift criterion, auditory",
   "criterion_VDT" = "Drift criterion, visual",
   "b_taskVDT:effort_conditionhigh" = "Drift criterion \u00d7 task",
@@ -902,7 +910,7 @@ ch3_tbl_pupil_ordering <- function(df, footnote = NULL) {
 ch3_tbl_trial_counts <- function(df) {
   out <- data.frame(
     Task = df$task,
-    Difficulty = df$difficulty_3,
+    Difficulty = ch3_stim_label(df$difficulty_3),
     Effort = tools::toTitleCase(df$effort_condition),
     Trials = ch3_fmt_cells(df$n_trials, fmt_int),
     Participants = ch3_fmt_cells(df$n_subjects, fmt_int),
@@ -1051,7 +1059,7 @@ ch3_tbl_condition_cells <- function(df) {
       }
       rows[[length(rows) + 1L]] <- data.frame(
         Task = task,
-        Difficulty = difficulty,
+        Difficulty = ch3_stim_label(difficulty),
         `Drift, low` = cell("low", "v"),
         `Drift, high` = cell("high", "v"),
         `Boundary, low` = cell("low", "a"),
@@ -1091,7 +1099,7 @@ ch3_tbl_ppc_choice <- function(df) {
   df <- df[df$model == "M4", , drop = FALSE]
   out <- data.frame(
     Task = df$task,
-    Difficulty = df$difficulty_3,
+    Difficulty = ch3_stim_label(df$difficulty_3),
     Effort = tools::toTitleCase(df$effort_condition),
     Observed = ch3_fmt_cells(df$observed, function(v) .drop_lead0(fmt_num(v, 3))),
     Predicted = ch3_fmt_cells(df$pred_median, function(v) .drop_lead0(fmt_num(v, 3))),
@@ -1313,7 +1321,7 @@ ch3_tbl_m2_interactions <- function(df) {
     cols = names(out),
     col_labels = names(out),
     footnote = paste(
-      "Terms are deviations of the high-effort effect from its value on Standard trials.",
+      "Terms are deviations of the high-effort effect from its value on Identical trials.",
       "Hard \u2212 Easy is the difference between the two deviations.",
       "Estimates are on the link scale."
     )
@@ -1349,16 +1357,16 @@ ch3_tbl_glmm <- function(df, what) {
   footnote <- if (identical(what, "T13b")) {
     paste(
       "Binomial GLMM. Coefficients are on the logit scale. The statistic is a Wald z; lme4 does not report denominator df.",
-      "The High-effort coefficient is the Standard contrast on the logit scale. Cell contrasts are in the observed-accuracy table.",
+      "The High-effort coefficient is the Identical contrast on the logit scale. Cell contrasts are in the observed-accuracy table.",
       "Random slopes for effort were singular, so the model keeps a random intercept only (Barr et al., 2013; Bates et al., 2015; Brauer & Curtin, 2018).",
-      "Reference levels: Standard difficulty, low effort, auditory task (ADT)."
+      "Reference levels: Identical difficulty, low effort, auditory task (ADT)."
     )
   } else if (identical(what, "T13c")) {
     paste(
       "The outcome is the median RT in each participant \u00d7 task \u00d7 difficulty \u00d7 effort cell, in seconds, not log RT.",
       "df and p use the Satterthwaite approximation. Cell contrasts, in milliseconds, are in the median-RT contrast table.",
       "Random slopes for effort were singular, so the model keeps a random intercept only (Barr et al., 2013; Bates et al., 2015; Brauer & Curtin, 2018).",
-      "Reference levels: Standard difficulty, low effort, auditory task (ADT)."
+      "Reference levels: Identical difficulty, low effort, auditory task (ADT)."
     )
   } else {
     NULL
@@ -1388,7 +1396,7 @@ ch3_tbl_reduction <- function(df) {
 
 ch3_tbl_acc_contrasts <- function(df) {
   out <- data.frame(
-    Difficulty = df$difficulty,
+    Difficulty = ch3_stim_label(df$difficulty),
     pp = ch3_fmt_cells(df$pp, function(v) fmt_num(v, 2)),
     ci_pp = mapply(function(a, b) fmt_ci(a, b, 2), df$pp_lo, df$pp_hi, USE.NAMES = FALSE),
     or = ch3_fmt_cells(df$or, function(v) fmt_num(v, 2)),
@@ -1410,7 +1418,7 @@ ch3_tbl_acc_contrasts <- function(df) {
 
 ch3_tbl_rt_contrasts <- function(df) {
   out <- data.frame(
-    Difficulty = df$difficulty,
+    Difficulty = ch3_stim_label(df$difficulty),
     ms = ch3_fmt_cells(df$ms, function(v) fmt_num(v, 1)),
     ci = mapply(function(a, b) fmt_ci(a, b, 1), df$ms_lo, df$ms_hi, USE.NAMES = FALSE),
     t = ch3_fmt_cells(df$t, function(v) fmt_num(v, 2)),
