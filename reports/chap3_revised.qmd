@@ -287,6 +287,10 @@ ch3_tbl_pupil_ordering(tbl$T8_pupil_ordering, footnote = note_tbl_pupil_ordering
 
 The primary model reproduced the observed choice proportions in `r v("ppc_choice_inside_M4")` of 12 condition cells (@supptbl-ppc-choice). Of the observed RT quantiles, `r fmt_num(v("ppc_rt_inside_pct_M4"), 1)`% fell inside the 95% predictive intervals, and observed median RTs were on average `r fmt_int(v("ppc_rt_median_bias_ms_M4"))` ms slower than predicted (@suppfig-ppc). The discrepancy was largest for minority responses ("different" on Identical trials, "same" on Easy trials and "different" on Hard trials), which were slower than predicted. After moment matching and exact refits (@sec-supp-spec), no observation in any compared model had a Pareto *k* above 0.7. Non-decision time changed with the RT cutoff: `r fmt_num(v("t0_thr015", "median"), 3)` s, `r fmt_num(v("t0_M4", "median"), 3)` s and `r fmt_num(v("t0_thr025", "median"), 3)` s at cutoffs of 0.15 s, 0.20 s and 0.25 s.
 
+```{=latex}
+\FloatBarrier
+```
+
 # 4 Discussion {.unnumbered}
 
 We asked whether concurrent physical effort changes how older adults make perceptual decisions by reducing the quality of the evidence they accumulate (the capacity account) or by changing how they use that evidence (the policy account). In the primary model, high physical effort did not reduce evidence quality. Instead, it shifted drift toward "same" on all trials. That shift appeared as an accuracy cost on Hard trials and, if anything, a small gain on Identical trials. The change in boundary separation was inside the region of practical equivalence, and the starting point was unchanged. High physical effort enlarged the pupil only weakly during the grip. In the pupil sample, trials with larger pupil responses during the decision had wider boundaries, whereas no pupil measure taken before the decision predicted boundary separation.
