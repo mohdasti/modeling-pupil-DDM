@@ -1024,7 +1024,7 @@ ch3_tbl_fixef <- function(df) {
   out <- data.frame(
     Parameter = labels,
     ch3_posterior_cols(df$median, df$q2.5, df$q97.5, 3),
-    Direction = ifelse(keep, ch3_direction_col(df$median, df$p_lt0, df$p_gt0), ""),
+    Direction = ch3_direction_col(df$median, df$p_lt0, df$p_gt0),
     `In ROPE` = ifelse(keep, ch3_rope_col(df$pct_in_rope), ""),
     `R-hat` = ch3_fmt_cells(df$rhat, function(v) fmt_num(v, 3)),
     check.names = FALSE,
