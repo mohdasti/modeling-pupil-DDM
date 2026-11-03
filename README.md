@@ -29,11 +29,13 @@ Raw trial data and large `.rds` fits are not in git.
 | **Behavioral sample** | 17,857 trials, 67 participants. Primary model M4. Unaffected by the pupil time-axis error. |
 | **Pupil sample to cite** | r12 (`r12_20261025_204146`): 6,299 trials, 51 participants. |
 
-High effort shifted evidence accumulation toward "same" responses. It did not reduce evidence quality overall, and it did not meaningfully change boundary separation or the starting point. Pupil responses during the decision were larger on trials with wider boundaries. No pupil measure taken before the decision predicted boundary separation. Cite the rendered chapter for the estimates. The decision record's earlier "cite r8" section is superseded by the 2026-10-25 note at the end of that file.
+High physical effort shifted the drift criterion toward "same" on all trials. It did not reduce evidence quality overall, though a small extra cost on the hardest trials is not ruled out, and it did not meaningfully change boundary separation or the starting point. Pupil size during the grip was only weakly larger under high physical effort. Pupil responses during the decision were larger on trials with wider boundaries. No pupil measure taken before the decision predicted boundary separation. Cite the rendered chapter for the estimates. The decision record's earlier "cite r8" section is superseded by the 2026-10-25 note at the end of that file.
+
+Section numbers are typed in the headings (`number-sections: false`). Methods are 2.1–2.8: participants; task, stimuli and sessions; apparatus; behavioral data processing; pupillometry; the drift-diffusion model; pupil-linked models; statistical inference. Results are 3.1–3.4. Discussion is 4.1–4.6: evidence quality and the capacity account; the criterion shift; physical effort and pupil size; pupil size and boundary separation; limitations; conclusion.
 
 **Do not cite r8, r9, or r10 pupil results.** Those fits used a compressed time axis (`invalid_time_axis`). Behavioral models from the same period are unaffected. A dilation-speed filter and a re-fit of the affected pupil models are deferred to the journal version. The dissertation uses r12.
 
-The manuscript is the default render. The dissertation adds the behavioral mixed-effects models, the extended supplement, and the analysis-provenance section. Pass `-M dissertation:true` for that pair.
+The YAML default is `dissertation: true`, so a plain render is the dissertation. That version adds the behavioral mixed-effects models, the extended supplement, and the analysis-provenance section. Pass `-M dissertation:false` for the manuscript.
 
 Rendered copies in `reports/`:
 
@@ -49,8 +51,10 @@ Rendered copies in `reports/`:
 From the repository root, with `inline_values.rds` and the chapter figures already in `tables/final/` and `figures/final/`:
 
 ```bash
-quarto render reports/chap3_revised.qmd --to docx
-quarto render reports/chap3_revised.qmd --to pdf
+quarto render reports/chap3_revised.qmd --to docx \
+  -M dissertation:false
+quarto render reports/chap3_revised.qmd --to pdf \
+  -M dissertation:false
 
 quarto render reports/chap3_revised.qmd --to docx \
   -M dissertation:true --output chap3_revised_dissertation.docx
@@ -70,7 +74,7 @@ Figure scripts for the current panels live in [`scripts/final/F_figures.R`](scri
 
 | Tracked in git | Local or VM only (`.gitignore`) |
 |----------------|----------------------------------|
-| `reports/chap3_revised.qmd`, helpers, `references.bib` | `*.rds` model objects |
+| `reports/chap3_revised.qmd`, helpers, `references.bib`, `reports/sec_unnumbered_refs.lua` | `*.rds` model objects |
 | Manuscript and dissertation `.docx` | `*.pdf`, including the chapter PDFs |
 | `T10b_convergence_display.csv` | Other tables under `output/` |
 | Decision record | Raw BAP files and `data/analysis_ready/` |
@@ -87,6 +91,7 @@ modeling-pupil-DDM/
 ├── START_HERE.md                      # older pipeline steps; not the chapter
 ├── QUICK_START_MATLAB.md              # older MATLAB setup
 ├── reports/chap3_revised.qmd          # current chapter
+├── reports/sec_unnumbered_refs.lua    # link text for the unnumbered supplement heading
 ├── reports/references.bib
 ├── reports/chap3_ddm_results.qmd      # June 2026 checkpoint; do not cite
 ├── R/ch3_report_helpers.R             # chapter tables and formatters
@@ -164,7 +169,7 @@ Fitting the models requires the trial tables and a machine with Stan. Those fits
 
 | Version | Date | Notes |
 |---------|------|-------|
-| **Chapter on master** | 2026-10 | `reports/chap3_revised.qmd` is the chapter. Behavioral results from `final_20261016` (M4; 17,857 trials, 67 participants). Pupil results from r12 (6,299 trials, 51 participants). r8–r10 pupil results are invalid. Quarto caches are not tracked. |
+| **Chapter on master** | 2026-11 | `reports/chap3_revised.qmd` is the chapter. Results and Discussion follow the capacity and policy accounts. Methods are 2.1–2.8 and Discussion is 4.1–4.6. Behavioral results from `final_20261016` (M4; 17,857 trials, 67 participants). Pupil results from r12 (6,299 trials, 51 participants). r8–r10 pupil results are invalid. The default render is the dissertation. Quarto caches are not tracked. |
 | Pre-publication | 2026-06 | Tag `Pre-publication`: run `20260226_092110` and `reports/chap3_ddm_results.qmd`. Superseded for citation. |
 | v1.3.1 | 2026-06-05 | Consolidated main figures `fig1`–`fig5`; `manuscript_paths.R` |
 | v1.3.0 | 2026-06-04 | Centralized `colors_manuscript.R`; `manuscript_palette/` versioning |
