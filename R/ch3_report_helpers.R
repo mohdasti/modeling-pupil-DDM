@@ -673,6 +673,12 @@ make_table <- function(df, cols, col_labels, digits_map = NULL, footnote = NULL)
       stop("numeric column lacks digits_map: ", cn, call. = FALSE)
     }
     shown[[cn]] <- ifelse(is.na(shown[[cn]]), "", as.character(shown[[cn]]))
+    # Keep a short interval or probability on one line. Longer labels still wrap.
+    shown[[cn]] <- ifelse(
+      nzchar(shown[[cn]]) & nchar(shown[[cn]]) <= 24L & grepl("[0-9]", shown[[cn]]),
+      gsub(" ", "\u00a0", shown[[cn]], fixed = TRUE),
+      shown[[cn]]
+    )
   }
   names(shown) <- vapply(col_labels, .italic_stat_header, character(1))
   kb <- knitr::kable(
@@ -900,8 +906,8 @@ ch3_tbl_pupil_ordering <- function(df, footnote = NULL) {
     out,
     cols = names(out),
     col_labels = c(
-      "Model", "Predictor", "Estimate [95% CrI]", "Change in a",
-      "\u0394ELPD \u00b1 SE", "Trials", "Participants"
+      "Model", "Predictor", "Estimate [95%\u00a0CrI]", "Change in a",
+      "\u0394ELPD \u00b1\u00a0SE", "Trials", "Participants"
     ),
     footnote = footnote
   )
@@ -1315,7 +1321,7 @@ ch3_tbl_m2_interactions <- function(df) {
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
-  names(out) <- c("Term", "Estimate [95% CrI]", "P(< 0)")
+  names(out) <- c("Term", "Estimate [95%\u00a0CrI]", "P(< 0)")
   make_table(
     out,
     cols = names(out),

@@ -9,21 +9,38 @@ function Table(tbl)
     return nil
   end
 
-  local function longest_token(el)
+  -- A short label or a statistical result should set the column
+  -- width. Longer text still wraps at spaces.
+  local function cell_weight(el, is_header)
     local s = pandoc.utils.stringify(el)
-    local m = 1
+    local full = utf8.len(s) or #s
+    local token = 1
     for w in tostring(s):gmatch("%S+") do
       local len = utf8.len(w) or #w
-      if len > m then
-        m = len
+      if len > token then
+        token = len
       end
     end
-    return m
+    local weight = token
+    if full > 0 and full <= 24 then
+      weight = math.max(token, full)
+    end
+    -- Intervals are wider than a character count suggests, and a
+    -- right-aligned one runs into the next column if the fit is exact.
+    if s:find("%[") then
+      weight = weight + 8
+    end
+    -- Short headers such as "In ROPE" and "ΔELPD ± SE" are wider
+    -- than a lowercase string of the same length.
+    if is_header and full > 0 and full <= 16 then
+      weight = math.max(weight, full + 5)
+    end
+    return weight
   end
 
-  local function consider(el, i, weight)
+  local function consider(el, i, weight, is_header)
     if el and el.cells and el.cells[i] then
-      return math.max(weight, longest_token(el.cells[i]))
+      return math.max(weight, cell_weight(el.cells[i], is_header))
     end
     return weight
   end
@@ -34,19 +51,19 @@ function Table(tbl)
     local w = 1
     if tbl.head and tbl.head.rows then
       for _, row in ipairs(tbl.head.rows) do
-        w = consider(row, i, w)
+        w = consider(row, i, w, true)
       end
     end
     if tbl.bodies then
       for _, body in ipairs(tbl.bodies) do
         for _, row in ipairs(body.body or {}) do
-          w = consider(row, i, w)
+          w = consider(row, i, w, false)
         end
       end
     end
     if tbl.foot and tbl.foot.rows then
       for _, row in ipairs(tbl.foot.rows) do
-        w = consider(row, i, w)
+        w = consider(row, i, w, false)
       end
     end
     -- Capitals in short headers (for example "ROPE") are wider than an
