@@ -1,0 +1,13 @@
+task,difficulty_3,effort_condition,n_trials,n_subjects,trials_per_subject,source_model,tier
+ADT,Easy,high,1772,64,27.6875,primary 0.20 s data,ms_supp
+ADT,Easy,low,1740,64,27.1875,primary 0.20 s data,ms_supp
+ADT,Hard,high,1777,64,27.765625,primary 0.20 s data,ms_supp
+ADT,Hard,low,1738,64,27.15625,primary 0.20 s data,ms_supp
+ADT,Standard,high,887,64,13.859375,primary 0.20 s data,ms_supp
+ADT,Standard,low,860,64,13.4375,primary 0.20 s data,ms_supp
+VDT,Easy,high,1838,65,28.276923076923076,primary 0.20 s data,ms_supp
+VDT,Easy,low,1749,65,26.907692307692308,primary 0.20 s data,ms_supp
+VDT,Hard,high,1863,65,28.661538461538463,primary 0.20 s data,ms_supp
+VDT,Hard,low,1788,65,27.50769230769231,primary 0.20 s data,ms_supp
+VDT,Standard,high,939,65,14.446153846153846,primary 0.20 s data,ms_supp
+VDT,Standard,low,906,65,13.938461538461539,primary 0.20 s data,ms_supp

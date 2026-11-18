@@ -1,0 +1,7 @@
+outcome,step,formula_re,singular,slope_sd,intercept_sd,correlation,optimizer,used
+accuracy,maximal,(1 + effort_condition | subject_id),TRUE,0,0.71700968,-0.03126575,bobyqa,FALSE
+accuracy,no correlation,(1 | subject_id) + (0 + effort_c | subject_id),TRUE,0,0.701312,NA,bobyqa,FALSE
+accuracy,intercepts,(1 | subject_id),FALSE,NA,0.7013107441532248,NA,bobyqa,TRUE
+rt,maximal,(1 + effort_condition | subject_id),TRUE,0.011183,0.250617,1,bobyqa,FALSE
+rt,no correlation,(1 | subject_id) + (0 + effort_c | subject_id),TRUE,0,0.25614,NA,bobyqa,FALSE
+rt,intercepts,(1 | subject_id),FALSE,NA,0.2561355873627258,NA,bobyqa,TRUE

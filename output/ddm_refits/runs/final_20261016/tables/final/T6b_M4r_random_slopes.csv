@@ -1,0 +1,5 @@
+term,median,q2.5,q97.5,p_lt0,p_gt0,pct_in_rope,rope_halfwidth,source_model,tier,link
+sd_subject_id__effort_conditionhigh,0.019106248,9.490662515e-4,0.06169863457499996,0,1,52.125,0.02,M4r,ms_supp,sd
+sd_subject_id__bs_effort_conditionhigh,0.0065983999,2.6282377125000004e-4,0.02278720797499999,0,1,95.00833333333333,0.02,M4r,ms_supp,sd
+cor_subject_id__Intercept__effort_conditionhigh,-0.194244695,-0.838205347,0.6941071609999998,0.6609166666666667,0.33908333333333335,3.1166666666666667,0.02,M4r,ms_supp,correlation
+cor_subject_id__bs_Intercept__bs_effort_conditionhigh,0.0314675405,-0.777493416,0.7973546619999999,0.47525,0.52475,3.5083333333333333,0.02,M4r,ms_supp,correlation

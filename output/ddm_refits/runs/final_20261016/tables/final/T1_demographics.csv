@@ -1,0 +1,12 @@
+Characteristic,Full_Sample,source_model,tier
+N,67,qa_subject_inclusion + demographics spreadsheet,main
+Age (SD),69.5 (6.4),qa_subject_inclusion + demographics spreadsheet,main
+"Gender, female (%)",34 (50.7%),qa_subject_inclusion + demographics spreadsheet,main
+"Education, years (SD)",15.7 (2.6),qa_subject_inclusion + demographics spreadsheet,main
+"MoCA, score (SD)",19.8 (1.5),qa_subject_inclusion + demographics spreadsheet,main
+"Race, count (%)",,qa_subject_inclusion + demographics spreadsheet,main
+  White/Caucasian,51 (76.1%),qa_subject_inclusion + demographics spreadsheet,main
+  Black/African American,4 (6.0%),qa_subject_inclusion + demographics spreadsheet,main
+  Asian,5 (7.5%),qa_subject_inclusion + demographics spreadsheet,main
+  Other,5 (7.5%),qa_subject_inclusion + demographics spreadsheet,main
+Hispanic/Latino,10 (14.9%),qa_subject_inclusion + demographics spreadsheet,main
